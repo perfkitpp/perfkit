@@ -1,0 +1,3 @@
+[submodule "imtui"]
+	path = imtui
+	url = git@github.com:ggerganov/imtui.git
