@@ -1,5 +1,5 @@
 #include "perfkit/perfkit.h"
-#include "perfkit/tui.hpp"
+#include "perfkit/ui.hpp"
 using namespace std::literals;
 
 namespace options {

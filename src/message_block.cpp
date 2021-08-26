@@ -43,7 +43,6 @@ message_block::msg_entity* message_block::_fork_branch(
 }
 
 uint64_t message_block::_hash_active(msg_entity const* parent, std::string_view top) {
-  // TODO: Hierarchy 관리 관련 기능 죄다 박살나있음 !!!!
   // --> 계층은 전역으로 관리되면 안 됨 ... 각각의 프록시가 관리해야함!!
   // Hierarchy 각각의 데이터 엔티티 기반으로 관리되게 ... _hierarchy_hash 관련 기능 싹 갈아엎기
 
@@ -97,7 +96,8 @@ struct message_block_sorter {
 };
 }  // namespace
 
-message_block::message_block(int order, std::string_view name) noexcept : _occurence_order(order), _name(name) {
+message_block::message_block(int order, std::string_view name) noexcept
+    : _occurence_order(order), _name(name) {
   auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
   _all().insert(it_insert, this);
 }

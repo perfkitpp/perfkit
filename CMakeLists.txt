@@ -24,23 +24,10 @@ if (Curses_FOUND)
     file(GLOB_RECURSE ${PROJECT_NAME}_TUI_SOURCES "tui/*")
 
     message("Found Curses. Creating imtui target ...")
-    #    add_subdirectory(imtui EXCLUDE_FROM_ALL)
-
     target_sources(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_TUI_SOURCES})
-    #    target_link_libraries(${PROJECT_NAME} PRIVATE imtui)
 
-    add_library(imtui-for-perfkit imtui/src/imtui-impl-text.cpp imtui/src/imtui-impl-ncurses.cpp)
-    add_subdirectory(imtui/third-party EXCLUDE_FROM_ALL)
-
-    target_link_libraries(
-            imtui-for-perfkit
-                PUBLIC
-                    imgui-for-imtui
-                    ${CURSES_NCURSES_LIBRARY}
-    )
-    target_include_directories(imtui-for-perfkit PUBLIC imtui/include)
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE imtui-for-perfkit)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${CURSES_NCURSES_LIBRARY})
+    target_include_directories(${PROJECT_NAME} PRIVATE ${CURSES_INCLUDE_DIR})
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------
