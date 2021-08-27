@@ -79,7 +79,7 @@ class option_dispatcher {
  public:
   bool apply_update_and_check_if_dirty();
 
-  void queue_update(std::string full_key, nlohmann::json const& value) {
+  void queue_update_value(std::string full_key, nlohmann::json const& value) {
     std::unique_lock _l{_update_lock};
     _pending_updates[std::move(full_key)] = value;
   }
@@ -122,7 +122,8 @@ class option {
       Ty_ default_value,
       std::string description = {},
       attribute attr = {}) noexcept
-      : _value(default_value) {
+      : _owner(&dispatcher),
+        _value(default_value) {
     // setup marshaller / de-marshaller with given rule of attribute
     detail::option_base::marshal_function fn_m = [](const nlohmann::json& in, void* out) {
       // TODO: Apply attributes
@@ -156,9 +157,11 @@ class option {
   Ty_ const* operator->() const noexcept { return &get(); }
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
+  void queue_change_value(Ty_ v) { _owner->queue_update_value(_opt->full_key(), std::move(v)); }
 
  private:
   std::shared_ptr<detail::option_base> _opt;
+  option_dispatcher* _owner;
   Ty_ _value;
 };
 
