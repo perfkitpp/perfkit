@@ -6,22 +6,26 @@
 #include <algorithm>
 #include <cassert>
 #include <range/v3/algorithm.hpp>
+#include <range/v3/view.hpp>
 #include <regex>
 
 using namespace ranges;
 
 namespace {
-const std::regex rg_argv_token{R"RG((?:"(\\.|[^"\\])*"|([^\s]+)))RG"};
 }
 
 static bool is_valid_cmd_token(std::string_view tkn) {
+  static_assert(false, "TODO");
+
   return true;
 }
 
 perfkit::ui::command_register::node* perfkit::ui::command_register::node::subcommand(
     std::string_view cmd,
-    command_register::handler_fn handler,
-    command_register::autocomplete_suggest_fn suggest) {
+    handler_fn handler,
+    autocomplete_suggest_fn suggest) {
+  assert(handler);
+
   if (_chk_dup(cmd) || !is_valid_cmd_token(cmd)) {
     return nullptr;
   }
@@ -97,12 +101,47 @@ void perfkit::ui::command_register::node::suggest(
   // note: maps are already sorted, thus one don't need to iterate all elements, but
   // simply find lower bound then iterate until meet one doesn't start with compared.
   auto filter_starts_with = [&](auto& str_key_map, auto& compare) {
-    for (auto it = lower_bound(str_key_map, compare);
-         it != str_key_map.end() && str_key_map(it->first, compare) == 0;
+    auto keys = str_key_map | views::keys;
+    for (auto it = lower_bound(keys, compare);
+         it != keys.end() && it->rfind(compare) == 0;
          ++it) {
-      out_candidates.push_back(it->first);
+      out_candidates.push_back(*it);
     }
   };
 
+  filter_starts_with(_subcommands, string);
+  filter_starts_with(_aliases, string);
 
+  if (_suggest) {
+    _suggest(full_tokens, current_command, out_candidates);
+  }
+}
+
+bool perfkit::ui::command_register::node::invoke(
+    perfkit::array_view<std::string_view> full_tokens,
+    size_t this_command,
+    std::string_view arguments_string) {
+  if (this_command + 1 < full_tokens.size()) {
+    auto maybe_subcmd = full_tokens[this_command + 1];
+    if (_chk_dup(maybe_subcmd)) {
+      std::string_view cmd = maybe_subcmd;
+
+      if (auto it_alias = find_if(_aliases,
+                                  [&](auto const& k) { return k.first == maybe_subcmd; });
+          it_alias != _aliases.end()) {
+        cmd = it_alias->second;
+      }
+      auto subcmd = &_subcommands.find(cmd)->second;
+      return subcmd->invoke(full_tokens, this_command, arguments_string);
+    }
+  }
+
+  return _invoke(full_tokens, this_command, arguments_string);
+}
+
+void perfkit::cmdutils::tokenize_by_argv_rule(std::string_view src, std::vector<std::string_view>& tokens) {
+  const static std::regex rg_argv_token{R"RG((?:"(\\.|[^"\\])*"|([^\s]+)))RG"};
+
+  // TODO;
+  static_assert(false, "TODO");
 }

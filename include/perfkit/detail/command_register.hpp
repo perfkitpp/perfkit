@@ -21,25 +21,26 @@ void tokenize_by_argv_rule(std::string_view src, std::vector<std::string_view>& 
 };  // namespace perfkit::cmdutils
 
 namespace perfkit::ui {
+
+/**
+ *
+ */
+using handler_fn = std::function<bool(
+    array_view<std::string_view> full_tokens,
+    size_t this_command,
+    std::string_view arguments_string)>;
+
+/**
+ * When this handler is called, out_candidates parameter will hold initial
+ * autocomplete list consist of available commands and aliases.
+ */
+using autocomplete_suggest_fn = std::function<void(
+    array_view<std::string_view> full_tokens,
+    size_t current_command,
+    std::vector<std::string_view>& out_candidates)>;
+
 class command_register {
  public:
-  /**
-   *
-   */
-  using handler_fn = std::function<void(
-      array_view<std::string_view> full_tokens,
-      size_t this_command,
-      std::string_view arguments_string)>;
-
-  /**
-   * When this handler is called, out_candidates parameter will hold initial
-   * autocomplete list consist of available commands and aliases.
-   */
-  using autocomplete_suggest_fn = std::function<void(
-      array_view<std::string_view> full_tokens,
-      size_t current_command,
-      std::vector<std::string_view>& out_candidates)>;
-
  public:
   class node {
    public:
@@ -53,8 +54,8 @@ class command_register {
      */
     perfkit::ui::command_register::node* subcommand(
         std::string_view cmd,
-        command_register::handler_fn handler,
-        command_register::autocomplete_suggest_fn suggest);
+        handler_fn handler,
+        autocomplete_suggest_fn suggest);
 
     /**
      * Find subcommand of current node.
@@ -100,7 +101,7 @@ class command_register {
      * @param this_command
      * @param arguments_string
      */
-    void invoke(
+    bool invoke(
         array_view<std::string_view> full_tokens,
         size_t this_command,
         std::string_view arguments_string);
