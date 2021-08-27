@@ -3,9 +3,15 @@
 namespace {
 
 PERFKIT_OPTION_DISPATCHER(optd);
-auto opt_coeff_a = perfkit::declare_option(optd, "Global|Amplification", 1.114);
-auto opt_coeff_b = perfkit::declare_option(optd, "Global|Iteration", 31);
+auto opt_coeff_a  = perfkit::declare_option(optd, "Global|Amplification", 1.114);
+auto opt_coeff_b  = perfkit::declare_option(optd, "Global|Iteration", 31);
 auto opt_category = perfkit::declare_option(optd, "Global|Misc|Category", "Hello");
+
+auto opt_coeff_d = perfkit::declare_option(
+    optd, "Core|ImportantVar", 1.114,
+    perfkit::attribute<double>{}
+        .description("Some important")
+        .one_of({1.31, 5.54, 3.82}));
 
 }  // namespace
 
@@ -37,7 +43,7 @@ int main(void) {
 
     // values can be reference with various method.
     some_function(*opt_coeff_a, *opt_coeff_b, *opt_category);
-    printf(opt_category->c_str());
+    puts(opt_category->c_str());
     some_function(*opt_coeff_a, *opt_coeff_b, (std::string const&)opt_category);
   }
 

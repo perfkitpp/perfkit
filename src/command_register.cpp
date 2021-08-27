@@ -15,8 +15,6 @@ namespace {
 }
 
 static bool is_valid_cmd_token(std::string_view tkn) {
-  // static_assert(false, "TODO");
-
   return true;
 }
 
@@ -141,6 +139,4 @@ bool perfkit::ui::command_register::node::invoke(
 
 void perfkit::cmdutils::tokenize_by_argv_rule(std::string_view src, std::vector<std::string_view>& tokens) {
   const static std::regex rg_argv_token{R"RG((?:"(\\.|[^"\\])*"|([^\s]+)))RG"};
-
-  // static_assert(false, "TODO");
 }
