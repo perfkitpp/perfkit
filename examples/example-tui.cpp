@@ -1,17 +1,47 @@
 #include "perfkit/perfkit.h"
-#include "perfkit/ui/ui.hpp"
-using namespace std::literals;
 
-namespace options {
-PERFKIT_OPTION_DISPATCHER(gob);
-PERFKIT_OPTION test_opt{gob, "+AA|Cat0|Cat1|MyOb", true, "Hello, World"};
-PERFKIT_OPTION test_opt2{gob, "+AA|Cat0|Cat2|MyOb", "hell, world"s, "Hello, World 2"};
-PERFKIT_OPTION test_opt3{gob, "+AA|Cat0|Cat3|MyOb", 4, "Hello, World 3"};
-PERFKIT_OPTION test_opt4{gob, "+AA|Cat0|Cat3|MyOb2", 2.131, "Hello, World 4"};
-PERFKIT_OPTION test_opt5{gob, "Cat3", true, "Hello, World 5"};
+namespace {
 
-}  // namespace options
+PERFKIT_OPTION_DISPATCHER(optd);
+auto opt_coeff_a = perfkit::declare_option(optd, "Global|Amplification", 1.114);
+auto opt_coeff_b = perfkit::declare_option(optd, "Global|Iteration", 31);
+auto opt_category = perfkit::declare_option(optd, "Global|Misc|Category", "Hello");
+
+}  // namespace
+
+void some_function(double, int, std::string const&);
 
 int main(void) {
+  while (true) {
+    // some intensive multi-threaded loop ...
+    if (optd.apply_update_and_check_if_dirty()) {
+      if (opt_coeff_a.check_dirty_and_consume()) {
+        // ... DO SOME REFRESH ...
+      }
+
+      if (opt_coeff_b.check_dirty_and_consume()) {
+        // ... DO SOME REFRESH ...
+      }
+
+      if (opt_category.check_dirty_and_consume()) {
+        // ... DO SOME REFRESH ...
+      }
+    }
+
+    // use options as-is.
+    //
+    // there is no overhead on reading options, as any change of option value is guaranteed
+    // to be occurred only during invocation of option_dispatcher::apply_update_and_check_if_dirty
+    //
+    some_function(opt_coeff_a.get(), opt_coeff_b.get(), opt_category.get());
+
+    // values can be reference with various method.
+    some_function(*opt_coeff_a, *opt_coeff_b, *opt_category);
+    printf(opt_category->c_str());
+    some_function(*opt_coeff_a, *opt_coeff_b, (std::string const&)opt_category);
+  }
+
   return 0;
 }
+
+void some_function(double, int, std::string const&) {}

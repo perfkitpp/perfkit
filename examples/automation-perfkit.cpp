@@ -13,7 +13,7 @@ PERFKIT_MESSAGE_BLOCK another_block{0, "hell, world2"};
 TEST_SUITE_BEGIN("Basic Compilation Test");
 TEST_CASE("Create Options") {
   CHECK(*has_value == 100);
-  g_opts.queue_update("Has Value", 200);
+  g_opts.queue_update_value("Has Value", 200);
   CHECK(*has_value == 100);
   CHECK(g_opts.apply_update_and_check_if_dirty());
   CHECK(has_value.check_dirty_and_consume());
