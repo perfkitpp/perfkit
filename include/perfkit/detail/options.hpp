@@ -35,10 +35,6 @@ class option_base {
         _marshal(std::move(fn_m)),
         _unmarshal(std::move(fn_d)) {}
 
-  bool try_marshal(nlohmann::json const& value) {
-    return !(_latest_marshal_failed = (_marshal(value, _raw) && (_dirty = true)));
-  }
-
   void unmarshal(nlohmann::json& out) {
     _unmarshal(out, _raw);
   }
@@ -47,12 +43,21 @@ class option_base {
 
   std::string_view full_key() const { return _full_key; }
 
+  std::string_view description() const { return description(); }
+
   /**
    * Check if latest marshalling result was invalid
    * @return
    */
   bool latest_marshal_failed() const {
     return _latest_marshal_failed.load(std::memory_order_relaxed);
+  }
+
+ public:
+  bool _try_marshal(nlohmann::json const& value) {
+    return !(_latest_marshal_failed.store(_marshal(value, _raw) && (_dirty = true),
+                                          std::memory_order_relaxed),
+             _latest_marshal_failed.load(std::memory_order_relaxed));
   }
 
  private:
@@ -135,8 +140,8 @@ class option {
       }
     };
 
-    detail::option_base::unmarshal_function fn_d = [](nlohmann::json& out, const void* in) {
-      out = *(Ty_*)in;
+    detail::option_base::unmarshal_function fn_d = [this](nlohmann::json& out, const void* in) {
+      _owner->access_lock(), out = *(Ty_*)in;
     };
 
     // instantiate option instance
@@ -151,10 +156,16 @@ class option {
     dispatcher._put(_opt);
   }
 
+  /**
+   * @warning
+   *    Reading Ty_ and invocation of apply_update_and_check_if_dirty() MUST occur on same thread!
+   *
+   * @return
+   */
   Ty_ const& get() const noexcept { return _value; }
-  operator Ty_() const noexcept { return get(); }
   Ty_ const& operator*() const noexcept { return get(); }
   Ty_ const* operator->() const noexcept { return &get(); }
+  explicit operator const Ty_&() const noexcept { return get(); }
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
   void queue_change_value(Ty_ v) { _owner->queue_update_value(_opt->full_key(), std::move(v)); }
@@ -164,5 +175,38 @@ class option {
   option_dispatcher* _owner;
   Ty_ _value;
 };
+
+template <typename Ty_>
+using _cvt_ty = std::conditional_t<std::is_convertible_v<Ty_, std::string>,
+                                   std::string,
+                                   Ty_>;
+
+template <typename Ty_>
+auto declare_option(option_dispatcher& dispatcher,
+                    std::string full_key,
+                    Ty_&& default_value,
+                    std::string description = {},
+                    typename option<_cvt_ty<Ty_>>::attribute attr = {}) {
+  return option<_cvt_ty<Ty_>>{
+      dispatcher,
+      std::move(full_key),
+      std::forward<Ty_>(default_value),
+      std::move(description),
+      std::move(attr)};
+}
+
+// template <size_t N_>
+// auto make_option(option_dispatcher& dispatcher,
+//                  std::string full_key,
+//                  char const (&default_value)[N_],
+//                  std::string description = {},
+//                  option<std::string>::attribute attr = {}) {
+//   return make_option<std::string>(
+//       dispatcher,
+//       std::move(full_key),
+//       default_value,
+//       std::move(description),
+//       std::move(attr));
+// }
 
 }  // namespace perfkit

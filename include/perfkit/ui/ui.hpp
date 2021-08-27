@@ -15,9 +15,9 @@ enum class basic_backend {
   tui_interactive,  // IMGUI-style interactive
 };
 
-class if_backend {
+class if_ui {
  public:
-  virtual ~if_backend() = 0;
+  virtual ~if_ui() = 0;
 
  public:
   /**
@@ -53,7 +53,7 @@ class if_backend {
  public:
 };
 
-if_backend* create(basic_backend b);
-void release(if_backend*);
+if_ui* create(basic_backend b);
+void release(if_ui*);
 
 }  // namespace perfkit::ui
