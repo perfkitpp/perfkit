@@ -1,6 +1,8 @@
 #define DOCTEST_CONFIG_NO_EXCEPTIONS
 #include "doctest.h"
 #include "perfkit/perfkit.h"
+#include "perfkit/ui/ui.hpp"
+
 using namespace std::literals;
 
 using namespace std::literals;
@@ -23,7 +25,7 @@ TEST_CASE("Create Options") {
 
 TEST_CASE("Create Message Blocks") {
   for (int i = 0; i < 5; ++i) {
-    auto fut = my_block.async_fetch_request();
+    auto fut  = my_block.async_fetch_request();
     auto TM_0 = my_block.fork("Foo");
 
     auto DT_0_0 = TM_0.branch("My");
@@ -34,7 +36,7 @@ TEST_CASE("Create Message Blocks") {
     CHECK((i > 1) == !!tm);
 
     CHECK(fut.wait_for(0s) == std::future_status::ready);
-    auto value = fut.get();
+    auto value      = fut.get();
     auto [lck, ptr] = value.acquire();
 
     for (auto& elem : *ptr) {
@@ -43,8 +45,16 @@ TEST_CASE("Create Message Blocks") {
   }
 }
 
-TEST_CASE("Sort Messages") {
+TEST_CASE("Tokenize") {
+  std::vector<std::string_view> tokens;
+  perfkit::cmdutils::
+      tokenize_by_argv_rule("  alpha veta \"and there will \\\"be light\"  ", tokens);
 
+  std::vector<std::string_view> compared({"alpha", "veta", "and there will \\\"be light"});
+  CHECK(tokens == compared);
+}
+
+TEST_CASE("Sort Messages") {
 }
 
 TEST_SUITE_END();

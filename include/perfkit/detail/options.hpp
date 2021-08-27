@@ -165,12 +165,12 @@ template <typename Ty_>
 class option {
  public:
  public:
-  template <typename Attr_>
+  template <typename Attr_ = attribute<Ty_>>
   option(
       option_dispatcher& dispatcher,
       std::string        full_key,
       Ty_                default_value,
-      Attr_&&            attr = {}) noexcept
+      Attr_&&            attr = attribute<Ty_>{}) noexcept
       : _owner(&dispatcher),
         _value(default_value) {
     auto description = std::move(attr._data.description);

@@ -17,6 +17,13 @@ auto opt_coeff_a = perfkit::declare_option(optd, "Global|Amplification", 1.114);
 auto opt_coeff_b = perfkit::declare_option(optd, "Global|Iteration", 31);
 auto opt_category = perfkit::declare_option(optd, "Global|Misc|Category", "Hello");
 
+
+auto opt_coeff_d = perfkit::declare_option(
+    optd, "Core|ImportantVar", 1.114,
+    perfkit::attribute<double>{}
+        .description("Some important")
+        .one_of({1.31, 5.54, 3.82}));
+
 }  // namespace
 
 void some_function(double, int, std::string const&);
