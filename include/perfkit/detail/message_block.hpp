@@ -16,7 +16,6 @@
 #include <variant>
 #include <vector>
 
-#define KANGSW_ARRAY_VIEW_NAMESPACE perfkit
 #include "array_view.hxx"
 #include "spinlock.hxx"
 

@@ -1,5 +1,5 @@
 #include "perfkit/perfkit.h"
-#include "perfkit/ui.hpp"
+#include "perfkit/ui/ui.hpp"
 using namespace std::literals;
 
 namespace options {
@@ -13,8 +13,5 @@ PERFKIT_OPTION test_opt5{gob, "Cat3", true, "Hello, World 5"};
 }  // namespace options
 
 int main(void) {
-  perfkit::tui::init({true});
-
-  perfkit::tui::exec(66, nullptr, 1);
   return 0;
 }

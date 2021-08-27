@@ -123,7 +123,6 @@ class option {
       std::string description = {},
       attribute attr = {}) noexcept
       : _value(default_value) {
-
     // setup marshaller / de-marshaller with given rule of attribute
     detail::option_base::marshal_function fn_m = [](const nlohmann::json& in, void* out) {
       // TODO: Apply attributes

@@ -30,10 +30,9 @@ bool perfkit::option_dispatcher::apply_update_and_check_if_dirty() {
 }
 
 void perfkit::option_dispatcher::_put(std::shared_ptr<detail::option_base> o) {
-#ifndef NDEBUG
   auto it = _all().find(o->full_key());
-  assert(it == _all().end() && "Every full key must be unique");
-#endif
+  if (it != _all().end()) { throw std::invalid_argument("Argument MUST be unique!!!"); }
+
   _opts.try_emplace(o->full_key(), o);
   _all().try_emplace(o->full_key(), o);
 }
