@@ -3,7 +3,6 @@
 //
 #pragma once
 #include <cstddef>
-#include <iterator>
 #include <type_traits>
 
 namespace KANGSW_ARRAY_VIEW_NAMESPACE {
@@ -17,9 +16,9 @@ class array_view {
   using reference     = value_type&;
 
  public:
+  constexpr array_view() noexcept = default;
   constexpr array_view(Ty_* p, size_t n) noexcept
       : _ptr(p), _n(n) {}
-  constexpr array_view() noexcept = default;
 
   template <typename Range_>
   constexpr array_view(Range_&& p) noexcept
