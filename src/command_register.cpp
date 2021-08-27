@@ -24,7 +24,7 @@ perfkit::ui::command_register::node* perfkit::ui::command_register::node::subcom
     autocomplete_suggest_fn suggest) {
   assert(handler);
 
-  if (_chk_dup(cmd) || !is_valid_cmd_token(cmd)) {
+  if (_check_name_exist(cmd) || !is_valid_cmd_token(cmd)) {
     return nullptr;
   }
 
@@ -35,7 +35,7 @@ perfkit::ui::command_register::node* perfkit::ui::command_register::node::subcom
   return &subcmd;
 }
 
-bool perfkit::ui::command_register::node::_chk_dup(std::string_view cmd) const noexcept {
+bool perfkit::ui::command_register::node::_check_name_exist(std::string_view cmd) const noexcept {
   if (auto it = _subcommands.find(cmd); it != _subcommands.end()) {
     return true;
   }
@@ -79,7 +79,7 @@ bool perfkit::ui::command_register::node::erase_subcommand(std::string_view cmd_
 
 bool perfkit::ui::command_register::node::alias(
     std::string_view cmd, std::string alias) {
-  if (_chk_dup(alias)) { return false; }
+  if (_check_name_exist(alias)) { return false; }
   if (auto it = _subcommands.find(cmd); it == _subcommands.end()) { return false; }
 
   _aliases.try_emplace(alias, cmd);
@@ -120,7 +120,7 @@ bool perfkit::ui::command_register::node::invoke(
     std::string_view                      arguments_string) {
   if (this_command + 1 < full_tokens.size()) {
     auto maybe_subcmd = full_tokens[this_command + 1];
-    if (_chk_dup(maybe_subcmd)) {
+    if (_check_name_exist(maybe_subcmd)) {
       std::string_view cmd = maybe_subcmd;
 
       if (auto it_alias = find_if(_aliases,

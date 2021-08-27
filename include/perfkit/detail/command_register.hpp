@@ -107,7 +107,7 @@ class command_register {
         std::string_view arguments_string);
 
    private:
-    bool _chk_dup(std::string_view) const noexcept;
+    bool _check_name_exist(std::string_view) const noexcept;
 
    private:
     std::map<std::string const, node, std::less<>> _subcommands;
