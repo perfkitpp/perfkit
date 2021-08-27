@@ -6,7 +6,7 @@
 
 namespace {
 struct hasher {
-  constexpr static uint64_t FNV_PRIME = 0x100000001b3ull;
+  constexpr static uint64_t FNV_PRIME        = 0x100000001b3ull;
   constexpr static uint64_t FNV_OFFSET_BASIS = 0xcbf29ce484222325ull;
 
   /// hash a single byte
@@ -23,12 +23,12 @@ message_block::msg_entity* message_block::_fork_branch(
   auto hash = _hash_active(parent, name);
 
   auto [it, is_new] = _table.try_emplace(hash);
-  auto& data = it->second;
+  auto& data        = it->second;
 
   if (is_new) {
-    data.key_buffer = std::string(name);
-    data.body.hash = hash;
-    data.body.key = data.key_buffer;
+    data.key_buffer          = std::string(name);
+    data.body.hash           = hash;
+    data.body.key            = data.key_buffer;
     data.body._is_subscribed = &data.is_subscribed;
     data.is_subscribed.store(initial_subscribe_state, std::memory_order_relaxed);
     parent && (data.hierarchy = parent->hierarchy, true);  // only includes parent hierarchy.
@@ -69,10 +69,10 @@ message_block::proxy message_block::fork(const std::string& n) {
 
       msg_fetch_result rs;
       rs._mtx_access = &_sort_merge_lock;
-      rs._data = &_local_reused_memory;
+      rs._data       = &_local_reused_memory;
       promise.set_value(rs);
 
-      _msg_future = {};
+      _msg_future  = {};
       _msg_promise = {};
     }
   }
@@ -82,8 +82,8 @@ message_block::proxy message_block::fork(const std::string& n) {
   _order_active = 0;
 
   proxy prx;
-  prx._owner = this;
-  prx._ref = _fork_branch(nullptr, n, false);
+  prx._owner             = this;
+  prx._ref               = _fork_branch(nullptr, n, false);
   prx._epoch_if_required = clock_type::now();
 
   return prx;
@@ -91,7 +91,7 @@ message_block::proxy message_block::fork(const std::string& n) {
 
 namespace {
 struct message_block_sorter {
-  int n;
+  int         n;
   friend bool operator<(message_block* ptr, message_block_sorter s) { return s.n < ptr->order(); }
 };
 }  // namespace
@@ -128,14 +128,14 @@ std::shared_future<message_block::msg_fetch_result> message_block::async_fetch_r
 message_block::proxy message_block::proxy::branch(std::string_view n) noexcept {
   proxy px;
   px._owner = _owner;
-  px._ref = _owner->_fork_branch(_ref, n, false);
+  px._ref   = _owner->_fork_branch(_ref, n, false);
   return px;
 }
 
 message_block::proxy message_block::proxy::timer(std::string_view n) noexcept {
   proxy px;
-  px._owner = _owner;
-  px._ref = _owner->_fork_branch(_ref, n, false);
+  px._owner             = _owner;
+  px._ref               = _owner->_fork_branch(_ref, n, false);
   px._epoch_if_required = clock_type::now();
   return px;
 }
@@ -154,7 +154,7 @@ message_block::variant_type& message_block::proxy::data() noexcept {
 void message_block::msg_fetch_result::copy_sorted(fetched_messages& out) noexcept {
   {
     auto [lck, ptr] = acquire();
-    out = *ptr;
+    out             = *ptr;
   }
   sort_messages_by_rule(out);
 }

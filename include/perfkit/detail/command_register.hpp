@@ -27,16 +27,16 @@ namespace perfkit::ui {
  */
 using handler_fn = std::function<bool(
     array_view<std::string_view> full_tokens,
-    size_t this_command,
-    std::string_view arguments_string)>;
+    size_t                       this_command,
+    std::string_view             arguments_string)>;
 
 /**
  * When this handler is called, out_candidates parameter will hold initial
  * autocomplete list consist of available commands and aliases.
  */
 using autocomplete_suggest_fn = std::function<void(
-    array_view<std::string_view> full_tokens,
-    size_t current_command,
+    array_view<std::string_view>   full_tokens,
+    size_t                         current_command,
     std::vector<std::string_view>& out_candidates)>;
 
 class command_register {
@@ -53,8 +53,8 @@ class command_register {
      * @return nullptr if given command is invalid.
      */
     perfkit::ui::command_register::node* subcommand(
-        std::string_view cmd,
-        handler_fn handler,
+        std::string_view        cmd,
+        handler_fn              handler,
         autocomplete_suggest_fn suggest);
 
     /**
@@ -90,8 +90,8 @@ class command_register {
      * @param out_candidates
      */
     void suggest(
-        array_view<std::string_view> full_tokens,
-        size_t current_command,
+        array_view<std::string_view>   full_tokens,
+        size_t                         current_command,
         std::vector<std::string_view>& out_candidates);
 
     /**
@@ -103,17 +103,17 @@ class command_register {
      */
     bool invoke(
         array_view<std::string_view> full_tokens,
-        size_t this_command,
-        std::string_view arguments_string);
+        size_t                       this_command,
+        std::string_view             arguments_string);
 
    private:
     bool _check_name_exist(std::string_view) const noexcept;
 
    private:
-    std::map<std::string const, node, std::less<>> _subcommands;
+    std::map<std::string const, node, std::less<>>              _subcommands;
     std::map<std::string const, std::string const, std::less<>> _aliases;
 
-    handler_fn _invoke;
+    handler_fn              _invoke;
     autocomplete_suggest_fn _suggest;
   };
 

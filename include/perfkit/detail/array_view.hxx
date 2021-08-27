@@ -11,17 +11,19 @@ namespace KANGSW_ARRAY_VIEW_NAMESPACE {
 template <typename Ty_>
 class array_view {
  public:
-  using value_type = std::remove_const_t<Ty_>;
-  using pointer = value_type*;
+  using value_type    = std::remove_const_t<Ty_>;
+  using pointer       = value_type*;
   using const_pointer = value_type const*;
-  using reference = value_type&;
+  using reference     = value_type&;
 
  public:
-  constexpr array_view(Ty_* p, size_t n) noexcept : _ptr(p), _n(n) {}
+  constexpr array_view(Ty_* p, size_t n) noexcept
+      : _ptr(p), _n(n) {}
   constexpr array_view() noexcept = default;
 
   template <typename Range_>
-  constexpr array_view(Range_&& p) noexcept : array_view(p.data(), p.size()) {}
+  constexpr array_view(Range_&& p) noexcept
+      : array_view(p.data(), p.size()) {}
 
   constexpr auto size() const noexcept { return _n; }
   constexpr auto data() const noexcept { return _ptr; }
@@ -55,7 +57,7 @@ class array_view {
   }
 
  private:
-  Ty_* _ptr;
+  Ty_*   _ptr;
   size_t _n;
 };
 

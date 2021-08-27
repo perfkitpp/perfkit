@@ -22,7 +22,7 @@
 namespace perfkit {
 class message_block {
  public:
-  using clock_type = std::chrono::steady_clock;
+  using clock_type   = std::chrono::steady_clock;
   using variant_type = std::variant<clock_type::duration,
                                     int64_t,
                                     double,
@@ -44,10 +44,10 @@ class message_block {
 
    public:
     std::string_view key;
-    uint64_t hash;
+    uint64_t         hash;
 
-    size_t fence = 0;
-    int order = 0;
+    size_t                       fence = 0;
+    int                          order = 0;
     array_view<std::string_view> hierarchy;
 
     variant_type data;
@@ -63,11 +63,11 @@ class message_block {
   static_assert(std::is_nothrow_move_constructible_v<msg_type>, "");
 
   struct msg_entity {
-    msg_type body;
-    std::string key_buffer;
+    msg_type                      body;
+    std::string                   key_buffer;
     std::vector<std::string_view> hierarchy;
-    std::vector<uint64_t> hierarchy_hash;
-    std::atomic_bool is_subscribed;
+    std::vector<uint64_t>         hierarchy_hash;
+    std::atomic_bool              is_subscribed;
   };
 
   struct proxy {
@@ -130,8 +130,8 @@ class message_block {
     proxy() noexcept {}
 
    private:
-    message_block* _owner = nullptr;
-    msg_entity* _ref = nullptr;
+    message_block*         _owner             = nullptr;
+    msg_entity*            _ref               = nullptr;
     clock_type::time_point _epoch_if_required = {};
   };
 
@@ -149,7 +149,7 @@ class message_block {
    private:
     friend class message_block;
     perfkit::spinlock* _mtx_access;
-    fetched_messages* _data;
+    fetched_messages*  _data;
   };
 
  public:
@@ -205,16 +205,16 @@ class message_block {
   // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
   //    이 때 최신 시퀀스 넘버도 같이 받는다.
   std::map<std::size_t, msg_entity> _table;
-  size_t _fence_active = 0;  // active sequence number of back buffer.
+  size_t                            _fence_active = 0;  // active sequence number of back buffer.
 
   int _order_active = 0;  // temporary variable for single iteration
 
-  mutable spinlock _sort_merge_lock;
+  mutable spinlock                              _sort_merge_lock;
   std::optional<std::promise<msg_fetch_result>> _msg_promise;
-  std::shared_future<msg_fetch_result> _msg_future;
-  fetched_messages _local_reused_memory;
+  std::shared_future<msg_fetch_result>          _msg_future;
+  fetched_messages                              _local_reused_memory;
 
-  int _occurence_order;
+  int                    _occurence_order;
   std::string_view const _name;
 };
 

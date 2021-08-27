@@ -29,11 +29,11 @@ class option_base {
               std::string        description,
               marshal_function   fn_m,
               unmarshal_function fn_d)
-      : _full_key(std::move(full_key)),
-        _description(std::move(description)),
-        _raw(raw),
-        _marshal(std::move(fn_m)),
-        _unmarshal(std::move(fn_d)) {}
+      : _full_key(std::move(full_key))
+      , _description(std::move(description))
+      , _raw(raw)
+      , _marshal(std::move(fn_m))
+      , _unmarshal(std::move(fn_d)) {}
 
   void unmarshal(nlohmann::json& out) {
     _unmarshal(out, _raw);
@@ -45,6 +45,8 @@ class option_base {
 
   std::string_view description() const { return description(); }
 
+  size_t num_modified() const { return _num_modified.load(std::memory_order_relaxed); };
+
   /**
    * Check if latest marshalling result was invalid
    * @return
@@ -55,8 +57,11 @@ class option_base {
 
  public:
   bool _try_marshal(nlohmann::json const& value) {
-    return !(_latest_marshal_failed.store(_marshal(value, _raw) && (_dirty = true),
-                                          std::memory_order_relaxed),
+    return !(_latest_marshal_failed.store(
+                 _marshal(value, _raw)
+                     && _num_modified.fetch_add(1, std::memory_order_relaxed)
+                     && (_dirty = true),
+                 std::memory_order_relaxed),
              _latest_marshal_failed.load(std::memory_order_relaxed));
   }
 
@@ -66,6 +71,8 @@ class option_base {
   void*            _raw;
   bool             _dirty                 = false;
   std::atomic_bool _latest_marshal_failed = false;
+
+  std::atomic_size_t _num_modified = 0;
 
   marshal_function   _marshal;
   unmarshal_function _unmarshal;
@@ -171,8 +178,7 @@ class option {
       std::string        full_key,
       Ty_                default_value,
       Attr_&&            attr = attribute<Ty_>{}) noexcept
-      : _owner(&dispatcher),
-        _value(default_value) {
+      : _owner(&dispatcher), _value(default_value) {
     auto description = std::move(attr._data.description);
 
     // setup marshaller / de-marshaller with given rule of attribute

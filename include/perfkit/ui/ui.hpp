@@ -54,6 +54,6 @@ class if_ui {
 };
 
 if_ui* create(basic_backend b);
-void release(if_ui*);
+void   release(if_ui*);
 
 }  // namespace perfkit::ui
