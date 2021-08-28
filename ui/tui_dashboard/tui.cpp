@@ -96,6 +96,7 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
   } else if (auto pair = std::make_pair(LINES, COLS); pair != prev_line_col) {
     erase();
     touchwin(stdscr);
+    touchwin(_stdout_pane.get());
     wrefresh(stdscr);
     prev_line_col = pair;
   }
@@ -108,15 +109,31 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
 
   // -------------------- RENDER STDOUT(LOG) & OUTPUT WINDOW ---------------------------------------
   // render stdout window
+  bool content_dirty = false;
   for (char ch; (ch = fgetc(_stdout.get())) != EOF;) {
-    waddch(_stdout_pane.get(), ch);
+    _stdout_buf.push_rotate(ch);
     fputc(ch, _stdout_log.get());
+    content_dirty = true;
   }
   for (char ch; (ch = fgetc(_stderr.get())) != EOF;) {
-    waddch(_stdout_pane.get(), ch);
+    _stdout_buf.push_rotate(ch);
     fputc(ch, _stderr_log.get());
+    content_dirty = true;
   }
-  wnoutrefresh(_stdout_pane.get());
+
+  if (content_dirty) {
+    int  y, x;
+    auto pane = _stdout_pane.get();
+    getmaxyx(pane, y, x);
+
+    int  to_print = std::min<int>(_stdout_buf.size(), y * x);
+    auto it       = _stdout_buf.end() - to_print;
+
+    wmove(pane, 0, 0);
+    for (; it != _stdout_buf.end(); ++it) { waddch(pane, *it); }
+
+    wnoutrefresh(pane);
+  }
 
   // render output window
 
@@ -160,7 +177,7 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
       }
     }
 
-    mvaddch(LINES - 1, 0, '#');
+    mvaddstr(LINES - 1, 0, "# ");
     ::move(LINES - 1, getcurx(pane) + 2);
     pnoutrefresh(pane, 0, 0, LINES - 1, 2, LINES - 1, COLS - 3);
   }

@@ -76,15 +76,14 @@ class dashboard : public perfkit::ui::if_ui {
   window_ptr           _input_pane;
   ui::command_register _commands;
 
-  file_ptr _stdout;
-  file_ptr _stderr;
-  file_ptr _stdout_log;
-  file_ptr _stderr_log;
-  fd_ptr   _pipe_stdout[2];
-  fd_ptr   _pipe_stderr[2];
-
-  circular_queue<std::string> _output_buffer{255};
-
+  file_ptr             _stdout;
+  file_ptr             _stderr;
+  file_ptr             _stdout_log;
+  file_ptr             _stderr_log;
+  fd_ptr               _pipe_stdout[2];
+  fd_ptr               _pipe_stderr[2];
+  circular_queue<char> _stdout_buf{5000};
+  
   std::string         _input;
   std::pair<int, int> prev_line_col = {};
 };

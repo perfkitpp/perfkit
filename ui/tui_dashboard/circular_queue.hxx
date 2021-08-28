@@ -36,6 +36,7 @@ class circular_queue {
     auto  operator->() const { return &*(*this); }
 
     bool operator==(iterator const& op) const noexcept { return _head == op._head; }
+    bool operator!=(iterator const& op) const noexcept { return _head != op._head; }
     bool operator<(iterator const& op) const noexcept { return _idx() < op._idx(); }
     bool operator<=(iterator const& op) const noexcept { return !(op < *this); }
 
