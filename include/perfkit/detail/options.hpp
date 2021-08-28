@@ -153,6 +153,7 @@ class attribute {
   auto& min(Ty_ v) { return _data.min = v, _added<_attr_flag::has_min>(); }
   auto& max(Ty_ v) { return _data.max = v, _added<_attr_flag::has_max>(); }
   auto& one_of(std::initializer_list<Ty_> v) {
+    _data.one_of.emplace();
     _data.one_of->insert(v.begin(), v.end());
     return _added<_attr_flag::has_one_of>();
   }
