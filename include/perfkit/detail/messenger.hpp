@@ -20,7 +20,7 @@
 #include "spinlock.hxx"
 
 namespace perfkit {
-class message_block {
+class messenger {
  public:
   using clock_type   = std::chrono::steady_clock;
   using variant_type = std::variant<clock_type::duration,
@@ -30,7 +30,7 @@ class message_block {
                                     bool,
                                     std::any>;
 
-  struct msg_type {
+  struct message {
     std::optional<clock_type::duration> as_timer() const noexcept {
       if (auto ptr = std::get_if<clock_type::duration>(&data)) { return *ptr; }
       return {};
@@ -53,23 +53,24 @@ class message_block {
     variant_type data;
 
    private:
-    friend class message_block;
+    friend class messenger;
     std::atomic_bool* _is_subscribed = {};
   };
 
-  using fetched_messages = std::vector<msg_type>;
+  using fetched_messages = std::vector<message>;
 
-  static_assert(std::is_nothrow_move_assignable_v<msg_type>);
-  static_assert(std::is_nothrow_move_constructible_v<msg_type>);
+  static_assert(std::is_nothrow_move_assignable_v<message>);
+  static_assert(std::is_nothrow_move_constructible_v<message>);
 
-  struct msg_entity {
-    msg_type                      body;
+ private:
+  struct _msg_meta {
+    message                       body;
     std::string                   key_buffer;
     std::vector<std::string_view> hierarchy;
-    std::vector<uint64_t>         hierarchy_hash;
     std::atomic_bool              is_subscribed;
   };
 
+ public:
   struct proxy {
    public:
     proxy(proxy&& o) noexcept {
@@ -126,12 +127,12 @@ class message_block {
     bool is_valid() const noexcept { return !!_owner && !!_ref; }
 
    private:
-    friend class message_block;
+    friend class messenger;
     proxy() noexcept {}
 
    private:
-    message_block*         _owner             = nullptr;
-    msg_entity*            _ref               = nullptr;
+    messenger*         _owner             = nullptr;
+    _msg_meta*              _ref               = nullptr;
     clock_type::time_point _epoch_if_required = {};
   };
 
@@ -147,7 +148,7 @@ class message_block {
     void copy_sorted(fetched_messages& out) noexcept;
 
    private:
-    friend class message_block;
+    friend class messenger;
     perfkit::spinlock* _mtx_access;
     fetched_messages*  _data;
   };
@@ -159,9 +160,9 @@ class message_block {
    * @param order All blocks will be occur by its specified order.
    * @param name
    */
-  message_block(int order, std::string_view name) noexcept;
+  messenger(int order, std::string_view name) noexcept;
 
-  static array_view<message_block*> all_blocks() noexcept;
+  static array_view<messenger*> all_blocks() noexcept;
 
  public:
   /**
@@ -184,12 +185,12 @@ class message_block {
   auto order() const noexcept { return _occurence_order; }
 
  private:
-  uint64_t _hash_active(msg_entity const* parent, std::string_view top);
+  uint64_t _hash_active(_msg_meta const* parent, std::string_view top);
 
   // Create new or find existing.
-  message_block::msg_entity* _fork_branch(msg_entity const* parent, std::string_view name, bool initial_subscribe_state);
+  messenger::_msg_meta* _fork_branch(_msg_meta const* parent, std::string_view name, bool initial_subscribe_state);
 
-  static std::vector<message_block*>& _all() noexcept;
+  static std::vector<messenger*>& _all() noexcept;
 
  private:
   // 고려사항
@@ -204,8 +205,8 @@ class message_block {
   // 2. 프록시가 데이터 넣을 때마다(타이머는 소멸 시) 데이터 블록의 백 버퍼 맵에 이름-값 쌍 할당
   // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
   //    이 때 최신 시퀀스 넘버도 같이 받는다.
-  std::map<std::size_t, msg_entity> _table;
-  size_t                            _fence_active = 0;  // active sequence number of back buffer.
+  std::map<std::size_t, _msg_meta> _table;
+  size_t                          _fence_active = 0;  // active sequence number of back buffer.
 
   int _order_active = 0;  // temporary variable for single iteration
 
@@ -231,6 +232,6 @@ class message_block {
  * 3. Two are different
  *   1. Order
  */
-void sort_messages_by_rule(message_block::fetched_messages&) noexcept;
+void sort_messages_by_rule(messenger::fetched_messages&) noexcept;
 
 }  // namespace perfkit

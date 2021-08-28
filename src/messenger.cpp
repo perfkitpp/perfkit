@@ -2,7 +2,7 @@
 // Created by Seungwoo on 2021-08-25.
 //
 #include <nlohmann/detail/conversions/from_json.hpp>
-#include <perfkit/detail/message_block.hpp>
+#include <perfkit/detail/messenger.hpp>
 
 namespace {
 struct hasher {
@@ -18,8 +18,8 @@ struct hasher {
 
 using namespace perfkit;
 
-message_block::msg_entity* message_block::_fork_branch(
-    msg_entity const* parent, std::string_view name, bool initial_subscribe_state) {
+messenger::_msg_meta* messenger::_fork_branch(
+    _msg_meta const* parent, std::string_view name, bool initial_subscribe_state) {
   auto hash = _hash_active(parent, name);
 
   auto [it, is_new] = _table.try_emplace(hash);
@@ -42,7 +42,7 @@ message_block::msg_entity* message_block::_fork_branch(
   return &data;
 }
 
-uint64_t message_block::_hash_active(msg_entity const* parent, std::string_view top) {
+uint64_t messenger::_hash_active(_msg_meta const* parent, std::string_view top) {
   // --> 계층은 전역으로 관리되면 안 됨 ... 각각의 프록시가 관리해야함!!
   // Hierarchy 각각의 데이터 엔티티 기반으로 관리되게 ... _hierarchy_hash 관련 기능 싹 갈아엎기
 
@@ -55,7 +55,7 @@ uint64_t message_block::_hash_active(msg_entity const* parent, std::string_view 
   return hash;
 }
 
-message_block::proxy message_block::fork(const std::string& n) {
+messenger::proxy messenger::fork(const std::string& n) {
   if (auto _lck = std::unique_lock{_sort_merge_lock}) {
     // perform queued sort-merge operation
     if (_msg_promise) {
@@ -65,7 +65,7 @@ message_block::proxy message_block::fork(const std::string& n) {
       _local_reused_memory.resize(_table.size());
       std::transform(_table.begin(), _table.end(),
                      _local_reused_memory.begin(),
-                     [](std::pair<const uint64_t, msg_entity> const& g) { return g.second.body; });
+                     [](std::pair<const uint64_t, _msg_meta> const& g) { return g.second.body; });
 
       msg_fetch_result rs;
       rs._mtx_access = &_sort_merge_lock;
@@ -92,26 +92,26 @@ message_block::proxy message_block::fork(const std::string& n) {
 namespace {
 struct message_block_sorter {
   int         n;
-  friend bool operator<(message_block* ptr, message_block_sorter s) { return s.n < ptr->order(); }
+  friend bool operator<(messenger* ptr, message_block_sorter s) { return s.n < ptr->order(); }
 };
 }  // namespace
 
-message_block::message_block(int order, std::string_view name) noexcept
+messenger::messenger(int order, std::string_view name) noexcept
     : _occurence_order(order), _name(name) {
   auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
   _all().insert(it_insert, this);
 }
 
-std::vector<message_block*>& message_block::_all() noexcept {
-  static std::vector<message_block*> inst;
+std::vector<messenger*>& messenger::_all() noexcept {
+  static std::vector<messenger*> inst;
   return inst;
 }
 
-array_view<message_block*> message_block::all_blocks() noexcept {
+array_view<messenger*> messenger::all_blocks() noexcept {
   return _all();
 }
 
-std::shared_future<message_block::msg_fetch_result> message_block::async_fetch_request() {
+std::shared_future<messenger::msg_fetch_result> messenger::async_fetch_request() {
   auto _lck = std::unique_lock{_sort_merge_lock};
 
   // if there's already queued merge operation, share future once more.
@@ -125,14 +125,14 @@ std::shared_future<message_block::msg_fetch_result> message_block::async_fetch_r
   return _msg_future;
 }
 
-message_block::proxy message_block::proxy::branch(std::string_view n) noexcept {
+messenger::proxy messenger::proxy::branch(std::string_view n) noexcept {
   proxy px;
   px._owner = _owner;
   px._ref   = _owner->_fork_branch(_ref, n, false);
   return px;
 }
 
-message_block::proxy message_block::proxy::timer(std::string_view n) noexcept {
+messenger::proxy messenger::proxy::timer(std::string_view n) noexcept {
   proxy px;
   px._owner             = _owner;
   px._ref               = _owner->_fork_branch(_ref, n, false);
@@ -140,18 +140,18 @@ message_block::proxy message_block::proxy::timer(std::string_view n) noexcept {
   return px;
 }
 
-message_block::proxy::~proxy() noexcept {
+messenger::proxy::~proxy() noexcept {
   if (!_owner) { return; }
   if (_epoch_if_required != clock_type::time_point{}) {
     data() = clock_type::now() - _epoch_if_required;
   }
 }
 
-message_block::variant_type& message_block::proxy::data() noexcept {
+messenger::variant_type& messenger::proxy::data() noexcept {
   return _ref->body.data;
 }
 
-void message_block::msg_fetch_result::copy_sorted(fetched_messages& out) noexcept {
+void messenger::msg_fetch_result::copy_sorted(fetched_messages& out) noexcept {
   {
     auto [lck, ptr] = acquire();
     out             = *ptr;
@@ -194,10 +194,10 @@ auto compare_hierarchy(array_view<std::string_view> a, array_view<std::string_vi
 
 }  // namespace
 
-void perfkit::sort_messages_by_rule(message_block::fetched_messages& msg) noexcept {
+void perfkit::sort_messages_by_rule(messenger::fetched_messages& msg) noexcept {
   std::sort(
       msg.begin(), msg.end(),
-      [](message_block::msg_type const& a, message_block::msg_type const& b) {
+      [](messenger::message const& a, messenger::message const& b) {
         auto r_hcmp = compare_hierarchy(a.hierarchy, b.hierarchy);
         if (r_hcmp == hierarchy_compare_result::equal) {
           return a.fence == b.fence

@@ -3,7 +3,7 @@
 #include <functional>
 #include <thread>
 
-#include "perfkit/detail/array_view.hxx"
+#include "perfkit.h"
 #include "perfkit/detail/command_register.hpp"
 
 namespace perfkit::ui {
@@ -14,6 +14,12 @@ enum class basic_backend {
   tui_dashboard,    // dashboard-style TUI interface.
   tui_interactive,  // IMGUI-style interactive
   MAX
+};
+
+class if_message_handler {
+ public:
+  virtual void on_subscribed_message(perfkit::messenger::message const& m) {}
+  virtual void on_unsubscribed_message(perfkit::messenger::message const& m) {}
 };
 
 class if_ui {
@@ -50,6 +56,11 @@ class if_ui {
    * Invoke any command. This is common method to implement support for .rc file.
    */
   virtual void invoke_command(std::string_view) = 0;
+
+  /**
+   * Registers custom message handler.
+   */
+  virtual void custom_message_handler(if_message_handler*) {}
 
  public:
 };

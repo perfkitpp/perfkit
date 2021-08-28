@@ -5,7 +5,6 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <range/v3/range.hpp>
 
 #include "perfkit/detail/array_view.hxx"
 

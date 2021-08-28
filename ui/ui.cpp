@@ -1,5 +1,6 @@
 #include "perfkit/ui.hpp"
 
+#include <cassert>
 #include <chrono>
 
 #include "ui-tools.hpp"
@@ -25,11 +26,12 @@ void release(if_ui* p) {
   delete p;
 }
 
-void register_function(ui::basic_backend b, ui::if_ui* (*factory)(array_view<std::string_view>)) {
+nullptr_t register_function(ui::basic_backend b, ui::if_ui* (*factory)(array_view<std::string_view>)) {
   auto& dest = _factory_array()->at(static_cast<size_t>(b));
   assert(dest == nullptr && "REGISTERED SAME BACKEND!!!");
 
   dest = factory;
+  return nullptr;
 }
 
 }  // namespace perfkit::ui

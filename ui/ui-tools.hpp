@@ -8,7 +8,7 @@ namespace perfkit::detail {
 
 using cb_if_factory = ui::if_ui* (*)(array_view<std::string_view>);
 
-void register_function(
+nullptr_t register_function(
     ui::basic_backend b,
     cb_if_factory     factory);
 

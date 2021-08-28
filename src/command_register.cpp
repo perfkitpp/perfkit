@@ -7,6 +7,7 @@
 #include <cassert>
 #include <range/v3/algorithm.hpp>
 #include <range/v3/view.hpp>
+#include <range/v3/range.hpp>
 #include <regex>
 
 using namespace ranges;

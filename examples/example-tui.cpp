@@ -13,7 +13,7 @@ auto opt_coeff_d = perfkit::declare_option(
         .description("Some important")
         .one_of({1.31, 5.54, 3.82}));
 
-}  // namespace
+}  // namespaceg
 
 void some_function(double, int, std::string const&);
 
