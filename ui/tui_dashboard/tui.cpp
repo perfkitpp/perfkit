@@ -41,7 +41,7 @@ perfkit::detail::dashboard::dashboard(perfkit::array_view<std::string_view> args
     auto procname = fs::path{args[0]}.filename().string();
     auto pid      = getpid();
 
-    auto format     = fmt::format("log/{}[{}]-{{}}.log", procname, pid);
+    auto format     = fmt::format("log/{}({})-{{}}.log", procname, pid);
     auto log_stdout = fmt::format(format, "stdout");
     auto log_stderr = fmt::format(format, "stderr");
 
