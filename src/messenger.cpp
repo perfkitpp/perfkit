@@ -18,8 +18,8 @@ struct hasher {
 
 using namespace perfkit;
 
-messenger::_msg_meta* messenger::_fork_branch(
-    _msg_meta const* parent, std::string_view name, bool initial_subscribe_state) {
+messenger::_msg_entity* messenger::_fork_branch(
+    _msg_entity const* parent, std::string_view name, bool initial_subscribe_state) {
   auto hash = _hash_active(parent, name);
 
   auto [it, is_new] = _table.try_emplace(hash);
@@ -42,7 +42,7 @@ messenger::_msg_meta* messenger::_fork_branch(
   return &data;
 }
 
-uint64_t messenger::_hash_active(_msg_meta const* parent, std::string_view top) {
+uint64_t messenger::_hash_active(_msg_entity const* parent, std::string_view top) {
   // --> 계층은 전역으로 관리되면 안 됨 ... 각각의 프록시가 관리해야함!!
   // Hierarchy 각각의 데이터 엔티티 기반으로 관리되게 ... _hierarchy_hash 관련 기능 싹 갈아엎기
 
@@ -65,7 +65,7 @@ messenger::proxy messenger::fork(const std::string& n) {
       _local_reused_memory.resize(_table.size());
       std::transform(_table.begin(), _table.end(),
                      _local_reused_memory.begin(),
-                     [](std::pair<const uint64_t, _msg_meta> const& g) { return g.second.body; });
+                     [](std::pair<const uint64_t, _msg_entity> const& g) { return g.second.body; });
 
       msg_fetch_result rs;
       rs._mtx_access = &_sort_merge_lock;

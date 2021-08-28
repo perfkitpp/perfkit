@@ -117,7 +117,6 @@ class command_register {
   };
 
  public:
- public:
   node* _get_root() { return _root.get(); }
 
  private:

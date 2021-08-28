@@ -7,7 +7,7 @@ using namespace std::literals;
 
 using namespace std::literals;
 PERFKIT_OPTION_DISPATCHER(g_opts);
-PERFKIT_OPTION has_value{g_opts, "Has Value", 100};
+auto has_value = perfkit::option_factory(g_opts, "Has Value", 0).make();
 
 PERFKIT_MESSAGE_BLOCK my_block{0, "hell, world"};
 PERFKIT_MESSAGE_BLOCK another_block{0, "hell, world2"};

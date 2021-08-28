@@ -33,6 +33,8 @@ class array_view {
   constexpr auto end() noexcept { return _ptr + _n; }
   constexpr auto end() const noexcept { return _ptr + _n; }
 
+  constexpr auto empty() const noexcept { return size() == 0; }
+
   constexpr auto& operator[](size_t idx) noexcept {
 #ifndef NDEBUG
     _verify_idx(idx);

@@ -13,14 +13,14 @@ for any kind of c++ applications.
 namespace {
 
 PERFKIT_OPTION_DISPATCHER(optd);
-auto opt_coeff_a = perfkit::declare_option(optd, "Global|Amplification", 1.114);
-auto opt_coeff_b = perfkit::declare_option(optd, "Global|Iteration", 31);
-auto opt_category = perfkit::declare_option(optd, "Global|Misc|Category", "Hello");
+auto opt_coeff_a = perfkit::option_factory(optd, "Global|Amplification", 1.114);
+auto opt_coeff_b = perfkit::option_factory(optd, "Global|Iteration", 31);
+auto opt_category = perfkit::option_factory(optd, "Global|Misc|Category", "Hello");
 
 
-auto opt_coeff_d = perfkit::declare_option(
+auto opt_coeff_d = perfkit::option_factory(
     optd, "Core|ImportantVar", 1.114,
-    perfkit::attribute<double>{}
+    perfkit::_factory<double>{}
         .description("Some important")
         .one_of({1.31, 5.54, 3.82}));
 

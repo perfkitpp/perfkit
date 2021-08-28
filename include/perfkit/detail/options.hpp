@@ -140,13 +140,13 @@ struct _option_attribute_data {
 };
 
 template <typename Ty_, uint64_t Flags_ = 0>
-class attribute {
+class _factory {
  public:
   enum { flag = Flags_ };
 
  private:
   template <uint64_t Flag_>
-  auto& _added() { return *reinterpret_cast<attribute<Ty_, Flags_ | Flag_>*>(this); }
+  auto& _added() { return *reinterpret_cast<_factory<Ty_, Flags_ | Flag_>*>(this); }
 
  public:
   auto& description(std::string s) { return _data.description = std::move(s), *this; }
@@ -162,25 +162,47 @@ class attribute {
     return _added<_attr_flag::has_validate>();
   }
 
+  auto make() {
+    return option<Ty_>{
+        *_pinfo->dispatcher,
+        std::move(_pinfo->full_key),
+        std::forward<Ty_>(_pinfo->default_value),
+        std::move(_data)};
+  }
+
  private:
   template <typename>
   friend class option;
 
+  template <typename T_>
+  friend _factory<T_, 0> option_factory(option_dispatcher& dispatcher,
+                                        std::string        full_key,
+                                        Ty_&&              default_value);
+
   _option_attribute_data<Ty_> _data;
+
+ public:
+  struct _init_info {
+    option_dispatcher* dispatcher;
+    std::string        full_key;
+    Ty_                default_value;
+  };
+
+  std::shared_ptr<_init_info> _pinfo;
 };
 
 template <typename Ty_>
 class option {
  public:
  public:
-  template <typename Attr_ = attribute<Ty_>>
+  template <typename Attr_ = _factory<Ty_>>
   option(
-      option_dispatcher& dispatcher,
-      std::string        full_key,
-      Ty_                default_value,
-      Attr_&&            attr = attribute<Ty_>{}) noexcept
-      : _owner(&dispatcher), _value(default_value) {
-    auto description = std::move(attr._data.description);
+      option_dispatcher&          dispatcher,
+      std::string                 full_key,
+      Ty_&&                       default_value,
+      _option_attribute_data<Ty_> attr) noexcept
+      : _owner(&dispatcher), _value(std::forward<Ty_>(default_value)) {
+    auto description = std::move(attr.description);
 
     // setup marshaller / de-marshaller with given rule of attribute
     detail::option_base::marshal_function fn_m = [attrib = std::move(attr)]  //
@@ -252,16 +274,17 @@ using _cvt_ty = std::conditional_t<std::is_convertible_v<Ty_, std::string>,
                                    std::string,
                                    Ty_>;
 
-template <typename Ty_, typename Attr_ = attribute<_cvt_ty<Ty_>>>
-auto declare_option(option_dispatcher& dispatcher,
+template <typename Ty_>
+auto option_factory(option_dispatcher& dispatcher,
                     std::string        full_key,
-                    Ty_&&              default_value,
-                    Attr_&&            attr = attribute<_cvt_ty<Ty_>>{}) {
-  return option<_cvt_ty<Ty_>>{
-      dispatcher,
-      std::move(full_key),
-      std::forward<Ty_>(default_value),
-      std::move(attr)};
+                    Ty_&&              default_value) {
+  _factory<_cvt_ty<Ty_>> attribute;
+  attribute._pinfo                = std::make_shared<typename _factory<_cvt_ty<Ty_>>::_init_info>();
+  attribute._pinfo->dispatcher    = &dispatcher;
+  attribute._pinfo->default_value = std::forward<Ty_>(default_value);
+  attribute._pinfo->full_key      = std::move(full_key);
+
+  return attribute;
 }
 
 }  // namespace perfkit

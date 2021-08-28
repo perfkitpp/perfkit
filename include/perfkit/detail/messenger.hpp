@@ -37,10 +37,10 @@ class messenger {
     }
 
     void subscribe(bool enabled) noexcept {
-      _is_subscribed->store(enabled, std::memory_order_acq_rel);
+      _is_subscribed->store(enabled, std::memory_order_relaxed);
     }
 
-    bool subscribing() const noexcept { return _is_subscribed->load(std::memory_order_acq_rel); }
+    bool subscribing() const noexcept { return _is_subscribed->load(std::memory_order_relaxed); }
 
    public:
     std::string_view key;
@@ -63,7 +63,7 @@ class messenger {
   static_assert(std::is_nothrow_move_constructible_v<message>);
 
  private:
-  struct _msg_meta {
+  struct _msg_entity {
     message                       body;
     std::string                   key_buffer;
     std::vector<std::string_view> hierarchy;
@@ -131,8 +131,8 @@ class messenger {
     proxy() noexcept {}
 
    private:
-    messenger*         _owner             = nullptr;
-    _msg_meta*              _ref               = nullptr;
+    messenger*             _owner             = nullptr;
+    _msg_entity*           _ref               = nullptr;
     clock_type::time_point _epoch_if_required = {};
   };
 
@@ -185,10 +185,10 @@ class messenger {
   auto order() const noexcept { return _occurence_order; }
 
  private:
-  uint64_t _hash_active(_msg_meta const* parent, std::string_view top);
+  uint64_t _hash_active(_msg_entity const* parent, std::string_view top);
 
   // Create new or find existing.
-  messenger::_msg_meta* _fork_branch(_msg_meta const* parent, std::string_view name, bool initial_subscribe_state);
+  messenger::_msg_entity* _fork_branch(_msg_entity const* parent, std::string_view name, bool initial_subscribe_state);
 
   static std::vector<messenger*>& _all() noexcept;
 
@@ -205,8 +205,8 @@ class messenger {
   // 2. 프록시가 데이터 넣을 때마다(타이머는 소멸 시) 데이터 블록의 백 버퍼 맵에 이름-값 쌍 할당
   // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
   //    이 때 최신 시퀀스 넘버도 같이 받는다.
-  std::map<std::size_t, _msg_meta> _table;
-  size_t                          _fence_active = 0;  // active sequence number of back buffer.
+  std::map<std::size_t, _msg_entity> _table;
+  size_t                             _fence_active = 0;  // active sequence number of back buffer.
 
   int _order_active = 0;  // temporary variable for single iteration
 
