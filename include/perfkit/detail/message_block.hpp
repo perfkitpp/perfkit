@@ -59,8 +59,8 @@ class message_block {
 
   using fetched_messages = std::vector<msg_type>;
 
-  static_assert(std::is_nothrow_move_assignable_v<msg_type>, "");
-  static_assert(std::is_nothrow_move_constructible_v<msg_type>, "");
+  static_assert(std::is_nothrow_move_assignable_v<msg_type>);
+  static_assert(std::is_nothrow_move_constructible_v<msg_type>);
 
   struct msg_entity {
     msg_type                      body;

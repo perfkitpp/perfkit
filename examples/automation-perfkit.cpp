@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_NO_EXCEPTIONS
 #include "doctest.h"
 #include "perfkit/perfkit.h"
-#include "perfkit/ui/ui.hpp"
+#include "perfkit/ui.hpp"
 
 using namespace std::literals;
 

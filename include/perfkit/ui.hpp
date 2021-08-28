@@ -13,6 +13,7 @@ using namespace std::chrono;
 enum class basic_backend {
   tui_dashboard,    // dashboard-style TUI interface.
   tui_interactive,  // IMGUI-style interactive
+  MAX
 };
 
 class if_ui {
@@ -53,7 +54,7 @@ class if_ui {
  public:
 };
 
-if_ui* create(basic_backend b);
+if_ui* create(basic_backend b, array_view<std::string_view> argv);
 void   release(if_ui*);
 
 }  // namespace perfkit::ui
