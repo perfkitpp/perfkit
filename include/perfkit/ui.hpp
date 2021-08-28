@@ -62,6 +62,16 @@ class if_ui {
    */
   virtual void custom_message_handler(if_message_handler*) {}
 
+  /**
+   * Save event hook. Triggered before serialization
+   */
+  virtual void on_save() {}
+
+  /**
+   * Load event hook. Triggered after full deserialization
+   */
+  virtual void on_load() {}
+
  public:
 };
 

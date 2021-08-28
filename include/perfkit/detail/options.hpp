@@ -20,23 +20,23 @@ namespace detail {
  */
 class option_base {
  public:
-  using marshal_function   = std::function<bool(nlohmann::json const&, void*)>;
-  using unmarshal_function = std::function<void(nlohmann::json&, void const*)>;
+  using deserializer = std::function<bool(nlohmann::json const&, void*)>;
+  using serializer   = std::function<void(nlohmann::json&, void const*)>;
 
  public:
-  option_base(void*              raw,
-              std::string        full_key,
-              std::string        description,
-              marshal_function   fn_m,
-              unmarshal_function fn_d)
+  option_base(void*        raw,
+              std::string  full_key,
+              std::string  description,
+              deserializer fn_deserial,
+              serializer   fn_serial)
       : _full_key(std::move(full_key))
       , _description(std::move(description))
       , _raw(raw)
-      , _marshal(std::move(fn_m))
-      , _unmarshal(std::move(fn_d)) {}
+      , _deserialize(std::move(fn_deserial))
+      , _serialize(std::move(fn_serial)) {}
 
-  void unmarshal(nlohmann::json& out) {
-    _unmarshal(out, _raw);
+  void serialize(nlohmann::json& out) {
+    _serialize(out, _raw);
   }
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
@@ -56,9 +56,9 @@ class option_base {
   }
 
  public:
-  bool _try_marshal(nlohmann::json const& value) {
+  bool _try_deserialize(nlohmann::json const& value) {
     return !(_latest_marshal_failed.store(
-                 _marshal(value, _raw)
+                 _deserialize(value, _raw)
                      && _num_modified.fetch_add(1, std::memory_order_relaxed)
                      && (_dirty = true),
                  std::memory_order_relaxed),
@@ -74,8 +74,8 @@ class option_base {
 
   std::atomic_size_t _num_modified = 0;
 
-  marshal_function   _marshal;
-  unmarshal_function _unmarshal;
+  deserializer _deserialize;
+  serializer   _serialize;
 };
 }  // namespace detail
 
@@ -132,11 +132,11 @@ class option;
 
 template <typename Ty_>
 struct _option_attribute_data {
-  std::string                          description;
-  std::function<bool(nlohmann::json&)> validate;
-  std::optional<Ty_>                   min;
-  std::optional<Ty_>                   max;
-  std::optional<std::set<Ty_>>         one_of;
+  std::string                  description;
+  std::function<bool(Ty_&)>    validate;
+  std::optional<Ty_>           min;
+  std::optional<Ty_>           max;
+  std::optional<std::set<Ty_>> one_of;
 };
 
 template <typename Ty_, uint64_t Flags_ = 0>
@@ -200,29 +200,32 @@ class option {
       option_dispatcher&          dispatcher,
       std::string                 full_key,
       Ty_&&                       default_value,
-      _option_attribute_data<Ty_> attr) noexcept
+      _option_attribute_data<Ty_> attribute) noexcept
       : _owner(&dispatcher), _value(std::forward<Ty_>(default_value)) {
-    auto description = std::move(attr.description);
+    auto description = std::move(attribute.description);
 
     // setup marshaller / de-marshaller with given rule of attribute
-    detail::option_base::marshal_function fn_m = [attrib = std::move(attr)]  //
+    detail::option_base::deserializer fn_m = [attrib = std::move(attribute)]  //
         (const nlohmann::json& in, void* out) {
           // TODO: Apply attributes
           try {
             Ty_ parsed;
+
+            _option_attribute_data<Ty_> const& attr = attrib;
             nlohmann::from_json(in, parsed);
 
             if constexpr (Attr_::flag & _attr_flag::has_min) {
-              // TODO
+              parsed = std::min<Ty_>(*attr.min, parsed);
             }
             if constexpr (Attr_::flag & _attr_flag::has_max) {
-              // TODO
+              parsed = std::max<Ty_>(*attr.min, parsed);
             }
             if constexpr (Attr_::flag & _attr_flag::has_one_of) {
-              // TODO
+              auto oneof = attr->oneof;
+              if (oneof.find(parsed) == oneof.end()) { return false; }
             }
             if constexpr (Attr_::flag & _attr_flag::has_validate) {
-              // TODO
+              if (!attr.validate(parsed)) { return false; }
             }
 
             *(Ty_*)out = parsed;
@@ -232,7 +235,7 @@ class option {
           }
         };
 
-    detail::option_base::unmarshal_function fn_d = [this](nlohmann::json& out, const void* in) {
+    detail::option_base::serializer fn_d = [this](nlohmann::json& out, const void* in) {
       _owner->access_lock(), out = *(Ty_*)in;
     };
 

@@ -22,7 +22,7 @@ bool perfkit::option_dispatcher::apply_update_and_check_if_dirty() {
     _pending_updates.clear();
 
     for (auto& pair : update) {
-      _opts.find(pair.first)->second->_try_marshal(pair.second);
+      _opts.find(pair.first)->second->_try_deserialize(pair.second);
     }
   }
 
