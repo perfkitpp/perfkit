@@ -24,7 +24,7 @@ class if_message_handler {
 
 class if_ui {
  public:
-  virtual ~if_ui() = 0;
+  virtual ~if_ui() = default;
 
  public:
   /**

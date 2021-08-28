@@ -69,7 +69,7 @@ class option_base {
   std::string      _full_key;
   std::string      _description;
   void*            _raw;
-  bool             _dirty                 = false;
+  bool             _dirty                 = true;  // default true to trigger initialization
   std::atomic_bool _latest_marshal_failed = false;
 
   std::atomic_size_t _num_modified = 0;
