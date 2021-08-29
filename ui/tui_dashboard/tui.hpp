@@ -65,11 +65,6 @@ class dashboard : public perfkit::ui::if_ui {
   void invoke_command(std::string_view view) override;
 
  private:
-  void _argparse(array_view<std::string_view>);
-  void _output(std::string_view str);
-
- private:
- private:
   std::shared_ptr<spdlog::logger> _log;
 
   window_ptr           _option_pane;
@@ -98,10 +93,14 @@ class dashboard : public perfkit::ui::if_ui {
 
   } _context;
 
-  void        _draw_prompt(_context_ty& context, const std::optional<int>& keystroke);
-  void        _draw_stdout(_context_ty& context);
-  void        _init_commands();
-  void        _redirect_stdout(const array_view<std::string_view>& args);
-  void        _print_aligned_candidates(std::vector<std::string_view>& candidates) const;
+ private:
+  void _draw_messages(_context_ty& context, const std::optional<int>& keystroke);
+  void _draw_prompt(_context_ty& context, const std::optional<int>& keystroke);
+  void _draw_stdout(_context_ty& context);
+  bool _layout(_context_ty& context, window_ptr& wnd, int height, char const* name);
+
+  void _init_commands();
+  void _redirect_stdout(const array_view<std::string_view>& args);
+  void _print_aligned_candidates(std::vector<std::string_view>& candidates) const;
 };
 }  // namespace perfkit::detail

@@ -26,9 +26,13 @@ using namespace ranges;
     throw;           \
   }
 
+#define NS_DASHBOARD "+zzzz|Dashboard|"
 PERFKIT_OPTION_DISPATCHER(OPTS);
 
 namespace {
+auto opt_message_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Messages", 20).make();
+auto opt_options_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Options", 20).make();
+auto opt_stdout_pane_size  = option_factory(OPTS, NS_DASHBOARD "View|Stdout", 40).make();
 }  // namespace
 
 perfkit::detail::dashboard::dashboard(perfkit::array_view<std::string_view> args) {
@@ -55,10 +59,6 @@ perfkit::detail::dashboard::dashboard(perfkit::array_view<std::string_view> args
   _init_commands();
 
   // initialize all windows
-  {
-    _stdout_pane.reset(newwin(LINES - 3, 0, 1, 0));
-    scrollok(_stdout_pane.get(), true);
-  }
 }
 
 void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_view>& args) {  // redirect stdout/stderr to prevent stdout print disturb TUI window
@@ -130,10 +130,9 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
   } else if (auto pair = std::make_pair(LINES, COLS); pair != prev_line_col) {
     erase();
     touchwin(stdscr);
-    touchwin(_stdout_pane.get());
     wrefresh(stdscr);
-    prev_line_col = pair;
-    _context.transient.window_resized;
+    prev_line_col                     = pair;
+    _context.transient.window_resized = true;
   }
 
   // -------------------- START DRAWING ------------------------------------------------------------
@@ -152,17 +151,18 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
   mvhline(LINES - 2, 0, 0, COLS);
   _draw_prompt(_context, keystroke);
 
-  wnoutrefresh(stdscr);
   doupdate();
   fflush(stdout);
 }
 
-void perfkit::detail::dashboard::_draw_stdout(_context_ty& context) {
-  auto& tr = context.transient;
-  if (tr.window_resized) {
-  }
+void dashboard::_draw_messages(dashboard::_context_ty& context, const std::optional<int>& keystroke) {
+}
 
-  bool content_dirty = false;
+void perfkit::detail::dashboard::_draw_stdout(_context_ty& context) {
+  bool  content_dirty = _layout(context, _stdout_pane, *opt_stdout_pane_size, " OUTPUT ");
+  auto& tr            = context.transient;
+  auto  pane          = _stdout_pane.get();
+
   for (char ch; (ch = fgetc(_stdout.get())) != EOF;) {
     _stdout_buf.push_rotate(ch);
     fputc(ch, _stdout_log.get());
@@ -175,8 +175,7 @@ void perfkit::detail::dashboard::_draw_stdout(_context_ty& context) {
   }
 
   if (content_dirty) {
-    int  y, x;
-    auto pane = _stdout_pane.get();
+    int y, x;
     getmaxyx(pane, y, x);
 
     _stdout_buf.reserve_shrink(std::max<size_t>(_stdout_buf.size(), y * x));
@@ -191,7 +190,7 @@ void perfkit::detail::dashboard::_draw_stdout(_context_ty& context) {
 }
 
 void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::optional<int>& keystroke) {  // draw input buffer
-  static auto buflen = option_factory(OPTS, "+zzzz|Dashboard|Input Buffer Maxlen", 1024).min(1).make();
+  static auto buflen = option_factory(OPTS, NS_DASHBOARD "Input Buffer Maxlen", 1024).min(1).make();
   if (buflen.check_dirty_and_consume()) { _input_pane.reset(newpad(1, *buflen)); }
   auto pane = _input_pane.get();
 
@@ -323,5 +322,33 @@ void perfkit::detail::dashboard::invoke_command(std::string_view view) {
 void perfkit::detail::dashboard::stop() {
 }
 
-void dashboard::_output(std::string_view str) {
+bool dashboard::_layout(
+    dashboard::_context_ty& context, window_ptr& wnd, int pane_size, const char* name) {
+  auto& tr = context.transient;
+
+  bool content_dirty = false;
+  auto offset        = tr.cur_h;
+  auto pane          = _stdout_pane.get();
+
+  static std::map<std::string, std::tuple<int, int>> pane_size_changes;
+
+  auto& [prev_offset, prev_size] = pane_size_changes[name];
+  pane_size                      = std::min(LINES - 2 - offset, pane_size);
+  bool pane_size_changed         = prev_size != pane_size;
+  prev_size                      = pane_size;
+  prev_offset                    = offset;
+  tr.cur_h += pane_size;
+
+  if (tr.window_resized || pane_size_changed) {
+    wnd.reset(pane = newwin(pane_size - 2, COLS - 2, offset + 1, 1));
+    scrollok(pane, true);
+
+    content_dirty = true;
+
+    window_ptr tmp{newwin(pane_size, COLS, offset, 0)};
+    ::box(tmp.get(), 0, 0), mvwaddstr(tmp.get(), 0, 4, name);
+    wnoutrefresh(tmp.get());
+  }
+
+  return content_dirty;
 }
