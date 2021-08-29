@@ -82,6 +82,9 @@ class dashboard : public perfkit::ui::if_ui {
   fd_ptr               _pipe_stderr[2];
   circular_queue<char> _stdout_buf{65535};
 
+  circular_queue<std::string> _history{256};
+  int                         _history_cursor = 0;
+
   std::string         _input;
   std::pair<int, int> prev_line_col = {};
 
@@ -103,6 +106,6 @@ class dashboard : public perfkit::ui::if_ui {
 
   void _init_commands();
   void _redirect_stdout(const array_view<std::string_view>& args);
-  void _print_aligned_candidates(std::vector<std::string_view>& candidates) const;
+  void _print_aligned_candidates(const std::vector<std::string>& candidates) const;
 };
 }  // namespace perfkit::detail

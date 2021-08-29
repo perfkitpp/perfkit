@@ -37,7 +37,8 @@ class array_view {
   constexpr auto empty() const noexcept { return size() == 0; }
 
   constexpr auto subspan(size_t offset, size_t n = ~size_t{}) {
-    if (offset >= _size) { return array_view{_ptr, 0}; }
+    if (offset == _size) { return array_view{_ptr, 0}; }
+    _verify_idx(offset);
 
     return array_view{_ptr + offset, std::min(n, _size - offset)};
   }

@@ -9,6 +9,7 @@
 
 #include <filesystem>
 
+#include "range/v3/action/insert.hpp"
 #include "range/v3/algorithm.hpp"
 #include "range/v3/range.hpp"
 #include "range/v3/view.hpp"
@@ -104,7 +105,20 @@ void perfkit::detail::dashboard::_init_commands() {
   commands()->subcommand("w", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
   commands()->subcommand("e", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
 
-  commands()->subcommand("set", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->subcommand(
+      "set",
+      [&](array_view<std::string_view> argv) -> bool {  //
+        return fmt::print("{}\n", argv), true;
+      },
+      [&](auto hint, std::set<std::string>& r) {
+        insert(r, option_dispatcher::_all()
+                      | views::values
+                      | views::transform([&](auto ptr) {
+                          return std::string(ptr->display_key());
+                        }));
+        fmt::print("{}\n", r);
+      });
+
   commands()->subcommand("messenger", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
   commands()->subcommand("get", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
 }
@@ -205,8 +219,8 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
     static std::vector<cmdutils::stroffset> offsets;
     static std::vector<std::string>         tokens;
     static std::vector<std::string_view>    tokens_view;
-    static std::vector<std::string_view>    candidates;
-    std::string_view                        sharing;
+    static std::vector<std::string>         candidates;
+    std::string                             sharing;
 
     auto suggest = [&]() {
       tokens.clear(), candidates.clear(), offsets.clear();
@@ -214,11 +228,15 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
       cmdutils::tokenize_by_argv_rule(_input, tokens, &offsets);
       tokens_view.assign(tokens.begin(), tokens.end());
 
-      sharing = commands()->suggest(tokens_view, tokens_view.size() - 1, candidates);
+      sharing = commands()->suggest(tokens_view, candidates);
       return &candidates;
     };
 
     if (ch == '\n') {
+      if (_input.empty() && !_history.empty()) {
+        _input = _history.back();
+      }
+
       if (!_input.empty()) {
         // tokenize
         tokens.clear(), offsets.clear();
@@ -227,10 +245,27 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
 
         // suggest
         commands()->invoke(tokens_view);
+        _history_cursor = 0;
+
+        if (_history.empty() || _history.back() != _input) {
+          _history.push_rotate(std::move(_input));
+        }
       }
       werase(pane);
+    } else if (ch == KEY_HOME) {
+      wmove(pane, 0, 0);
+    } else if (ch == KEY_END) {
+      wmove(pane, 0, _input.size());
     } else if (ch == KEY_BACKSPACE) {
-      mvwdelch(pane, getcury(pane), getcurx(pane) - 1);
+      mvwdelch(pane, 0, getcurx(pane) - 1);
+    } else if (ch == KEY_UP || ch == KEY_DOWN) {
+      _history_cursor += (ch == KEY_UP) - (ch == KEY_DOWN);
+      _history_cursor = std::clamp<int>(_history_cursor, 0, _history.size());
+
+      if (auto it = _history.end() - _history_cursor; it != _history.end()) {
+        werase(pane);
+        mvwaddstr(pane, 0, 0, it->c_str());
+      }
     } else if (ch == KEY_LEFT) {
       wmove(pane, 0, getcurx(pane) - 1);
     } else if (ch == KEY_RIGHT) {
@@ -239,18 +274,18 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
       if (auto& candidates = *suggest(); candidates.empty() == false) {
         if (!offsets.empty()) {
           // print sharing portion, if user has any input.
-          bool        wrap_with_quotes = (sharing.find_first_of(" \t") != sharing.npos);
+          bool        escape_spacechar = (sharing.find_first_of(' ') != sharing.npos);
           std::string to_replace;
-          if (wrap_with_quotes) {
-            to_replace.reserve(2 + sharing.size());
-            to_replace.append("\"").append(sharing).append("\"");
+          if (escape_spacechar) {
+            to_replace = std::regex_replace(sharing, std::regex{" "}, "\\ ");
           } else {
             to_replace.assign(sharing.begin(), sharing.end());
           }
           mvwaddnstr(pane, 0, offsets.back().first, to_replace.c_str(), to_replace.size());
-        } else {
+        } else if (sharing.size()) {
           // else, directly input shared portion
           mvwaddnstr(pane, 0, 0, sharing.data(), sharing.size());
+          wmove(pane, 0, sharing.size());
         }
 
         if (candidates.size() > 1) {
@@ -291,7 +326,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
 }
 
 void perfkit::detail::dashboard::_print_aligned_candidates(
-    std::vector<std::string_view>& candidates) const {
+    const std::vector<std::string>& candidates) const {
   std::string output;
   for (const auto& item : candidates) {
     if (output.size() == 0) {

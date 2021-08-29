@@ -126,40 +126,47 @@ bool perfkit::ui::command_register::node::alias(
   return true;
 }
 
-std::string_view perfkit::ui::command_register::node::suggest(
+std::string perfkit::ui::command_register::node::suggest(
     array_view<std::string_view>   full_tokens,
-    size_t                         current_command,
-    std::vector<std::string_view>& out_candidates) {
-  if (current_command == ~size_t{}) {
+    std::vector<std::string>&    out_candidates) {
+  std::set<std::string> user_candidates;
+
+  if (full_tokens.empty()) {
     out_candidates |= actions::push_back(_subcommands | views::keys);
     out_candidates |= actions::push_back(_aliases | views::keys);
-  } else if (current_command > 0) {
-    auto subcmd = find_subcommand(full_tokens[0]);
-    if (!subcmd) { return {}; }
 
-    return subcmd->suggest(full_tokens.subspan(1), current_command - 1, out_candidates);
-  } else {
-    auto string = full_tokens[0];
-
-    // find default suggestion list by rule.
-    //
-    // note: maps are already sorted, thus one don't need to iterate all elements, but
-    // simply find lower bound then iterate until meet one doesn't start with compared.
-    auto filter_starts_with = [&](auto& str_key_map, auto& compare) {
-      auto keys = str_key_map | views::keys;
-      for (auto it = lower_bound(keys, compare);
-           it != keys.end() && it->find(compare) == 0;
-           ++it) {
-        out_candidates.push_back(*it);
-      }
-    };
-
-    filter_starts_with(_subcommands, string);
-    filter_starts_with(_aliases, string);
+    if (_suggest) {
+      _suggest(full_tokens.empty() ? std::string_view{} : full_tokens[0], user_candidates);
+      out_candidates |= actions::push_back(user_candidates);
+    }
+    return {};
   }
 
+  auto  exec   = full_tokens[0];
+  node* subcmd = {};
+  if ((subcmd = find_subcommand(exec)) && _check_name_exist(exec)) {
+    // Only when full name is configured ...
+    return subcmd->suggest(full_tokens.subspan(1), out_candidates);
+  }
+
+  // find default suggestion list by rule.
+  //
+  // note: maps are already sorted, thus one don't need to iterate all elements, but
+  // simply find lower bound then iterate until meet one doesn't start with compared.
+  auto filter_starts_with = [&](auto&& keys, auto& compare) {
+    for (auto it = lower_bound(keys, compare);
+         it != keys.end() && it->find(compare) == 0;
+         ++it) {
+      out_candidates.push_back(*it);
+    }
+  };
+
+  filter_starts_with(_subcommands | views::keys, exec);
+  filter_starts_with(_aliases | views::keys, exec);
+
   if (_suggest) {
-    _suggest(full_tokens, current_command, out_candidates);
+    _suggest(full_tokens.empty() ? std::string_view{} : full_tokens[0], user_candidates);
+    filter_starts_with(user_candidates, exec);
   }
 
   if (out_candidates.empty() == false) {
@@ -174,7 +181,7 @@ std::string_view perfkit::ui::command_register::node::suggest(
       if (sharing.empty()) { break; }
     }
 
-    return sharing;
+    return std::string(sharing);
   }
 
   return {};

@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <set>
 
 #include "perfkit/detail/array_view.hxx"
 
@@ -34,10 +35,8 @@ using handler_fn = std::function<bool(array_view<std::string_view> full_tokens)>
  * When this handler is called, out_candidates parameter will hold initial
  * autocomplete list consist of available commands and aliases.
  */
-using autocomplete_suggest_fn = std::function<void(
-    array_view<std::string_view>   full_tokens,
-    size_t                         current_command,
-    std::vector<std::string_view>& out_candidates)>;
+using autocomplete_suggest_fn = std::function<
+    void(std::string_view hint, std::set<std::string>& candidates)>;
 
 class command_register {
  public:
@@ -91,10 +90,9 @@ class command_register {
      *
      * @return Common parts of given suggestions, which is used to smart autocomplete
      */
-    std::string_view suggest(
-        array_view<std::string_view>   full_tokens,
-        size_t                         current_command,
-        std::vector<std::string_view>& out_candidates);
+    std::string suggest(
+        array_view<std::string_view> full_tokens,
+        std::vector<std::string>&    out_candidates);
 
     /**
      * Invoke command with given arguments.
