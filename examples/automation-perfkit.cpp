@@ -56,10 +56,11 @@ TEST_CASE("Create Message Blocks") {
 TEST_CASE("Tokenize") {
   std::vector<std::string> tokens;
   perfkit::cmdutils::tokenize_by_argv_rule(
-      "a alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over", tokens, nullptr);
+      "umai\\ bong\\ daesu a alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over", tokens, nullptr);
 
   std::vector<std::string> compared(
-      {"a", "alpha", "veta", "and there will \\\"be\\\' light", "mo\\'ve space over"});
+      {"umai bong daesu",
+       "a", "alpha", "veta", "and there will \\\"be\\\' light", "mo\\'ve space over"});
 
   for (auto it : zip(tokens, compared)) {
     auto& gen = it.first;
@@ -69,6 +70,17 @@ TEST_CASE("Tokenize") {
 }
 
 TEST_CASE("Sort Messages") {
+}
+
+TEST_CASE("Command Name Verify") {
+  perfkit::ui::command_register rg;
+  auto                          rt = rg._get_root();
+
+  CHECK(rt->add_subcommand("  ea ") == nullptr);
+  CHECK(rt->add_subcommand("  ea fas evas ") == nullptr);
+  CHECK(rt->add_subcommand("aewa vcalf aerkl") != nullptr);
+  CHECK(rt->add_subcommand("aewa ", [&](auto) -> bool { return true; }) == nullptr);
+  CHECK(rt->add_subcommand(" aewa vcalf aerkl", [&](auto) -> bool { return true; }) == nullptr);
 }
 
 TEST_SUITE_END();

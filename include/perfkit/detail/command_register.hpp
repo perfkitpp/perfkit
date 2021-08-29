@@ -51,9 +51,9 @@ class command_register {
      * @param suggest Autocomplete suggest handler.
      * @return nullptr if given command is invalid.
      */
-    perfkit::ui::command_register::node* subcommand(
+    perfkit::ui::command_register::node* add_subcommand(
         std::string_view        cmd,
-        handler_fn              handler,
+        handler_fn              handler = {},
         autocomplete_suggest_fn suggest = {});
 
     /**
@@ -103,7 +103,7 @@ class command_register {
 
    private:
     bool _check_name_exist(std::string_view) const noexcept;
-    bool _is_root() const noexcept { return !_invoke; }
+    bool _is_interface() const noexcept { return !_invoke; }
 
    private:
     std::map<std::string const, node, std::less<>>              _subcommands;

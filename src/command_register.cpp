@@ -18,28 +18,28 @@
 using namespace ranges;
 
 namespace {
-}
+const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|((?:[^\s\\]|\\.)+)))RG"};
+const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
+}  // namespace
 
-static bool is_valid_cmd_token(std::string_view tkn) {
-  return std::regex_match(tkn.begin(), tkn.end(), std::regex{R"RG([\w-]+)RG"});
-}
-
-perfkit::ui::command_register::node* perfkit::ui::command_register::node::subcommand(
+perfkit::ui::command_register::node* perfkit::ui::command_register::node::add_subcommand(
     std::string_view        cmd,
     handler_fn              handler,
     autocomplete_suggest_fn suggest) {
-  assert(handler);
-
   if (_check_name_exist(cmd)) {
-    spdlog::error("command name [{}] already exists as command or token.");
-    return nullptr;
-  }
-  if (!is_valid_cmd_token(cmd)) {
-    spdlog::error("invalid command name [{}]. should be expression of \\[\\w-]\\)");
+    spdlog::error("command name [{}] already exists as command or token.", cmd);
     return nullptr;
   }
 
-  auto& subcmd    = _subcommands[std::string(cmd)];
+  std::cmatch match;
+  if (!std::regex_match(cmd.data(), cmd.data() + cmd.size(), match, rg_cmd_token)) {
+    spdlog::error("invalid command name [{}])", cmd);
+    return nullptr;
+  }
+
+  std::string key = match[1].matched ? match[1].str() : match[2].str();
+
+  auto& subcmd    = _subcommands[key];
   subcmd._invoke  = std::move(handler);
   subcmd._suggest = std::move(suggest);
 
@@ -127,7 +127,7 @@ bool perfkit::ui::command_register::node::alias(
 }
 
 std::string perfkit::ui::command_register::node::suggest(
-    array_view<std::string_view>   full_tokens,
+    array_view<std::string_view> full_tokens,
     std::vector<std::string>&    out_candidates) {
   std::set<std::string> user_candidates;
 
@@ -196,7 +196,7 @@ bool perfkit::ui::command_register::node::invoke(
     }
   }
 
-  if (!_is_root()) { return _invoke(full_tokens); }
+  if (!_is_interface()) { return _invoke(full_tokens); }
 
   spdlog::error("command {} not found. all arguments: {}", full_tokens[0], full_tokens);
   return false;
@@ -206,9 +206,8 @@ void perfkit::cmdutils::tokenize_by_argv_rule(
     std::string_view                           src,
     std::vector<std::string>&                  tokens,
     std::vector<std::pair<ptrdiff_t, size_t>>* token_indexes) {
-  const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|((?:[^\s\\]|\\.)+)))RG"};
-  std::cregex_iterator    iter{src.begin(), src.end(), rg_argv_token};
-  std::cregex_iterator    iter_end{};
+  std::cregex_iterator iter{src.begin(), src.end(), rg_argv_token};
+  std::cregex_iterator iter_end{};
 
   for (; iter != iter_end; ++iter) {
     auto& match = *iter;

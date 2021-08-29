@@ -100,26 +100,16 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
 }
 
 void perfkit::detail::dashboard::_init_commands() {
-  commands()->subcommand("q", [&](array_view<std::string_view> argv) -> bool { throw ui::sig_finish{}; });
+  commands()->add_subcommand("q", [&](array_view<std::string_view> argv) -> bool { throw ui::sig_finish{}; });
 
-  commands()->subcommand("w", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->subcommand("e", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("w", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("e", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
 
-  commands()->subcommand(
-      "set",
-      [&](array_view<std::string_view> argv) -> bool {  //
-        return fmt::print("{}\n", argv), true;
-      },
-      [&](auto hint, std::set<std::string>& r) {
-        insert(r, option_dispatcher::_all()
-                      | views::values
-                      | views::transform([&](auto ptr) {
-                          return std::string(ptr->display_key());
-                        }));
-      });
+  commands()->add_subcommand("set", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
 
-  commands()->subcommand("messenger", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->subcommand("get", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("messenger", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("get", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("umai bong deasu", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
 }
 
 namespace {
