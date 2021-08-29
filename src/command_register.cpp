@@ -6,8 +6,8 @@
 #include <algorithm>
 #include <cassert>
 #include <range/v3/algorithm.hpp>
-#include <range/v3/view.hpp>
 #include <range/v3/range.hpp>
+#include <range/v3/view.hpp>
 #include <regex>
 
 using namespace ranges;
@@ -137,8 +137,8 @@ bool perfkit::ui::command_register::node::invoke(
   return _invoke(full_tokens, this_command, arguments_string);
 }
 
-void perfkit::cmdutils::tokenize_by_argv_rule(std::string_view src, std::vector<std::string_view>& tokens) {
-  const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|([^\s]+)))RG"};
+void perfkit::cmdutils::tokenize_by_argv_rule(std::string_view src, std::vector<std::string>& tokens) {
+  const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|((?:[^\s\\]|\\.)+)))RG"};
   std::cregex_iterator    iter{src.begin(), src.end(), rg_argv_token};
   std::cregex_iterator    iter_end{};
 
@@ -147,11 +147,18 @@ void perfkit::cmdutils::tokenize_by_argv_rule(std::string_view src, std::vector<
     if (!match.ready()) { continue; }
 
     if (match[1].matched) {
-      tokens.push_back(src.substr(match.position(1), match.length(1)));
+      tokens.push_back(std::string(src.substr(match.position(1), match.length(1))));
     } else if (match[2].matched) {
-      tokens.push_back(src.substr(match.position(2), match.length(2)));
+      tokens.push_back(std::string(src.substr(match.position(2), match.length(2))));
     } else {
       throw;
     }
+
+    // correct escapes
+    auto&                   str = tokens.back();
+    const static std::regex rg_escape{R"(\\([ \\]))"};
+
+    auto end = std::regex_replace(str.begin(), str.begin(), str.end(), rg_escape, "$1");
+    str.resize(end - str.begin());
   }
 }

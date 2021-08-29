@@ -2,10 +2,13 @@
 #include "doctest.h"
 #include "perfkit/perfkit.h"
 #include "perfkit/ui.hpp"
+#include "range/v3/view.hpp"
 
 using namespace std::literals;
+using namespace ranges;
 
-using namespace std::literals;
+using views::zip;
+
 PERFKIT_OPTION_DISPATCHER(g_opts);
 auto has_value = perfkit::option_factory(g_opts, "Has Value", 100).make();
 
@@ -46,12 +49,18 @@ TEST_CASE("Create Message Blocks") {
 }
 
 TEST_CASE("Tokenize") {
-  std::vector<std::string_view> tokens;
-  perfkit::cmdutils::
-      tokenize_by_argv_rule("  alpha veta \"and there will \\\"be light\"  ", tokens);
+  std::vector<std::string> tokens;
+  perfkit::cmdutils::tokenize_by_argv_rule(
+      "  alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over", tokens);
 
-  std::vector<std::string_view> compared({"alpha", "veta", "and there will \\\"be light"});
-  CHECK(tokens == compared);
+  std::vector<std::string> compared(
+      {"alpha", "veta", "and there will \\\"be\\\' light", "mo\\'ve space over"});
+
+  for (auto it : zip(tokens, compared)) {
+    auto& gen = it.first;
+    auto& src = it.second;
+    CHECK(src == gen);
+  }
 }
 
 TEST_CASE("Sort Messages") {
