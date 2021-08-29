@@ -57,8 +57,14 @@ std::string_view perfkit::option_dispatcher::find_key(std::string_view display_k
   }
 }
 
-perfkit::detail::option_base::option_base(void* raw, std::string full_key, std::string description, perfkit::detail::option_base::deserializer fn_deserial, perfkit::detail::option_base::serializer fn_serial)
-    : _full_key(std::move(full_key))
+perfkit::detail::option_base::option_base(
+    option_dispatcher* owner,
+    void* raw, std::string full_key,
+    std::string                                description,
+    perfkit::detail::option_base::deserializer fn_deserial,
+    perfkit::detail::option_base::serializer   fn_serial)
+    : _owner(owner)
+    , _full_key(std::move(full_key))
     , _description(std::move(description))
     , _raw(raw)
     , _deserialize(std::move(fn_deserial))
@@ -96,4 +102,12 @@ bool perfkit::detail::option_base::_try_deserialize(const nlohmann::json& value)
     _latest_marshal_failed.store(true, std::memory_order_relaxed);
     return false;
   }
+}
+auto const& perfkit::detail::option_base::serialize() {
+  if (auto nmodify = num_modified(); _fence_serialized != nmodify) {
+    auto _lock = _owner->_access_lock();
+    _serialize(_cached_serialized, _raw);
+    _fence_serialized = nmodify;
+  }
+  return _cached_serialized;
 }

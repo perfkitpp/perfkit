@@ -14,7 +14,10 @@
 #include <utility>
 
 namespace perfkit {
+class option_dispatcher;
+
 namespace detail {
+
 /**
  * basic option class
  */
@@ -24,23 +27,18 @@ class option_base {
   using serializer   = std::function<void(nlohmann::json&, void const*)>;
 
  public:
-  option_base(void*        raw,
-              std::string  full_key,
-              std::string  description,
-              deserializer fn_deserial,
-              serializer   fn_serial);
+  option_base(class option_dispatcher* owner,
+              void*                    raw,
+              std::string              full_key,
+              std::string              description,
+              deserializer             fn_deserial,
+              serializer               fn_serial);
 
   /**
    * @warning this function is not re-entrant!
    * @return
    */
-  auto const& serialize() {
-    if (auto nmodify = num_modified(); _fence_serialized != num_modified()) {
-      _serialize(_cached_serialized, _raw);
-      _fence_serialized = nmodify;
-    }
-    return _cached_serialized;
-  }
+  auto const& serialize();
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
 
@@ -62,6 +60,8 @@ class option_base {
   bool _try_deserialize(nlohmann::json const& value);
 
  private:
+  option_dispatcher* _owner;
+
   std::string      _full_key;
   std::string      _display_key;
   std::string      _description;
@@ -97,17 +97,10 @@ class option_dispatcher {
 
   static std::string_view find_key(std::string_view display_key);
 
-  /**
-   * To prevent race condition of external option value access, this makes lock that
-   * will block the update of queued values until release.
-   *
-   * @return
-   */
-  auto access_lock() { return std::unique_lock{_update_lock}; }
-
- public:
+ public:  // for internal use only.
   static option_dispatcher& _create() noexcept;
   static option_table&      _all() noexcept;
+  auto                      _access_lock() { return std::unique_lock{_update_lock}; }
 
  public:
   void _put(std::shared_ptr<detail::option_base> o);
@@ -237,11 +230,12 @@ class option {
         };
 
     detail::option_base::serializer fn_d = [this](nlohmann::json& out, const void* in) {
-      _owner->access_lock(), out = *(Ty_*)in;
+      _owner->_access_lock(), out = *(Ty_*)in;
     };
 
     // instantiate option instance
     _opt = std::make_shared<detail::option_base>(
+        _owner,
         &_value,
         std::move(full_key),
         std::move(description),
