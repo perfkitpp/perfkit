@@ -35,6 +35,6 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_until(next_awake);
   }
 
-  perfkit::ui::release(ui);
+  perfkit::ui::release();
   return 0;
 }

@@ -7,7 +7,7 @@
 #include "ui-tools.hpp"
 
 namespace perfkit::ui {
-if_ui* g_ui = nullptr;
+extern if_ui* g_ui;
 
 if_ui* create(basic_backend b, array_view<std::string_view> argv) {
   if (g_ui) { throw "ONLY SINGLE UI INSTANCE AT THE SAME TIME IS ALLOWED!!!"; }
@@ -22,8 +22,13 @@ if_ui* create(basic_backend b, array_view<std::string_view> argv) {
   }
 }
 
-void release(if_ui* p) {
-  delete p;
+void release() {
+  delete g_ui;
+  g_ui = nullptr;
+}
+
+if_ui* get() {
+  return g_ui;
 }
 
 }  // namespace perfkit::ui

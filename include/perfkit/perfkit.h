@@ -7,8 +7,8 @@
 #include <perfkit/detail/options.hpp>
 
 namespace perfkit {
-bool read_options(std::istream& src);
-void dump_options(std::ostream& dst);
+bool import_options(std::istream& src);
+void export_options(std::ostream& dst);
 }  // namespace perfkit
 
 #define PERFKIT_OPTION_DISPATCHER(Name) static inline auto& Name = perfkit::option_registry::_create()

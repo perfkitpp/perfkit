@@ -89,6 +89,7 @@ class if_ui {
 };
 
 if_ui* create(basic_backend b, array_view<std::string_view> argv);
-void   release(if_ui*);
+if_ui* get();
+void   release();
 
 }  // namespace perfkit::ui
