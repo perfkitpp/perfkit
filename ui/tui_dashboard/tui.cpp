@@ -220,7 +220,6 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
     };
 
     if (ch == '\n') {
-      fmt::print("# {}\n", _input);
       werase(pane);
     } else if (ch == KEY_LEFT) {
       wmove(pane, 0, getcurx(pane) - 1);
@@ -291,7 +290,7 @@ void perfkit::detail::dashboard::_print_aligned_candidates(
       bool go_newline = false;
       int  x          = output.size();
       x += 19, x -= x % 20;
-      while (x < output.size() + item.size() + 1) { x += 20; };
+      while (x < output.size() + 1) { x += 20; };
 
       if (x < COLS - 20) {
         while (output.size() < x) { output += ' '; }
