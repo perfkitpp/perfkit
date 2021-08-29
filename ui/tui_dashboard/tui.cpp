@@ -116,7 +116,6 @@ void perfkit::detail::dashboard::_init_commands() {
                       | views::transform([&](auto ptr) {
                           return std::string(ptr->display_key());
                         }));
-        fmt::print("{}\n", r);
       });
 
   commands()->subcommand("messenger", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
@@ -282,6 +281,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
             to_replace.assign(sharing.begin(), sharing.end());
           }
           mvwaddnstr(pane, 0, offsets.back().first, to_replace.c_str(), to_replace.size());
+          wmove(pane, 0, offsets.back().first + std::max(to_replace.size(), offsets.back().second));
         } else if (sharing.size()) {
           // else, directly input shared portion
           mvwaddnstr(pane, 0, 0, sharing.data(), sharing.size());
@@ -291,7 +291,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
         if (candidates.size() > 1) {
           // has more than 1 arguments ...
           // print all candidates as aligned
-          fmt::print("  # {:-<{}}", _input, COLS - 6);
+          fmt::print("  # {:-<{}}", _input += ' ', COLS - 6);
           _print_aligned_candidates(candidates);
         }
       }
