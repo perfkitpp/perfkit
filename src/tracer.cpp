@@ -4,6 +4,9 @@
 #include <nlohmann/detail/conversions/from_json.hpp>
 #include <perfkit/detail/tracer.hpp>
 
+#include "spdlog/fmt/fmt.h"
+using namespace std::literals;
+
 namespace {
 struct hasher {
   constexpr static uint64_t FNV_PRIME        = 0x100000001b3ull;
@@ -67,7 +70,7 @@ tracer::proxy tracer::fork(const std::string& n) {
                      _local_reused_memory.begin(),
                      [](std::pair<const uint64_t, _entity_ty> const& g) { return g.second.body; });
 
-      trace_result rs;
+      async_trace_result rs;
       rs._mtx_access = &_sort_merge_lock;
       rs._data       = &_local_reused_memory;
       promise.set_value(rs);
@@ -107,11 +110,11 @@ std::vector<tracer*>& tracer::_all() noexcept {
   return inst;
 }
 
-array_view<tracer*> tracer::all_blocks() noexcept {
+array_view<tracer*> tracer::all() noexcept {
   return _all();
 }
 
-std::shared_future<tracer::trace_result> tracer::async_fetch_request() {
+std::shared_future<tracer::async_trace_result> tracer::async_fetch_request() {
   auto _lck = std::unique_lock{_sort_merge_lock};
 
   // if there's already queued merge operation, share future once more.
@@ -151,7 +154,7 @@ tracer::variant_type& tracer::proxy::data() noexcept {
   return _ref->body.data;
 }
 
-void tracer::trace_result::copy_sorted(fetched_traces& out) noexcept {
+void tracer::async_trace_result::copy_sorted(fetched_traces& out) const noexcept {
   {
     auto [lck, ptr] = acquire();
     out             = *ptr;
@@ -208,12 +211,29 @@ void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept {
           return a.order < b.order;
         }
         if (r_hcmp == hierarchy_compare_result::a_contains_b) {
-          return true;
+          return false;
         }
         if (r_hcmp == hierarchy_compare_result::b_contains_a) {
-          return false;
+          return true;
         }
 
         throw;
       });
+}
+
+void tracer::trace::dump_data(std::string& s) const {
+  s = std::visit(
+      [](auto&& v) {
+        using T = std::remove_const_t<std::remove_reference_t<decltype(v)>>;
+        if constexpr (std::is_same_v<T, std::any>) {
+          return std::string{v.type().name()};
+        } else if constexpr (std::is_same_v<T, clock_type::duration>) {
+          return fmt::format("{:.4f}s", std::chrono::duration<double>{v}.count());
+        } else if constexpr (std::is_same_v<T, std::string>) {
+          return v;
+        } else {
+          return std::to_string(v);
+        }
+      },
+      data);
 }

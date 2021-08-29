@@ -5,12 +5,18 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "circular_queue.hxx"
+#include <queue>
+#include <filesystem>
+
+#include "perfkit/detail/circular_queue.hxx"
+#include "config_command_handler.hpp"
 #include "curses_local.h"
+#include "defines.h"
 #include "perfkit/perfkit.h"
 #include "perfkit/ui.hpp"
 #include "spdlog/fwd.h"
 #include "spdlog/stopwatch.h"
+#include "trace_command_handler.hpp"
 #include "ui-tools.hpp"
 
 namespace perfkit::detail {
@@ -75,13 +81,15 @@ class dashboard : public perfkit::ui::if_ui {
   window_ptr           _input_pane;
   ui::command_registry _commands;
 
-  file_ptr             _stdout;
-  file_ptr             _stderr;
-  file_ptr             _stdout_log;
-  file_ptr             _stderr_log;
-  fd_ptr               _pipe_stdout[2];
-  fd_ptr               _pipe_stderr[2];
-  circular_queue<char> _stdout_buf{65535};
+  file_ptr            _terminal_sinkout;
+  file_ptr            _terminal_sinkerr;
+  file_ptr            _stdout;
+  file_ptr            _stderr;
+  file_ptr            _stdout_log;
+  file_ptr            _stderr_log;
+  fd_ptr              _pipe_stdout[2];
+  fd_ptr              _pipe_stderr[2];
+  circular_queue<int> _stdout_buf{65535};
 
   using _clock = std::chrono::steady_clock;
   spdlog::stopwatch _epoch;
@@ -100,6 +108,9 @@ class dashboard : public perfkit::ui::if_ui {
   std::future<void> _logflush_thread;
   spdlog::stopwatch _logflush_timer;
 
+  std::map<std::string, std::shared_ptr<ui::detail::config_command_handler>> _commands_config;
+  std::map<std::string, std::shared_ptr<ui::detail::trace_command_handler>>  _commands_trace;
+
   struct _context_ty {
     struct _transient {
       bool update_contents;
@@ -107,11 +118,10 @@ class dashboard : public perfkit::ui::if_ui {
       int  cur_h;
     } transient;
 
-  } _context;
+  } _context = {};
 
  private:
   void _draw_messages(_context_ty& context, const std::optional<int>& keystroke);
-  void _draw_options(_context_ty& context, const std::optional<int>& keystroke);
   void _draw_prompt(_context_ty& context, const std::optional<int>& keystroke);
   void _draw_stdout(_context_ty& context);
   bool _layout(_context_ty& context, window_ptr& wnd, int height, char const* name);
@@ -119,5 +129,6 @@ class dashboard : public perfkit::ui::if_ui {
   void _init_commands();
   void _redirect_stdout(const array_view<std::string_view>& args);
   void _print_aligned_candidates(const std::vector<std::string>& candidates) const;
+  void _async_flush_request(bool do_content_fetch);
 };
 }  // namespace perfkit::detail

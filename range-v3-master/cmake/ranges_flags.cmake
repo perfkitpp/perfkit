@@ -10,7 +10,7 @@
 include(CheckCXXCompilerFlag)
 macro(ranges_append_flag testname flag)
   # As -Wno-* flags do not lead to build failure when there are no other
-  # diagnostics, we check positive option to determine their applicability.
+  # diagnostics, we check positive config to determine their applicability.
   # Of course, we set the original flag that is requested in the parameters.
   string(REGEX REPLACE "^-Wno-" "-W" alt ${flag})
   check_cxx_compiler_flag(${alt} ${testname})

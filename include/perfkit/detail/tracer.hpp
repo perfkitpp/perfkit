@@ -42,6 +42,8 @@ class tracer {
 
     bool subscribing() const noexcept { return _is_subscribed->load(std::memory_order_relaxed); }
 
+    void dump_data(std::string&) const;
+
    public:
     std::string_view key;
     uint64_t         hash;
@@ -79,6 +81,8 @@ class tracer {
 
     proxy branch(std::string_view n) noexcept;
     proxy timer(std::string_view n) noexcept;
+
+    proxy operator[](std::string_view n) noexcept { return branch(n); }
 
     ~proxy() noexcept;  // if no data specified, ...
 
@@ -136,16 +140,16 @@ class tracer {
     clock_type::time_point _epoch_if_required = {};
   };
 
-  struct trace_result {
+  struct async_trace_result {
    public:
     std::pair<
         std::unique_lock<perfkit::spinlock>,
         fetched_traces*>
-    acquire() noexcept {
+    acquire() const noexcept {
       return std::make_pair(std::unique_lock{*_mtx_access}, _data);
     }
 
-    void copy_sorted(fetched_traces& out) noexcept;
+    void copy_sorted(fetched_traces& out) const noexcept;
 
    private:
     friend class tracer;
@@ -162,7 +166,7 @@ class tracer {
    */
   tracer(int order, std::string_view name) noexcept;
 
-  static array_view<tracer*> all_blocks() noexcept;
+  static array_view<tracer*> all() noexcept;
 
  public:
   /**
@@ -179,7 +183,7 @@ class tracer {
    * Reserves for async data sort
    * @return empty optional when there's any already queued operation.
    */
-  std::shared_future<trace_result> async_fetch_request();
+  std::shared_future<async_trace_result> async_fetch_request();
 
   auto name() const noexcept { return _name; }
   auto order() const noexcept { return _occurence_order; }
@@ -210,13 +214,13 @@ class tracer {
 
   int _order_active = 0;  // temporary variable for single iteration
 
-  mutable spinlock                          _sort_merge_lock;
-  std::optional<std::promise<trace_result>> _msg_promise;
-  std::shared_future<trace_result>          _msg_future;
-  fetched_traces                            _local_reused_memory;
+  mutable spinlock                                _sort_merge_lock;
+  std::optional<std::promise<async_trace_result>> _msg_promise;
+  std::shared_future<async_trace_result>          _msg_future;
+  fetched_traces                                  _local_reused_memory;
 
-  int                    _occurence_order;
-  std::string_view const _name;
+  int               _occurence_order;
+  std::string const _name;
 };
 
 /**

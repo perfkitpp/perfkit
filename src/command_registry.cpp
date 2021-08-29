@@ -125,6 +125,18 @@ bool perfkit::ui::command_registry::node::alias(
   return true;
 }
 
+namespace {
+bool check_unique(std::string_view cmp, perfkit::array_view<std::string> candidates) {
+  for (const auto& candidate : candidates) {
+    if (cmp.size() > candidate.size()) { continue; }   // not consider.
+    if (candidate.size() == cmp.size()) { continue; }  // maybe same, or not considerable.
+    if (candidate.find(cmp) == 0) { return false; }    // cmp is part of candidates
+  }
+
+  return true;
+}
+}  // namespace
+
 std::string perfkit::ui::command_registry::node::suggest(
     array_view<std::string_view> full_tokens,
     std::vector<std::string>&    out_candidates,
@@ -137,19 +149,19 @@ std::string perfkit::ui::command_registry::node::suggest(
 
     if (_suggest) {
       _suggest(full_tokens, user_candidates);
-      out_candidates |= actions::push_back(user_candidates);
+      out_candidates.insert(out_candidates.end(),
+                            std::move(user_candidates).begin(),
+                            std::move(user_candidates).end());
     }
 
     return {};
   }
 
-  out_has_unique_match && (*out_has_unique_match = false);
-
   auto  exec   = full_tokens[0];
   node* subcmd = {};
   if ((subcmd = find_subcommand(exec)) && _check_name_exist(exec)) {
     // Only when full name is configured ...
-    out_has_unique_match && (*out_has_unique_match = false);
+    out_has_unique_match && (*out_has_unique_match = check_unique(exec, out_candidates));
     return subcmd->suggest(full_tokens.subspan(1), out_candidates, out_has_unique_match);
   }
 
@@ -157,11 +169,11 @@ std::string perfkit::ui::command_registry::node::suggest(
   //
   // note: maps are already sorted, thus one don't need to iterate all elements, but
   // simply find lower bound then iterate until meet one doesn't start with compared.
-  auto filter_starts_with = [&](auto&& keys, auto& compare) {
+  auto filter_starts_with = [&](auto&& keys, auto& compare, bool do_move = false) {
     for (auto it = lower_bound(keys, compare);
          it != keys.end() && it->find(compare) == 0;
          ++it) {
-      out_candidates.push_back(*it);
+      do_move ? (out_candidates.push_back(*it), 0) : (out_candidates.push_back(std::move(*it)), 0);
     }
   };
 
@@ -170,7 +182,7 @@ std::string perfkit::ui::command_registry::node::suggest(
 
   if (_suggest) {
     _suggest(full_tokens, user_candidates);
-    filter_starts_with(user_candidates, exec);
+    filter_starts_with(user_candidates, exec, true);
   }
 
   if (out_candidates.empty() == false) {
@@ -185,10 +197,7 @@ std::string perfkit::ui::command_registry::node::suggest(
       if (sharing.empty()) { break; }
     }
 
-    if (out_has_unique_match) {
-      auto it               = find(out_candidates, sharing);
-      *out_has_unique_match = false && it != out_candidates.end();
-    }
+    out_has_unique_match && (*out_has_unique_match = check_unique(sharing, out_candidates));
     return std::string{sharing};
   }
 
@@ -208,6 +217,10 @@ bool perfkit::ui::command_registry::node::invoke(
 
   glog()->debug("command not found. all arguments: {}", full_tokens);
   return false;
+}
+
+void perfkit::ui::command_registry::node::reset_handler(perfkit::ui::handler_fn&& fn) {
+  _invoke = std::move(fn);
 }
 
 void perfkit::cmdutils::tokenize_by_argv_rule(

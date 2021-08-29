@@ -330,7 +330,7 @@ class Completion : public Error {
 };
 #endif
 
-/** A simple unified option type for unified initializer lists for the Matcher class.
+/** A simple unified config type for unified initializer lists for the Matcher class.
  */
 struct EitherFlag {
   const bool        isShort;
@@ -682,11 +682,11 @@ struct HelpParams {
    */
   bool addNewlineBeforeDescription = false;
 
-  /** The prefix for option value
+  /** The prefix for config value
    */
   std::string valueOpen = "[";
 
-  /** The postfix for option value
+  /** The postfix for config value
    */
   std::string valueClose = "]";
 
@@ -707,7 +707,7 @@ struct HelpParams {
   std::string defaultString = "\nDefault: ";
 };
 
-/** A number of arguments which can be consumed by an option.
+/** A number of arguments which can be consumed by an config.
  *
  * Represents a closed interval [min, max].
  */
@@ -1098,13 +1098,13 @@ class FlagBase : public NamedBase {
   }
 #endif
 
-  /** Defines how many values can be consumed by this option.
+  /** Defines how many values can be consumed by this config.
    *
    * \return closed interval [min, max]
    */
   virtual Nargs NumberOfArguments() const noexcept = 0;
 
-  /** Parse values of this option.
+  /** Parse values of this config.
    *
    * \param value Vector of values. It's size must be in NumberOfArguments() interval.
    */
@@ -2512,7 +2512,7 @@ class ArgumentParser : public Command {
     allowSeparateLongValue_  = this->allowSeparateLongValue;
   }
 
-  /** Change allowed option separation.
+  /** Change allowed config separation.
    *
    * \param allowJoinedShortValue_ Allow a short flag that accepts an argument to be passed its argument immediately next to it (ie. in the same argv field)
    * \param allowJoinedLongValue_ Allow a long flag that accepts an argument to be passed its argument separated by the longseparator (ie. in the same argv field)

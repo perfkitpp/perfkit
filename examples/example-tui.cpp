@@ -11,8 +11,8 @@ using namespace std::literals;
 
 static perfkit::tracer rootm{0, "RootMsg"};
 
-PERFKIT_OPTION_DISPATCHER(OPTS);
-static auto gg1 = perfkit::option_factory(OPTS, "MyOpt1", "hell, world!"s).make();
+PERFKIT_CONFIG_REGISTRY(OPTS);
+static auto gg1 = perfkit::configure(OPTS, "MyOpt1", "hell, world!"s).confirm();
 
 int main(int argc, char** argv) {
   spdlog::info("startup");
@@ -25,10 +25,12 @@ int main(int argc, char** argv) {
 
   auto ui = perfkit::ui::create(perfkit::ui::basic_backend::tui_dashboard, args);
 
+  ui->invoke_command("w somefile.txt");
+
   using clock = std::chrono::steady_clock;
   while (true) {
     OPTS.apply_update_and_check_if_dirty();
-    gg1.queue_change_value("mvoae");
+    gg1.async_modify("mvoae");
 
     auto next_awake = clock ::now() + 16ms;
     if (auto tm_single_loop = rootm.fork("Iteration"); true) {

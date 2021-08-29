@@ -3,6 +3,7 @@
 //
 #include "perfkit/perfkit.h"
 
+#include <filesystem>
 #include <fstream>
 
 #include "perfkit/ui.hpp"
@@ -14,28 +15,34 @@ namespace perfkit::ui {
 if_ui* g_ui = nullptr;
 }
 
-bool perfkit::import_options(std::filesystem::path srcpath) {
+std::string perfkit::_internal::INDEXER_STR(int order) {
+  return fmt::format("{:->5}", order);
+}
+
+bool perfkit::import_options(std::string_view srcpath_s) {
   try {
-    std::ifstream src{srcpath};
+    std::filesystem::path srcpath{srcpath_s};
+    std::ifstream         src{srcpath};
     if (!src) { return spdlog::critical("not a valid configuration file"), false; }
-    nlohmann::json json = nlohmann::json::parse(std::istream_iterator<char>{src},
-                                                std::istream_iterator<char>{},
-                                                nullptr);
+    nlohmann::json json = nlohmann::json::parse(
+        ((std::stringstream&)(std::stringstream{} << src.rdbuf())).str(),
+        nullptr);
 
     auto& opts = json["___OPTIONS___"];
     if (opts.empty()) { return spdlog::critical("invalid json file specified."), false; }
 
     glog()->info("loaded config file [{}] successfully.", srcpath.string());
+    glog()->debug("\"___OPTIONS___\": {}", opts.dump(4));
 
-    for (auto& [name, ptr] : option_registry::all()) {
-      auto strname = std::string(name);
+    for (auto& [name, ptr] : config_registry::all()) {
+      auto strname = ptr->display_key();
       auto it      = opts.find(strname);
       if (it == opts.end()) {
-        glog()->debug("option [{}] is not listed.", name);
+        glog()->debug("config [{}] is not listed.", name);
         continue;
       }
 
-      auto r_req = option_registry::request_update_value(std::move(strname), *it);
+      auto r_req = config_registry::request_update_value(std::string(ptr->full_key()), *it);
       if (!r_req) {
         glog()->critical("FOUND KEY {} IS MISSING FROM GLOBAL LIST. SOMETHING GONE WRONG !!!", name);
         std::terminate();
@@ -44,7 +51,7 @@ bool perfkit::import_options(std::filesystem::path srcpath) {
       glog()->debug("IMPORTING: {} << {}", name, *it);
     }
 
-    if (ui::g_ui) { ui::g_ui->on_import(srcpath); }
+    if (ui::g_ui) { ui::g_ui->on_import(srcpath_s); }
     return true;
 
   } catch (nlohmann::json::parse_error& e) {
@@ -54,8 +61,9 @@ bool perfkit::import_options(std::filesystem::path srcpath) {
   return false;
 }
 
-bool perfkit::export_options(std::filesystem::path dstpath) {
-  if (ui::g_ui) { ui::g_ui->on_export(dstpath); }
+bool perfkit::export_options(std::string_view dstpath_s) {
+  std::filesystem::path dstpath{dstpath_s};
+  if (ui::g_ui) { ui::g_ui->on_export(dstpath_s); }
 
   std::ofstream dst{dstpath};
   if (!dst) {
@@ -66,8 +74,8 @@ bool perfkit::export_options(std::filesystem::path dstpath) {
   nlohmann::json exported;
   auto&          obj = exported["___OPTIONS___"];
 
-  for (auto const& [name, ptr] : option_registry::all()) {
-    obj[std::string(name)] = ptr->serialize();
+  for (auto const& [name, ptr] : config_registry::all()) {
+    obj[std::string(ptr->display_key())] = ptr->serialize();
     glog()->debug("EXPORTING: {} >>> {}", name, ptr->serialize().dump());
   }
 

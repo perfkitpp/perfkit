@@ -430,7 +430,7 @@ FMT_END_DETAIL_NAMESPACE
   An implementation of ``std::basic_string_view`` for pre-C++17. It provides a
   subset of the API. ``fmt::basic_string_view`` is used for format strings even
   if ``std::string_view`` is available to prevent issues when a library is
-  compiled with a different ``-std`` option than the client code (which is not
+  compiled with a different ``-std`` config than the client code (which is not
   recommended).
  */
 template <typename Char> class basic_string_view {

@@ -149,7 +149,8 @@ class circular_queue {
   Ty_&       front() { return _front(); }
   Ty_ const& front() const { return _front(); }
 
-  Ty_& back() { return _back(); }
+  Ty_&       back() { return _back(); }
+  Ty_ const& back() const { return _back(); }
 
   bool is_full() const { return _next(_head) == _tail; }
 

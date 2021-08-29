@@ -27,21 +27,17 @@ void tokenize_by_argv_rule(std::string_view          src,
 namespace perfkit::ui {
 
 /**
- *
+ * Invocation Handler
  */
-using args_view = array_view<std::string_view>;
-
-/**
- *
- */
+using args_view  = array_view<std::string_view>;
 using handler_fn = std::function<bool(args_view full_tokens)>;
 
 /**
  * When this handler is called, out_candidates parameter will hold initial
  * autocomplete list consist of available commands and aliases.
  */
-using autocomplete_suggest_fn = std::function<
-    void(args_view hint, std::set<std::string>& candidates)>;
+using string_set              = std::set<std::string>;
+using autocomplete_suggest_fn = std::function<void(args_view hint, string_set& candidates)>;
 
 class command_registry {
  public:
@@ -85,6 +81,11 @@ class command_registry {
      * @return
      */
     bool alias(std::string_view cmd, std::string alias);
+
+    /**
+     * Reset handler with given argument.
+     */
+    void reset_handler(handler_fn&&);
 
     /**
      * Suggest next command based on current tokens.

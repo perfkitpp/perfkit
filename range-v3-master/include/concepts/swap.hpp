@@ -95,7 +95,7 @@
     CPP_PRAGMA(GCC diagnostic ignored "-Wunknown-pragmas") \
     CPP_PRAGMA(GCC diagnostic ignored X)
 #define CPP_DIAGNOSTIC_IGNORE_INIT_LIST_LIFETIME \
-    CPP_DIAGNOSTIC_IGNORE("-Wunknown-warning-option") \
+    CPP_DIAGNOSTIC_IGNORE("-Wunknown-warning-config") \
     CPP_DIAGNOSTIC_IGNORE("-Winit-list-lifetime")
 #define CPP_DIAGNOSTIC_IGNORE_FLOAT_EQUAL CPP_DIAGNOSTIC_IGNORE("-Wfloat-equal")
 #define CPP_DIAGNOSTIC_IGNORE_CPP2A_COMPAT CPP_DIAGNOSTIC_IGNORE("-Wc++2a-compat")

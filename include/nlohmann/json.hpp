@@ -2410,7 +2410,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
 
     @see https://docs.python.org/2/library/json.html#json.dump
 
-    @since version 1.0.0; indentation character @a indent_char, option
+    @since version 1.0.0; indentation character @a indent_char, config
            @a ensure_ascii and exceptions added in version 3.0.0; error
            handlers added in version 3.4.0; serialization of binary values added
            in version 3.8.0.

@@ -30,13 +30,12 @@ using namespace ranges;
     throw;           \
   }
 
-#define NS_DASHBOARD "+zzzz|Dashboard|"
-PERFKIT_OPTION_DISPATCHER(OPTS);
+PERFKIT_CONFIG_REGISTRY(OPTS);
 
 namespace {
-auto opt_project_name     = option_factory(OPTS, NS_DASHBOARD "Project Name", "untitled").make();
-auto opt_flush_interval   = option_factory(OPTS, NS_DASHBOARD "System|Log Flush Interval", 1.).make();
-auto opt_stdout_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Stdout", 1000).make();
+auto opt_project_name     = configure(OPTS, NS_DASHBOARD "Project Name", "untitled").confirm();
+auto opt_flush_interval   = configure(OPTS, NS_DASHBOARD "System|Log Flush Interval", 1.).confirm();
+auto opt_stdout_pane_size = configure(OPTS, NS_DASHBOARD "View|Stdout", 1000).confirm();
 
 void suggest_file(ui::args_view hint, std::set<std::string>& out) {
   std::filesystem::path path{};
@@ -102,8 +101,13 @@ perfkit::detail::dashboard::dashboard(perfkit::array_view<std::string_view> args
 }
 
 void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_view>& args) {  // redirect stdout/stderr to prevent stdout print disturb TUI window
-  auto prev_stdout = stdout;
-  auto prev_stderr = stderr;
+  auto fd_prev_stdout = dup(STDOUT_FILENO);
+  auto fd_prev_stderr = dup(STDERR_FILENO);
+
+  auto prev_stdout = fdopen(fd_prev_stdout, "wb");
+  auto prev_stderr = fdopen(fd_prev_stderr, "wb");
+  _terminal_sinkout.reset(prev_stdout);
+  _terminal_sinkerr.reset(prev_stderr);
 
   auto procname = fs::path{args[0]}.filename().string();
   auto pid      = getpid();
@@ -112,11 +116,12 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
   auto log_stdout = fmt::format(format, "stdout");
   auto log_stderr = fmt::format(format, "stderr");
 
+  fs::create_directories("log");
   _stdout_log.reset(fopen(log_stdout.c_str(), "a"));
   _stderr_log.reset(fopen(log_stderr.c_str(), "a"));
 
   int fd[2];
-  VERIFY(pipe2(fd, O_NONBLOCK) == 0);
+  VERIFY(pipe2(fd, O_NONBLOCK) == 0)
   _pipe_stdout[0].reset(fd[0]);
   _pipe_stdout[1].reset(fd[1]);
 
@@ -124,12 +129,13 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
   _pipe_stderr[0].reset(fd[0]);
   _pipe_stderr[1].reset(fd[1]);
 
-  fs::create_directories("log");
-  stdout = fdopen(_pipe_stdout[1].get(), "w");
-  stderr = fdopen(_pipe_stderr[1].get(), "w");
+  dup2(_pipe_stdout[1].get(), STDOUT_FILENO);
+  dup2(_pipe_stderr[1].get(), STDERR_FILENO);
+  // stdout = fdopen(_pipe_stdout[1].get(), "w");
+  // stderr = fdopen(_pipe_stderr[1].get(), "w");
 
-  _stdout.reset(fdopen(_pipe_stdout[0].get(), "r"));
-  _stderr.reset(fdopen(_pipe_stderr[0].get(), "r"));
+  _stdout.reset(fdopen(_pipe_stdout[0].get(), "rb"));
+  _stderr.reset(fdopen(_pipe_stderr[0].get(), "rb"));
 
   set_term(newterm(nullptr, prev_stdout, prev_stderr));
 
@@ -145,15 +151,21 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
 }
 
 void perfkit::detail::dashboard::_init_commands() {
-  commands()->add_subcommand("q", [this](ui::args_view argv) -> bool { throw ui::sig_finish{}; });
+  commands()->add_subcommand("q", [](ui::args_view argv) -> bool { throw ui::sig_finish{}; });
+
+  commands()
+      ->add_subcommand("test1")
+      ->add_subcommand("test2")
+      ->add_subcommand("test3")
+      ->add_subcommand("test4");
 
   commands()->add_subcommand(
       "w", [this](ui::args_view argv) -> bool {
-        if (argv.size() == 0 && _confpath.empty()) { return spdlog::error("NO FILE TO SAVE"), false; }
+        if (argv.empty() && _confpath.empty()) { return spdlog::error("NO FILE TO SAVE"), false; }
         if (argv.size() > 1) { return _log->error("too many arguments."), false; }
 
         std::filesystem::path path;
-        if (argv.size() == 0) {
+        if (argv.empty()) {
           ;
         } else if (argv[0].at(0) == '~') {
           path = std::string(getenv("HOME")).append(argv[0].substr(1));
@@ -161,23 +173,22 @@ void perfkit::detail::dashboard::_init_commands() {
           path = argv[0];
         }
 
-        if (argv.size() == 1 && export_options(path)) {
+        if (argv.size() == 1 && export_options(path.string())) {
           _confpath.assign(path);
           return true;
         } else {
-          return export_options(_confpath);
+          return export_options(_confpath.string());
         }
-        return false;
       },
       suggest_file);
 
   commands()->add_subcommand(
       "e", [this](ui::args_view argv) -> bool {
-        if (argv.size() == 0 && _confpath.empty()) { return spdlog::error("NO FILE TO LOAD"), false; }
+        if (argv.empty() && _confpath.empty()) { return spdlog::error("NO FILE TO LOAD"), false; }
         if (argv.size() > 1) { return _log->error("too many arguments."), false; }
 
         std::filesystem::path path;
-        if (argv.size() == 0) {
+        if (argv.empty()) {
           ;
         } else if (argv[0].at(0) == '~') {
           path = std::string(getenv("HOME")).append(argv[0].substr(1));
@@ -185,61 +196,65 @@ void perfkit::detail::dashboard::_init_commands() {
           path = argv[0];
         }
 
-        if (argv.size() == 1 && exists(path) && import_options(path)) {
+        if (argv.size() == 1 && exists(path) && import_options(path.string())) {
           // update configuration path only when import succeeded.
           _confpath.assign(path);
           return true;
         } else {
-          return import_options(_confpath);
+          return import_options(_confpath.string());
         }
       },
       suggest_file);
 
-  if (auto cmd_set = commands()->add_subcommand("config")) {
-    for (auto [name, ptr] : option_registry::all()) {
-      auto sample = ptr->serialize();
+  auto cmd_config = commands()->add_subcommand("config");
+  {
+    for (auto [name, dispatcher] : config_registry::all()) {
+      auto prototype = dispatcher->serialize();
 
-      cmd_set->add_subcommand(
-          ptr->display_key(),
-          [this, ptr, sample](ui::args_view argv) -> bool {
-            if (argv.empty()) {
-              fmt::print("\"{}\": {}\n", ptr->display_key(), ptr->serialize().dump(4, ' '));
-              return true;
-            }
+      auto init{ui::detail::config_command_handler::init_args{}};
+      init.config    = dispatcher;
+      init.logging   = _log.get();
+      init.prototype = std::move(prototype);
 
-            if (argv.size() == 2 && argv[0] == "-r") {
-              std::string argval;
-              if (sample.is_string()) {
-                argval.append("\"").append(argv[1]).append("\"");
-              } else {
-                argval.append(argv[1]);
-              }
+      auto ptr{std::make_shared<ui::detail::config_command_handler>(init)};
 
-              auto json = nlohmann::json ::parse(argval, nullptr, false);
+      cmd_config->add_subcommand(
+          dispatcher->display_key(),
+          [ptr](auto v) -> bool { return ptr->config(v); });
+    }
 
-              if (json.is_discarded()) {
-                _log->error("invalid json syntax.");
-                return false;
-              }
+    auto cmd_watch      = commands()->add_subcommand("watch");
+    auto cmd_list_trace = commands()->add_subcommand("trace");
+    {
+      auto cmd_watch_trace = cmd_watch->add_subcommand("trace");
 
-              if (!!strcmp(json.type_name(), sample.type_name())) {
-                _log->error("type mismatch - given: '{}', should be: '{}'",
-                            json.type_name(), sample.type_name());
-                return false;
-              }
+      // add all trace dispatchers
+      for (const auto& item : tracer::all()) {
+        // add per-trace list function
+        auto init{ui::detail::trace_command_handler::init_args{}};
+        init.logging = _log.get();
+        init.ref     = item;
 
-              option_registry::request_update_value(std::string(ptr->full_key()), json);
-              return true;
-            }
+        // do invocation
+        auto ptr{std::make_shared<ui::detail::trace_command_handler>(init)};
+        auto key = fmt::format("[{}]@{}", item->order(), item->name());
 
-            return false;
-          });
+        // perform actual invocation
+        cmd_list_trace->add_subcommand(
+            key,
+            [ptr](auto c) -> bool { return ptr->on_list(c); },
+            [ptr](auto hint, auto& c) { ptr->on_suggest(hint, c); });
+
+        cmd_watch_trace->add_subcommand(
+            key,
+            [ptr](auto c) -> bool { return ptr->on_watch(c); },
+            [ptr](auto hint, auto& c) { ptr->on_suggest(hint, c); });
+      }
+    }
+    {  // list configurations ... to do.
+      auto cmd_watch_config = cmd_watch->add_subcommand("config");
     }
   }
-
-  commands()->add_subcommand("messenger", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->add_subcommand("get", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->add_subcommand("umai bong deasu", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
 
   commands()->add_subcommand(
       "loglevel",
@@ -310,12 +325,9 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
     _context.transient.window_resized = true;
   }
 
-  // -------------------- START DRAWING ------------------------------------------------------------
-
   // -------------------- FETCHED CONTENT VIEW -----------------------------------------------------
-  // if content fetch, do render option view & debug view
+  // if content fetch, do render config view & debug view
   _draw_messages(_context, keystroke);
-  _draw_options(_context, keystroke);
 
   // -------------------- RENDER STDOUT(LOG) & OUTPUT WINDOW ---------------------------------------
   // render stdout window
@@ -329,6 +341,13 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
 
   doupdate();
 
+  _async_flush_request(do_content_fetch);
+
+  fflush(stdout);
+  fflush(stderr);
+}
+
+void perfkit::detail::dashboard::_async_flush_request(bool do_content_fetch) {
   if (do_content_fetch) {
     if (!_logflush_thread.valid()) {
       if (_logflush_timer.elapsed() > 1.s * *opt_flush_interval) {
@@ -338,24 +357,18 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
         _log->debug("buffer flush thread invoked.");
       }
     } else {
-      if (_logflush_thread.wait_for(0ms) == std::future_status::ready) {
+      if (_logflush_thread.wait_for(0s) == std::future_status::ready) {
         _logflush_thread.get();
         _log->debug("buffer flush thread done.");
       }
     }
   }
-
-  fflush(stdout);
-  fflush(stderr);
 }
 
 void dashboard::_draw_messages(_context_ty& context, const std::optional<int>& keystroke) {
   if (_watches.size() == 0) { return; }
   bool  content_dirty = _layout(context, _message_pane, _watches.size(), " WATCHES ");
   auto& tr            = context.transient;
-}
-
-void dashboard::_draw_options(_context_ty& context, const std::optional<int>& keystroke) {
 }
 
 void perfkit::detail::dashboard::_draw_stdout(_context_ty& context) {
@@ -382,15 +395,17 @@ void perfkit::detail::dashboard::_draw_stdout(_context_ty& context) {
     int  to_print = _stdout_buf.size();
     auto it       = _stdout_buf.end() - to_print;
 
-    wmove(pane, 0, 0);
-    for (; it != _stdout_buf.end(); ++it) { waddch(pane, *it); }
+    wmove(pane, getmaxy(pane) - 1, 0);
+    for (; it != _stdout_buf.end(); ++it) {
+      waddch(pane, *it);
+    }
 
     wnoutrefresh(pane);
   }
 }
 
 void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::optional<int>& keystroke) {  // draw input buffer
-  static auto buflen = option_factory(OPTS, NS_DASHBOARD "Input Buffer Maxlen", 1024).min(1).make();
+  static auto buflen = configure(OPTS, NS_DASHBOARD "Input Buffer Maxlen", 1024).min(1).confirm();
   if (buflen.check_dirty_and_consume()) { _input_pane.reset(newpad(1, *buflen)); }
   auto pane = _input_pane.get();
 
@@ -429,14 +444,16 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
         tokens_view.assign(tokens.begin(), tokens.end());
 
         // suggest
-        fmt::print("{:->25}{:-<{}}\n\n",
-                   fmt::format("< ({:0>5}) {:>11.3f}s >",
-                               ++n_command, _epoch.elapsed().count()),
-                   " " + _input + "  ",
+        fmt::print("{:<25}{:<{}}\n",
+                   fmt::format("{1:.>11.3f}s ({2}) ",
+                               ++n_command, _epoch.elapsed().count(), *opt_project_name),
+                   _input,
                    COLS - 30);
         if (!commands()->invoke(tokens_view)) {
           fmt::print("error: invalid command '{}'\n", _input);
         }
+        fmt::print("\n");
+
         _history_cursor = 0;
 
         if (_history.empty() || _history.back() != _input) {
@@ -463,7 +480,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
     } else if (ch == KEY_RIGHT) {
       wmove(pane, 0, std::min<int>(_input.size(), getcurx(pane) + 1));
     } else if (ch == '\t') {
-      if (auto& candidates = *suggest(); candidates.empty() == false) {
+      if (suggest(); !candidates.empty()) {
         if (!offsets.empty()) {
           // print sharing portion, if user has any input.
           bool        escape_spacechar = (sharing.find_first_of(' ') != sharing.npos);
@@ -485,10 +502,10 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
           wmove(pane, 0, sharing.size());
         }
 
-        if (candidates.size() > 1) {
+        if (candidates.size() > 1 || candidates.front() != sharing) {
           // has more than 1 arguments ...
           // print all candidates as aligned
-          fmt::print("  > {:=<{}}", _input += ' ', COLS - 9);
+          fmt::print(" Available ? \'{}\'\n", _input);
           _print_aligned_candidates(candidates);
         }
       }
@@ -514,7 +531,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
   }
 
   mvaddstr(LINES - 1, 0,
-           fmt::format("@ {:-<{}}{:*<{}}",
+           fmt::format("@ {:<{}}{:>{}}",
                        _confpath.empty() ? "<NO FILE OPENED>" : absolute(_confpath).c_str(),
                        COLS / 2 - 2,
                        opt_project_name.get(),
@@ -533,34 +550,29 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
 void perfkit::detail::dashboard::_print_aligned_candidates(
     const std::vector<std::string>& candidates) const {
   std::string   output;
-  constexpr int OFST = 20, GAP = 20;
+  constexpr int GAP = 14, OFST = 6, MIN_GAP = 2, MIN_RIGHT_OFST = 6;
   for (const auto& item : candidates) {
-    if (output.size() == 0) {
-      // first token of the line.
-      output.append(OFST, ' ');
-      output += item;
-    } else {
-      // set cell width as fixed value.
-      bool go_newline = false;
-      int  x          = output.size();
-      x += GAP - 1, x -= x % GAP;
-      while (x < output.size() + 1) { x += GAP; };
+    auto size = item.size() + MIN_GAP;
+    size += GAP - 1, size -= size % GAP;
 
-      if (x < COLS - 2 - OFST - item.size()) {
-        while (output.size() < x) { output += ' '; }
-        output += item;
-      } else {
-        puts(output.c_str());
-
+    if (!output.empty()) {
+      if (size + output.size() > COLS - MIN_RIGHT_OFST) {
+        // flush
+        fmt::print(output += '\n');
         output.clear();
-        output.append(OFST, ' ');
-        output += item;
+      } else {
+        fmt::format_to(std::back_inserter(output), "* {:<{}}", item, size - 2);
       }
+    }
+
+    if (output.empty()) {
+      output.resize(OFST, ' ');
+      fmt::format_to(std::back_inserter(output), "* {:<{}}", item, size - 2);
     }
   }
 
   if (!output.empty()) {
-    puts(output.c_str());
+    fmt::print(output += '\n');
     putchar('\n');
   }
 }
@@ -573,6 +585,14 @@ void perfkit::detail::dashboard::launch(std::chrono::milliseconds interval, int 
 }
 
 void perfkit::detail::dashboard::invoke_command(std::string_view view) {
+  static std::vector<std::string>      tok;
+  static std::vector<std::string_view> tok_view;
+  cmdutils::tokenize_by_argv_rule(view, tok, nullptr);
+
+  if (!tok.empty()) {
+    tok_view.assign(tok.begin(), tok.end());
+    commands()->invoke(tok_view);
+  }
 }
 
 void perfkit::detail::dashboard::stop() {

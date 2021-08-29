@@ -1,7 +1,7 @@
 //
 // Created by Seungwoo on 2021-08-25.
 //
-#include "perfkit/detail/options.hpp"
+#include "perfkit/detail/configs.hpp"
 
 #include <cassert>
 #include <regex>
@@ -9,22 +9,23 @@
 #include "perfkit/perfkit.h"
 #include "spdlog/spdlog.h"
 
-perfkit::option_registry& perfkit::option_registry::_create() noexcept {
+perfkit::config_registry& perfkit::config_registry::create() noexcept {
   static container _all;
-  auto&            rg = *_all.emplace_back(std::make_unique<perfkit::option_registry>());
-  glog()->info("Creating new option registry {}", (void*)&rg);
+  auto&            rg = *_all.emplace_back(std::make_unique<perfkit::config_registry>());
+  glog()->info("Creating new config registry {}", (void*)&rg);
   return rg;
 }
 
-perfkit::option_registry::option_table& perfkit::option_registry::all() noexcept {
-  static option_table _inst;
+perfkit::config_registry::config_table& perfkit::config_registry::all() noexcept {
+  static config_table _inst;
   return _inst;
 }
 
-bool perfkit::option_registry::apply_update_and_check_if_dirty() {
+bool perfkit::config_registry::apply_update_and_check_if_dirty() {
   decltype(_pending_updates) update;
   if (std::unique_lock _l{_update_lock}) {
-    if (_pending_updates.empty()) { return false; }
+    if (_pending_updates.empty()) { return false; }  // no update.
+
     update = std::move(_pending_updates);
     _pending_updates.clear();
 
@@ -36,6 +37,8 @@ bool perfkit::option_registry::apply_update_and_check_if_dirty() {
         glog()->error("parse failed: '{}' <- {}", opt->display_key(), json.dump());
       }
     }
+
+    _global_dirty.store(true, std::memory_order_relaxed);
   }
 
   return true;
@@ -46,7 +49,7 @@ static auto& key_mapping() {
   return _inst;
 }
 
-void perfkit::option_registry::_put(std::shared_ptr<detail::option_base> o) {
+void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
   auto it = all().find(o->full_key());
   if (it != all().end()) { throw std::invalid_argument("Argument MUST be unique!!!"); }
 
@@ -59,28 +62,29 @@ void perfkit::option_registry::_put(std::shared_ptr<detail::option_base> o) {
   _opts.try_emplace(o->full_key(), o);
   all().try_emplace(o->full_key(), o);
 
-  glog()->info("({:04}) declaring new option ... [{}] -> [{}]",
+  glog()->info("({:04}) declaring new config ... [{}] -> [{}]",
                all().size(), o->display_key(), o->full_key());
 }
 
-std::string_view perfkit::option_registry::find_key(std::string_view display_key) {
+std::string_view perfkit::config_registry::find_key(std::string_view display_key) {
   if (auto it = key_mapping().find(display_key); it != key_mapping().end()) {
     return it->second;
   } else {
     return {};
   }
 }
-void perfkit::option_registry::queue_update_value(std::string full_key, const nlohmann::json& value) {
+
+void perfkit::config_registry::queue_update_value(std::string full_key, const nlohmann::json& value) {
   std::unique_lock _l{_update_lock};
   _pending_updates[std::move(full_key)] = value;
 }
 
-perfkit::detail::option_base::option_base(
-    option_registry* owner,
+perfkit::detail::config_base::config_base(
+    config_registry* owner,
     void* raw, std::string full_key,
     std::string                                description,
-    perfkit::detail::option_base::deserializer fn_deserial,
-    perfkit::detail::option_base::serializer   fn_serial)
+    perfkit::detail::config_base::deserializer fn_deserial,
+    perfkit::detail::config_base::serializer   fn_serial)
     : _owner(owner)
     , _full_key(std::move(full_key))
     , _description(std::move(description))
@@ -109,7 +113,7 @@ perfkit::detail::option_base::option_base(
   if (_display_key.empty()) { throw "Invalid Key"; }
 }
 
-bool perfkit::detail::option_base::_try_deserialize(const nlohmann::json& value) {
+bool perfkit::detail::config_base::_try_deserialize(const nlohmann::json& value) {
   if (_deserialize(value, _raw)) {
     _fence_modification.fetch_add(1, std::memory_order_relaxed);
     _dirty = true;
@@ -122,7 +126,7 @@ bool perfkit::detail::option_base::_try_deserialize(const nlohmann::json& value)
   }
 }
 
-nlohmann::json const& perfkit::detail::option_base::serialize() {
+nlohmann::json const& perfkit::detail::config_base::serialize() {
   if (auto nmodify = num_modified(); _fence_serialized != nmodify) {
     auto _lock = _owner->_access_lock();
     _serialize(_cached_serialized, _raw);

@@ -385,7 +385,7 @@ DOCTEST_GCC_SUPPRESS_WARNING_POP
 #endif // linux
 #endif // DOCTEST_BREAK_INTO_DEBUGGER
 
-// this is kept here for backwards compatibility since the config option was changed
+// this is kept here for backwards compatibility since the config config was changed
 #ifdef DOCTEST_CONFIG_USE_IOSFWD
 #define DOCTEST_CONFIG_USE_STD_HEADERS
 #endif // DOCTEST_CONFIG_USE_IOSFWD
@@ -1711,7 +1711,7 @@ class DOCTEST_INTERFACE Context
     AssertFailure            = 1,   // an assertion has failed in the test case
     Exception                = 2,   // test case threw an exception
     Crash                    = 4,   // a crash...
-    TooManyFailedAsserts     = 8,   // the abort-after option
+    TooManyFailedAsserts     = 8,   // the abort-after config
     Timeout                  = 16,  // see the timeout decorator
     ShouldHaveFailedButDidnt = 32,  // see the should_fail decorator
     ShouldHaveFailedAndDid   = 64,  // see the should_fail decorator
@@ -5447,7 +5447,7 @@ struct JUnitReporter : public IReporter
   void subcase_end() override {}
 
   void log_assert(const AssertData& rb) override {
-    if(!rb.m_failed) // report only failures & ignore the `success` option
+    if(!rb.m_failed) // report only failures & ignore the `success` config
       return;
 
     std::lock_guard<std::mutex> lock(mutex);
@@ -5563,7 +5563,7 @@ struct ConsoleReporter : public IReporter
   virtual void file_line_to_stream(const char* file, int line,
                                    const char* tail = "") {
     s << Color::LightGrey << skipPathFromFilename(file) << (opt.gnu_file_line ? ":" : "(")
-    << (opt.no_line_numbers ? 0 : line) // 0 or the real num depending on the option
+    << (opt.no_line_numbers ? 0 : line) // 0 or the real num depending on the config
     << (opt.gnu_file_line ? ":" : "):") << tail;
   }
 
@@ -5996,7 +5996,7 @@ bool parseOptionImpl(int argc, const char* const* argv, const char* pattern, Str
     auto index = i - 1;
     auto temp = std::strstr(argv[index], pattern);
     if(temp && (value || strlen(temp) == strlen(pattern))) { //!OCLINT prefer early exits and continue
-      // eliminate matches in which the chars before the option are not '-'
+      // eliminate matches in which the chars before the config are not '-'
       bool noBadCharsFound = true;
       auto curr            = argv[index];
       while(curr != temp) {
@@ -6007,7 +6007,7 @@ bool parseOptionImpl(int argc, const char* const* argv, const char* pattern, Str
       }
       if(noBadCharsFound && argv[index][0] == '-') {
         if(value) {
-          // parsing the value of an option
+          // parsing the value of an config
           temp += strlen(pattern);
           const unsigned len = strlen(temp);
           if(len) {
@@ -6024,7 +6024,7 @@ bool parseOptionImpl(int argc, const char* const* argv, const char* pattern, Str
   return false;
 }
 
-// parses an option and returns the string after the '=' character
+// parses an config and returns the string after the '=' character
 bool parseOption(int argc, const char* const* argv, const char* pattern, String* value = nullptr,
                  const String& defaultVal = String()) {
   if(value)
@@ -6070,7 +6070,7 @@ enum optionType
   option_int
     };
 
-// parses an int/bool option from the command line
+// parses an int/bool config from the command line
 bool parseIntOption(int argc, const char* const* argv, const char* pattern, optionType type,
                     int& res) {
   String parsedValue;

@@ -14,20 +14,20 @@
 #include <utility>
 
 namespace perfkit {
-class option_registry;
+class config_registry;
 
 namespace detail {
 
 /**
- * basic option class
+ * basic config class
  */
-class option_base {
+class config_base {
  public:
   using deserializer = std::function<bool(nlohmann::json const&, void*)>;
   using serializer   = std::function<void(nlohmann::json&, void const*)>;
 
  public:
-  option_base(class option_registry* owner,
+  config_base(class config_registry* owner,
               void*                  raw,
               std::string            full_key,
               std::string            description,
@@ -60,8 +60,8 @@ class option_base {
   bool _try_deserialize(nlohmann::json const& value);
 
  private:
-  friend class perfkit::option_registry;
-  perfkit::option_registry* _owner;
+  friend class perfkit::config_registry;
+  perfkit::config_registry* _owner;
 
   std::string      _full_key;
   std::string      _display_key;
@@ -82,11 +82,11 @@ class option_base {
 /**
  *
  */
-class option_registry {
+class config_registry {
  public:
   using json_table   = std::map<std::string, nlohmann::json>;
-  using option_table = std::map<std::string_view, std::shared_ptr<detail::option_base>>;
-  using container    = std::vector<std::unique_ptr<option_registry>>;
+  using config_table = std::map<std::string_view, std::shared_ptr<detail::config_base>>;
+  using container    = std::vector<std::unique_ptr<config_registry>>;
 
  public:
   bool apply_update_and_check_if_dirty();
@@ -103,18 +103,25 @@ class option_registry {
 
   static std::string_view find_key(std::string_view display_key);
 
+  static bool check_dirty_and_consume_global() {
+    return _global_dirty.exchange(false, std::memory_order_relaxed);
+  }
+
+  static config_registry& create() noexcept;
+  static config_table&    all() noexcept;
+
  public:  // for internal use only.
-  static option_registry& _create() noexcept;
-  static option_table&    all() noexcept;
-  auto                    _access_lock() { return std::unique_lock{_update_lock}; }
+  auto _access_lock() { return std::unique_lock{_update_lock}; }
 
  public:
-  void _put(std::shared_ptr<detail::option_base> o);
+  void _put(std::shared_ptr<detail::config_base> o);
 
  private:
-  option_table _opts;
+  config_table _opts;
   json_table   _pending_updates;
   std::mutex   _update_lock;
+
+  static inline std::atomic_bool _global_dirty;
 };
 
 namespace _attr_flag {
@@ -128,10 +135,10 @@ enum ty : uint64_t {
 }
 
 template <typename Ty_>
-class option;
+class config;
 
 template <typename Ty_>
-struct _option_attribute_data {
+struct _config_attrib_data {
   std::string                  description;
   std::function<bool(Ty_&)>    validate;
   std::optional<Ty_>           min;
@@ -140,16 +147,16 @@ struct _option_attribute_data {
 };
 
 template <typename Ty_, uint64_t Flags_ = 0>
-class _factory {
+class _config_factory {
  public:
   enum { flag = Flags_ };
 
  private:
   template <uint64_t Flag_>
-  auto& _added() { return *reinterpret_cast<_factory<Ty_, Flags_ | Flag_>*>(this); }
+  auto& _added() { return *reinterpret_cast<_config_factory<Ty_, Flags_ | Flag_>*>(this); }
 
  public:
-  auto& description(std::string s) { return _data.description = std::move(s), *this; }
+  auto& description(std::string&& s) { return _data.description = std::move(s), *this; }
   auto& min(Ty_ v) { return _data.min = v, _added<_attr_flag::has_min>(); }
   auto& max(Ty_ v) { return _data.max = v, _added<_attr_flag::has_max>(); }
   auto& one_of(std::initializer_list<Ty_> v) {
@@ -157,13 +164,13 @@ class _factory {
     _data.one_of->insert(v.begin(), v.end());
     return _added<_attr_flag::has_one_of>();
   }
-  auto& validate(std::function<bool(nlohmann::json&)> v) {
+  auto& validate(std::function<bool(nlohmann::json&)>&& v) {
     _data.validate = std::move(v);
     return _added<_attr_flag::has_validate>();
   }
 
-  auto make() {
-    return option<Ty_>{
+  auto confirm() noexcept {
+    return config<Ty_>{
         *_pinfo->dispatcher,
         std::move(_pinfo->full_key),
         std::forward<Ty_>(_pinfo->default_value),
@@ -172,46 +179,48 @@ class _factory {
 
  private:
   template <typename>
-  friend class option;
+  friend class config;
 
   template <typename T_>
-  friend _factory<T_, 0> option_factory(option_registry& dispatcher,
-                                        std::string      full_key,
-                                        Ty_&&            default_value);
+  friend _config_factory<T_, 0> configure(config_registry& dispatcher,
+                                          std::string      full_key,
+                                          Ty_&&            default_value) noexcept;
 
-  _option_attribute_data<Ty_> _data;
+  _config_attrib_data<Ty_> _data;
 
  public:
   struct _init_info {
-    option_registry* dispatcher;
-    std::string      full_key;
-    Ty_              default_value;
+    config_registry* dispatcher    = {};
+    std::string      full_key      = {};
+    Ty_              default_value = {};
   };
 
   std::shared_ptr<_init_info> _pinfo;
 };
 
+using config_ptr = std::shared_ptr<detail::config_base>;
+
 template <typename Ty_>
-class option {
+class config {
  public:
  public:
-  template <typename Attr_ = _factory<Ty_>>
-  option(
-      option_registry&            dispatcher,
-      std::string                 full_key,
-      Ty_&&                       default_value,
-      _option_attribute_data<Ty_> attribute) noexcept
+  template <typename Attr_ = _config_factory<Ty_>>
+  config(
+      config_registry&         dispatcher,
+      std::string              full_key,
+      Ty_&&                    default_value,
+      _config_attrib_data<Ty_> attribute) noexcept
       : _owner(&dispatcher), _value(std::forward<Ty_>(default_value)) {
     auto description = std::move(attribute.description);
 
     // setup marshaller / de-marshaller with given rule of attribute
-    detail::option_base::deserializer fn_m = [attrib = std::move(attribute)]  //
+    detail::config_base::deserializer fn_m = [attrib = std::move(attribute)]  //
         (const nlohmann::json& in, void* out) {
           // TODO: Apply attributes
           try {
             Ty_ parsed;
 
-            _option_attribute_data<Ty_> const& attr = attrib;
+            _config_attrib_data<Ty_> const& attr = attrib;
             nlohmann::from_json(in, parsed);
 
             if constexpr (Attr_::flag & _attr_flag::has_min) {
@@ -235,12 +244,12 @@ class option {
           }
         };
 
-    detail::option_base::serializer fn_d = [this](nlohmann::json& out, const void* in) {
+    detail::config_base::serializer fn_d = [this](nlohmann::json& out, const void* in) {
       out = *(Ty_*)in;
     };
 
-    // instantiate option instance
-    _opt = std::make_shared<detail::option_base>(
+    // instantiate config instance
+    _opt = std::make_shared<detail::config_base>(
         _owner,
         &_value,
         std::move(full_key),
@@ -250,6 +259,9 @@ class option {
     // put instance to global queue
     dispatcher._put(_opt);
   }
+
+  config(const config&) noexcept = delete;
+  config(config&&) noexcept      = default;
 
   /**
    * @warning
@@ -263,14 +275,14 @@ class option {
   explicit   operator const Ty_&() const noexcept { return get(); }
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
-  void queue_change_value(Ty_ v) { _owner->queue_update_value(std::string{_opt->full_key()}, std::move(v)); }
+  void async_modify(Ty_ v) { _owner->queue_update_value(std::string{_opt->full_key()}, std::move(v)); }
 
   auto& base() const { return *_opt; }
 
  private:
-  std::shared_ptr<detail::option_base> _opt;
+  config_ptr _opt;
 
-  option_registry* _owner;
+  config_registry* _owner;
   Ty_              _value;
 };
 
@@ -280,11 +292,11 @@ using _cvt_ty = std::conditional_t<std::is_convertible_v<Ty_, std::string>,
                                    Ty_>;
 
 template <typename Ty_>
-auto option_factory(option_registry& dispatcher,
-                    std::string      full_key,
-                    Ty_&&            default_value) {
-  _factory<_cvt_ty<Ty_>> attribute;
-  attribute._pinfo                = std::make_shared<typename _factory<_cvt_ty<Ty_>>::_init_info>();
+auto configure(config_registry& dispatcher,
+               std::string&&    full_key,
+               Ty_&&            default_value) noexcept {
+  _config_factory<_cvt_ty<Ty_>> attribute;
+  attribute._pinfo                = std::make_shared<typename _config_factory<_cvt_ty<Ty_>>::_init_info>();
   attribute._pinfo->dispatcher    = &dispatcher;
   attribute._pinfo->default_value = std::forward<Ty_>(default_value);
   attribute._pinfo->full_key      = std::move(full_key);

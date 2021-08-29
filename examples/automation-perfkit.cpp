@@ -9,10 +9,10 @@ using namespace ranges;
 
 using views::zip;
 
-PERFKIT_OPTION_DISPATCHER(g_opts);
-auto has_value   = perfkit::option_factory(g_opts, "Has Value", 100).make();
-auto name_test_1 = perfkit::option_factory(g_opts, "-|   AA  | BB   |  +641    | CC", 100).make();
-auto name_test_2 = perfkit::option_factory(g_opts, "+561|-|    A A   | + 31411 |   B    B |  +641   |  C C", 100).make();
+PERFKIT_CONFIG_REGISTRY(g_opts);
+auto has_value   = perfkit::configure(g_opts, "Has Value", 100).confirm();
+auto name_test_1 = perfkit::configure(g_opts, "-|   AA  | BB   |  +641    | CC", 100).confirm();
+auto name_test_2 = perfkit::configure(g_opts, "+561|-|    A A   | + 31411 |   B    B |  +641   |  C C", 100).confirm();
 
 PERFKIT_MESSAGE_BLOCK my_block{0, "hell, world"};
 PERFKIT_MESSAGE_BLOCK another_block{0, "hell, world2"};

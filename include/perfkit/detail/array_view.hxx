@@ -4,6 +4,7 @@
 #pragma once
 #include <cassert>
 #include <cstddef>
+#include <stdexcept>
 #include <type_traits>
 
 namespace KANGSW_ARRAY_VIEW_NAMESPACE {
@@ -34,9 +35,12 @@ class array_view {
   constexpr auto end() noexcept { return _ptr + _size; }
   constexpr auto end() const noexcept { return _ptr + _size; }
 
+  constexpr auto& front() const noexcept { return at(0); }
+  constexpr auto& back() const noexcept { return at(_size - 1); }
+
   constexpr auto empty() const noexcept { return size() == 0; }
 
-  constexpr auto subspan(size_t offset, size_t n = ~size_t{}) {
+  constexpr auto subspan(size_t offset, size_t n = ~size_t{}) const {
     if (offset == _size) { return array_view{_ptr, 0}; }
     _verify_idx(offset);
 

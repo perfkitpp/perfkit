@@ -293,7 +293,7 @@ namespace ranges
 #define RANGES_DIAGNOSTIC_IGNORE(X)                                  \
     RANGES_DIAGNOSTIC_IGNORE_PRAGMAS                                 \
     RANGES_PRAGMA(GCC diagnostic ignored "-Wunknown-pragmas")        \
-    RANGES_PRAGMA(GCC diagnostic ignored "-Wunknown-warning-option") \
+    RANGES_PRAGMA(GCC diagnostic ignored "-Wunknown-warning-config") \
     RANGES_PRAGMA(GCC diagnostic ignored X)
 #define RANGES_DIAGNOSTIC_IGNORE_SHADOWING RANGES_DIAGNOSTIC_IGNORE("-Wshadow")
 #define RANGES_DIAGNOSTIC_IGNORE_INDENTATION \

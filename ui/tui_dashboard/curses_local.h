@@ -453,7 +453,7 @@ struct _win_st {
   attr_t _attrs; /* current attribute for non-space character */
   chtype _bkgd;  /* current background char/attribute pair */
 
-  /* option values set by user */
+  /* config values set by user */
   bool _notimeout;  /* no time out on function-key entry? */
   bool _clear;      /* consider all data in the window invalid? */
   bool _leaveok;    /* OK to not reset cursor on exit? */

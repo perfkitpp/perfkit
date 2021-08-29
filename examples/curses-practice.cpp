@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
         break;
     }
 
-    std::printf("hell, world!\n");
+    printf("hell, world!\n");
   }
 
   endwin(); /* End curses mode		  */
