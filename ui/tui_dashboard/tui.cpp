@@ -20,6 +20,7 @@
 
 namespace fs = std::filesystem;
 using namespace perfkit;
+using namespace std::literals;
 using namespace perfkit::detail;
 using namespace ranges;
 
@@ -33,12 +34,19 @@ using namespace ranges;
 PERFKIT_OPTION_DISPATCHER(OPTS);
 
 namespace {
-auto opt_project_name = option_factory(OPTS, NS_DASHBOARD "Project Name", "untitled").make();
-
+auto opt_project_name     = option_factory(OPTS, NS_DASHBOARD "Project Name", "untitled").make();
+auto opt_flush_interval   = option_factory(OPTS, NS_DASHBOARD "System|Log Flush Interval", 1.).make();
 auto opt_stdout_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Stdout", 1000).make();
 
-void suggest_file(std::string_view hint, std::set<std::string>& out) {
-  std::filesystem::path path{hint};
+void suggest_file(ui::args_view hint, std::set<std::string>& out) {
+  std::filesystem::path path{};
+  if (!hint.empty()) {
+    if (hint[0][0] == '~') {
+      path = std::string(getenv("HOME")).append(hint[0].substr(1));
+    } else {
+      path = hint[0];
+    }
+  }
   if (!exists(path) || !is_directory(path)) { path = path.parent_path(); }
   if (path.empty()) { path = "."; }
 
@@ -48,6 +56,10 @@ void suggest_file(std::string_view hint, std::set<std::string>& out) {
     std::string pathstr;
     if (it->path().is_absolute()) {
       pathstr = it->path().string();
+      if (pathstr.find(getenv("HOME")) == 0) {
+        std::string_view home = getenv("HOME");
+        pathstr               = "~" + pathstr.substr(home.size());
+      }
     } else {
       pathstr = it->path().relative_path().string();
       if (pathstr.find("./") == 0) { pathstr = pathstr.substr(2); }
@@ -130,6 +142,8 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
 
   spdlog::drop("PERFKIT");
   spdlog::register_logger(_log->clone("PERFKIT"));
+
+  spdlog::flush_every(1s);
 }
 
 void perfkit::detail::dashboard::_init_commands() {
@@ -140,10 +154,22 @@ void perfkit::detail::dashboard::_init_commands() {
         if (argv.size() == 0 && _confpath.empty()) { return spdlog::error("NO FILE TO SAVE"), false; }
         if (argv.size() > 1) { return _log->error("too many arguments."), false; }
 
-        if (argv.size() == 1) { _confpath.assign(argv[0]); }
+        std::filesystem::path path;
+        if (argv.size() == 0) {
+          ;
+        } else if (argv[0].at(0) == '~') {
+          path = std::string(getenv("HOME")).append(argv[0].substr(1));
+        } else {
+          path = argv[0];
+        }
 
-        export_options(_confpath);
-        return true;
+        if (argv.size() == 1 && export_options(path)) {
+          _confpath.assign(path);
+          return true;
+        } else {
+          return export_options(_confpath);
+        }
+        return false;
       },
       suggest_file);
 
@@ -152,7 +178,15 @@ void perfkit::detail::dashboard::_init_commands() {
         if (argv.size() == 0 && _confpath.empty()) { return spdlog::error("NO FILE TO LOAD"), false; }
         if (argv.size() > 1) { return _log->error("too many arguments."), false; }
 
-        std::filesystem::path path = argv[0];
+        std::filesystem::path path;
+        if (argv.size() == 0) {
+          ;
+        } else if (argv[0].at(0) == '~') {
+          path = std::string(getenv("HOME")).append(argv[0].substr(1));
+        } else {
+          path = argv[0];
+        }
+
         if (argv.size() == 1 && exists(path) && import_options(path)) {
           // update configuration path only when import succeeded.
           _confpath.assign(path);
@@ -175,7 +209,7 @@ void perfkit::detail::dashboard::_init_commands() {
               return true;
             }
 
-            if (argv.size() == 2 && argv[0] == "r") {
+            if (argv.size() == 2 && argv[0] == "-r") {
               std::string argval;
               if (sample.is_string()) {
                 argval.append("\"").append(argv[1]).append("\"");
@@ -199,12 +233,10 @@ void perfkit::detail::dashboard::_init_commands() {
               option_registry::request_update_value(std::string(ptr->full_key()), json);
               return true;
             }
+
+            return false;
           });
     }
-  }
-
-  for (size_t j = 0; j < 1000; ++j) {
-    commands()->add_subcommand(std::to_string(rand()));
   }
 
   commands()->add_subcommand("messenger", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
@@ -298,7 +330,25 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
   _draw_prompt(_context, keystroke);
 
   doupdate();
+
+  if (do_content_fetch) {
+    if (!_logflush_thread.valid()) {
+      if (_logflush_timer.elapsed() > 1.s * *opt_flush_interval) {
+        _logflush_thread = std::async(
+            [this] { fflush(_stdout_log.get()), fflush(_stderr_log.get()); });
+        _logflush_timer.reset();
+        _log->debug("buffer flush thread invoked.");
+      }
+    } else {
+      if (_logflush_thread.wait_for(0ms) == std::future_status::ready) {
+        _logflush_thread.get();
+        _log->debug("buffer flush thread done.");
+      }
+    }
+  }
+
   fflush(stdout);
+  fflush(stderr);
 }
 
 void dashboard::_draw_messages(_context_ty& context, const std::optional<int>& keystroke) {
@@ -387,7 +437,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
                    " " + _input + "  ",
                    COLS - 30);
         if (!commands()->invoke(tokens_view)) {
-          fmt::print("error: unkown command '{}'\n", _input);
+          fmt::print("error: invalid command '{}'\n", _input);
         }
         _history_cursor = 0;
 
@@ -466,11 +516,11 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
   }
 
   mvaddstr(LINES - 1, 0,
-           fmt::format("@ {:<{}}{:>{}}",
+           fmt::format("@ {:-<{}}{:*<{}}",
                        _confpath.empty() ? "<NO FILE OPENED>" : absolute(_confpath).c_str(),
-                       COLS - 2 - 40,
+                       COLS / 2 - 2,
                        opt_project_name.get(),
-                       COLS - 40)
+                       COLS / 2)
                .c_str());
 
   mvaddstr(LINES - 2, 0, "> ");
@@ -485,7 +535,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
 void perfkit::detail::dashboard::_print_aligned_candidates(
     const std::vector<std::string>& candidates) const {
   std::string   output;
-  constexpr int OFST = 10, GAP = 20;
+  constexpr int OFST = 20, GAP = 20;
   for (const auto& item : candidates) {
     if (output.size() == 0) {
       // first token of the line.
@@ -494,11 +544,11 @@ void perfkit::detail::dashboard::_print_aligned_candidates(
     } else {
       // set cell width as fixed value.
       bool go_newline = false;
-      int  x          = OFST;
+      int  x          = output.size();
       x += GAP - 1, x -= x % GAP;
       while (x < output.size() + 1) { x += GAP; };
 
-      if (x < COLS - OFST) {
+      if (x < COLS - 2 - OFST - item.size()) {
         while (output.size() < x) { output += ' '; }
         output += item;
       } else {

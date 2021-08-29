@@ -54,13 +54,13 @@ bool perfkit::import_options(std::filesystem::path srcpath) {
   return false;
 }
 
-void perfkit::export_options(std::filesystem::path dstpath) {
+bool perfkit::export_options(std::filesystem::path dstpath) {
   if (ui::g_ui) { ui::g_ui->on_export(dstpath); }
 
   std::ofstream dst{dstpath};
   if (!dst) {
     glog()->error("failed to open file {}", dstpath.string());
-    return;
+    return false;
   }
 
   nlohmann::json exported;
@@ -73,6 +73,8 @@ void perfkit::export_options(std::filesystem::path dstpath) {
 
   dst << exported.dump(4) << std::endl;
   glog()->info("configuration export to file [{}] is done.", dstpath.string());
+
+  return true;
 }
 
 std::shared_ptr<spdlog::logger> perfkit::glog() {

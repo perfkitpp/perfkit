@@ -1,11 +1,18 @@
 #include "perfkit/perfkit.h"
 #include "perfkit/ui.hpp"
+#include "range/v3/algorithm.hpp"
+#include "range/v3/range.hpp"
 #include "range/v3/view.hpp"
+#include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
+
 using namespace ranges;
 using namespace std::literals;
 
 static perfkit::tracer rootm{0, "RootMsg"};
+
+PERFKIT_OPTION_DISPATCHER(OPTS);
+static auto gg1 = perfkit::option_factory(OPTS, "MyOpt1", "hell, world!"s).make();
 
 int main(int argc, char** argv) {
   spdlog::info("startup");
@@ -20,6 +27,9 @@ int main(int argc, char** argv) {
 
   using clock = std::chrono::steady_clock;
   while (true) {
+    OPTS.apply_update_and_check_if_dirty();
+    gg1.queue_change_value("mvoae");
+
     auto next_awake = clock ::now() + 16ms;
     if (auto tm_single_loop = rootm.fork("Iteration"); true) {
       tm_single_loop.branch("sample data")   = 100;

@@ -13,7 +13,7 @@ namespace perfkit {
 std::shared_ptr<spdlog::logger> glog();
 
 bool import_options(std::filesystem::path src);
-void export_options(std::filesystem::path dst);
+bool export_options(std::filesystem::path dstpath);
 }  // namespace perfkit
 
 #define PERFKIT_OPTION_DISPATCHER(Name) static inline auto& Name = perfkit::option_registry::_create()

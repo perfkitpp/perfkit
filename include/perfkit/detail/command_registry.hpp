@@ -41,7 +41,7 @@ using handler_fn = std::function<bool(args_view full_tokens)>;
  * autocomplete list consist of available commands and aliases.
  */
 using autocomplete_suggest_fn = std::function<
-    void(std::string_view hint, std::set<std::string>& candidates)>;
+    void(args_view hint, std::set<std::string>& candidates)>;
 
 class command_registry {
  public:
@@ -98,7 +98,7 @@ class command_registry {
     std::string suggest(
         array_view<std::string_view> full_tokens,
         std::vector<std::string>&    out_candidates,
-        bool*                        out_has_exact_match = nullptr);
+        bool*                        out_has_unique_match = nullptr);
 
     /**
      * Invoke command with given arguments.

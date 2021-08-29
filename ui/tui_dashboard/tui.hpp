@@ -97,6 +97,9 @@ class dashboard : public perfkit::ui::if_ui {
 
   std::list<std::variant<uint64_t, std::string_view>> _watches;
 
+  std::future<void> _logflush_thread;
+  spdlog::stopwatch _logflush_timer;
+
   struct _context_ty {
     struct _transient {
       bool update_contents;

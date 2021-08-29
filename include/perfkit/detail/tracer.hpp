@@ -131,8 +131,8 @@ class tracer {
     proxy() noexcept {}
 
    private:
-    tracer*             _owner             = nullptr;
-    _entity_ty*           _ref               = nullptr;
+    tracer*                _owner             = nullptr;
+    _entity_ty*            _ref               = nullptr;
     clock_type::time_point _epoch_if_required = {};
   };
 
@@ -150,7 +150,7 @@ class tracer {
    private:
     friend class tracer;
     perfkit::spinlock* _mtx_access;
-    fetched_traces*  _data;
+    fetched_traces*    _data;
   };
 
  public:
@@ -206,14 +206,14 @@ class tracer {
   // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
   //    이 때 최신 시퀀스 넘버도 같이 받는다.
   std::map<std::size_t, _entity_ty> _table;
-  size_t                             _fence_active = 0;  // active sequence number of back buffer.
+  size_t                            _fence_active = 0;  // active sequence number of back buffer.
 
   int _order_active = 0;  // temporary variable for single iteration
 
-  mutable spinlock                              _sort_merge_lock;
+  mutable spinlock                          _sort_merge_lock;
   std::optional<std::promise<trace_result>> _msg_promise;
   std::shared_future<trace_result>          _msg_future;
-  fetched_traces                                _local_reused_memory;
+  fetched_traces                            _local_reused_memory;
 
   int                    _occurence_order;
   std::string_view const _name;

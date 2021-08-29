@@ -128,7 +128,7 @@ bool perfkit::ui::command_registry::node::alias(
 std::string perfkit::ui::command_registry::node::suggest(
     array_view<std::string_view> full_tokens,
     std::vector<std::string>&    out_candidates,
-    bool*                        out_has_exact_match) {
+    bool*                        out_has_unique_match) {
   std::set<std::string> user_candidates;
 
   if (full_tokens.empty()) {
@@ -136,20 +136,21 @@ std::string perfkit::ui::command_registry::node::suggest(
     out_candidates |= actions::push_back(_aliases | views::keys);
 
     if (_suggest) {
-      _suggest(full_tokens.empty() ? std::string_view{} : full_tokens[0], user_candidates);
+      _suggest(full_tokens, user_candidates);
       out_candidates |= actions::push_back(user_candidates);
     }
+
     return {};
   }
 
-  out_has_exact_match && (*out_has_exact_match = false);
+  out_has_unique_match && (*out_has_unique_match = false);
 
   auto  exec   = full_tokens[0];
   node* subcmd = {};
   if ((subcmd = find_subcommand(exec)) && _check_name_exist(exec)) {
     // Only when full name is configured ...
-    out_has_exact_match && (*out_has_exact_match = true);
-    return subcmd->suggest(full_tokens.subspan(1), out_candidates, out_has_exact_match);
+    out_has_unique_match && (*out_has_unique_match = false);
+    return subcmd->suggest(full_tokens.subspan(1), out_candidates, out_has_unique_match);
   }
 
   // find default suggestion list by rule.
@@ -168,7 +169,7 @@ std::string perfkit::ui::command_registry::node::suggest(
   filter_starts_with(_aliases | views::keys, exec);
 
   if (_suggest) {
-    _suggest(full_tokens.empty() ? std::string_view{} : full_tokens[0], user_candidates);
+    _suggest(full_tokens, user_candidates);
     filter_starts_with(user_candidates, exec);
   }
 
@@ -184,9 +185,9 @@ std::string perfkit::ui::command_registry::node::suggest(
       if (sharing.empty()) { break; }
     }
 
-    if (out_has_exact_match) {
-      auto it              = find(out_candidates, sharing);
-      *out_has_exact_match = it != out_candidates.end();
+    if (out_has_unique_match) {
+      auto it               = find(out_candidates, sharing);
+      *out_has_unique_match = false && it != out_candidates.end();
     }
     return std::string{sharing};
   }

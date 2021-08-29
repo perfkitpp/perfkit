@@ -263,7 +263,7 @@ class option {
   explicit   operator const Ty_&() const noexcept { return get(); }
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
-  void queue_change_value(Ty_ v) { _owner->queue_update_value(_opt->full_key(), std::move(v)); }
+  void queue_change_value(Ty_ v) { _owner->queue_update_value(std::string{_opt->full_key()}, std::move(v)); }
 
   auto& base() const { return *_opt; }
 
