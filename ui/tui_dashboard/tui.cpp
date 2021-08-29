@@ -97,59 +97,69 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
 
   // Now you can safely redirect logger.
   _log = spdlog::default_logger()->clone("dashboard");
+  spdlog::register_logger(_log);
   _log->set_pattern("[%I:%M:%S.%e:%n] %l: %v");
 }
 
 void perfkit::detail::dashboard::_init_commands() {
-  commands()->add_subcommand("q", [&](ui::args_view argv) -> bool { throw ui::sig_finish{}; });
+  commands()->add_subcommand("q", [this](ui::args_view argv) -> bool { throw ui::sig_finish{}; });
 
-  commands()->add_subcommand("w", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->add_subcommand("e", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("w", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("e", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
 
   commands()->add_subcommand("set");
   if (auto cmd_set = commands()->find_subcommand("set")) {
   }
 
-  commands()->add_subcommand("messenger", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->add_subcommand("get", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->add_subcommand("umai bong deasu", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("messenger", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("get", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("umai bong deasu", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
 
-  commands()->add_subcommand("loglevel", [&](ui::args_view argv) -> bool {
-    auto error = [this] {
-      _log->error("usage: loglevel <default_loglevel>");
-      _log->error("usage: loglevel <logger> <loglevel>");
-      return false;
-    };
+  commands()->add_subcommand(
+      "loglevel",
+      [this](ui::args_view argv) -> bool {
+        auto error = [this] {
+          _log->error("usage: loglevel <default_loglevel>");
+          _log->error("usage: loglevel <logger> <loglevel>");
+          return false;
+        };
 
-    if (argv.size() == 0) {
-      return error();
-    }
+        if (argv.size() == 0) {
+          return error();
+        }
 
-    int             level = 0;
-    spdlog::logger* logger;
-    if (argv.size() == 1) {
-      auto tok    = argv[0];
-      auto result = std::from_chars(tok.data(), tok.data() + tok.size(), level);
+        int             level = 0;
+        spdlog::logger* logger;
+        if (argv.size() == 1) {
+          auto tok    = argv[0];
+          auto result = std::from_chars(tok.data(), tok.data() + tok.size(), level);
 
-      if (result.ec == std::errc::invalid_argument) { return error(); }
-      logger = spdlog::default_logger_raw();
-    }
+          if (result.ec == std::errc::invalid_argument) { return error(); }
+          logger = spdlog::default_logger_raw();
+        }
 
-    if (argv.size() == 2) {
-      auto logger_name = argv[1];
+        if (argv.size() == 2) {
+          auto logger_name = argv[0];
 
-      logger = spdlog::get(std::string(logger_name)).get();
-      if (!logger) { return _log->error("logger {} not found.", logger_name), false; }
+          logger = spdlog::get(std::string(logger_name)).get();
+          if (!logger) { return _log->error("logger {} not found.", logger_name), false; }
 
-      auto tok    = argv[0];
-      auto result = std::from_chars(tok.data(), tok.data() + tok.size(), level);
+          auto tok    = argv[1];
+          auto result = std::from_chars(tok.data(), tok.data() + tok.size(), level);
 
-      if (result.ec == std::errc::invalid_argument) { return error(); }
-    }
+          if (result.ec == std::errc::invalid_argument) { return error(); }
+        }
 
-    logger->set_level(static_cast<spdlog::level::level_enum>(level));
-    return true;
-  });
+        auto orig_level = logger->level();
+        logger->set_level(static_cast<spdlog::level::level_enum>(level));
+        fmt::print("logger [{}] level: {} -> {}\n", logger->name(), orig_level, level);
+        return true;
+      },
+      [this](auto hint, auto& set) {
+        spdlog::apply_all([&](auto logger) {
+          set.insert(logger->name());
+        });
+      });
 }
 
 namespace {
@@ -250,6 +260,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
     static std::vector<std::string_view>    tokens_view;
     static std::vector<std::string>         candidates;
     std::string                             sharing;
+    bool                                    has_exact_match;
 
     auto suggest = [&]() {
       tokens.clear(), candidates.clear(), offsets.clear();
@@ -257,7 +268,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
       cmdutils::tokenize_by_argv_rule(_input, tokens, &offsets);
       tokens_view.assign(tokens.begin(), tokens.end());
 
-      sharing = commands()->suggest(tokens_view, candidates);
+      sharing = commands()->suggest(tokens_view, candidates, &has_exact_match);
       return &candidates;
     };
 
@@ -274,7 +285,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
 
         // suggest
         if (!commands()->invoke(tokens_view)) {
-          _log->error("command invcation failed");
+          _log->error("command invocation failed");
         }
         _history_cursor = 0;
 
@@ -313,9 +324,13 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
             to_replace.assign(sharing.begin(), sharing.end());
           }
           mvwaddnstr(pane, 0, offsets.back().first, to_replace.c_str(), to_replace.size());
-          wmove(pane, 0, offsets.back().first + std::max(to_replace.size(), offsets.back().second));
+          wmove(pane, 0,
+                offsets.back().first
+                    + std::max(to_replace.size(), offsets.back().second)
+                    + has_exact_match);
         } else if (sharing.size()) {
           // else, directly input shared portion
+          _log->debug("suggestion for empty statement inserted. {}", sharing);
           mvwaddnstr(pane, 0, 0, sharing.data(), sharing.size());
           wmove(pane, 0, sharing.size());
         }
@@ -332,7 +347,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
       wmove(pane, 0, getcurx(pane) + 1);
     }
 
-    _log->debug("keystroke: {} 0x{:08x} '{}'",
+    _log->trace("keystroke: {} 0x{:08x} '{}'",
                 kc | views::transform([](auto c) { return int(c); }),
                 ch, keyname(ch));
 

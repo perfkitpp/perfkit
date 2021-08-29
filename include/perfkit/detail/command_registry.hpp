@@ -97,7 +97,8 @@ class command_registry {
      */
     std::string suggest(
         array_view<std::string_view> full_tokens,
-        std::vector<std::string>&    out_candidates);
+        std::vector<std::string>&    out_candidates,
+        bool*                        out_has_exact_match = nullptr);
 
     /**
      * Invoke command with given arguments.
