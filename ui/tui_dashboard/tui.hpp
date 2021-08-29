@@ -82,6 +82,8 @@ class dashboard : public perfkit::ui::if_ui {
   fd_ptr               _pipe_stderr[2];
   circular_queue<char> _stdout_buf{65535};
 
+  std::filesystem::path _confpath = {};
+
   circular_queue<std::string> _history{256};
   int                         _history_cursor = 0;
 

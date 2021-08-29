@@ -205,7 +205,7 @@ bool perfkit::ui::command_registry::node::invoke(
 
   if (!_is_interface()) { return _invoke(full_tokens); }
 
-  glog()->error("command not found. all arguments: {}", full_tokens);
+  glog()->debug("command not found. all arguments: {}", full_tokens);
   return false;
 }
 

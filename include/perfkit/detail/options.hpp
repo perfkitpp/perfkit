@@ -71,7 +71,7 @@ class option_base {
   std::atomic_bool _latest_marshal_failed = false;
 
   std::atomic_size_t _fence_modification = 0;
-  size_t             _fence_serialized   = 0;
+  size_t             _fence_serialized   = ~size_t{};
   nlohmann::json     _cached_serialized;
 
   deserializer _deserialize;
@@ -236,7 +236,7 @@ class option {
         };
 
     detail::option_base::serializer fn_d = [this](nlohmann::json& out, const void* in) {
-      _owner->_access_lock(), out = *(Ty_*)in;
+      out = *(Ty_*)in;
     };
 
     // instantiate option instance

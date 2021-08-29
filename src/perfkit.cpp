@@ -64,13 +64,14 @@ void perfkit::export_options(std::filesystem::path dstpath) {
   }
 
   nlohmann::json exported;
-  auto           obj = exported["___OPTIONS___"];
+  auto&          obj = exported["___OPTIONS___"];
 
   for (auto const& [name, ptr] : option_registry::all()) {
     obj[std::string(name)] = ptr->serialize();
-    glog()->debug("EXPORTING: {} >>> {}", name, ptr->serialize());
+    glog()->debug("EXPORTING: {} >>> {}", name, ptr->serialize().dump());
   }
 
+  dst << exported.dump(4) << std::endl;
   glog()->info("configuration export to file [{}] is done.", dstpath.string());
 }
 

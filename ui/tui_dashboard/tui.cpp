@@ -36,6 +36,26 @@ namespace {
 auto opt_message_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Messages", 10).make();
 auto opt_options_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Options", 10).make();
 auto opt_stdout_pane_size  = option_factory(OPTS, NS_DASHBOARD "View|Stdout", 1000).make();
+
+void suggest_file(std::string_view hint, std::set<std::string>& out) {
+  std::filesystem::path path{hint};
+  if (!exists(path) || !is_directory(path)) { path = path.parent_path(); }
+  if (path.empty()) { path = "."; }
+
+  std::filesystem::directory_iterator it{path}, end{};
+
+  for (; it != end; ++it) {
+    std::string pathstr;
+    if (it->path().is_absolute()) {
+      pathstr = it->path().string();
+    } else {
+      pathstr = it->path().relative_path().string();
+      if (pathstr.find("./") == 0) { pathstr = pathstr.substr(2); }
+    }
+    out.insert(pathstr + (is_directory(it->path()) ? "/" : ""));
+  }
+}
+
 }  // namespace
 
 perfkit::detail::dashboard::dashboard(perfkit::array_view<std::string_view> args) {
@@ -115,11 +135,39 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
 void perfkit::detail::dashboard::_init_commands() {
   commands()->add_subcommand("q", [this](ui::args_view argv) -> bool { throw ui::sig_finish{}; });
 
-  commands()->add_subcommand("w", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->add_subcommand("e", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand(
+      "w", [this](ui::args_view argv) -> bool {
+        if (argv.size() == 0 && _confpath.empty()) { return spdlog::error("NO FILE TO SAVE"), false; }
+        if (argv.size() > 1) { return _log->error("too many arguments."), false; }
+
+        if (argv.size() == 1) { _confpath.assign(argv[0]); }
+
+        export_options(_confpath);
+        return true;
+      },
+      suggest_file);
+
+  commands()->add_subcommand(
+      "e", [this](ui::args_view argv) -> bool {
+        if (argv.size() == 0 && _confpath.empty()) { return spdlog::error("NO FILE TO LOAD"), false; }
+        if (argv.size() > 1) { return _log->error("too many arguments."), false; }
+
+        std::filesystem::path path = argv[0];
+        if (argv.size() == 1 && exists(path) && import_options(path)) {
+          // update configuration path only when import succeeded.
+          _confpath.assign(path);
+          return true;
+        } else {
+          return import_options(_confpath);
+        }
+      },
+      suggest_file);
 
   commands()->add_subcommand("set");
   if (auto cmd_set = commands()->find_subcommand("set")) {
+    for (auto& [name, ptr] : option_registry::all()) {
+      auto sample = ptr->serialize();
+    }
   }
 
   commands()->add_subcommand("messenger", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
@@ -296,7 +344,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
 
         // suggest
         if (!commands()->invoke(tokens_view)) {
-          _log->error("command invocation failed");
+          fmt::print("error: unkown command '{}'", _input);
         }
         _history_cursor = 0;
 
@@ -373,6 +421,12 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
       wmove(pane, y, x);
     }
   }
+
+  mvaddstr(LINES - 1, 0,
+           fmt::format("{:<{}}",
+                       _confpath.empty() ? "<NO FILE OPENED>" : absolute(_confpath).c_str(),
+                       COLS)
+               .c_str());
 
   mvaddstr(LINES - 2, 0, "# ");
   ::move(LINES - 2, getcurx(pane) + 2);
