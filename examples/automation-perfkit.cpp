@@ -56,10 +56,10 @@ TEST_CASE("Create Message Blocks") {
 TEST_CASE("Tokenize") {
   std::vector<std::string> tokens;
   perfkit::cmdutils::tokenize_by_argv_rule(
-      "  alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over", tokens);
+      "a alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over", tokens, nullptr);
 
   std::vector<std::string> compared(
-      {"alpha", "veta", "and there will \\\"be\\\' light", "mo\\'ve space over"});
+      {"a", "alpha", "veta", "and there will \\\"be\\\' light", "mo\\'ve space over"});
 
   for (auto it : zip(tokens, compared)) {
     auto& gen = it.first;

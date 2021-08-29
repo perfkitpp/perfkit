@@ -10,6 +10,19 @@ namespace perfkit::ui {
 using namespace std::literals;
 using namespace std::chrono;
 
+/**
+ * list of signals
+ */
+struct signal : std::exception {
+  signal() = default;
+};
+
+//! thrown when program should exit.
+struct sig_finish : signal {};
+
+/**
+ * list of supported backends
+ */
 enum class basic_backend {
   tui_dashboard,    // dashboard-style TUI interface.
   tui_interactive,  // IMGUI-style interactive

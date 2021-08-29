@@ -9,10 +9,10 @@
 #include "curses_local.h"
 #include "perfkit/perfkit.h"
 #include "perfkit/ui.hpp"
+#include "spdlog/fwd.h"
 #include "ui-tools.hpp"
 
 namespace perfkit::detail {
-
 /**
  * Defines set of releaser functions for created windows.
  */
@@ -69,6 +69,9 @@ class dashboard : public perfkit::ui::if_ui {
   void _output(std::string_view str);
 
  private:
+ private:
+  std::shared_ptr<spdlog::logger> _log;
+
   window_ptr           _option_pane;
   window_ptr           _message_pane;
   window_ptr           _stdout_pane;
@@ -82,9 +85,23 @@ class dashboard : public perfkit::ui::if_ui {
   file_ptr             _stderr_log;
   fd_ptr               _pipe_stdout[2];
   fd_ptr               _pipe_stderr[2];
-  circular_queue<char> _stdout_buf{5000};
-  
+  circular_queue<char> _stdout_buf{65535};
+
   std::string         _input;
   std::pair<int, int> prev_line_col = {};
+
+  struct _context_ty {
+    struct _transient {
+      bool window_resized;
+      int  cur_h;
+    } transient;
+
+  } _context;
+
+  void        _draw_prompt(_context_ty& context, const std::optional<int>& keystroke);
+  void        _draw_stdout(_context_ty& context);
+  void        _init_commands();
+  void        _redirect_stdout(const array_view<std::string_view>& args);
+  void        _print_aligned_candidates(std::vector<std::string_view>& candidates) const;
 };
 }  // namespace perfkit::detail

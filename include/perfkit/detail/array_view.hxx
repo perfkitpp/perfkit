@@ -2,6 +2,7 @@
 // Created by Seungwoo on 2021-08-26.
 //
 #pragma once
+#include <cassert>
 #include <cstddef>
 #include <type_traits>
 
@@ -18,48 +19,54 @@ class array_view {
  public:
   constexpr array_view() noexcept = default;
   constexpr array_view(Ty_* p, size_t n) noexcept
-      : _ptr(p), _n(n) {}
+      : _ptr(p), _size(n) {}
 
   template <typename Range_>
   constexpr array_view(Range_&& p) noexcept
       : array_view(p.data(), p.size()) {}
 
-  constexpr auto size() const noexcept { return _n; }
+  constexpr auto size() const noexcept { return _size; }
   constexpr auto data() const noexcept { return _ptr; }
   constexpr auto data() noexcept { return _ptr; }
 
   constexpr auto begin() noexcept { return _ptr; }
   constexpr auto begin() const noexcept { return _ptr; }
-  constexpr auto end() noexcept { return _ptr + _n; }
-  constexpr auto end() const noexcept { return _ptr + _n; }
+  constexpr auto end() noexcept { return _ptr + _size; }
+  constexpr auto end() const noexcept { return _ptr + _size; }
 
   constexpr auto empty() const noexcept { return size() == 0; }
 
-  constexpr auto& operator[](size_t idx) noexcept {
+  constexpr auto span(size_t offset, size_t n = ~size_t{}) {
+    _verify_idx(offset);
+
+    return array_view{_ptr + offset, std::min(n, _size - n)};
+  }
+
+  constexpr auto& operator[](size_t idx) {
 #ifndef NDEBUG
     _verify_idx(idx);
 #endif
     return _ptr[idx];
   };
 
-  constexpr auto& operator[](size_t idx) const noexcept {
+  constexpr auto& operator[](size_t idx) const {
 #ifndef NDEBUG
     _verify_idx(idx);
 #endif
     return _ptr[idx];
   };
 
-  constexpr auto& at(size_t idx) noexcept { return _verify_idx(idx), _ptr[idx]; }
-  constexpr auto& at(size_t idx) const noexcept { return _verify_idx(idx), _ptr[idx]; }
+  constexpr auto& at(size_t idx) { return _verify_idx(idx), _ptr[idx]; }
+  constexpr auto& at(size_t idx) const { return _verify_idx(idx), _ptr[idx]; }
 
  private:
-  constexpr void _verify_idx(size_t idx) {
-    if (idx >= _n) { throw std::out_of_range{""}; }
+  constexpr void _verify_idx(size_t idx) const {
+    if (idx >= _size) { throw std::out_of_range{"bad index"}; }
   }
 
  private:
   Ty_*   _ptr;
-  size_t _n;
+  size_t _size;
 };
 
 }  // namespace KANGSW_ARRAY_VIEW_NAMESPACE

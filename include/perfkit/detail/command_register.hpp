@@ -9,13 +9,17 @@
 #include "perfkit/detail/array_view.hxx"
 
 namespace perfkit::cmdutils {
+using stroffset = std::pair<ptrdiff_t, size_t>;
+
 /**
  * Tokenize given string with os argc-argv rule.
  *
  * @param src
  * @param tokens
  */
-void tokenize_by_argv_rule(std::string_view src, std::vector<std::string>& tokens);
+void tokenize_by_argv_rule(std::string_view          src,
+                           std::vector<std::string>& tokens,
+                           std::vector<stroffset>*   token_indexes = nullptr);
 
 };  // namespace perfkit::cmdutils
 
@@ -26,8 +30,7 @@ namespace perfkit::ui {
  */
 using handler_fn = std::function<bool(
     array_view<std::string_view> full_tokens,
-    size_t                       this_command,
-    std::string_view             arguments_string)>;
+    size_t                       this_command)>;
 
 /**
  * When this handler is called, out_candidates parameter will hold initial
@@ -54,7 +57,7 @@ class command_register {
     perfkit::ui::command_register::node* subcommand(
         std::string_view        cmd,
         handler_fn              handler,
-        autocomplete_suggest_fn suggest);
+        autocomplete_suggest_fn suggest = {});
 
     /**
      * Find subcommand of current node.
@@ -87,8 +90,10 @@ class command_register {
      * @param full_tokens
      * @param current_command
      * @param out_candidates
+     *
+     * @return Common parts of given suggestions, which is used to smart autocomplete
      */
-    void suggest(
+    std::string_view suggest(
         array_view<std::string_view>   full_tokens,
         size_t                         current_command,
         std::vector<std::string_view>& out_candidates);
@@ -102,8 +107,7 @@ class command_register {
      */
     bool invoke(
         array_view<std::string_view> full_tokens,
-        size_t                       this_command,
-        std::string_view             arguments_string);
+        size_t                       this_command);
 
    private:
     bool _check_name_exist(std::string_view) const noexcept;

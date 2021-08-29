@@ -3,8 +3,11 @@
 //
 #include "perfkit/detail/command_register.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <cassert>
+#include <range/v3/action/push_back.hpp>
 #include <range/v3/algorithm.hpp>
 #include <range/v3/range.hpp>
 #include <range/v3/view.hpp>
@@ -16,7 +19,7 @@ namespace {
 }
 
 static bool is_valid_cmd_token(std::string_view tkn) {
-  return std::regex_match(tkn.begin(), tkn.end(), std::regex{R"RG(\w+)RG"});
+  return std::regex_match(tkn.begin(), tkn.end(), std::regex{R"RG([\w-]+)RG"});
 }
 
 perfkit::ui::command_register::node* perfkit::ui::command_register::node::subcommand(
@@ -25,7 +28,12 @@ perfkit::ui::command_register::node* perfkit::ui::command_register::node::subcom
     autocomplete_suggest_fn suggest) {
   assert(handler);
 
-  if (_check_name_exist(cmd) || !is_valid_cmd_token(cmd)) {
+  if (_check_name_exist(cmd)) {
+    spdlog::error("command name [{}] already exists as command or token.");
+    return nullptr;
+  }
+  if (!is_valid_cmd_token(cmd)) {
+    spdlog::error("invalid command name [{}]. should be expression of \\[\\w-]\\)");
     return nullptr;
   }
 
@@ -80,45 +88,72 @@ bool perfkit::ui::command_register::node::erase_subcommand(std::string_view cmd_
 
 bool perfkit::ui::command_register::node::alias(
     std::string_view cmd, std::string alias) {
-  if (_check_name_exist(alias)) { return false; }
-  if (auto it = _subcommands.find(cmd); it == _subcommands.end()) { return false; }
+  if (_check_name_exist(alias)) {
+    spdlog::error("alias name [{}] already exists as command or token.");
+    return false;
+  }
+
+  if (auto it = _subcommands.find(cmd); it == _subcommands.end()) {
+    spdlog::error("target command [{}] does not exist.");
+    return false;
+  }
 
   _aliases.try_emplace(alias, cmd);
   return true;
 }
 
-void perfkit::ui::command_register::node::suggest(
+std::string_view perfkit::ui::command_register::node::suggest(
     array_view<std::string_view>   full_tokens,
     size_t                         current_command,
     std::vector<std::string_view>& out_candidates) {
-  assert(current_command < full_tokens.size());
-  auto string = full_tokens[current_command];
+  if (current_command == ~size_t{}) {
+    out_candidates |= actions::push_back(_subcommands | views::keys);
+    out_candidates |= actions::push_back(_aliases | views::keys);
+  } else {
+    auto string = full_tokens[current_command];
 
-  // find default suggestion list by rule.
-  //
-  // note: maps are already sorted, thus one don't need to iterate all elements, but
-  // simply find lower bound then iterate until meet one doesn't start with compared.
-  auto filter_starts_with = [&](auto& str_key_map, auto& compare) {
-    auto keys = str_key_map | views::keys;
-    for (auto it = lower_bound(keys, compare);
-         it != keys.end() && it->rfind(compare) == 0;
-         ++it) {
-      out_candidates.push_back(*it);
-    }
-  };
+    // find default suggestion list by rule.
+    //
+    // note: maps are already sorted, thus one don't need to iterate all elements, but
+    // simply find lower bound then iterate until meet one doesn't start with compared.
+    auto filter_starts_with = [&](auto& str_key_map, auto& compare) {
+      auto keys = str_key_map | views::keys;
+      for (auto it = lower_bound(keys, compare);
+           it != keys.end() && it->find(compare) == 0;
+           ++it) {
+        out_candidates.push_back(*it);
+      }
+    };
 
-  filter_starts_with(_subcommands, string);
-  filter_starts_with(_aliases, string);
+    filter_starts_with(_subcommands, string);
+    filter_starts_with(_aliases, string);
+  }
 
   if (_suggest) {
     _suggest(full_tokens, current_command, out_candidates);
   }
+
+  if (out_candidates.empty() == false) {
+    auto sharing = out_candidates.front();
+
+    for (auto candidate : out_candidates | views::tail) {
+      // look for initial occlusion of two string
+      size_t j = 0;
+      for (; j < std::min(sharing.size(), candidate.size()) && sharing[j] == candidate[j]; ++j) {}
+
+      sharing = sharing.substr(0, j);
+      if (sharing.empty()) { break; }
+    }
+
+    return sharing;
+  }
+
+  return {};
 }
 
 bool perfkit::ui::command_register::node::invoke(
     perfkit::array_view<std::string_view> full_tokens,
-    size_t                                this_command,
-    std::string_view                      arguments_string) {
+    size_t                                this_command) {
   if (this_command + 1 < full_tokens.size()) {
     auto maybe_subcmd = full_tokens[this_command + 1];
     if (_check_name_exist(maybe_subcmd)) {
@@ -130,14 +165,18 @@ bool perfkit::ui::command_register::node::invoke(
         cmd = it_alias->second;
       }
       auto subcmd = &_subcommands.find(cmd)->second;
-      return subcmd->invoke(full_tokens, this_command, arguments_string);
+
+      return subcmd->invoke(full_tokens, this_command + 1);
     }
   }
 
-  return _invoke(full_tokens, this_command, arguments_string);
+  return _invoke(full_tokens, this_command);
 }
 
-void perfkit::cmdutils::tokenize_by_argv_rule(std::string_view src, std::vector<std::string>& tokens) {
+void perfkit::cmdutils::tokenize_by_argv_rule(
+    std::string_view                           src,
+    std::vector<std::string>&                  tokens,
+    std::vector<std::pair<ptrdiff_t, size_t>>* token_indexes) {
   const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|((?:[^\s\\]|\\.)+)))RG"};
   std::cregex_iterator    iter{src.begin(), src.end(), rg_argv_token};
   std::cregex_iterator    iter_end{};
@@ -146,12 +185,20 @@ void perfkit::cmdutils::tokenize_by_argv_rule(std::string_view src, std::vector<
     auto& match = *iter;
     if (!match.ready()) { continue; }
 
+    size_t n = 0, position, length;
     if (match[1].matched) {
-      tokens.push_back(std::string(src.substr(match.position(1), match.length(1))));
+      n = 1;
     } else if (match[2].matched) {
-      tokens.push_back(std::string(src.substr(match.position(2), match.length(2))));
+      n = 2;
     } else {
       throw;
+    }
+
+    position = match.position(n), length = match.length(n);
+    tokens.push_back(std::string(src.substr(position, length)));
+
+    if (token_indexes) {
+      token_indexes->emplace_back(position, length);
     }
 
     // correct escapes
