@@ -142,8 +142,6 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
 
   spdlog::drop("PERFKIT");
   spdlog::register_logger(_log->clone("PERFKIT"));
-
-  spdlog::flush_every(1s);
 }
 
 void perfkit::detail::dashboard::_init_commands() {
