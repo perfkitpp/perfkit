@@ -10,6 +10,7 @@
 #include "perfkit/perfkit.h"
 #include "perfkit/ui.hpp"
 #include "spdlog/fwd.h"
+#include "spdlog/stopwatch.h"
 #include "ui-tools.hpp"
 
 namespace perfkit::detail {
@@ -82,6 +83,10 @@ class dashboard : public perfkit::ui::if_ui {
   fd_ptr               _pipe_stderr[2];
   circular_queue<char> _stdout_buf{65535};
 
+  using _clock = std::chrono::steady_clock;
+  spdlog::stopwatch _epoch;
+  size_t            n_command = 0;
+
   std::filesystem::path _confpath = {};
 
   circular_queue<std::string> _history{256};
@@ -89,6 +94,8 @@ class dashboard : public perfkit::ui::if_ui {
 
   std::string         _input;
   std::pair<int, int> prev_line_col = {};
+
+  std::list<std::variant<uint64_t, std::string_view>> _watches;
 
   struct _context_ty {
     struct _transient {

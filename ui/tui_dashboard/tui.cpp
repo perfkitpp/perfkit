@@ -33,9 +33,9 @@ using namespace ranges;
 PERFKIT_OPTION_DISPATCHER(OPTS);
 
 namespace {
-auto opt_message_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Messages", 10).make();
-auto opt_options_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Options", 10).make();
-auto opt_stdout_pane_size  = option_factory(OPTS, NS_DASHBOARD "View|Stdout", 1000).make();
+auto opt_project_name = option_factory(OPTS, NS_DASHBOARD "Project Name", "untitled").make();
+
+auto opt_stdout_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Stdout", 1000).make();
 
 void suggest_file(std::string_view hint, std::set<std::string>& out) {
   std::filesystem::path path{hint};
@@ -163,11 +163,48 @@ void perfkit::detail::dashboard::_init_commands() {
       },
       suggest_file);
 
-  commands()->add_subcommand("set");
-  if (auto cmd_set = commands()->find_subcommand("set")) {
-    for (auto& [name, ptr] : option_registry::all()) {
+  if (auto cmd_set = commands()->add_subcommand("config")) {
+    for (auto [name, ptr] : option_registry::all()) {
       auto sample = ptr->serialize();
+
+      cmd_set->add_subcommand(
+          ptr->display_key(),
+          [this, ptr, sample](ui::args_view argv) -> bool {
+            if (argv.empty()) {
+              fmt::print("\"{}\": {}\n", ptr->display_key(), ptr->serialize().dump(4, ' '));
+              return true;
+            }
+
+            if (argv.size() == 2 && argv[0] == "r") {
+              std::string argval;
+              if (sample.is_string()) {
+                argval.append("\"").append(argv[1]).append("\"");
+              } else {
+                argval.append(argv[1]);
+              }
+
+              auto json = nlohmann::json ::parse(argval, nullptr, false);
+
+              if (json.is_discarded()) {
+                _log->error("invalid json syntax.");
+                return false;
+              }
+
+              if (!!strcmp(json.type_name(), sample.type_name())) {
+                _log->error("type mismatch - given: '{}', should be: '{}'",
+                            json.type_name(), sample.type_name());
+                return false;
+              }
+
+              option_registry::request_update_value(std::string(ptr->full_key()), json);
+              return true;
+            }
+          });
     }
+  }
+
+  for (size_t j = 0; j < 1000; ++j) {
+    commands()->add_subcommand(std::to_string(rand()));
   }
 
   commands()->add_subcommand("messenger", [this](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
@@ -265,7 +302,8 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
 }
 
 void dashboard::_draw_messages(_context_ty& context, const std::optional<int>& keystroke) {
-  bool  content_dirty = _layout(context, _message_pane, *opt_message_pane_size, " MESSAGES ");
+  if (_watches.size() == 0) { return; }
+  bool  content_dirty = _layout(context, _message_pane, _watches.size(), " WATCHES ");
   auto& tr            = context.transient;
 }
 
@@ -343,8 +381,13 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
         tokens_view.assign(tokens.begin(), tokens.end());
 
         // suggest
+        fmt::print("{:->25}{:-<{}}\n\n",
+                   fmt::format("< ({:0>5}) {:>11.3f}s >",
+                               ++n_command, _epoch.elapsed().count()),
+                   " " + _input + "  ",
+                   COLS - 30);
         if (!commands()->invoke(tokens_view)) {
-          fmt::print("error: unkown command '{}'", _input);
+          fmt::print("error: unkown command '{}'\n", _input);
         }
         _history_cursor = 0;
 
@@ -397,7 +440,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
         if (candidates.size() > 1) {
           // has more than 1 arguments ...
           // print all candidates as aligned
-          fmt::print("  # {:-<{}}", _input += ' ', COLS - 6);
+          fmt::print("  > {:=<{}}", _input += ' ', COLS - 9);
           _print_aligned_candidates(candidates);
         }
       }
@@ -423,12 +466,14 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
   }
 
   mvaddstr(LINES - 1, 0,
-           fmt::format("{:<{}}",
+           fmt::format("@ {:<{}}{:>{}}",
                        _confpath.empty() ? "<NO FILE OPENED>" : absolute(_confpath).c_str(),
-                       COLS)
+                       COLS - 2 - 40,
+                       opt_project_name.get(),
+                       COLS - 40)
                .c_str());
 
-  mvaddstr(LINES - 2, 0, "# ");
+  mvaddstr(LINES - 2, 0, "> ");
   ::move(LINES - 2, getcurx(pane) + 2);
 
   pnoutrefresh(pane, 0, 0, LINES - 2, 2, LINES - 2, COLS - 3);
@@ -439,25 +484,28 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
 
 void perfkit::detail::dashboard::_print_aligned_candidates(
     const std::vector<std::string>& candidates) const {
-  std::string output;
+  std::string   output;
+  constexpr int OFST = 10, GAP = 20;
   for (const auto& item : candidates) {
     if (output.size() == 0) {
       // first token of the line.
+      output.append(OFST, ' ');
       output += item;
     } else {
       // set cell width as fixed value.
       bool go_newline = false;
-      int  x          = output.size();
-      x += 19, x -= x % 20;
-      while (x < output.size() + 1) { x += 20; };
+      int  x          = OFST;
+      x += GAP - 1, x -= x % GAP;
+      while (x < output.size() + 1) { x += GAP; };
 
-      if (x < COLS - 20) {
+      if (x < COLS - OFST) {
         while (output.size() < x) { output += ' '; }
         output += item;
       } else {
         puts(output.c_str());
 
         output.clear();
+        output.append(OFST, ' ');
         output += item;
       }
     }

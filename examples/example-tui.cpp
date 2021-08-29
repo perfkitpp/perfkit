@@ -10,7 +10,7 @@ static perfkit::messenger rootm{0, "RootMsg"};
 int main(int argc, char** argv) {
   spdlog::info("startup");
   printf("press enter to start");
-  getchar();
+  std::this_thread::sleep_for(0.5s);
 
   auto args = views::ints(0, argc)
               | views::transform([argv](size_t n) { return std::string_view{argv[n]}; })

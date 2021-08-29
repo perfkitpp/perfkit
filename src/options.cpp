@@ -1,16 +1,18 @@
 //
 // Created by Seungwoo on 2021-08-25.
 //
-#include <spdlog/spdlog.h>
+#include "perfkit/detail/options.hpp"
 
 #include <cassert>
-#include <perfkit/detail/options.hpp>
 #include <regex>
+
+#include "perfkit/perfkit.h"
+#include "spdlog/spdlog.h"
 
 perfkit::option_registry& perfkit::option_registry::_create() noexcept {
   static container _all;
   auto&            rg = *_all.emplace_back(std::make_unique<perfkit::option_registry>());
-  spdlog::info("Creating new option registry {}", (void*)&rg);
+  glog()->info("Creating new option registry {}", (void*)&rg);
   return rg;
 }
 
@@ -26,8 +28,13 @@ bool perfkit::option_registry::apply_update_and_check_if_dirty() {
     update = std::move(_pending_updates);
     _pending_updates.clear();
 
-    for (auto& pair : update) {
-      _opts.find(pair.first)->second->_try_deserialize(pair.second);
+    for (auto& [name, json] : update) {
+      auto [key, opt] = *_opts.find(name);
+      auto r_desrl    = opt->_try_deserialize(json);
+
+      if (!r_desrl) {
+        glog()->error("parse failed: '{}' <- {}", opt->display_key(), json.dump());
+      }
     }
   }
 
@@ -52,7 +59,7 @@ void perfkit::option_registry::_put(std::shared_ptr<detail::option_base> o) {
   _opts.try_emplace(o->full_key(), o);
   all().try_emplace(o->full_key(), o);
 
-  spdlog::info("({:04}) declaring new option ... [{}] -> [{}]",
+  glog()->info("({:04}) declaring new option ... [{}] -> [{}]",
                all().size(), o->display_key(), o->full_key());
 }
 
