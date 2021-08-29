@@ -30,9 +30,9 @@ using namespace ranges;
 PERFKIT_OPTION_DISPATCHER(OPTS);
 
 namespace {
-auto opt_message_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Messages", 20).make();
-auto opt_options_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Options", 20).make();
-auto opt_stdout_pane_size  = option_factory(OPTS, NS_DASHBOARD "View|Stdout", 40).make();
+auto opt_message_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Messages", 10).make();
+auto opt_options_pane_size = option_factory(OPTS, NS_DASHBOARD "View|Options", 10).make();
+auto opt_stdout_pane_size  = option_factory(OPTS, NS_DASHBOARD "View|Stdout", 1000).make();
 }  // namespace
 
 perfkit::detail::dashboard::dashboard(perfkit::array_view<std::string_view> args) {
@@ -99,19 +99,14 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
 }
 
 void perfkit::detail::dashboard::_init_commands() {
-  commands()->subcommand("q", [](array_view<std::string_view> T, size_t C) { return true; });
+  commands()->subcommand("q", [&](array_view<std::string_view> argv) -> bool { throw ui::sig_finish{}; });
 
-  commands()->subcommand("w", [](array_view<std::string_view> T, size_t C) { return true; });
-  commands()->subcommand("e", [](array_view<std::string_view> T, size_t C) { return true; });
+  commands()->subcommand("w", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->subcommand("e", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
 
-  commands()->subcommand("alias", [](array_view<std::string_view> T, size_t C) { return true; });
-
-  commands()->subcommand("monitor", [](array_view<std::string_view> T, size_t C) { return true; });
-
-  commands()->subcommand("config", [](array_view<std::string_view> T, size_t C) { return true; });
-
-  commands()->subcommand("dashboard-components", [](array_view<std::string_view> T, size_t C) { return true; });
-  commands()->subcommand("dashboard-height", [](array_view<std::string_view> T, size_t C) { return true; });
+  commands()->subcommand("set", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->subcommand("messenger", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->subcommand("get", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
 }
 
 namespace {
@@ -120,7 +115,8 @@ bool key_ctrl(int x) { return !!(x & 0x1f); }
 
 void perfkit::detail::dashboard::poll(bool do_content_fetch) {
   OPTS.apply_update_and_check_if_dirty();
-  _context.transient = {};
+  _context.transient                 = {};
+  _context.transient.update_contents = do_content_fetch;
 
   // poll for input
   // to consume focus, reset keystroke.
@@ -139,6 +135,8 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
 
   // -------------------- FETCHED CONTENT VIEW -----------------------------------------------------
   // if content fetch, do render option view & debug view
+  _draw_messages(_context, keystroke);
+  _draw_options(_context, keystroke);
 
   // -------------------- RENDER STDOUT(LOG) & OUTPUT WINDOW ---------------------------------------
   // render stdout window
@@ -148,14 +146,18 @@ void perfkit::detail::dashboard::poll(bool do_content_fetch) {
 
   // -------------------- RENDER AND HANDLE PROMPT WINDOW ------------------------------------------
   // render command prompt
-  mvhline(LINES - 2, 0, 0, COLS);
   _draw_prompt(_context, keystroke);
 
   doupdate();
   fflush(stdout);
 }
 
-void dashboard::_draw_messages(dashboard::_context_ty& context, const std::optional<int>& keystroke) {
+void dashboard::_draw_messages(_context_ty& context, const std::optional<int>& keystroke) {
+  bool  content_dirty = _layout(context, _message_pane, *opt_message_pane_size, " MESSAGES ");
+  auto& tr            = context.transient;
+}
+
+void dashboard::_draw_options(_context_ty& context, const std::optional<int>& keystroke) {
 }
 
 void perfkit::detail::dashboard::_draw_stdout(_context_ty& context) {
@@ -194,9 +196,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
   if (buflen.check_dirty_and_consume()) { _input_pane.reset(newpad(1, *buflen)); }
   auto pane = _input_pane.get();
 
-  if (*keystroke == KEY_BACKSPACE) {
-    mvwdelch(pane, getcury(pane), getcurx(pane) - 1);
-  } else if (keystroke) {
+  if (keystroke) {
     // - check special characters
     //   - functional characters, escape, ctrl + key, etc ...
     auto ch = *keystroke;
@@ -219,17 +219,25 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
     };
 
     if (ch == '\n') {
+      if (!_input.empty()) {
+        // tokenize
+        tokens.clear(), offsets.clear();
+        cmdutils::tokenize_by_argv_rule(_input, tokens, &offsets);
+        tokens_view.assign(tokens.begin(), tokens.end());
+
+        // suggest
+        commands()->invoke(tokens_view);
+      }
       werase(pane);
+    } else if (ch == KEY_BACKSPACE) {
+      mvwdelch(pane, getcury(pane), getcurx(pane) - 1);
     } else if (ch == KEY_LEFT) {
       wmove(pane, 0, getcurx(pane) - 1);
     } else if (ch == KEY_RIGHT) {
       wmove(pane, 0, std::min<int>(_input.size(), getcurx(pane) + 1));
     } else if (ch == '\t') {
-      fmt::print("# {}\n", _input);
       if (auto& candidates = *suggest(); candidates.empty() == false) {
         if (!offsets.empty()) {
-          fmt::print("{}\n", offsets);
-
           // print sharing portion, if user has any input.
           bool        wrap_with_quotes = (sharing.find_first_of(" \t") != sharing.npos);
           std::string to_replace;
@@ -248,6 +256,7 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
         if (candidates.size() > 1) {
           // has more than 1 arguments ...
           // print all candidates as aligned
+          fmt::print("  # {:-<{}}", _input, COLS - 6);
           _print_aligned_candidates(candidates);
         }
       }
@@ -256,9 +265,9 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
       wmove(pane, 0, getcurx(pane) + 1);
     }
 
-    _log->info("keystroke: {} 0x{:08x} '{}'",
-               kc | views::transform([](auto c) { return int(c); }),
-               ch, keyname(ch));
+    _log->debug("keystroke: {} 0x{:08x} '{}'",
+                kc | views::transform([](auto c) { return int(c); }),
+                ch, keyname(ch));
 
     {  // Refresh input buffer every keystroke
       int x, y;
@@ -272,9 +281,13 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
     }
   }
 
-  mvaddstr(LINES - 1, 0, "# ");
-  ::move(LINES - 1, getcurx(pane) + 2);
-  pnoutrefresh(pane, 0, 0, LINES - 1, 2, LINES - 1, COLS - 3);
+  mvaddstr(LINES - 2, 0, "# ");
+  ::move(LINES - 2, getcurx(pane) + 2);
+
+  pnoutrefresh(pane, 0, 0, LINES - 2, 2, LINES - 2, COLS - 3);
+
+  // TODO:
+  // draw status bar.
 }
 
 void perfkit::detail::dashboard::_print_aligned_candidates(

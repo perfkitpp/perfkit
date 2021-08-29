@@ -193,7 +193,7 @@ namespace ranges
             static_assert(Count >= 0, "Count of elements to extract cannot be negative.");
             static_assert(
                 N == dynamic_extent || Count <= N,
-                "Count of elements to extract must be less than the static span extent.");
+                "Count of elements to extract must be less than the static subspan extent.");
             return RANGES_EXPECT(Count <= size()),
                    RANGES_EXPECT(Count == 0 || data_ != nullptr),
                    span<T, Count>{data_, Count};
@@ -210,7 +210,7 @@ namespace ranges
             static_assert(Count >= 0, "Count of elements to extract cannot be negative.");
             static_assert(
                 N == dynamic_extent || Count <= N,
-                "Count of elements to extract must be less than the static span extent.");
+                "Count of elements to extract must be less than the static subspan extent.");
             return RANGES_EXPECT(Count <= size()),
                    RANGES_EXPECT((Count == 0 && size() == 0) || data_ != nullptr),
                    span<T, Count>{data_ + size() - Count, Count};
@@ -233,7 +233,7 @@ namespace ranges
             static_assert(
                 N == dynamic_extent ||
                     N >= Offset + (Count == dynamic_extent ? 0 : Count),
-                "Sequence of elements to extract must be within the static span extent.");
+                "Sequence of elements to extract must be within the static subspan extent.");
             return RANGES_EXPECT(size() >=
                                  Offset + (Count == dynamic_extent ? 0 : Count)),
                    RANGES_EXPECT((Offset == 0 && Count <= 0) || data_ != nullptr),
@@ -248,7 +248,7 @@ namespace ranges
                           "Offset of first element to extract cannot be negative.");
             static_assert(N == dynamic_extent || N >= Offset,
                           "Offset of first element to extract must be within the static "
-                          "span extent.");
+                          "subspan extent.");
             return RANGES_EXPECT(size() >= Offset),
                    RANGES_EXPECT((Offset == 0 && size() == 0) || data_ != nullptr),
                    span < T,

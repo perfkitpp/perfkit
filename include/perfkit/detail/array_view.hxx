@@ -36,10 +36,10 @@ class array_view {
 
   constexpr auto empty() const noexcept { return size() == 0; }
 
-  constexpr auto span(size_t offset, size_t n = ~size_t{}) {
-    _verify_idx(offset);
+  constexpr auto subspan(size_t offset, size_t n = ~size_t{}) {
+    if (offset >= _size) { return array_view{_ptr, 0}; }
 
-    return array_view{_ptr + offset, std::min(n, _size - n)};
+    return array_view{_ptr + offset, std::min(n, _size - offset)};
   }
 
   constexpr auto& operator[](size_t idx) {

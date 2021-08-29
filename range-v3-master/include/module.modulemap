@@ -38,7 +38,7 @@ module range_v3 {
     exclude header "range/v3/range_concepts.hpp"
     exclude header "range/v3/range_traits.hpp"
     exclude header "range/v3/size.hpp"
-    exclude header "range/v3/span.hpp"
+    exclude header "range/v3/subspan.hpp"
     exclude header "range/v3/to_container.hpp"
     exclude header "range/v3/utility/associated_types.hpp"
     exclude header "range/v3/utility/basic_iterator.hpp"

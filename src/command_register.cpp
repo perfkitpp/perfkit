@@ -13,6 +13,8 @@
 #include <range/v3/view.hpp>
 #include <regex>
 
+#include "spdlog/fmt/bundled/ranges.h"
+
 using namespace ranges;
 
 namespace {
@@ -54,14 +56,36 @@ bool perfkit::ui::command_register::node::_check_name_exist(std::string_view cmd
 
   return false;
 }
+
 perfkit::ui::command_register::node* perfkit::ui::command_register::node::find_subcommand(std::string_view cmd_or_alias) {
   if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
     return &it->second;
   }
+
   if (auto it = _aliases.find(cmd_or_alias); it != _aliases.end()) {
     return &_subcommands.find(cmd_or_alias)->second;
   }
-  return nullptr;
+
+  // find initial and unique match ...
+  node* subcmd = {};
+  {
+    auto _keys = _subcommands | views::keys;
+    auto it    = lower_bound(_keys, cmd_or_alias);
+    for (; it != _keys.end() && it->find(cmd_or_alias) == 0; ++it) {
+      if (subcmd) { return nullptr; }
+      subcmd = find_subcommand(*it);
+    }
+  }
+  {
+    auto _keys = _aliases | views::keys;
+    auto it    = lower_bound(_keys, cmd_or_alias);
+    for (; it != _keys.end() && it->find(cmd_or_alias) == 0; ++it) {
+      if (subcmd) { return nullptr; }
+      subcmd = find_subcommand(*it);
+    }
+  }
+
+  return subcmd;
 }
 bool perfkit::ui::command_register::node::erase_subcommand(std::string_view cmd_or_alias) {
   if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
@@ -109,8 +133,13 @@ std::string_view perfkit::ui::command_register::node::suggest(
   if (current_command == ~size_t{}) {
     out_candidates |= actions::push_back(_subcommands | views::keys);
     out_candidates |= actions::push_back(_aliases | views::keys);
+  } else if (current_command > 0) {
+    auto subcmd = find_subcommand(full_tokens[0]);
+    if (!subcmd) { return {}; }
+
+    return subcmd->suggest(full_tokens.subspan(1), current_command - 1, out_candidates);
   } else {
-    auto string = full_tokens[current_command];
+    auto string = full_tokens[0];
 
     // find default suggestion list by rule.
     //
@@ -152,25 +181,18 @@ std::string_view perfkit::ui::command_register::node::suggest(
 }
 
 bool perfkit::ui::command_register::node::invoke(
-    perfkit::array_view<std::string_view> full_tokens,
-    size_t                                this_command) {
-  if (this_command + 1 < full_tokens.size()) {
-    auto maybe_subcmd = full_tokens[this_command + 1];
-    if (_check_name_exist(maybe_subcmd)) {
-      std::string_view cmd = maybe_subcmd;
-
-      if (auto it_alias = find_if(_aliases,
-                                  [&](auto const& k) { return k.first == maybe_subcmd; });
-          it_alias != _aliases.end()) {
-        cmd = it_alias->second;
-      }
-      auto subcmd = &_subcommands.find(cmd)->second;
-
-      return subcmd->invoke(full_tokens, this_command + 1);
+    perfkit::array_view<std::string_view> full_tokens) {
+  if (full_tokens.size() > 0) {
+    auto subcmd = find_subcommand(full_tokens[0]);
+    if (subcmd) {
+      return subcmd->invoke(full_tokens.subspan(1));
     }
   }
 
-  return _invoke(full_tokens, this_command);
+  if (!_is_root()) { return _invoke(full_tokens); }
+
+  spdlog::error("command {} not found. all arguments: {}", full_tokens[0], full_tokens);
+  return false;
 }
 
 void perfkit::cmdutils::tokenize_by_argv_rule(

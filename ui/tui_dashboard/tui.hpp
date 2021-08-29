@@ -87,6 +87,7 @@ class dashboard : public perfkit::ui::if_ui {
 
   struct _context_ty {
     struct _transient {
+      bool update_contents;
       bool window_resized;
       int  cur_h;
     } transient;
@@ -95,6 +96,7 @@ class dashboard : public perfkit::ui::if_ui {
 
  private:
   void _draw_messages(_context_ty& context, const std::optional<int>& keystroke);
+  void _draw_options(_context_ty& context, const std::optional<int>& keystroke);
   void _draw_prompt(_context_ty& context, const std::optional<int>& keystroke);
   void _draw_stdout(_context_ty& context);
   bool _layout(_context_ty& context, window_ptr& wnd, int height, char const* name);

@@ -28,9 +28,7 @@ namespace perfkit::ui {
 /**
  *
  */
-using handler_fn = std::function<bool(
-    array_view<std::string_view> full_tokens,
-    size_t                       this_command)>;
+using handler_fn = std::function<bool(array_view<std::string_view> full_tokens)>;
 
 /**
  * When this handler is called, out_candidates parameter will hold initial
@@ -102,15 +100,12 @@ class command_register {
      * Invoke command with given arguments.
      *
      * @param full_tokens
-     * @param this_command
-     * @param arguments_string
      */
-    bool invoke(
-        array_view<std::string_view> full_tokens,
-        size_t                       this_command);
+    bool invoke(array_view<std::string_view> full_tokens);
 
    private:
     bool _check_name_exist(std::string_view) const noexcept;
+    bool _is_root() const noexcept { return !_invoke; }
 
    private:
     std::map<std::string const, node, std::less<>>              _subcommands;

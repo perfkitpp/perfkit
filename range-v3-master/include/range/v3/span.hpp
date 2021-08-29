@@ -15,7 +15,7 @@
 
 #include <range/v3/detail/config.hpp>
 RANGES_DEPRECATED_HEADER(
-    "This header is deprecated. Please #include <range/v3/view/span.hpp> instead.")
+    "This header is deprecated. Please #include <range/v3/view/subspan.hpp> instead.")
 
 #include <range/v3/view/span.hpp>
 
