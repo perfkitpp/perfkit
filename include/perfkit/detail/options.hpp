@@ -30,8 +30,16 @@ class option_base {
               deserializer fn_deserial,
               serializer   fn_serial);
 
-  void serialize(nlohmann::json& out) {
-    _serialize(out, _raw);
+  /**
+   * @warning this function is not re-entrant!
+   * @return
+   */
+  auto const& serialize() {
+    if (auto nmodify = num_modified(); _fence_serialized != num_modified()) {
+      _serialize(_cached_serialized, _raw);
+      _fence_serialized = nmodify;
+    }
+    return _cached_serialized;
   }
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
@@ -40,7 +48,7 @@ class option_base {
   std::string_view display_key() const { return _display_key; }
   std::string_view description() const { return description(); }
 
-  size_t num_modified() const { return _num_modified.load(std::memory_order_relaxed); };
+  size_t num_modified() const { return _fence_modification.load(std::memory_order_relaxed); };
 
   /**
    * Check if latest marshalling result was invalid
@@ -51,14 +59,7 @@ class option_base {
   }
 
  public:
-  bool _try_deserialize(nlohmann::json const& value) {
-    return !(_latest_marshal_failed.store(
-                 _deserialize(value, _raw)
-                     && _num_modified.fetch_add(1, std::memory_order_relaxed)
-                     && (_dirty = true),
-                 std::memory_order_relaxed),
-             _latest_marshal_failed.load(std::memory_order_relaxed));
-  }
+  bool _try_deserialize(nlohmann::json const& value);
 
  private:
   std::string      _full_key;
@@ -68,7 +69,9 @@ class option_base {
   bool             _dirty                 = true;  // default true to trigger initialization
   std::atomic_bool _latest_marshal_failed = false;
 
-  std::atomic_size_t _num_modified = 0;
+  std::atomic_size_t _fence_modification = 0;
+  size_t             _fence_serialized   = 0;
+  nlohmann::json     _cached_serialized;
 
   deserializer _deserialize;
   serializer   _serialize;

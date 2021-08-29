@@ -50,11 +50,11 @@ void perfkit::option_dispatcher::_put(std::shared_ptr<detail::option_base> o) {
 }
 
 std::string_view perfkit::option_dispatcher::find_key(std::string_view display_key) {
-    if (auto it = key_mapping().find(display_key); it != key_mapping().end()) {
-      return it->second;
-    } else {
-      return {};
-    }
+  if (auto it = key_mapping().find(display_key); it != key_mapping().end()) {
+    return it->second;
+  } else {
+    return {};
+  }
 }
 
 perfkit::detail::option_base::option_base(void* raw, std::string full_key, std::string description, perfkit::detail::option_base::deserializer fn_deserial, perfkit::detail::option_base::serializer fn_serial)
@@ -83,4 +83,17 @@ perfkit::detail::option_base::option_base(void* raw, std::string full_key, std::
 
   if (_full_key.back() == '|') { throw ""; }
   if (_display_key.empty()) { throw "Invalid Key"; }
+}
+
+bool perfkit::detail::option_base::_try_deserialize(const nlohmann::json& value) {
+  if (_deserialize(value, _raw)) {
+    _fence_modification.fetch_add(1, std::memory_order_relaxed);
+    _dirty = true;
+
+    _latest_marshal_failed.store(false, std::memory_order_relaxed);
+    return true;
+  } else {
+    _latest_marshal_failed.store(true, std::memory_order_relaxed);
+    return false;
+  }
 }
