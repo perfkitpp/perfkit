@@ -15,7 +15,7 @@ if (${PROJECT_NAME}_BUILD_SHARED)
     add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS})
     add_library(perfkit::perfkit ALIAS ${PROJECT_NAME})
 else ()
-    add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS} include/perfkit/detail/command_register.hpp src/command_register.cpp include/Taywee/args.hxx ui/ui-tools.hpp ui/tui_dashboard/tui.cpp ui/tui_dashboard/tui.hpp)
+    add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS} include/perfkit/detail/command_registry.hpp src/command_registry.cpp include/Taywee/args.hxx ui/ui-tools.hpp ui/tui_dashboard/tui.cpp ui/tui_dashboard/tui.hpp)
     add_library(perfkit::perfkit-static ALIAS ${PROJECT_NAME})
 endif ()
 

@@ -4,7 +4,7 @@
 #include <thread>
 
 #include "perfkit.h"
-#include "perfkit/detail/command_register.hpp"
+#include "perfkit/detail/command_registry.hpp"
 
 namespace perfkit::ui {
 using namespace std::literals;
@@ -57,7 +57,7 @@ class if_ui {
    * Gets internal command register
    * @return
    */
-  virtual auto commands() -> command_register::node* = 0;
+  virtual auto commands() -> command_registry::node* = 0;
 
   /**
    * Stop currently running launched thread. It has no effect if there's not any thread

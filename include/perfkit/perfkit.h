@@ -11,7 +11,7 @@ bool read_options(std::istream& src);
 void dump_options(std::ostream& dst);
 }  // namespace perfkit
 
-#define PERFKIT_OPTION_DISPATCHER(Name) static inline auto& Name = perfkit::option_dispatcher::_create()
+#define PERFKIT_OPTION_DISPATCHER(Name) static inline auto& Name = perfkit::option_registry::_create()
 #define PERFKIT_OPTION                  static inline perfkit::option
 
 #define PERFKIT_MESSAGE_BLOCK static inline perfkit::messenger

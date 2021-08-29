@@ -73,7 +73,7 @@ TEST_CASE("Sort Messages") {
 }
 
 TEST_CASE("Command Name Verify") {
-  perfkit::ui::command_register rg;
+  perfkit::ui::command_registry rg;
   auto                          rt = rg._get_root();
 
   CHECK(rt->add_subcommand("  ea ") == nullptr);

@@ -14,7 +14,7 @@
 #include <utility>
 
 namespace perfkit {
-class option_dispatcher;
+class option_registry;
 
 namespace detail {
 
@@ -27,7 +27,7 @@ class option_base {
   using serializer   = std::function<void(nlohmann::json&, void const*)>;
 
  public:
-  option_base(class option_dispatcher* owner,
+  option_base(class option_registry* owner,
               void*                    raw,
               std::string              full_key,
               std::string              description,
@@ -60,7 +60,7 @@ class option_base {
   bool _try_deserialize(nlohmann::json const& value);
 
  private:
-  option_dispatcher* _owner;
+  option_registry* _owner;
 
   std::string      _full_key;
   std::string      _display_key;
@@ -81,11 +81,11 @@ class option_base {
 /**
  *
  */
-class option_dispatcher {
+class option_registry {
  public:
   using json_table   = std::map<std::string, nlohmann::json>;
   using option_table = std::map<std::string_view, std::shared_ptr<detail::option_base>>;
-  using container    = std::vector<std::unique_ptr<option_dispatcher>>;
+  using container    = std::vector<std::unique_ptr<option_registry>>;
 
  public:
   bool apply_update_and_check_if_dirty();
@@ -98,7 +98,7 @@ class option_dispatcher {
   static std::string_view find_key(std::string_view display_key);
 
  public:  // for internal use only.
-  static option_dispatcher& _create() noexcept;
+  static option_registry& _create() noexcept;
   static option_table&      _all() noexcept;
   auto                      _access_lock() { return std::unique_lock{_update_lock}; }
 
@@ -169,7 +169,7 @@ class _factory {
   friend class option;
 
   template <typename T_>
-  friend _factory<T_, 0> option_factory(option_dispatcher& dispatcher,
+  friend _factory<T_, 0> option_factory(option_registry& dispatcher,
                                         std::string        full_key,
                                         Ty_&&              default_value);
 
@@ -177,7 +177,7 @@ class _factory {
 
  public:
   struct _init_info {
-    option_dispatcher* dispatcher;
+    option_registry* dispatcher;
     std::string        full_key;
     Ty_                default_value;
   };
@@ -191,7 +191,7 @@ class option {
  public:
   template <typename Attr_ = _factory<Ty_>>
   option(
-      option_dispatcher&          dispatcher,
+      option_registry&          dispatcher,
       std::string                 full_key,
       Ty_&&                       default_value,
       _option_attribute_data<Ty_> attribute) noexcept
@@ -264,7 +264,7 @@ class option {
  private:
   std::shared_ptr<detail::option_base> _opt;
 
-  option_dispatcher* _owner;
+  option_registry* _owner;
   Ty_                _value;
 };
 
@@ -274,7 +274,7 @@ using _cvt_ty = std::conditional_t<std::is_convertible_v<Ty_, std::string>,
                                    Ty_>;
 
 template <typename Ty_>
-auto option_factory(option_dispatcher& dispatcher,
+auto option_factory(option_registry& dispatcher,
                     std::string        full_key,
                     Ty_&&              default_value) {
   _factory<_cvt_ty<Ty_>> attribute;

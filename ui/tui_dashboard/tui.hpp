@@ -60,7 +60,7 @@ class dashboard : public perfkit::ui::if_ui {
  public:
   void poll(bool do_content_fetch) override;
   void launch(std::chrono::milliseconds interval, int content_fetch_cycle) override;
-  auto commands() -> ui::command_register::node* override;
+  auto commands() -> ui::command_registry::node* override;
   void stop() override;
   void invoke_command(std::string_view view) override;
 
@@ -72,7 +72,7 @@ class dashboard : public perfkit::ui::if_ui {
   window_ptr           _stdout_pane;
   window_ptr           _output_pane;
   window_ptr           _input_pane;
-  ui::command_register _commands;
+  ui::command_registry _commands;
 
   file_ptr             _stdout;
   file_ptr             _stderr;

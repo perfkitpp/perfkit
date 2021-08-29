@@ -1,7 +1,7 @@
 //
 // Created by Seungwoo on 2021-08-27.
 //
-#include "perfkit/detail/command_register.hpp"
+#include "perfkit/detail/command_registry.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -22,7 +22,7 @@ const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|((?:[^\s\\]|\\
 const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 }  // namespace
 
-perfkit::ui::command_register::node* perfkit::ui::command_register::node::add_subcommand(
+perfkit::ui::command_registry::node* perfkit::ui::command_registry::node::add_subcommand(
     std::string_view        cmd,
     handler_fn              handler,
     autocomplete_suggest_fn suggest) {
@@ -46,7 +46,7 @@ perfkit::ui::command_register::node* perfkit::ui::command_register::node::add_su
   return &subcmd;
 }
 
-bool perfkit::ui::command_register::node::_check_name_exist(std::string_view cmd) const noexcept {
+bool perfkit::ui::command_registry::node::_check_name_exist(std::string_view cmd) const noexcept {
   if (auto it = _subcommands.find(cmd); it != _subcommands.end()) {
     return true;
   }
@@ -57,7 +57,7 @@ bool perfkit::ui::command_register::node::_check_name_exist(std::string_view cmd
   return false;
 }
 
-perfkit::ui::command_register::node* perfkit::ui::command_register::node::find_subcommand(std::string_view cmd_or_alias) {
+perfkit::ui::command_registry::node* perfkit::ui::command_registry::node::find_subcommand(std::string_view cmd_or_alias) {
   if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
     return &it->second;
   }
@@ -87,7 +87,7 @@ perfkit::ui::command_register::node* perfkit::ui::command_register::node::find_s
 
   return subcmd;
 }
-bool perfkit::ui::command_register::node::erase_subcommand(std::string_view cmd_or_alias) {
+bool perfkit::ui::command_registry::node::erase_subcommand(std::string_view cmd_or_alias) {
   if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
     // erase all bound aliases to given command
     for (auto it_a = _aliases.begin(); it_a != _aliases.end();) {
@@ -110,7 +110,7 @@ bool perfkit::ui::command_register::node::erase_subcommand(std::string_view cmd_
   return false;
 }
 
-bool perfkit::ui::command_register::node::alias(
+bool perfkit::ui::command_registry::node::alias(
     std::string_view cmd, std::string alias) {
   if (_check_name_exist(alias)) {
     spdlog::error("alias name [{}] already exists as command or token.");
@@ -126,7 +126,7 @@ bool perfkit::ui::command_register::node::alias(
   return true;
 }
 
-std::string perfkit::ui::command_register::node::suggest(
+std::string perfkit::ui::command_registry::node::suggest(
     array_view<std::string_view> full_tokens,
     std::vector<std::string>&    out_candidates) {
   std::set<std::string> user_candidates;
@@ -187,7 +187,7 @@ std::string perfkit::ui::command_register::node::suggest(
   return {};
 }
 
-bool perfkit::ui::command_register::node::invoke(
+bool perfkit::ui::command_registry::node::invoke(
     perfkit::array_view<std::string_view> full_tokens) {
   if (full_tokens.size() > 0) {
     auto subcmd = find_subcommand(full_tokens[0]);

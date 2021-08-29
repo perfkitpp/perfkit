@@ -7,6 +7,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include <charconv>
 #include <filesystem>
 
 #include "range/v3/action/insert.hpp"
@@ -100,16 +101,55 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
 }
 
 void perfkit::detail::dashboard::_init_commands() {
-  commands()->add_subcommand("q", [&](array_view<std::string_view> argv) -> bool { throw ui::sig_finish{}; });
+  commands()->add_subcommand("q", [&](ui::args_view argv) -> bool { throw ui::sig_finish{}; });
 
-  commands()->add_subcommand("w", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->add_subcommand("e", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("w", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("e", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
 
-  commands()->add_subcommand("set", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("set");
+  if (auto cmd_set = commands()->find_subcommand("set")) {
+  }
 
-  commands()->add_subcommand("messenger", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->add_subcommand("get", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
-  commands()->add_subcommand("umai bong deasu", [&](array_view<std::string_view> argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("messenger", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("get", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+  commands()->add_subcommand("umai bong deasu", [&](ui::args_view argv) -> bool { return fmt::print("{}\n", argv), true; });
+
+  commands()->add_subcommand("loglevel", [&](ui::args_view argv) -> bool {
+    auto error = [this] {
+      _log->error("usage: loglevel <default_loglevel>");
+      _log->error("usage: loglevel <logger> <loglevel>");
+      return false;
+    };
+
+    if (argv.size() == 0) {
+      return error();
+    }
+
+    int             level = 0;
+    spdlog::logger* logger;
+    if (argv.size() == 1) {
+      auto tok    = argv[0];
+      auto result = std::from_chars(tok.data(), tok.data() + tok.size(), level);
+
+      if (result.ec == std::errc::invalid_argument) { return error(); }
+      logger = spdlog::default_logger_raw();
+    }
+
+    if (argv.size() == 2) {
+      auto logger_name = argv[1];
+
+      logger = spdlog::get(std::string(logger_name)).get();
+      if (!logger) { return _log->error("logger {} not found.", logger_name), false; }
+
+      auto tok    = argv[0];
+      auto result = std::from_chars(tok.data(), tok.data() + tok.size(), level);
+
+      if (result.ec == std::errc::invalid_argument) { return error(); }
+    }
+
+    logger->set_level(static_cast<spdlog::level::level_enum>(level));
+    return true;
+  });
 }
 
 namespace {
@@ -233,7 +273,9 @@ void perfkit::detail::dashboard::_draw_prompt(_context_ty& context, const std::o
         tokens_view.assign(tokens.begin(), tokens.end());
 
         // suggest
-        commands()->invoke(tokens_view);
+        if (!commands()->invoke(tokens_view)) {
+          _log->error("command invcation failed");
+        }
         _history_cursor = 0;
 
         if (_history.empty() || _history.back() != _input) {
@@ -347,7 +389,7 @@ void perfkit::detail::dashboard::_print_aligned_candidates(
   }
 }
 
-auto perfkit::detail::dashboard::commands() -> perfkit::ui::command_register::node* {
+auto perfkit::detail::dashboard::commands() -> perfkit::ui::command_registry::node* {
   return _commands._get_root();
 }
 

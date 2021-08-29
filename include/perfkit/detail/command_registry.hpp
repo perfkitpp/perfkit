@@ -29,7 +29,12 @@ namespace perfkit::ui {
 /**
  *
  */
-using handler_fn = std::function<bool(array_view<std::string_view> full_tokens)>;
+using args_view = array_view<std::string_view>;
+
+/**
+ *
+ */
+using handler_fn = std::function<bool(args_view full_tokens)>;
 
 /**
  * When this handler is called, out_candidates parameter will hold initial
@@ -38,7 +43,7 @@ using handler_fn = std::function<bool(array_view<std::string_view> full_tokens)>
 using autocomplete_suggest_fn = std::function<
     void(std::string_view hint, std::set<std::string>& candidates)>;
 
-class command_register {
+class command_registry {
  public:
  public:
   class node {
@@ -51,7 +56,7 @@ class command_register {
      * @param suggest Autocomplete suggest handler.
      * @return nullptr if given command is invalid.
      */
-    perfkit::ui::command_register::node* add_subcommand(
+    perfkit::ui::command_registry::node* add_subcommand(
         std::string_view        cmd,
         handler_fn              handler = {},
         autocomplete_suggest_fn suggest = {});
