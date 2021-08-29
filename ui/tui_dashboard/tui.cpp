@@ -15,6 +15,7 @@
 #include "range/v3/range.hpp"
 #include "range/v3/view.hpp"
 #include "spdlog/fmt/bundled/ranges.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
 namespace fs = std::filesystem;
@@ -48,11 +49,16 @@ perfkit::detail::dashboard::dashboard(perfkit::array_view<std::string_view> args
   // prefrom redirection and log file generation
   _redirect_stdout(args);
 
+  // redirect system logger
+  glog();
+
   {  // setup keybaord input
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
     timeout(0);
+
+    start_color();
 
     // curs_set(1);
   }
@@ -96,9 +102,14 @@ void perfkit::detail::dashboard::_redirect_stdout(const array_view<std::string_v
   set_term(newterm(nullptr, prev_stdout, prev_stderr));
 
   // Now you can safely redirect logger.
-  _log = spdlog::default_logger()->clone("dashboard");
-  spdlog::register_logger(_log);
-  _log->set_pattern("[%I:%M:%S.%e:%n] %l: %v");
+  _log         = spdlog::stdout_color_mt("dashboard");
+  auto pattern = "[%I:%M:%S.%e:%n] %l: %v";
+  _log->set_pattern(pattern);
+
+  spdlog::set_default_logger(_log->clone(""));
+
+  spdlog::drop("PERFKIT");
+  spdlog::register_logger(_log->clone("PERFKIT"));
 }
 
 void perfkit::detail::dashboard::_init_commands() {

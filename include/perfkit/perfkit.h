@@ -2,13 +2,18 @@
 // Created by Seungwoo on 2021-08-25.
 //
 #pragma once
+#include <spdlog/fwd.h>
+
+#include <filesystem>
 #include <iostream>
 #include <perfkit/detail/messenger.hpp>
 #include <perfkit/detail/options.hpp>
 
 namespace perfkit {
-bool import_options(std::istream& src);
-void export_options(std::ostream& dst);
+std::shared_ptr<spdlog::logger> glog();
+
+bool import_options(std::filesystem::path src);
+void export_options(std::filesystem::path dst);
 }  // namespace perfkit
 
 #define PERFKIT_OPTION_DISPATCHER(Name) static inline auto& Name = perfkit::option_registry::_create()

@@ -28,17 +28,17 @@ class option_base {
 
  public:
   option_base(class option_registry* owner,
-              void*                    raw,
-              std::string              full_key,
-              std::string              description,
-              deserializer             fn_deserial,
-              serializer               fn_serial);
+              void*                  raw,
+              std::string            full_key,
+              std::string            description,
+              deserializer           fn_deserial,
+              serializer             fn_serial);
 
   /**
    * @warning this function is not re-entrant!
    * @return
    */
-  auto const& serialize();
+  nlohmann::json const& serialize();
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
 
@@ -56,11 +56,12 @@ class option_base {
     return _latest_marshal_failed.load(std::memory_order_relaxed);
   }
 
- public:
+ private:
   bool _try_deserialize(nlohmann::json const& value);
 
  private:
-  option_registry* _owner;
+  friend class perfkit::option_registry;
+  perfkit::option_registry* _owner;
 
   std::string      _full_key;
   std::string      _display_key;
@@ -90,17 +91,22 @@ class option_registry {
  public:
   bool apply_update_and_check_if_dirty();
 
-  void queue_update_value(std::string full_key, nlohmann::json const& value) {
-    std::unique_lock _l{_update_lock};
-    _pending_updates[std::move(full_key)] = value;
+  void queue_update_value(std::string full_key, nlohmann::json const& value);
+
+  static bool request_update_value(std::string full_key, nlohmann::json const& value) {
+    if (auto it = all().find(full_key); it != all().end()) {
+      it->second->_owner->queue_update_value(std::move(full_key), value);
+      return true;
+    }
+    return false;
   }
 
   static std::string_view find_key(std::string_view display_key);
 
  public:  // for internal use only.
   static option_registry& _create() noexcept;
-  static option_table&      _all() noexcept;
-  auto                      _access_lock() { return std::unique_lock{_update_lock}; }
+  static option_table&    all() noexcept;
+  auto                    _access_lock() { return std::unique_lock{_update_lock}; }
 
  public:
   void _put(std::shared_ptr<detail::option_base> o);
@@ -170,16 +176,16 @@ class _factory {
 
   template <typename T_>
   friend _factory<T_, 0> option_factory(option_registry& dispatcher,
-                                        std::string        full_key,
-                                        Ty_&&              default_value);
+                                        std::string      full_key,
+                                        Ty_&&            default_value);
 
   _option_attribute_data<Ty_> _data;
 
  public:
   struct _init_info {
     option_registry* dispatcher;
-    std::string        full_key;
-    Ty_                default_value;
+    std::string      full_key;
+    Ty_              default_value;
   };
 
   std::shared_ptr<_init_info> _pinfo;
@@ -191,7 +197,7 @@ class option {
  public:
   template <typename Attr_ = _factory<Ty_>>
   option(
-      option_registry&          dispatcher,
+      option_registry&            dispatcher,
       std::string                 full_key,
       Ty_&&                       default_value,
       _option_attribute_data<Ty_> attribute) noexcept
@@ -265,7 +271,7 @@ class option {
   std::shared_ptr<detail::option_base> _opt;
 
   option_registry* _owner;
-  Ty_                _value;
+  Ty_              _value;
 };
 
 template <typename Ty_>
@@ -275,8 +281,8 @@ using _cvt_ty = std::conditional_t<std::is_convertible_v<Ty_, std::string>,
 
 template <typename Ty_>
 auto option_factory(option_registry& dispatcher,
-                    std::string        full_key,
-                    Ty_&&              default_value) {
+                    std::string      full_key,
+                    Ty_&&            default_value) {
   _factory<_cvt_ty<Ty_>> attribute;
   attribute._pinfo                = std::make_shared<typename _factory<_cvt_ty<Ty_>>::_init_info>();
   attribute._pinfo->dispatcher    = &dispatcher;

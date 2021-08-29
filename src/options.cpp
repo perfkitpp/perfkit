@@ -10,7 +10,7 @@ perfkit::option_registry& perfkit::option_registry::_create() noexcept {
   return *_all.emplace_back(std::make_unique<perfkit::option_registry>());
 }
 
-perfkit::option_registry::option_table& perfkit::option_registry::_all() noexcept {
+perfkit::option_registry::option_table& perfkit::option_registry::all() noexcept {
   static option_table _inst;
   return _inst;
 }
@@ -36,8 +36,8 @@ static auto& key_mapping() {
 }
 
 void perfkit::option_registry::_put(std::shared_ptr<detail::option_base> o) {
-  auto it = _all().find(o->full_key());
-  if (it != _all().end()) { throw std::invalid_argument("Argument MUST be unique!!!"); }
+  auto it = all().find(o->full_key());
+  if (it != all().end()) { throw std::invalid_argument("Argument MUST be unique!!!"); }
 
   if (!find_key(o->display_key()).empty()) {
     throw std::invalid_argument("Duplicated Display Key Found");
@@ -46,7 +46,7 @@ void perfkit::option_registry::_put(std::shared_ptr<detail::option_base> o) {
   key_mapping().try_emplace(o->display_key(), o->full_key());
 
   _opts.try_emplace(o->full_key(), o);
-  _all().try_emplace(o->full_key(), o);
+  all().try_emplace(o->full_key(), o);
 }
 
 std::string_view perfkit::option_registry::find_key(std::string_view display_key) {
@@ -55,6 +55,10 @@ std::string_view perfkit::option_registry::find_key(std::string_view display_key
   } else {
     return {};
   }
+}
+void perfkit::option_registry::queue_update_value(std::string full_key, const nlohmann::json& value) {
+  std::unique_lock _l{_update_lock};
+  _pending_updates[std::move(full_key)] = value;
 }
 
 perfkit::detail::option_base::option_base(
@@ -103,7 +107,8 @@ bool perfkit::detail::option_base::_try_deserialize(const nlohmann::json& value)
     return false;
   }
 }
-auto const& perfkit::detail::option_base::serialize() {
+
+nlohmann::json const& perfkit::detail::option_base::serialize() {
   if (auto nmodify = num_modified(); _fence_serialized != nmodify) {
     auto _lock = _owner->_access_lock();
     _serialize(_cached_serialized, _raw);

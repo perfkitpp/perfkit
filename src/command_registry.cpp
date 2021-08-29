@@ -13,6 +13,7 @@
 #include <range/v3/view.hpp>
 #include <regex>
 
+#include "perfkit/perfkit.h"
 #include "spdlog/fmt/bundled/ranges.h"
 
 using namespace ranges;
@@ -27,13 +28,13 @@ perfkit::ui::command_registry::node* perfkit::ui::command_registry::node::add_su
     handler_fn              handler,
     autocomplete_suggest_fn suggest) {
   if (_check_name_exist(cmd)) {
-    spdlog::error("command name [{}] already exists as command or token.", cmd);
+    glog()->error("command name [{}] already exists as command or token.", cmd);
     return nullptr;
   }
 
   std::cmatch match;
   if (!std::regex_match(cmd.data(), cmd.data() + cmd.size(), match, rg_cmd_token)) {
-    spdlog::error("invalid command name [{}])", cmd);
+    glog()->error("invalid command name [{}])", cmd);
     return nullptr;
   }
 
@@ -111,12 +112,12 @@ bool perfkit::ui::command_registry::node::erase_subcommand(std::string_view cmd_
 bool perfkit::ui::command_registry::node::alias(
     std::string_view cmd, std::string alias) {
   if (_check_name_exist(alias)) {
-    spdlog::error("alias name [{}] already exists as command or token.");
+    glog()->error("alias name [{}] already exists as command or token.");
     return false;
   }
 
   if (auto it = _subcommands.find(cmd); it == _subcommands.end()) {
-    spdlog::error("target command [{}] does not exist.");
+    glog()->error("target command [{}] does not exist.");
     return false;
   }
 
@@ -204,7 +205,7 @@ bool perfkit::ui::command_registry::node::invoke(
 
   if (!_is_interface()) { return _invoke(full_tokens); }
 
-  spdlog::error("command not found. all arguments: {}", full_tokens);
+  glog()->error("command not found. all arguments: {}", full_tokens);
   return false;
 }
 

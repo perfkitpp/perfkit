@@ -78,12 +78,12 @@ class if_ui {
   /**
    * Save event hook. Triggered before serialization
    */
-  virtual void on_save() {}
+  virtual void on_export(std::filesystem::path const&) {}
 
   /**
    * Load event hook. Triggered after full deserialization
    */
-  virtual void on_load() {}
+  virtual void on_import(std::filesystem::path const&) {}
 
  public:
 };

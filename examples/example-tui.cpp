@@ -1,13 +1,15 @@
 #include "perfkit/perfkit.h"
 #include "perfkit/ui.hpp"
 #include "range/v3/view.hpp"
-
+#include "spdlog/spdlog.h"
 using namespace ranges;
 using namespace std::literals;
 
 static perfkit::messenger rootm{0, "RootMsg"};
 
 int main(int argc, char** argv) {
+  perfkit::glog()->info("start");
+
   auto args = views::ints(0, argc)
               | views::transform([argv](size_t n) { return std::string_view{argv[n]}; })
               | to_vector;
