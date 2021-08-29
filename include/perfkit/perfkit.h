@@ -6,8 +6,8 @@
 
 #include <filesystem>
 #include <iostream>
-#include <perfkit/detail/messenger.hpp>
 #include <perfkit/detail/options.hpp>
+#include <perfkit/detail/tracer.hpp>
 
 namespace perfkit {
 std::shared_ptr<spdlog::logger> glog();
@@ -19,4 +19,4 @@ void export_options(std::filesystem::path dst);
 #define PERFKIT_OPTION_DISPATCHER(Name) static inline auto& Name = perfkit::option_registry::_create()
 #define PERFKIT_OPTION                  static inline perfkit::option
 
-#define PERFKIT_MESSAGE_BLOCK static inline perfkit::messenger
+#define PERFKIT_MESSAGE_BLOCK static inline perfkit::tracer

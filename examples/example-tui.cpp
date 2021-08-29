@@ -5,7 +5,7 @@
 using namespace ranges;
 using namespace std::literals;
 
-static perfkit::messenger rootm{0, "RootMsg"};
+static perfkit::tracer rootm{0, "RootMsg"};
 
 int main(int argc, char** argv) {
   spdlog::info("startup");

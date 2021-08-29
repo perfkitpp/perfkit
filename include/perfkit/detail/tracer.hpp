@@ -20,7 +20,7 @@
 #include "spinlock.hxx"
 
 namespace perfkit {
-class messenger {
+class tracer {
  public:
   using clock_type   = std::chrono::steady_clock;
   using variant_type = std::variant<clock_type::duration,
@@ -30,7 +30,7 @@ class messenger {
                                     bool,
                                     std::any>;
 
-  struct message {
+  struct trace {
     std::optional<clock_type::duration> as_timer() const noexcept {
       if (auto ptr = std::get_if<clock_type::duration>(&data)) { return *ptr; }
       return {};
@@ -53,18 +53,18 @@ class messenger {
     variant_type data;
 
    private:
-    friend class messenger;
+    friend class tracer;
     std::atomic_bool* _is_subscribed = {};
   };
 
-  using fetched_messages = std::vector<message>;
+  using fetched_traces = std::vector<trace>;
 
-  static_assert(std::is_nothrow_move_assignable_v<message>);
-  static_assert(std::is_nothrow_move_constructible_v<message>);
+  static_assert(std::is_nothrow_move_assignable_v<trace>);
+  static_assert(std::is_nothrow_move_constructible_v<trace>);
 
  private:
-  struct _msg_entity {
-    message                       body;
+  struct _entity_ty {
+    trace                         body;
     std::string                   key_buffer;
     std::vector<std::string_view> hierarchy;
     std::atomic_bool              is_subscribed;
@@ -127,30 +127,30 @@ class messenger {
     bool is_valid() const noexcept { return !!_owner && !!_ref; }
 
    private:
-    friend class messenger;
+    friend class tracer;
     proxy() noexcept {}
 
    private:
-    messenger*             _owner             = nullptr;
-    _msg_entity*           _ref               = nullptr;
+    tracer*             _owner             = nullptr;
+    _entity_ty*           _ref               = nullptr;
     clock_type::time_point _epoch_if_required = {};
   };
 
-  struct msg_fetch_result {
+  struct trace_result {
    public:
     std::pair<
         std::unique_lock<perfkit::spinlock>,
-        fetched_messages*>
+        fetched_traces*>
     acquire() noexcept {
       return std::make_pair(std::unique_lock{*_mtx_access}, _data);
     }
 
-    void copy_sorted(fetched_messages& out) noexcept;
+    void copy_sorted(fetched_traces& out) noexcept;
 
    private:
-    friend class messenger;
+    friend class tracer;
     perfkit::spinlock* _mtx_access;
-    fetched_messages*  _data;
+    fetched_traces*  _data;
   };
 
  public:
@@ -160,9 +160,9 @@ class messenger {
    * @param order All blocks will be occur by its specified order.
    * @param name
    */
-  messenger(int order, std::string_view name) noexcept;
+  tracer(int order, std::string_view name) noexcept;
 
-  static array_view<messenger*> all_blocks() noexcept;
+  static array_view<tracer*> all_blocks() noexcept;
 
  public:
   /**
@@ -179,18 +179,18 @@ class messenger {
    * Reserves for async data sort
    * @return empty optional when there's any already queued operation.
    */
-  std::shared_future<msg_fetch_result> async_fetch_request();
+  std::shared_future<trace_result> async_fetch_request();
 
   auto name() const noexcept { return _name; }
   auto order() const noexcept { return _occurence_order; }
 
  private:
-  uint64_t _hash_active(_msg_entity const* parent, std::string_view top);
+  uint64_t _hash_active(_entity_ty const* parent, std::string_view top);
 
   // Create new or find existing.
-  messenger::_msg_entity* _fork_branch(_msg_entity const* parent, std::string_view name, bool initial_subscribe_state);
+  tracer::_entity_ty* _fork_branch(_entity_ty const* parent, std::string_view name, bool initial_subscribe_state);
 
-  static std::vector<messenger*>& _all() noexcept;
+  static std::vector<tracer*>& _all() noexcept;
 
  private:
   // 고려사항
@@ -205,15 +205,15 @@ class messenger {
   // 2. 프록시가 데이터 넣을 때마다(타이머는 소멸 시) 데이터 블록의 백 버퍼 맵에 이름-값 쌍 할당
   // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
   //    이 때 최신 시퀀스 넘버도 같이 받는다.
-  std::map<std::size_t, _msg_entity> _table;
+  std::map<std::size_t, _entity_ty> _table;
   size_t                             _fence_active = 0;  // active sequence number of back buffer.
 
   int _order_active = 0;  // temporary variable for single iteration
 
   mutable spinlock                              _sort_merge_lock;
-  std::optional<std::promise<msg_fetch_result>> _msg_promise;
-  std::shared_future<msg_fetch_result>          _msg_future;
-  fetched_messages                              _local_reused_memory;
+  std::optional<std::promise<trace_result>> _msg_promise;
+  std::shared_future<trace_result>          _msg_future;
+  fetched_traces                                _local_reused_memory;
 
   int                    _occurence_order;
   std::string_view const _name;
@@ -232,6 +232,6 @@ class messenger {
  * 3. Two are different
  *   1. Order
  */
-void sort_messages_by_rule(messenger::fetched_messages&) noexcept;
+void sort_messages_by_rule(tracer::fetched_traces&) noexcept;
 
 }  // namespace perfkit

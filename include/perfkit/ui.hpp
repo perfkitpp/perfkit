@@ -31,8 +31,8 @@ enum class basic_backend {
 
 class if_message_handler {
  public:
-  virtual void on_subscribed_message(perfkit::messenger::message const& m) {}
-  virtual void on_unsubscribed_message(perfkit::messenger::message const& m) {}
+  virtual void on_subscribed_message(perfkit::tracer::trace const& m) {}
+  virtual void on_unsubscribed_message(perfkit::tracer::trace const& m) {}
 };
 
 class if_ui {
