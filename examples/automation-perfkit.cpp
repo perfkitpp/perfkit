@@ -10,7 +10,9 @@ using namespace ranges;
 using views::zip;
 
 PERFKIT_OPTION_DISPATCHER(g_opts);
-auto has_value = perfkit::option_factory(g_opts, "Has Value", 100).make();
+auto has_value   = perfkit::option_factory(g_opts, "Has Value", 100).make();
+auto name_test_1 = perfkit::option_factory(g_opts, "-|   AA  | BB   |  +641    | CC", 100).make();
+auto name_test_2 = perfkit::option_factory(g_opts, "+561|-|    A A   | + 31411 |   B    B |  +641   |  C C", 100).make();
 
 PERFKIT_MESSAGE_BLOCK my_block{0, "hell, world"};
 PERFKIT_MESSAGE_BLOCK another_block{0, "hell, world2"};
@@ -24,6 +26,9 @@ TEST_CASE("Create Options") {
   CHECK(has_value.check_dirty_and_consume());
   CHECK(*has_value == 200);
   CHECK(!has_value.check_dirty_and_consume());
+
+  CHECK(name_test_1.base().display_key() == "-|AA|BB|CC");
+  CHECK(name_test_2.base().display_key() == "-|A A|B    B|C C");
 };
 
 TEST_CASE("Create Message Blocks") {

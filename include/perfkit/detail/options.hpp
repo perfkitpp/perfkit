@@ -28,12 +28,7 @@ class option_base {
               std::string  full_key,
               std::string  description,
               deserializer fn_deserial,
-              serializer   fn_serial)
-      : _full_key(std::move(full_key))
-      , _description(std::move(description))
-      , _raw(raw)
-      , _deserialize(std::move(fn_deserial))
-      , _serialize(std::move(fn_serial)) {}
+              serializer   fn_serial);
 
   void serialize(nlohmann::json& out) {
     _serialize(out, _raw);
@@ -42,7 +37,7 @@ class option_base {
   bool consume_dirty() { return _dirty && !(_dirty = false); }
 
   std::string_view full_key() const { return _full_key; }
-
+  std::string_view display_key() const { return _display_key; }
   std::string_view description() const { return description(); }
 
   size_t num_modified() const { return _num_modified.load(std::memory_order_relaxed); };
@@ -67,6 +62,7 @@ class option_base {
 
  private:
   std::string      _full_key;
+  std::string      _display_key;
   std::string      _description;
   void*            _raw;
   bool             _dirty                 = true;  // default true to trigger initialization
@@ -95,6 +91,8 @@ class option_dispatcher {
     std::unique_lock _l{_update_lock};
     _pending_updates[std::move(full_key)] = value;
   }
+
+  static std::string_view find_key(std::string_view display_key);
 
   /**
    * To prevent race condition of external option value access, this makes lock that
@@ -242,11 +240,10 @@ class option {
     // instantiate option instance
     _opt = std::make_shared<detail::option_base>(
         &_value,
-        full_key,
+        std::move(full_key),
         std::move(description),
         std::move(fn_m),
         std::move(fn_d));
-
     // put instance to global queue
     dispatcher._put(_opt);
   }
@@ -264,6 +261,8 @@ class option {
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
   void queue_change_value(Ty_ v) { _owner->queue_update_value(_opt->full_key(), std::move(v)); }
+
+  auto& base() const { return *_opt; }
 
  private:
   std::shared_ptr<detail::option_base> _opt;

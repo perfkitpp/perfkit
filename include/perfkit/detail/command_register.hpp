@@ -15,7 +15,7 @@ namespace perfkit::cmdutils {
  * @param src
  * @param tokens
  */
-void tokenize_by_argv_rule(std::string_view src, std::vector<std::string_view>& tokens);
+void tokenize_by_argv_rule(std::string_view src, std::vector<std::string>& tokens);
 
 };  // namespace perfkit::cmdutils
 
