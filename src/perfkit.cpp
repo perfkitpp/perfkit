@@ -6,14 +6,9 @@
 #include <filesystem>
 #include <fstream>
 
-#include "perfkit/ui.hpp"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/stdout_sinks.h"
 #include "spdlog/spdlog.h"
-
-namespace perfkit::ui {
-if_ui* g_ui = nullptr;
-}
 
 std::string perfkit::_internal::INDEXER_STR(int order) {
   return fmt::format("{:->5}", order);
@@ -51,7 +46,6 @@ bool perfkit::import_options(std::string_view srcpath_s) {
       glog()->debug("IMPORTING: {} << {}", name, *it);
     }
 
-    if (ui::g_ui) { ui::g_ui->on_import(srcpath_s); }
     return true;
 
   } catch (nlohmann::json::parse_error& e) {
@@ -63,7 +57,6 @@ bool perfkit::import_options(std::string_view srcpath_s) {
 
 bool perfkit::export_options(std::string_view dstpath_s) {
   std::filesystem::path dstpath{dstpath_s};
-  if (ui::g_ui) { ui::g_ui->on_export(dstpath_s); }
 
   std::ofstream dst{dstpath};
   if (!dst) {

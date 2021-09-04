@@ -1,8 +1,8 @@
 #define DOCTEST_CONFIG_NO_EXCEPTIONS
 #include "doctest.h"
 #include "perfkit/perfkit.h"
-#include "perfkit/ui.hpp"
 #include "range/v3/view.hpp"
+#include "perfkit/detail/command_registry.hpp"
 
 using namespace std::literals;
 using namespace ranges;
