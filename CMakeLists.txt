@@ -12,6 +12,12 @@ add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_
 add_library(perfkit::perfkit-static ALIAS ${PROJECT_NAME})
 
 # TUI integration
+option(perfkit_BUILD_FTXUI_EXTENSION "" ON)
+
+if (perfkit_BUILD_FTXUI_EXTENSION)
+    message("Configuring FTXUI Extension Library ...")
+    add_subdirectory(ftxui-extension)
+endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
