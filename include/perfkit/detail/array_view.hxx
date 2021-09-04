@@ -12,7 +12,7 @@ namespace KANGSW_ARRAY_VIEW_NAMESPACE {
 template <typename Ty_>
 class array_view {
  public:
-  using value_type    = std::remove_const_t<Ty_>;
+  using value_type    = Ty_;
   using pointer       = value_type*;
   using const_pointer = value_type const*;
   using reference     = value_type&;
@@ -74,4 +74,8 @@ class array_view {
   size_t _size;
 };
 
+template <typename Range_>
+constexpr auto make_view(Range_&& array) {
+  return array_view{array.data(), array.size()};
+}
 }  // namespace KANGSW_ARRAY_VIEW_NAMESPACE

@@ -13,6 +13,8 @@
 #include <string_view>
 #include <utility>
 
+#include "array_view.hxx"
+
 namespace perfkit {
 class config_registry;
 
@@ -45,6 +47,7 @@ class config_base {
   std::string_view full_key() const { return _full_key; }
   std::string_view display_key() const { return _display_key; }
   std::string_view description() const { return _description; }
+  auto             categories() const { return make_view(_categories); }
 
   size_t num_modified() const { return _fence_modification.load(std::memory_order_relaxed); };
 
@@ -57,7 +60,8 @@ class config_base {
   }
 
  private:
-  bool _try_deserialize(nlohmann::json const& value);
+  bool        _try_deserialize(nlohmann::json const& value);
+  static void _split_categories(std::string_view view, std::vector<std::string_view>& out);
 
  private:
   friend class perfkit::config_registry;
@@ -73,6 +77,8 @@ class config_base {
   std::atomic_size_t _fence_modification = 0;
   size_t             _fence_serialized   = ~size_t{};
   nlohmann::json     _cached_serialized;
+
+  std::vector<std::string_view> _categories;
 
   deserializer _deserialize;
   serializer   _serialize;
@@ -93,19 +99,11 @@ class config_registry {
 
   void queue_update_value(std::string full_key, nlohmann::json const& value);
 
-  static bool request_update_value(std::string full_key, nlohmann::json const& value) {
-    if (auto it = all().find(full_key); it != all().end()) {
-      it->second->_owner->queue_update_value(std::move(full_key), value);
-      return true;
-    }
-    return false;
-  }
+  static bool request_update_value(std::string full_key, nlohmann::json const& value);
 
   static std::string_view find_key(std::string_view display_key);
 
-  static bool check_dirty_and_consume_global() {
-    return _global_dirty.exchange(false, std::memory_order_relaxed);
-  }
+  static bool check_dirty_and_consume_global();
 
   static config_registry& create() noexcept;
   static config_table&    all() noexcept;

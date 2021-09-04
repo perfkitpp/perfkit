@@ -81,6 +81,18 @@ void perfkit::config_registry::queue_update_value(std::string full_key, const nl
   _pending_updates[std::move(full_key)] = value;
 }
 
+bool perfkit::config_registry::request_update_value(std::string full_key, const nlohmann::json& value) {
+  if (auto it = all().find(full_key); it != all().end()) {
+    it->second->_owner->queue_update_value(std::move(full_key), value);
+    return true;
+  }
+  return false;
+}
+
+bool perfkit::config_registry::check_dirty_and_consume_global() {
+  return _global_dirty.exchange(false, std::memory_order_relaxed);
+}
+
 perfkit::detail::config_base::config_base(
     config_registry* owner,
     void* raw, std::string full_key,
@@ -121,6 +133,8 @@ perfkit::detail::config_base::config_base(
         fmt::format("Invalid Generated Display Key Name: {} from full key {}",
                     _display_key, _full_key));
   }
+
+  _split_categories(_display_key, _categories);
 }
 
 bool perfkit::detail::config_base::_try_deserialize(const nlohmann::json& value) {
@@ -143,4 +157,20 @@ nlohmann::json const& perfkit::detail::config_base::serialize() {
     _fence_serialized = nmodify;
   }
   return _cached_serialized;
+}
+
+void perfkit::detail::config_base::_split_categories(std::string_view view, std::vector<std::string_view>& out) {
+  out.clear();
+
+  // always suppose category is valid.
+  // automatically excludes last token = name of it.
+  for (size_t i = 0; i < view.size();) {
+    if (view[i] == '|') {
+      out.push_back(view.substr(0, i));
+      view = view.substr(i + 1);
+      i    = 0;
+    } else {
+      ++i;
+    }
+  }
 }
