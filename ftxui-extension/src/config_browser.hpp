@@ -170,8 +170,11 @@ class config_node_builder {
                            return false;
                          });
 
-        label_cont->Add(Renderer(label, [label, deco = snode->second.decorator()] {
-          return hbox(label->Render(), filler(), text(" "), deco());
+        label_cont->Add(Renderer(label, [label, deco = snode->second.decorator(),
+                                         is_content = snode->second.is_content()] {
+          auto label_render = label->Render();
+          if (is_content) { label_render = color(Color::Cyan, label_render); }
+          return hbox(label_render, filler(), text(" "), deco());
         }));
         subnodes->Add(label_cont);
       }
@@ -187,6 +190,81 @@ class config_node_builder {
   }
 
  private:
+  struct _json_editor_builder {
+    config_ptr            cfg;
+    bool                  allow_schema_modification;
+    nlohmann::json        json_root;
+    std::function<void()> on_change;
+
+    Component _iter(nlohmann::json* obj) {
+      switch (obj->type()) {
+        case nlohmann::detail::value_t::null:
+          break;
+
+        case nlohmann::detail::value_t::object: {
+          auto outer = Container::Vertical({});
+          for (auto it = (*obj).begin(); it != (*obj).end(); ++it) {
+            auto inner_value = _iter(&it.value());
+
+            auto inner = Renderer(inner_value,
+                                  [this,
+                                   key = text(fmt::format("\"{}\":", it.key())),
+                                   inner_value] {
+                                    return hbox(
+                                               color(Color::Yellow, key),
+                                               text(" {"), inner_value->Render(), text("}"))
+                                           | flex;
+                                  });
+
+            outer->Add(inner);
+          }
+
+          return outer;
+        }
+
+        case nlohmann::detail::value_t::array: {
+          auto outer = Container::Vertical({});
+
+          for (size_t i = 0; i < obj->size(); ++i) {
+            auto inner_value = _iter(&(*obj)[i]);
+
+            auto inner = Renderer(inner_value,
+                                  [this,
+                                   key = text(fmt::format("[{}]:", i)),
+                                   inner_value] {
+                                    return hbox(
+                                               color(Color::Violet, key),
+                                               text(" {"), inner_value->Render(), text("}"))
+                                           | flex;
+                                  });
+            outer->Add(inner);
+          }
+          return outer;
+        }
+
+        case nlohmann::detail::value_t::string:
+          break;
+        case nlohmann::detail::value_t::boolean:
+          break;
+        case nlohmann::detail::value_t::number_integer:
+          break;
+        case nlohmann::detail::value_t::number_unsigned:
+          break;
+        case nlohmann::detail::value_t::number_float:
+          break;
+        case nlohmann::detail::value_t::binary:
+          break;
+        case nlohmann::detail::value_t::discarded:
+          break;
+      }
+
+      ButtonOption nulloption;
+      nulloption.border = false;
+      return Button(
+          obj->type_name(), [] {}, nulloption);
+    }
+  };
+
   Component _build_content_modifier() {
     auto cfg = _content;
 
@@ -200,9 +278,27 @@ class config_node_builder {
         return Renderer([] { return color(Color::Red, text("--INVALID--")); });
 
       case nlohmann::detail::value_t::object:
-      case nlohmann::detail::value_t::array:
-        inner = Renderer([] { return color(Color::GrayDark, text("Temporary")); });
+      case nlohmann::detail::value_t::array: {
+        auto ptr       = std::make_shared<_json_editor_builder>();
+        ptr->on_change = [cfg, ptr] { cfg->request_modify(ptr->json_root); };
+        ptr->cfg       = cfg;
+        ptr->json_root = cfg->serialize();
+
+        ptr->allow_schema_modification = false;
+
+        inner = Container::Vertical({ptr->_iter(&ptr->json_root)});
+        inner = CatchEvent(inner,
+                           [inner, ptr](Event evt) {
+                             if (evt == Event::F5) {
+                               ptr->json_root = ptr->cfg->serialize();
+                               inner->DetachAllChildren();
+                               inner->Add({ptr->_iter(&ptr->json_root)});
+                             }
+                             return false;
+                           });
+
         break;
+      }
 
       case nlohmann::detail::value_t::string: {
         auto str = std::make_shared<std::string>();
@@ -251,13 +347,7 @@ class config_node_builder {
         };
 
         auto enter = Input(pwstr.get(), "value", std::move(opt));
-
-        auto slide_val = std::make_shared<int>();
-        *slide_val     = proto.get<int>();
-        auto slider    = Slider("%", slide_val.get(), -100, 100, 1);
-
-        inner = Container::Vertical({enter, slider});
-        inner = Renderer(inner, [inner] { return inner->Render() | flex; });
+        inner      = enter;
         break;
       }
 
