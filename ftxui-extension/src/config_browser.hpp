@@ -297,94 +297,24 @@ class config_node_builder {
 
     Component inner;
     auto      proto = _content->serialize();
-    switch (proto.type()) {
-      case nlohmann::detail::value_t::null:
-        return Renderer([] { return color(Color::Red, text("NULL")); });
+    auto      ptr   = std::make_shared<_json_editor_builder>();
+    ptr->on_change  = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
+    ptr->cfg        = cfg;
+    ptr->rootobj    = proto;
 
-      case nlohmann::detail::value_t::discarded:
-        return Renderer([] { return color(Color::Red, text("--INVALID--")); });
+    ptr->allow_schema_modification = false;
 
-      case nlohmann::detail::value_t::object:
-      case nlohmann::detail::value_t::array: {
-        auto ptr       = std::make_shared<_json_editor_builder>();
-        ptr->on_change = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
-        ptr->cfg       = cfg;
-        ptr->rootobj   = proto;
-
-        ptr->allow_schema_modification = false;
-
-        inner = Container::Vertical({ptr->_iter(&ptr->rootobj)});
-        inner = CatchEvent(inner,
-                           [inner, ptr](Event evt) {
-                             if (evt == Event::F5) {
-                               ptr->rootobj = ptr->cfg->serialize();
-                               inner->DetachAllChildren();
-                               inner->Add({ptr->_iter(&ptr->rootobj)});
-                             }
-                             return false;
-                           });
-        inner = Renderer(inner, [inner] { return inner->Render() | flex; });
-
-        break;
-      }
-
-      case nlohmann::detail::value_t::string: {
-        auto str = std::make_shared<std::string>();
-        *str     = proto.get<std::string>();
-        InputOption opt;
-        opt.on_enter = [str, cfg] {
-          cfg->request_modify(*str);
-        };
-        opt.cursor_position = 1 << 20;
-
-        inner = CatchEvent(Input(str.get(), "value", std::move(opt)),
-                           [str, cfg](Event evt) {
-                             if (evt == Event::F5) { *str = cfg->serialize().get<std::string>(); }
-                             return false;
-                           });
-
-        break;
-      }
-
-      case nlohmann::detail::value_t::boolean: {
-        auto ptr = std::make_shared<bool>();
-        *ptr     = proto.get<bool>();
-
-        CheckboxOption opt;
-        opt.style_checked   = "[true ";
-        opt.style_unchecked = "[false";
-
-        opt.on_change = [ptr, cfg] { cfg->request_modify(*ptr); };
-        inner         = Checkbox("<>]", ptr.get(), std::move(opt));
-        break;
-      }
-
-      case nlohmann::detail::value_t::number_integer:
-      case nlohmann::detail::value_t::number_float:
-      case nlohmann::detail::value_t::number_unsigned: {
-        auto        pwstr = std::make_shared<std::wstring>();
-        InputOption opt;
-        opt.cursor_position = 1 << 20;
-
-        opt.on_enter = [pwstr, cfg] {
-          double value = 0;
-          auto   str   = ftxui::to_string(*pwstr);
-          *pwstr       = {};
-
-          try {
-            auto result = std::stod(str);
-            cfg->request_modify(result);
-          } catch (std::invalid_argument&) {}
-        };
-
-        auto enter = Input(pwstr.get(), "value", std::move(opt));
-        inner      = enter;
-        break;
-      }
-
-      case nlohmann::detail::value_t::binary:
-        inner = Renderer([] { return color(Color::GrayDark, text("None")); });
-    }
+    inner = Container::Vertical({ptr->_iter(&ptr->rootobj)});
+    inner = CatchEvent(inner,
+                       [inner, ptr](Event evt) {
+                         if (evt == Event::F5) {
+                           ptr->rootobj = ptr->cfg->serialize();
+                           inner->DetachAllChildren();
+                           inner->Add({ptr->_iter(&ptr->rootobj)});
+                         }
+                         return false;
+                       });
+    inner = Renderer(inner, [inner] { return inner->Render() | flex; });
 
     return Renderer(inner, [inner] {
       return vbox(hbox(text(" "), inner->Render()), color(Color::Cyan, separator())) | flex;
