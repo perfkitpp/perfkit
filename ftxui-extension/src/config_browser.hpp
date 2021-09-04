@@ -99,8 +99,7 @@ class config_node_builder {
   bool is_content() const { return !!_content; }
 
   ftxui::Component build(
-      std::shared_ptr<std::function<void(bool)>> parent_fold
-      = std::make_shared<std::function<void(bool)>>([](bool) {})) {
+      std::shared_ptr<std::function<void(bool)>> parent_fold = nullptr) {
     if (_content) {
       return _build_content_modifier();
 
@@ -157,7 +156,7 @@ class config_node_builder {
           subnode_fold_fn && (subnode_fold_fn(b), 1);
           fn_all(b);
           (*fold_fn)(b);
-          (*parent_fold)(b);
+          parent_fold && ((*parent_fold)(b), 1);
         };
 
         auto label = Checkbox(snode->first, state_boolean.get(), std::move(opts));
@@ -176,13 +175,15 @@ class config_node_builder {
           if (is_content) { label_render = color(Color::Cyan, label_render); }
           return hbox(label_render, filler(), text(" "), deco());
         }));
-        subnodes->Add(label_cont);
+
+        subnodes->Add(
+            Renderer(label_cont, [label_cont] { return hbox(text("  "), label_cont->Render() | flex); }));
       }
 
-      *parent_fold = *fold_fn_all;
+      parent_fold && (*parent_fold = *fold_fn_all, 1);
       return Renderer(subnodes,
                       [subnodes] {
-                        return hbox(text("  "), subnodes->Render() | xflex);
+                        return (subnodes->Render() | xflex);
                       });
     }
 
@@ -349,7 +350,7 @@ class config_browser : public ftxui::ComponentBase {
     _container = Renderer(
         built,
         [built] {
-          return built->Render() | xflex | yframe;
+          return (built->Render() | xflex | yframe);
         });
   }
 

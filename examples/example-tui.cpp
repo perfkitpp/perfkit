@@ -135,7 +135,8 @@ int main(int argc, const char* argv[]) {
                [&] {
                  cfg::registry().apply_update_and_check_if_dirty();
                  cfg::labels::foo.async_modify(cfg::labels::foo.get() + 1);
-                 return component->Render() | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
+                 return window(text("< configs >"), component->Render())
+                        | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
                }));
 
   return 0;
