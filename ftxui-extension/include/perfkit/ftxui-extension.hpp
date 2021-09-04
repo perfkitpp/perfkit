@@ -2,8 +2,8 @@
 #include "ftxui/component/component.hpp"
 
 namespace perfkit_fxtui {
-class option_widget : public ftxui::ComponentBase {
 
-};
+ftxui::Component config_browser();
+ftxui::Component trace_browser();
 
 }  // namespace perfkit_fxtui

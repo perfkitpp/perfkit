@@ -1,24 +1,120 @@
 #include "ftxui/component/captured_mouse.hpp"      // for ftxui
 #include "ftxui/component/component.hpp"           // for Checkbox, Vertical
 #include "ftxui/component/screen_interactive.hpp"  // for ScreenInteractive
+#include "perfkit/configs.h"
+#include "perfkit/ftxui-extension.hpp"
+
+PERFKIT_CATEGORY(cfg) {
+  PERFKIT_SUBCATEGORY(labels) {
+    PERFKIT_CONFIGURE(foo, 1).confirm();
+    PERFKIT_CONFIGURE(bar, 1).confirm();
+    PERFKIT_CONFIGURE(ce, 1).confirm();
+    PERFKIT_CONFIGURE(ced, 1).confirm();
+    PERFKIT_CONFIGURE(cedr, 1).confirm();
+    PERFKIT_CONFIGURE(cedrs, 1).confirm();
+  }
+  PERFKIT_SUBCATEGORY(lomo) {
+    PERFKIT_SUBCATEGORY(movdo) {
+      PERFKIT_CONFIGURE(ce, 1).confirm();
+      PERFKIT_CONFIGURE(ced, 1).confirm();
+      PERFKIT_CONFIGURE(cedr, 1).confirm();
+
+      PERFKIT_SUBCATEGORY(cef) {
+      }
+      PERFKIT_SUBCATEGORY(ccra) {
+        PERFKIT_CONFIGURE(foo, 1).confirm();
+        PERFKIT_CONFIGURE(bar, 1).confirm();
+        PERFKIT_CONFIGURE(ce, 1).confirm();
+        PERFKIT_CONFIGURE(ced, 1).confirm();
+        PERFKIT_CONFIGURE(cedr, 1).confirm();
+        PERFKIT_CONFIGURE(cedrs, 1).confirm();
+
+        PERFKIT_CONFIGURE(a_foo, 1).confirm();
+        PERFKIT_CONFIGURE(a_bar, 1).confirm();
+        PERFKIT_CONFIGURE(a_ce, 1).confirm();
+        PERFKIT_CONFIGURE(a_ced, 1).confirm();
+        PERFKIT_CONFIGURE(a_cedr, 1).confirm();
+        PERFKIT_CONFIGURE(a_cedrs, 1).confirm();
+
+        PERFKIT_CONFIGURE(b_foo, 1).confirm();
+        PERFKIT_CONFIGURE(b_bar, 1).confirm();
+        PERFKIT_CONFIGURE(b_ce, 1).confirm();
+        PERFKIT_CONFIGURE(b_ced, 1).confirm();
+        PERFKIT_CONFIGURE(b_cedr, 1).confirm();
+        PERFKIT_CONFIGURE(b_cedrs, 1).confirm();
+
+        PERFKIT_CONFIGURE(c_foo, 1).confirm();
+        PERFKIT_CONFIGURE(c_bar, 1).confirm();
+        PERFKIT_CONFIGURE(c_ce, 1).confirm();
+        PERFKIT_CONFIGURE(c_ced, 1).confirm();
+        PERFKIT_CONFIGURE(c_cedr, 1).confirm();
+        PERFKIT_CONFIGURE(c_cedrs, 1).confirm();
+
+        PERFKIT_CONFIGURE(d_foo, 1).confirm();
+        PERFKIT_CONFIGURE(d_bar, 1).confirm();
+        PERFKIT_CONFIGURE(d_ce, 1).confirm();
+        PERFKIT_CONFIGURE(d_ced, 1).confirm();
+        PERFKIT_CONFIGURE(d_cedr, 1).confirm();
+        PERFKIT_CONFIGURE(d_cedrs, 1).confirm();
+      }
+    }
+  }
+
+  PERFKIT_CONFIGURE(foo, 1).confirm();
+  PERFKIT_CONFIGURE(bar, 1).confirm();
+  PERFKIT_CONFIGURE(ce, 1).confirm();
+  PERFKIT_CONFIGURE(ced, 1).confirm();
+  PERFKIT_CONFIGURE(cedr, 1).confirm();
+  PERFKIT_CONFIGURE(cedrs, 1).confirm();
+
+  PERFKIT_CONFIGURE(a_foo, 1).confirm();
+  PERFKIT_CONFIGURE(a_bar, 1).confirm();
+  PERFKIT_CONFIGURE(a_ce, 1).confirm();
+  PERFKIT_CONFIGURE(a_ced, 1).confirm();
+  PERFKIT_CONFIGURE(a_cedr, 1).confirm();
+  PERFKIT_CONFIGURE(a_cedrs, 1).confirm();
+
+  PERFKIT_CONFIGURE(b_foo, 1).confirm();
+  PERFKIT_CONFIGURE(b_bar, 1).confirm();
+  PERFKIT_CONFIGURE(b_ce, 1).confirm();
+  PERFKIT_CONFIGURE(b_ced, 1).confirm();
+  PERFKIT_CONFIGURE(b_cedr, 1).confirm();
+  PERFKIT_CONFIGURE(b_cedrs, 1).confirm();
+
+  PERFKIT_CONFIGURE(c_foo, 1).confirm();
+  PERFKIT_CONFIGURE(c_bar, 1).confirm();
+  PERFKIT_CONFIGURE(c_ce, 1).confirm();
+  PERFKIT_CONFIGURE(c_ced, 1).confirm();
+  PERFKIT_CONFIGURE(c_cedr, 1).confirm();
+  PERFKIT_CONFIGURE(c_cedrs, 1).confirm();
+
+  PERFKIT_CONFIGURE(d_foo, 1).confirm();
+  PERFKIT_CONFIGURE(d_bar, 1).confirm();
+  PERFKIT_CONFIGURE(d_ce, 1).confirm();
+  PERFKIT_CONFIGURE(d_ced, 1).confirm();
+  PERFKIT_CONFIGURE(d_cedr, 1).confirm();
+  PERFKIT_CONFIGURE(d_cedrs, 1).confirm();
+
+  PERFKIT_CONFIGURE(e_foo, 1).confirm();
+  PERFKIT_CONFIGURE(e_bar, 1).confirm();
+  PERFKIT_CONFIGURE(e_ce, 1).confirm();
+  PERFKIT_CONFIGURE(e_ced, 1).confirm();
+  PERFKIT_CONFIGURE(e_cedr, 1).confirm();
+  PERFKIT_CONFIGURE(e_cedrs, 1).confirm();
+}
 
 using namespace ftxui;
 
 int main(int argc, const char* argv[]) {
-  bool build_examples_state  = false;
-  bool build_tests_state     = false;
-  bool use_webassembly_state = true;
+  auto component = perfkit_fxtui::config_browser();
 
-  auto component = Container::Vertical({
-      Checkbox("Build examples", &build_examples_state),
-      Checkbox("Build tests", &build_tests_state),
-      Checkbox("Use WebAssembly", &use_webassembly_state),
-  });
+  auto screen = ScreenInteractive::Fullscreen();
+  screen.Loop(
+      Renderer(component,
+               [&] {
+                 return component->Render() | size(ftxui::HEIGHT, ftxui::LESS_THAN, 10);
+               }));
 
-  component->Add(Checkbox("Ola Ollala", &build_examples_state));
-
-  auto screen = ScreenInteractive::TerminalOutput();
-  screen.Loop(component);
   return 0;
 }
 

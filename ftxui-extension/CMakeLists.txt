@@ -9,8 +9,8 @@ endif ()
 
 add_library(
         ${PROJECT_NAME} STATIC
-        src/option-panel.cpp
-)
+        src/ftxui-extension.cpp
+        src/config_browser.cpp src/config_browser.hpp)
 
 add_library(perfkit::ftxui ALIAS ${PROJECT_NAME})
 
