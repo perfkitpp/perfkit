@@ -4,33 +4,24 @@ project(perfkit)
 # Imports --------------------------------------------------------------------------------------------------------------
 add_subdirectory(range-v3-master EXCLUDE_FROM_ALL)
 
-# Options --------------------------------------------------------------------------------------------------------------
-option(${PROJECT_NAME}_BUILD_SHARED "Build shared version of library" OFF)
-
 # Module ---------------------------------------------------------------------------------------------------------------
 file(GLOB_RECURSE ${PROJECT_NAME}_SOURCES "src/*")
 file(GLOB_RECURSE ${PROJECT_NAME}_HEADERS "include/*")
 
-if (${PROJECT_NAME}_BUILD_SHARED)
-    add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS})
-    add_library(perfkit::perfkit ALIAS ${PROJECT_NAME})
-else ()
-    add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS})
-    add_library(perfkit::perfkit-static ALIAS ${PROJECT_NAME})
-endif ()
+add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS})
+add_library(perfkit::perfkit-static ALIAS ${PROJECT_NAME})
 
 # TUI integration
-find_package(Curses)
-if (Curses_FOUND)
-    file(GLOB_RECURSE ${PROJECT_NAME}_TUI_SOURCES "ui/*")
+option(PERFKIT_ENABLE_UI "" ON)
+option(PERFKIT_UI_USE_IMTUI "" ON)
 
-    message("Found Curses. Creating imtui target ...")
-    target_sources(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_TUI_SOURCES})
+add_subdirectory(ui-bundled)
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${CURSES_NCURSES_LIBRARY})
-    target_include_directories(${PROJECT_NAME} PRIVATE ${CURSES_INCLUDE_DIR})
-
-    target_include_directories(${PROJECT_NAME} PRIVATE "ui")
+if (PERFKIT_ENABLE_UI AND PERFKIT_UI_USE_IMTUI)
+    target_link_libraries(
+            ${PROJECT_NAME} PUBLIC
+            imtui-bundled
+    )
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------
