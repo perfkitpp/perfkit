@@ -9,14 +9,14 @@ file(GLOB_RECURSE ${PROJECT_NAME}_SOURCES "src/*")
 file(GLOB_RECURSE ${PROJECT_NAME}_HEADERS "include/*")
 
 add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS})
-add_library(perfkit::perfkit-static ALIAS ${PROJECT_NAME})
+add_library(perfkit::core           ALIAS ${PROJECT_NAME})
 
 # TUI integration
-option(perfkit_BUILD_FTXUI_EXTENSION "" ON)
+option(perfkit_BUILD_NCURSES_EXTENSION "" ON)
 
 if (perfkit_BUILD_FTXUI_EXTENSION)
-    message("Configuring FTXUI Extension Library ...")
-    add_subdirectory(ftxui-extension)
+    message("Configuring NCURSES Extension Library ...")
+    add_subdirectory(ncurses-extension)
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------
