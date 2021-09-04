@@ -9,7 +9,7 @@ file(GLOB_RECURSE ${PROJECT_NAME}_SOURCES "src/*")
 file(GLOB_RECURSE ${PROJECT_NAME}_HEADERS "include/*")
 
 add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS} tvision-extension/include/perfkit/tvision-extension.hpp)
-add_library(perfkit::perfkit-static ALIAS ${PROJECT_NAME})
+add_library(perfkit::core ALIAS ${PROJECT_NAME})
 
 # TUI integration
 option(perfkit_BUILD_FTXUI_EXTENSION "" ON)

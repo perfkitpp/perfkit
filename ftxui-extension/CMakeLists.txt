@@ -10,7 +10,8 @@ endif ()
 add_library(
         ${PROJECT_NAME} STATIC
         src/ftxui-extension.cpp
-        src/config_browser.cpp src/config_browser.hpp)
+        src/config_browser.hpp
+        src/trace_browser.hpp)
 
 add_library(perfkit::ftxui ALIAS ${PROJECT_NAME})
 
@@ -19,7 +20,7 @@ target_link_libraries(
         PUBLIC ftxui::screen
         PUBLIC ftxui::dom
         PUBLIC ftxui::component
-        perfkit::perfkit-static
+        perfkit::core
 )
 
 target_include_directories(
