@@ -4,6 +4,11 @@
 #include "perfkit/configs.h"
 #include "perfkit/ftxui-extension.hpp"
 
+nlohmann::json sample{
+    {"a", 2},
+    {"b", {"c", 3}},
+    {"d", {"e", {"f", 4}, {"h", 3}}}};
+
 PERFKIT_CATEGORY(cfg) {
   PERFKIT_SUBCATEGORY(labels) {
     PERFKIT_CONFIGURE(foo, 1).confirm();
@@ -12,6 +17,7 @@ PERFKIT_CATEGORY(cfg) {
     PERFKIT_CONFIGURE(ced, std::vector({1, 2, 3, 4, 5, 6})).confirm();
     PERFKIT_CONFIGURE(cedr, (std::map<std::string, int>{{"fdf", 2}, {"erwe", 4}})).confirm();
     PERFKIT_CONFIGURE(cedrs, 3.141592).confirm();
+    PERFKIT_CONFIGURE(cedrstt, sample).confirm();
   }
   PERFKIT_SUBCATEGORY(lomo) {
     PERFKIT_SUBCATEGORY(movdo) {

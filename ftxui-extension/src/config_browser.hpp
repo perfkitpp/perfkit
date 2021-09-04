@@ -182,7 +182,7 @@ class config_node_builder {
       *parent_fold = *fold_fn_all;
       return Renderer(subnodes,
                       [subnodes] {
-                        return hbox(text(" "), subnodes->Render() | xflex);
+                        return hbox(text("  "), subnodes->Render() | xflex);
                       });
     }
 
@@ -193,7 +193,7 @@ class config_node_builder {
   struct _json_editor_builder {
     config_ptr            cfg;
     bool                  allow_schema_modification;
-    nlohmann::json        json_root;
+    nlohmann::json        rootobj;
     std::function<void()> on_change;
 
     Component _iter(nlohmann::json* obj) {
@@ -219,7 +219,7 @@ class config_node_builder {
             outer->Add(inner);
           }
 
-          return outer;
+          return Renderer(outer, [outer] { return outer->Render() | flex; });
         }
 
         case nlohmann::detail::value_t::array: {
@@ -233,27 +233,59 @@ class config_node_builder {
                                    key = text(fmt::format("[{}]:", i)),
                                    inner_value] {
                                     return hbox(
-                                               color(Color::Violet, key),
-                                               text(" {"), inner_value->Render(), text("}"))
-                                           | flex;
+                                        color(Color::Violet, key),
+                                        filler(),
+                                        text(" {"), inner_value->Render(), text("}"));
                                   });
             outer->Add(inner);
           }
-          return outer;
+          return Renderer(outer, [outer] { return outer->Render() | flex; });
         }
 
-        case nlohmann::detail::value_t::string:
+        case nlohmann::detail::value_t::string: {
+          InputOption opt;
+          opt.on_enter = [this] {
+            on_change();
+          };
+
+          return CatchEvent(Input(obj->get_ptr<std::string*>(), "value", std::move(opt)),
+                            [obj, this](Event evt) {
+                              if (evt == Event::F5) { *obj = cfg->serialize().get<std::string>(); }
+                              return false;
+                            });
+        }
+
+        case nlohmann::detail::value_t::boolean: {
+          CheckboxOption opt;
+          opt.style_checked   = "[true ] ";
+          opt.style_unchecked = "[false] ";
+
+          opt.on_change = on_change;
+          return Checkbox("toggle", obj->get_ptr<bool*>(), std::move(opt));
           break;
-        case nlohmann::detail::value_t::boolean:
-          break;
+        }
+
         case nlohmann::detail::value_t::number_integer:
-          break;
         case nlohmann::detail::value_t::number_unsigned:
-          break;
-        case nlohmann::detail::value_t::number_float:
-          break;
+        case nlohmann::detail::value_t::number_float: {
+          auto pwstr = std::make_shared<std::wstring>();
+          *pwstr     = ftxui::to_wstring(obj->dump());
+          InputOption opt;
+          opt.on_enter = [pwstr, this, obj] {
+            double value = 0;
+            auto   str   = ftxui::to_string(*pwstr);
+
+            try {
+              auto result = std::stod(str);
+              *obj        = result;
+              on_change();
+            } catch (std::invalid_argument&) {}
+          };
+
+          return Input(pwstr.get(), "value", std::move(opt));
+        }
+
         case nlohmann::detail::value_t::binary:
-          break;
         case nlohmann::detail::value_t::discarded:
           break;
       }
@@ -280,22 +312,23 @@ class config_node_builder {
       case nlohmann::detail::value_t::object:
       case nlohmann::detail::value_t::array: {
         auto ptr       = std::make_shared<_json_editor_builder>();
-        ptr->on_change = [cfg, ptr] { cfg->request_modify(ptr->json_root); };
+        ptr->on_change = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
         ptr->cfg       = cfg;
-        ptr->json_root = cfg->serialize();
+        ptr->rootobj   = proto;
 
         ptr->allow_schema_modification = false;
 
-        inner = Container::Vertical({ptr->_iter(&ptr->json_root)});
+        inner = Container::Vertical({ptr->_iter(&ptr->rootobj)});
         inner = CatchEvent(inner,
                            [inner, ptr](Event evt) {
                              if (evt == Event::F5) {
-                               ptr->json_root = ptr->cfg->serialize();
+                               ptr->rootobj = ptr->cfg->serialize();
                                inner->DetachAllChildren();
-                               inner->Add({ptr->_iter(&ptr->json_root)});
+                               inner->Add({ptr->_iter(&ptr->rootobj)});
                              }
                              return false;
                            });
+        inner = Renderer(inner, [inner] { return inner->Render() | flex; });
 
         break;
       }
@@ -356,7 +389,7 @@ class config_node_builder {
     }
 
     return Renderer(inner, [inner] {
-      return vbox(hbox(text(" "), inner->Render()), separator()) | flex;
+      return vbox(hbox(text(" "), inner->Render()), color(Color::Cyan, separator())) | flex;
     });
   }
 
