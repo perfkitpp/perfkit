@@ -54,7 +54,9 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
   if (it != all().end()) { throw std::invalid_argument("Argument MUST be unique!!!"); }
 
   if (!find_key(o->display_key()).empty()) {
-    throw std::invalid_argument("Duplicated Display Key Found");
+    throw std::invalid_argument(fmt::format(
+        "Duplicated Display Key Found: \n\t{} (from full key {})",
+        o->display_key(), o->full_key()));
   }
 
   key_mapping().try_emplace(o->display_key(), o->full_key());
@@ -109,8 +111,16 @@ perfkit::detail::config_base::config_base(
                                rg_remove_order_marker, "");
   _display_key.resize(it - _display_key.begin());
 
-  if (_full_key.back() == '|') { throw ""; }
-  if (_display_key.empty()) { throw "Invalid Key"; }
+  if (_full_key.back() == '|') {
+    throw std::invalid_argument(
+        fmt::format("Invalid Key Name: {}", _full_key));
+  }
+
+  if (_display_key.empty()) {
+    throw std::invalid_argument(
+        fmt::format("Invalid Generated Display Key Name: {} from full key {}",
+                    _display_key, _full_key));
+  }
 }
 
 bool perfkit::detail::config_base::_try_deserialize(const nlohmann::json& value) {

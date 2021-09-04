@@ -44,7 +44,7 @@ class config_base {
 
   std::string_view full_key() const { return _full_key; }
   std::string_view display_key() const { return _display_key; }
-  std::string_view description() const { return description(); }
+  std::string_view description() const { return _description; }
 
   size_t num_modified() const { return _fence_modification.load(std::memory_order_relaxed); };
 
@@ -180,11 +180,6 @@ class _config_factory {
  private:
   template <typename>
   friend class config;
-
-  template <typename T_>
-  friend _config_factory<T_, 0> configure(config_registry& dispatcher,
-                                          std::string      full_key,
-                                          Ty_&&            default_value) noexcept;
 
   _config_attrib_data<Ty_> _data;
 
