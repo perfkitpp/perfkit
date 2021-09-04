@@ -1,8 +1,8 @@
 #define DOCTEST_CONFIG_NO_EXCEPTIONS
 #include "doctest.h"
+#include "perfkit/detail/command_registry.hpp"
 #include "perfkit/perfkit.h"
 #include "range/v3/view.hpp"
-#include "perfkit/detail/command_registry.hpp"
 
 using namespace std::literals;
 using namespace ranges;
@@ -54,9 +54,9 @@ TEST_CASE("Create Message Blocks") {
 }
 
 TEST_CASE("Tokenize") {
-  std::vector<std::string> tokens;
-  perfkit::cmdutils::tokenize_by_argv_rule(
-      "umai\\ bong\\ daesu a alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over", tokens, nullptr);
+  std::vector<std::string_view> tokens;
+  std::string                   buff = "umai\\ bong\\ daesu a alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over";
+  perfkit::cmdutils::tokenize_by_argv_rule(&buff, tokens, nullptr);
 
   std::vector<std::string> compared(
       {"umai bong daesu",

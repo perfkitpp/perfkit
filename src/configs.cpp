@@ -173,4 +173,6 @@ void perfkit::detail::config_base::_split_categories(std::string_view view, std:
       ++i;
     }
   }
+  
+  out.push_back(view); // last segment.
 }

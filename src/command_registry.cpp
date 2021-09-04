@@ -224,10 +224,13 @@ void perfkit::ui::command_registry::node::reset_handler(perfkit::ui::handler_fn&
 }
 
 void perfkit::cmdutils::tokenize_by_argv_rule(
-    std::string_view                           src,
-    std::vector<std::string>&                  tokens,
+    std::string*                               io,
+    std::vector<std::string_view>&             tokens,
     std::vector<std::pair<ptrdiff_t, size_t>>* token_indexes) {
-  std::cregex_iterator iter{src.begin(), src.end(), rg_argv_token};
+  auto const src = *io;
+  io->clear(), io->reserve(src.size());
+
+  std::cregex_iterator iter{src.data(), src.data() + src.size(), rg_argv_token};
   std::cregex_iterator iter_end{};
 
   for (; iter != iter_end; ++iter) {
@@ -244,17 +247,19 @@ void perfkit::cmdutils::tokenize_by_argv_rule(
     }
 
     position = match.position(n), length = match.length(n);
-    tokens.push_back(std::string(src.substr(position, length)));
 
     if (token_indexes) {
       token_indexes->emplace_back(position, length);
     }
 
     // correct escapes
-    auto&                   str = tokens.back();
+    std::string             str = src.substr(position, length);
     const static std::regex rg_escape{R"(\\([ \\]))"};
 
     auto end = std::regex_replace(str.begin(), str.begin(), str.end(), rg_escape, "$1");
     str.resize(end - str.begin());
+
+    tokens.emplace_back(io->c_str() + io->size(), str.size());
+    io->append(str);
   }
 }

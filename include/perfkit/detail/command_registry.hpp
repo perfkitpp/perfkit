@@ -18,8 +18,8 @@ using stroffset = std::pair<ptrdiff_t, size_t>;
  * @param src
  * @param tokens
  */
-void tokenize_by_argv_rule(std::string_view          src,
-                           std::vector<std::string>& tokens,
+void tokenize_by_argv_rule(std::string*                    io,
+                           std::vector<std::string_view>& tokens,
                            std::vector<stroffset>*   token_indexes = nullptr);
 
 };  // namespace perfkit::cmdutils

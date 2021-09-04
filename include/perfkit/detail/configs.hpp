@@ -47,7 +47,7 @@ class config_base {
   std::string_view full_key() const { return _full_key; }
   std::string_view display_key() const { return _display_key; }
   std::string_view description() const { return _description; }
-  auto             categories() const { return make_view(_categories); }
+  auto             tokenized_display_key() const { return make_view(_categories); }
 
   size_t num_modified() const { return _fence_modification.load(std::memory_order_relaxed); };
 
