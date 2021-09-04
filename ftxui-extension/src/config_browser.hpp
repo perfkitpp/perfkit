@@ -101,7 +101,8 @@ class config_node_builder {
 
   bool is_content() const { return !!_content; }
 
-  ftxui::Component build() {
+  ftxui::Component build(
+      std::shared_ptr<std::function<void(bool)>> parent_fold = {}) {
     if (_content) {
       return _build_content_modifier();
 
@@ -142,17 +143,29 @@ class config_node_builder {
           *state = is_active(container);
         };
 
-        auto node_content = snode->second.build();
-        opts.on_change    = [node_content, label_cont, state_boolean] {
+        auto fold_fn      = std::make_shared<std::function<void(bool)>>();
+        auto node_content = snode->second.build(fold_fn);
+
+        opts.on_change = [node_content, label_cont, state_boolean] {
           fold_or_unfold(label_cont, node_content, !is_active(label_cont), state_boolean);
+        };
+        *fold_fn = [node_content, label_cont, state_boolean](bool b) {
+          fold_or_unfold(label_cont, node_content, b, state_boolean);
         };
 
         auto label = Checkbox(snode->first, state_boolean.get(), std::move(opts));
+        label
+            = CatchEvent(label,
+                         [parent_fold, fold_fn](Event evt) -> bool {
+                           if (evt == Event::Backspace) {
+                             (*(parent_fold ? parent_fold : fold_fn))(false);
+                           }
+                           return false;
+                         });
 
-        label_cont->Add(
-            Renderer(label, [label, deco = snode->second.decorator()] {
-              return hbox(label->Render(), filler(), text(" "), deco());
-            }));
+        label_cont->Add(Renderer(label, [label, deco = snode->second.decorator()] {
+          return hbox(label->Render(), filler(), text(" "), deco());
+        }));
         subnodes->Add(label_cont);
       }
 
