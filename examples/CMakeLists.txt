@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 3.20)
 
 set(TARGET_CONTEXT_NAME)
 add_executable(perfkit-automated-test automation.cpp automation-perfkit.cpp)
-target_link_libraries(perfkit-automated-test PRIVATE perfkit::core)
+target_link_libraries(perfkit-automated-test PRIVATE perfkit::perfkit-static)
 
 add_executable(example-tui example-tui.cpp)
-target_link_libraries(example-tui PRIVATE perfkit::curses)
+target_link_libraries(example-tui PRIVATE perfkit::ftxui)
 
 #add_executable(curses-practice curses-practice.cpp)
 #target_link_libraries(curses-practice PRIVATE ${CURSES_NCURSES_LIBRARY})
