@@ -7,11 +7,11 @@
 PERFKIT_CATEGORY(cfg) {
   PERFKIT_SUBCATEGORY(labels) {
     PERFKIT_CONFIGURE(foo, 1).confirm();
-    PERFKIT_CONFIGURE(bar, 1).confirm();
-    PERFKIT_CONFIGURE(ce, 1).confirm();
-    PERFKIT_CONFIGURE(ced, 1).confirm();
-    PERFKIT_CONFIGURE(cedr, 1).confirm();
-    PERFKIT_CONFIGURE(cedrs, 1).confirm();
+    PERFKIT_CONFIGURE(bar, false).confirm();
+    PERFKIT_CONFIGURE(ce, "ola ollalala").confirm();
+    PERFKIT_CONFIGURE(ced, std::vector({1, 2, 3, 4, 5, 6})).confirm();
+    PERFKIT_CONFIGURE(cedr, (std::map<std::string, int>{{"fdf", 2}, {"erwe", 4}})).confirm();
+    PERFKIT_CONFIGURE(cedrs, 3.141592).confirm();
   }
   PERFKIT_SUBCATEGORY(lomo) {
     PERFKIT_SUBCATEGORY(movdo) {
@@ -102,6 +102,21 @@ PERFKIT_CATEGORY(cfg) {
   PERFKIT_CONFIGURE(e_cedr, 1).confirm();
   PERFKIT_CONFIGURE(e_cedrs, 1).confirm();
 }
+
+PERFKIT_CATEGORY(vlao) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao1) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao2) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao3) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao4) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao5) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao6) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao7) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao8) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao9) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao22) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao33) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao44) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao55) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 
 using namespace ftxui;
 

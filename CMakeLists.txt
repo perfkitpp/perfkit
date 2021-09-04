@@ -8,15 +8,21 @@ add_subdirectory(range-v3-master EXCLUDE_FROM_ALL)
 file(GLOB_RECURSE ${PROJECT_NAME}_SOURCES "src/*")
 file(GLOB_RECURSE ${PROJECT_NAME}_HEADERS "include/*")
 
-add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS})
+add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS} tvision-extension/include/perfkit/tvision-extension.hpp)
 add_library(perfkit::perfkit-static ALIAS ${PROJECT_NAME})
 
 # TUI integration
 option(perfkit_BUILD_FTXUI_EXTENSION "" ON)
+option(perfkit_BUILD_TVISION_EXTENSION "" ON)
 
 if (perfkit_BUILD_FTXUI_EXTENSION)
     message("Configuring FTXUI Extension Library ...")
     add_subdirectory(ftxui-extension)
+endif ()
+
+if (perfkit_BUILD_TVISION_EXTENSION)
+    message("Configuring Turbo Vision Extension Library ...")
+    add_subdirectory(tvision-extension)
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------

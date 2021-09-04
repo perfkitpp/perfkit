@@ -54,16 +54,60 @@ class config_node_builder {
     }
   }
 
-  Element decorate() {
-    return text("hell, world!");
+  size_t count() {
+    if (_content) { return 1; }
+
+    size_t cnt = 0;
+    for (auto& item : _subnodes) {
+      cnt += item.second.count();
+    }
+
+    return cnt;
   }
+
+  std::function<Element()> decorate() {
+    if (_content) {
+      return [ptr = _content, js = nlohmann::json{}]() mutable {
+        ptr->serialize(js);
+
+        switch (js.type()) {
+          case nlohmann::detail::value_t::null:
+            return color(Color::Red, text("NULL"));
+          case nlohmann::detail::value_t::discarded:
+            return color(Color::Red, text("--INVALID--"));
+          case nlohmann::detail::value_t::object:
+            return color(Color::Gold1, text(js.dump().substr(0, 20)));
+          case nlohmann::detail::value_t::array:
+            return color(Color::DarkViolet, text(js.dump().substr(0, 20)));
+          case nlohmann::detail::value_t::string:
+            return color(Color::SandyBrown, text(js.dump()));
+          case nlohmann::detail::value_t::boolean:
+            return color(Color::LightSteelBlue, text(js.dump()));
+          case nlohmann::detail::value_t::number_integer:
+          case nlohmann::detail::value_t::number_float:
+          case nlohmann::detail::value_t::number_unsigned:
+          case nlohmann::detail::value_t::binary:
+            return color(Color::LightGreen, text(js.dump()));
+        }
+
+        return text("content");
+      };
+    } else {
+      auto cnt = count();
+      return [cnt] { return color(Color::GrayDark,
+                                  text(fmt::format("{} item{}", cnt, cnt > 1 ? "s" : ""))); };
+    }
+  }
+
+  bool is_content() const { return !!_content; }
 
   ftxui::Component build() {
     if (_content) {
       auto ptr     = std::make_shared<_config_data>();
       ptr->content = _content;
+
       return Renderer([ptr] {
-        return text(std::string(ptr->content->tokenized_display_key().back()));
+        return text(std::string(ptr->content->full_key()));
       });
     } else if (!_subnodes.empty()) {
       auto subnode_ptr = _subnodes
@@ -80,33 +124,38 @@ class config_node_builder {
 
       // expose subnodes as individual buttons, which extended/collapsed when clicked.
       for (auto snode : subnode_ptr) {
-        auto label_cont   = Container::Vertical({});
-        auto node_content = snode->second.build();
+        auto label_cont    = Container::Vertical({});
+        auto node_content  = snode->second.build();
+        auto state_boolean = std::make_shared<bool>();
 
-        ButtonOption btn_opts;
-        btn_opts.border = false;
-        auto label
-            = Button(
-                snode->first,
-                [node_content, label_cont] {
-                  if (label_cont->ChildCount() == 1) {
-                    label_cont->Add(node_content);
-                  } else {
-                    label_cont->ChildAt(1)->Detach();
-                  }
-                },
-                btn_opts);
+        CheckboxOption opts;
+        if (snode->second.is_content()) {
+          opts.style_checked   = "*";
+          opts.style_unchecked = "";
+        }
+
+        opts.on_change = [node_content, label_cont, state_boolean] {
+          if (label_cont->ChildCount() == 1) {
+            label_cont->Add(node_content);
+            *state_boolean = true;
+          } else {
+            label_cont->ChildAt(1)->Detach();
+            *state_boolean = false;
+          }
+        };
+
+        auto label = Checkbox(snode->first, state_boolean.get(), opts);
 
         label_cont->Add(
-            Renderer(label, [label, deco = decorate()] {
-              return hbox(text("* "), label->Render(), filler(), text(" "), deco);
+            Renderer(label, [label, deco = snode->second.decorate()] {
+              return hbox(label->Render(), filler(), text(" "), deco());
             }));
         subnodes->Add(label_cont);
       }
 
       return Renderer(subnodes,
                       [subnodes] {
-                        return hbox(text(" "), subnodes->Render() | frame | flex);
+                        return hbox(text(" "), subnodes->Render() | xflex);
                       });
     }
 
@@ -141,7 +190,7 @@ class config_browser : public ftxui::ComponentBase {
     _container = Renderer(
         built,
         [built] {
-          return window(text("< configs >"), built->Render() | frame | flex);
+          return built->Render() | xflex | yframe;
         });
   }
 
