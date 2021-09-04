@@ -12,17 +12,6 @@ add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_
 add_library(perfkit::perfkit-static ALIAS ${PROJECT_NAME})
 
 # TUI integration
-option(PERFKIT_ENABLE_UI "" ON)
-option(PERFKIT_UI_USE_IMTUI "" ON)
-
-add_subdirectory(ui-bundled)
-
-if (PERFKIT_ENABLE_UI AND PERFKIT_UI_USE_IMTUI)
-    target_link_libraries(
-            ${PROJECT_NAME} PUBLIC
-            imtui-bundled
-    )
-endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
