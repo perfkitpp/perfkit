@@ -65,7 +65,7 @@ class config_node_builder {
     return cnt;
   }
 
-  std::function<Element()> decorate() {
+  std::function<Element()> decorator() {
     if (_content) {
       return [ptr = _content, js = nlohmann::json{}]() mutable {
         ptr->serialize(js);
@@ -103,12 +103,8 @@ class config_node_builder {
 
   ftxui::Component build() {
     if (_content) {
-      auto ptr     = std::make_shared<_config_data>();
-      ptr->content = _content;
+      return _build_content_modifier();
 
-      return Renderer([ptr] {
-        return text(std::string(ptr->content->full_key()));
-      });
     } else if (!_subnodes.empty()) {
       auto subnode_ptr = _subnodes
                          | views::transform([](auto&& c) { return &c; })
@@ -125,7 +121,6 @@ class config_node_builder {
       // expose subnodes as individual buttons, which extended/collapsed when clicked.
       for (auto snode : subnode_ptr) {
         auto label_cont    = Container::Vertical({});
-        auto node_content  = snode->second.build();
         auto state_boolean = std::make_shared<bool>();
 
         CheckboxOption opts;
@@ -134,20 +129,28 @@ class config_node_builder {
           opts.style_unchecked = "";
         }
 
-        opts.on_change = [node_content, label_cont, state_boolean] {
-          if (label_cont->ChildCount() == 1) {
-            label_cont->Add(node_content);
-            *state_boolean = true;
-          } else {
-            label_cont->ChildAt(1)->Detach();
-            *state_boolean = false;
+        static auto is_active = [](auto&& container) {
+          return container->ChildCount() == 2;
+        };
+        static auto fold_or_unfold = [](auto&& container, auto&& child, bool en, auto&& state) {
+          if (!en && is_active(container)) { container->ChildAt(1)->Detach(); }
+          if (en && !is_active(container)) {
+            child->OnEvent(Event::F5);
+            container->Add(child);
           }
+
+          *state = is_active(container);
         };
 
-        auto label = Checkbox(snode->first, state_boolean.get(), opts);
+        auto node_content = snode->second.build();
+        opts.on_change    = [node_content, label_cont, state_boolean] {
+          fold_or_unfold(label_cont, node_content, !is_active(label_cont), state_boolean);
+        };
+
+        auto label = Checkbox(snode->first, state_boolean.get(), std::move(opts));
 
         label_cont->Add(
-            Renderer(label, [label, deco = snode->second.decorate()] {
+            Renderer(label, [label, deco = snode->second.decorator()] {
               return hbox(label->Render(), filler(), text(" "), deco());
             }));
         subnodes->Add(label_cont);
@@ -160,6 +163,59 @@ class config_node_builder {
     }
 
     assert(false && "This routine cannot be entered.");
+  }
+
+ private:
+  Component _build_content_modifier() {
+    auto ptr     = std::make_shared<_config_data>();
+    ptr->content = _content;
+
+    Component inner;
+    auto      proto = _content->serialize();
+    switch (proto.type()) {
+      case nlohmann::detail::value_t::null:
+        return Renderer([] { return color(Color::Red, text("NULL")); });
+
+      case nlohmann::detail::value_t::discarded:
+        return Renderer([] { return color(Color::Red, text("--INVALID--")); });
+
+      case nlohmann::detail::value_t::object:
+      case nlohmann::detail::value_t::array:
+        inner = Renderer([] { return color(Color::GrayDark, text("Temporary")); });
+        break;
+
+      case nlohmann::detail::value_t::string: {
+        auto str = std::make_shared<std::string>();
+        *str     = proto.get<std::string>();
+        InputOption opt;
+        opt.on_enter = [str, ptr] {
+          config_registry::request_update_value(
+              std::string{ptr->content->full_key()},
+              *str);
+        };
+
+        inner = CatchEvent(Input(str.get(), "value", std::move(opt)),
+                           [str, ptr](Event evt) {
+                             if (evt == Event::F5) { *str = ptr->content->serialize().get<std::string>(); }
+                             return false;
+                           });
+
+        break;
+      }
+
+      case nlohmann::detail::value_t::boolean: {
+      }
+
+      case nlohmann::detail::value_t::number_integer:
+      case nlohmann::detail::value_t::number_float:
+      case nlohmann::detail::value_t::number_unsigned:
+      case nlohmann::detail::value_t::binary:
+        inner = Renderer([] { return color(Color::GrayDark, text("Temporary")); });
+    }
+
+    return Renderer(inner, [inner] {
+      return vbox(hbox(text(" "), inner->Render()), separator()) | flex;
+    });
   }
 
  private:

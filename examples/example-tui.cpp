@@ -123,10 +123,12 @@ using namespace ftxui;
 int main(int argc, const char* argv[]) {
   auto component = perfkit_fxtui::config_browser();
 
-  auto screen = ScreenInteractive::Fullscreen();
+  auto screen = ScreenInteractive::FitComponent();
   screen.Loop(
       Renderer(component,
                [&] {
+                 cfg::registry().apply_update_and_check_if_dirty();
+                 cfg::labels::foo.async_modify(cfg::labels::foo.get() + 1);
                  return component->Render() | size(ftxui::HEIGHT, ftxui::LESS_THAN, 10);
                }));
 
