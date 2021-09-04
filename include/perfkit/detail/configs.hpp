@@ -295,7 +295,7 @@ auto configure(config_registry& dispatcher,
   _config_factory<_cvt_ty<Ty_>> attribute;
   attribute._pinfo                = std::make_shared<typename _config_factory<_cvt_ty<Ty_>>::_init_info>();
   attribute._pinfo->dispatcher    = &dispatcher;
-  attribute._pinfo->default_value = std::forward<Ty_>(default_value);
+  attribute._pinfo->default_value = std::move(default_value);
   attribute._pinfo->full_key      = std::move(full_key);
 
   return attribute;

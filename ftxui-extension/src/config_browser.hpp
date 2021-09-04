@@ -73,9 +73,9 @@ class config_node_builder {
           case nlohmann::detail::value_t::discarded:
             return color(Color::Red, text("--INVALID--"));
           case nlohmann::detail::value_t::object:
-            return color(Color::Gold1, text(js.dump().substr(0, 20)));
+            return color(Color::Gold1, text(js.dump()));
           case nlohmann::detail::value_t::array:
-            return color(Color::DarkViolet, text(js.dump().substr(0, 20)));
+            return color(Color::DarkViolet, text(js.dump()));
           case nlohmann::detail::value_t::string:
             return color(Color::SandyBrown, text(js.dump()));
           case nlohmann::detail::value_t::boolean:
@@ -234,7 +234,6 @@ class config_node_builder {
                                    inner_value] {
                                     return hbox(
                                         color(Color::Violet, key),
-                                        filler(),
                                         text(" {"), inner_value->Render(), text("}"));
                                   });
             outer->Add(inner);
@@ -244,25 +243,19 @@ class config_node_builder {
 
         case nlohmann::detail::value_t::string: {
           InputOption opt;
-          opt.on_enter = [this] {
-            on_change();
-          };
+          opt.on_enter        = on_change;
+          opt.cursor_position = 1 << 20;
 
-          return CatchEvent(Input(obj->get_ptr<std::string*>(), "value", std::move(opt)),
-                            [obj, this](Event evt) {
-                              if (evt == Event::F5) { *obj = cfg->serialize().get<std::string>(); }
-                              return false;
-                            });
+          return Input(obj->get_ptr<std::string*>(), "value", std::move(opt));
         }
 
         case nlohmann::detail::value_t::boolean: {
           CheckboxOption opt;
-          opt.style_checked   = "[true ] ";
-          opt.style_unchecked = "[false] ";
+          opt.style_checked   = "true ";
+          opt.style_unchecked = "false";
+          opt.on_change       = on_change;
 
-          opt.on_change = on_change;
-          return Checkbox("toggle", obj->get_ptr<bool*>(), std::move(opt));
-          break;
+          return Checkbox("<>", obj->get_ptr<bool*>(), std::move(opt));
         }
 
         case nlohmann::detail::value_t::number_integer:
@@ -271,6 +264,8 @@ class config_node_builder {
           auto pwstr = std::make_shared<std::wstring>();
           *pwstr     = ftxui::to_wstring(obj->dump());
           InputOption opt;
+          opt.cursor_position = 1 << 20;
+
           opt.on_enter = [pwstr, this, obj] {
             double value = 0;
             auto   str   = ftxui::to_string(*pwstr);
@@ -340,6 +335,7 @@ class config_node_builder {
         opt.on_enter = [str, cfg] {
           cfg->request_modify(*str);
         };
+        opt.cursor_position = 1 << 20;
 
         inner = CatchEvent(Input(str.get(), "value", std::move(opt)),
                            [str, cfg](Event evt) {
@@ -355,11 +351,11 @@ class config_node_builder {
         *ptr     = proto.get<bool>();
 
         CheckboxOption opt;
-        opt.style_checked   = "[true ] ";
-        opt.style_unchecked = "[false] ";
+        opt.style_checked   = "[true ";
+        opt.style_unchecked = "[false";
 
         opt.on_change = [ptr, cfg] { cfg->request_modify(*ptr); };
-        inner         = Checkbox("toggle", ptr.get(), std::move(opt));
+        inner         = Checkbox("<>]", ptr.get(), std::move(opt));
         break;
       }
 
@@ -368,6 +364,8 @@ class config_node_builder {
       case nlohmann::detail::value_t::number_unsigned: {
         auto        pwstr = std::make_shared<std::wstring>();
         InputOption opt;
+        opt.cursor_position = 1 << 20;
+
         opt.on_enter = [pwstr, cfg] {
           double value = 0;
           auto   str   = ftxui::to_string(*pwstr);
