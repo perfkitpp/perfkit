@@ -2,6 +2,7 @@
 // Created by Seungwoo on 2021-09-04.
 //
 #pragma once
+#include <charconv>
 #include <list>
 
 #include "ftxui/component/component.hpp"
@@ -23,10 +24,6 @@ namespace views = ranges::views;
 
 class config_node_builder {
  private:
-  struct _config_data {
-    config_ptr content;
-  };
-
  public:
   void _put_new(array_view<std::string_view const> category, config_ptr&& ptr) {
     // initial full key will be used for sort categories.
@@ -102,7 +99,8 @@ class config_node_builder {
   bool is_content() const { return !!_content; }
 
   ftxui::Component build(
-      std::shared_ptr<std::function<void(bool)>> parent_fold = {}) {
+      std::shared_ptr<std::function<void(bool)>> parent_fold
+      = std::make_shared<std::function<void(bool)>>([](bool) {})) {
     if (_content) {
       return _build_content_modifier();
 
@@ -117,7 +115,8 @@ class config_node_builder {
                      return a->second._reference_key < b->second._reference_key;
                    });
 
-      auto subnodes = Container::Vertical({});
+      auto subnodes    = Container::Vertical({});
+      auto fold_fn_all = std::make_shared<std::function<void(bool)>>([](bool) {});
 
       // expose subnodes as individual buttons, which extended/collapsed when clicked.
       for (auto snode : subnode_ptr) {
@@ -138,13 +137,15 @@ class config_node_builder {
           if (en && !is_active(container)) {
             child->OnEvent(Event::F5);
             container->Add(child);
+            child->TakeFocus();
           }
 
           *state = is_active(container);
         };
 
-        auto fold_fn      = std::make_shared<std::function<void(bool)>>();
-        auto node_content = snode->second.build(fold_fn);
+        auto fold_fn         = std::make_shared<std::function<void(bool)>>();
+        auto node_content    = snode->second.build(fold_fn);
+        auto subnode_fold_fn = *fold_fn;
 
         opts.on_change = [node_content, label_cont, state_boolean] {
           fold_or_unfold(label_cont, node_content, !is_active(label_cont), state_boolean);
@@ -152,13 +153,19 @@ class config_node_builder {
         *fold_fn = [node_content, label_cont, state_boolean](bool b) {
           fold_or_unfold(label_cont, node_content, b, state_boolean);
         };
+        *fold_fn_all = [parent_fold, fold_fn, subnode_fold_fn, fn_all = *fold_fn_all](bool b) {
+          subnode_fold_fn && (subnode_fold_fn(b), 1);
+          fn_all(b);
+          (*fold_fn)(b);
+          (*parent_fold)(b);
+        };
 
         auto label = Checkbox(snode->first, state_boolean.get(), std::move(opts));
         label
             = CatchEvent(label,
-                         [parent_fold, fold_fn](Event evt) -> bool {
+                         [fold_fn_all](Event const& evt) -> bool {
                            if (evt == Event::Backspace) {
-                             (*(parent_fold ? parent_fold : fold_fn))(false);
+                             (*fold_fn_all)(false);
                            }
                            return false;
                          });
@@ -169,6 +176,7 @@ class config_node_builder {
         subnodes->Add(label_cont);
       }
 
+      *parent_fold = *fold_fn_all;
       return Renderer(subnodes,
                       [subnodes] {
                         return hbox(text(" "), subnodes->Render() | xflex);
@@ -180,8 +188,7 @@ class config_node_builder {
 
  private:
   Component _build_content_modifier() {
-    auto ptr     = std::make_shared<_config_data>();
-    ptr->content = _content;
+    auto cfg = _content;
 
     Component inner;
     auto      proto = _content->serialize();
@@ -201,15 +208,13 @@ class config_node_builder {
         auto str = std::make_shared<std::string>();
         *str     = proto.get<std::string>();
         InputOption opt;
-        opt.on_enter = [str, ptr] {
-          config_registry::request_update_value(
-              std::string{ptr->content->full_key()},
-              *str);
+        opt.on_enter = [str, cfg] {
+          cfg->request_modify(*str);
         };
 
         inner = CatchEvent(Input(str.get(), "value", std::move(opt)),
-                           [str, ptr](Event evt) {
-                             if (evt == Event::F5) { *str = ptr->content->serialize().get<std::string>(); }
+                           [str, cfg](Event evt) {
+                             if (evt == Event::F5) { *str = cfg->serialize().get<std::string>(); }
                              return false;
                            });
 
@@ -217,13 +222,47 @@ class config_node_builder {
       }
 
       case nlohmann::detail::value_t::boolean: {
+        auto ptr = std::make_shared<bool>();
+        *ptr     = proto.get<bool>();
+
+        CheckboxOption opt;
+        opt.style_checked   = "[true ] ";
+        opt.style_unchecked = "[false] ";
+
+        opt.on_change = [ptr, cfg] { cfg->request_modify(*ptr); };
+        inner         = Checkbox("toggle", ptr.get(), std::move(opt));
+        break;
       }
 
       case nlohmann::detail::value_t::number_integer:
       case nlohmann::detail::value_t::number_float:
-      case nlohmann::detail::value_t::number_unsigned:
+      case nlohmann::detail::value_t::number_unsigned: {
+        auto        pwstr = std::make_shared<std::wstring>();
+        InputOption opt;
+        opt.on_enter = [pwstr, cfg] {
+          double value = 0;
+          auto   str   = ftxui::to_string(*pwstr);
+          *pwstr       = {};
+
+          try {
+            auto result = std::stod(str);
+            cfg->request_modify(result);
+          } catch (std::invalid_argument&) {}
+        };
+
+        auto enter = Input(pwstr.get(), "value", std::move(opt));
+
+        auto slide_val = std::make_shared<int>();
+        *slide_val     = proto.get<int>();
+        auto slider    = Slider("%", slide_val.get(), -100, 100, 1);
+
+        inner = Container::Vertical({enter, slider});
+        inner = Renderer(inner, [inner] { return inner->Render() | flex; });
+        break;
+      }
+
       case nlohmann::detail::value_t::binary:
-        inner = Renderer([] { return color(Color::GrayDark, text("Temporary")); });
+        inner = Renderer([] { return color(Color::GrayDark, text("None")); });
     }
 
     return Renderer(inner, [inner] {

@@ -178,6 +178,10 @@ void perfkit::detail::config_base::serialize(std::function<void(nlohmann::json c
   fn(_cached_serialized);
 }
 
+void perfkit::detail::config_base::request_modify(nlohmann::json const& js) {
+  config_registry::request_update_value(std::string(full_key()), js);
+}
+
 void perfkit::detail::config_base::_split_categories(std::string_view view, std::vector<std::string_view>& out) {
   out.clear();
 

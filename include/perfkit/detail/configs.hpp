@@ -50,6 +50,7 @@ class config_base {
   std::string_view display_key() const { return _display_key; }
   std::string_view description() const { return _description; }
   auto             tokenized_display_key() const { return make_view(_categories); }
+  void             request_modify(nlohmann::json const& js);
 
   size_t num_modified() const { return _fence_modification.load(std::memory_order_relaxed); };
 
