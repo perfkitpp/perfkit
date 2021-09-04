@@ -40,7 +40,9 @@ class config_base {
    * @warning this function is not re-entrant!
    * @return
    */
-  nlohmann::json const& serialize();
+  nlohmann::json serialize();
+  void           serialize(nlohmann::json&);
+  void           serialize(std::function<void(nlohmann::json const&)> const&);
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
 
@@ -280,9 +282,10 @@ class config {
 };
 
 template <typename Ty_>
-using _cvt_ty = std::conditional_t<std::is_convertible_v<Ty_, std::string>,
-                                   std::string,
-                                   Ty_>;
+using _cvt_ty = std::conditional_t<
+    std::is_convertible_v<Ty_, std::string>,
+    std::string,
+    Ty_>;
 
 template <typename Ty_>
 auto configure(config_registry& dispatcher,

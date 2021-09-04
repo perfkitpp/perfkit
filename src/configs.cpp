@@ -150,13 +150,32 @@ bool perfkit::detail::config_base::_try_deserialize(const nlohmann::json& value)
   }
 }
 
-nlohmann::json const& perfkit::detail::config_base::serialize() {
+nlohmann::json perfkit::detail::config_base::serialize() {
+  nlohmann::json copy;
+  return serialize(copy), copy;
+}
+
+void perfkit::detail::config_base::serialize(nlohmann::json& copy) {
   if (auto nmodify = num_modified(); _fence_serialized != nmodify) {
     auto _lock = _owner->_access_lock();
     _serialize(_cached_serialized, _raw);
     _fence_serialized = nmodify;
+    copy              = _cached_serialized;
+  } else {
+    auto _lock = _owner->_access_lock();
+    copy       = _cached_serialized;
   }
-  return _cached_serialized;
+}
+
+void perfkit::detail::config_base::serialize(std::function<void(nlohmann::json const&)> const& fn) {
+  auto _lock = _owner->_access_lock();
+
+  if (auto nmodify = num_modified(); _fence_serialized != nmodify) {
+    _serialize(_cached_serialized, _raw);
+    _fence_serialized = nmodify;
+  }
+
+  fn(_cached_serialized);
 }
 
 void perfkit::detail::config_base::_split_categories(std::string_view view, std::vector<std::string_view>& out) {
@@ -173,6 +192,6 @@ void perfkit::detail::config_base::_split_categories(std::string_view view, std:
       ++i;
     }
   }
-  
-  out.push_back(view); // last segment.
+
+  out.push_back(view);  // last segment.
 }
