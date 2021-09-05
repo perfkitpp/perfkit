@@ -192,9 +192,9 @@ class config_node_builder {
 
  private:
   struct _json_editor_builder {
-    config_ptr            cfg;
-    bool                  allow_schema_modification;
-    nlohmann::json        rootobj;
+    config_ptr cfg;
+    bool allow_schema_modification;
+    nlohmann::json rootobj;
     std::function<void()> on_change;
 
     Component _iter(nlohmann::json* obj) {
@@ -269,7 +269,7 @@ class config_node_builder {
 
           opt.on_enter = [pwstr, this, obj] {
             double value = 0;
-            auto   str   = ftxui::to_string(*pwstr);
+            auto str     = ftxui::to_string(*pwstr);
 
             try {
               auto result = std::stod(str);
@@ -297,11 +297,11 @@ class config_node_builder {
     auto cfg = _content;
 
     Component inner;
-    auto      proto = _content->serialize();
-    auto      ptr   = std::make_shared<_json_editor_builder>();
-    ptr->on_change  = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
-    ptr->cfg        = cfg;
-    ptr->rootobj    = proto;
+    auto proto     = _content->serialize();
+    auto ptr       = std::make_shared<_json_editor_builder>();
+    ptr->on_change = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
+    ptr->cfg       = cfg;
+    ptr->rootobj   = proto;
 
     ptr->allow_schema_modification = false;
 
@@ -324,8 +324,8 @@ class config_node_builder {
 
  private:
   std::map<std::string, config_node_builder, std::less<>> _subnodes;
-  std::string_view                                        _reference_key;
-  config_ptr                                              _content;
+  std::string_view _reference_key;
+  config_ptr _content;
 };
 
 class config_browser : public ftxui::ComponentBase {

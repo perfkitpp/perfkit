@@ -11,7 +11,7 @@
 
 perfkit::config_registry& perfkit::config_registry::create() noexcept {
   static container _all;
-  auto&            rg = *_all.emplace_back(std::make_unique<perfkit::config_registry>());
+  auto& rg = *_all.emplace_back(std::make_unique<perfkit::config_registry>());
   glog()->info("Creating new config registry {}", (void*)&rg);
   return rg;
 }
@@ -96,9 +96,9 @@ bool perfkit::config_registry::check_dirty_and_consume_global() {
 perfkit::detail::config_base::config_base(
     config_registry* owner,
     void* raw, std::string full_key,
-    std::string                                description,
+    std::string description,
     perfkit::detail::config_base::deserializer fn_deserial,
-    perfkit::detail::config_base::serializer   fn_serial)
+    perfkit::detail::config_base::serializer fn_serial)
     : _owner(owner)
     , _full_key(std::move(full_key))
     , _description(std::move(description))

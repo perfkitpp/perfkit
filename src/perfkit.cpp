@@ -17,7 +17,7 @@ std::string perfkit::_internal::INDEXER_STR(int order) {
 bool perfkit::import_options(std::string_view srcpath_s) {
   try {
     std::filesystem::path srcpath{srcpath_s};
-    std::ifstream         src{srcpath};
+    std::ifstream src{srcpath};
     if (!src) { return spdlog::critical("not a valid configuration file"), false; }
     nlohmann::json json = nlohmann::json::parse(
         ((std::stringstream&)(std::stringstream{} << src.rdbuf())).str(),
@@ -65,7 +65,7 @@ bool perfkit::export_options(std::string_view dstpath_s) {
   }
 
   nlohmann::json exported;
-  auto&          obj = exported["___OPTIONS___"];
+  auto& obj = exported["___OPTIONS___"];
 
   for (auto const& [name, ptr] : config_registry::all()) {
     obj[std::string(ptr->display_key())] = ptr->serialize();

@@ -33,7 +33,7 @@ class circular_queue {
     iterator& operator=(const iterator&) noexcept = default;
 
     auto& operator*() const { return _owner->_at(_head); }
-    auto  operator->() const { return &*(*this); }
+    auto operator->() const { return &*(*this); }
 
     bool operator==(iterator const& op) const noexcept { return _head == op._head; }
     bool operator!=(iterator const& op) const noexcept { return _head != op._head; }
@@ -73,7 +73,7 @@ class circular_queue {
     friend class circular_queue;
 
     owner_type* _owner;
-    size_t      _head;
+    size_t _head;
   };
 
  public:
@@ -144,12 +144,12 @@ class circular_queue {
   auto end() noexcept { return iterator<false>(this, _head); }
 
   constexpr size_t capacity() const { return _capacity - 1; }
-  bool             empty() const { return _head == _tail; }
+  bool empty() const { return _head == _tail; }
 
-  Ty_&       front() { return _front(); }
+  Ty_& front() { return _front(); }
   Ty_ const& front() const { return _front(); }
 
-  Ty_&       back() { return _back(); }
+  Ty_& back() { return _back(); }
   Ty_ const& back() const { return _back(); }
 
   bool is_full() const { return _next(_head) == _tail; }
@@ -220,9 +220,9 @@ class circular_queue {
   }
 
  private:
-  size_t                     _capacity;
+  size_t _capacity;
   std::unique_ptr<chunk_t[]> _data;
-  size_t                     _head = {};
-  size_t                     _tail = {};
+  size_t _head = {};
+  size_t _tail = {};
 };
 }  // namespace perfkit

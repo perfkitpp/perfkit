@@ -24,8 +24,8 @@ const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 }  // namespace
 
 perfkit::ui::command_registry::node* perfkit::ui::command_registry::node::add_subcommand(
-    std::string_view        cmd,
-    handler_fn              handler,
+    std::string_view cmd,
+    handler_fn handler,
     autocomplete_suggest_fn suggest) {
   if (_check_name_exist(cmd)) {
     glog()->error("command name [{}] already exists as command or token.", cmd);
@@ -139,8 +139,8 @@ bool check_unique(std::string_view cmp, perfkit::array_view<std::string> candida
 
 std::string perfkit::ui::command_registry::node::suggest(
     array_view<std::string_view> full_tokens,
-    std::vector<std::string>&    out_candidates,
-    bool*                        out_has_unique_match) {
+    std::vector<std::string>& out_candidates,
+    bool* out_has_unique_match) {
   std::set<std::string> user_candidates;
 
   if (full_tokens.empty()) {
@@ -157,7 +157,7 @@ std::string perfkit::ui::command_registry::node::suggest(
     return {};
   }
 
-  auto  exec   = full_tokens[0];
+  auto exec    = full_tokens[0];
   node* subcmd = {};
   if ((subcmd = find_subcommand(exec)) && _check_name_exist(exec)) {
     // Only when full name is configured ...
@@ -224,8 +224,8 @@ void perfkit::ui::command_registry::node::reset_handler(perfkit::ui::handler_fn&
 }
 
 void perfkit::cmdutils::tokenize_by_argv_rule(
-    std::string*                               io,
-    std::vector<std::string_view>&             tokens,
+    std::string* io,
+    std::vector<std::string_view>& tokens,
     std::vector<std::pair<ptrdiff_t, size_t>>* token_indexes) {
   auto const src = *io;
   io->clear(), io->reserve(src.size());
@@ -253,7 +253,7 @@ void perfkit::cmdutils::tokenize_by_argv_rule(
     }
 
     // correct escapes
-    std::string             str = src.substr(position, length);
+    std::string str = src.substr(position, length);
     const static std::regex rg_escape{R"(\\([ \\]))"};
 
     auto end = std::regex_replace(str.begin(), str.begin(), str.end(), rg_escape, "$1");

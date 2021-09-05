@@ -30,27 +30,27 @@ class config_base {
 
  public:
   config_base(class config_registry* owner,
-              void*                  raw,
-              std::string            full_key,
-              std::string            description,
-              deserializer           fn_deserial,
-              serializer             fn_serial);
+              void* raw,
+              std::string full_key,
+              std::string description,
+              deserializer fn_deserial,
+              serializer fn_serial);
 
   /**
    * @warning this function is not re-entrant!
    * @return
    */
   nlohmann::json serialize();
-  void           serialize(nlohmann::json&);
-  void           serialize(std::function<void(nlohmann::json const&)> const&);
+  void serialize(nlohmann::json&);
+  void serialize(std::function<void(nlohmann::json const&)> const&);
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
 
   std::string_view full_key() const { return _full_key; }
   std::string_view display_key() const { return _display_key; }
   std::string_view description() const { return _description; }
-  auto             tokenized_display_key() const { return make_view(_categories); }
-  void             request_modify(nlohmann::json const& js);
+  auto tokenized_display_key() const { return make_view(_categories); }
+  void request_modify(nlohmann::json const& js);
 
   size_t num_modified() const { return _fence_modification.load(std::memory_order_relaxed); };
 
@@ -63,28 +63,28 @@ class config_base {
   }
 
  private:
-  bool        _try_deserialize(nlohmann::json const& value);
+  bool _try_deserialize(nlohmann::json const& value);
   static void _split_categories(std::string_view view, std::vector<std::string_view>& out);
 
  private:
   friend class perfkit::config_registry;
   perfkit::config_registry* _owner;
 
-  std::string      _full_key;
-  std::string      _display_key;
-  std::string      _description;
-  void*            _raw;
-  bool             _dirty                 = true;  // default true to trigger initialization
+  std::string _full_key;
+  std::string _display_key;
+  std::string _description;
+  void* _raw;
+  bool _dirty                             = true;  // default true to trigger initialization
   std::atomic_bool _latest_marshal_failed = false;
 
   std::atomic_size_t _fence_modification = 0;
-  size_t             _fence_serialized   = ~size_t{};
-  nlohmann::json     _cached_serialized;
+  size_t _fence_serialized               = ~size_t{};
+  nlohmann::json _cached_serialized;
 
   std::vector<std::string_view> _categories;
 
   deserializer _deserialize;
-  serializer   _serialize;
+  serializer _serialize;
 };
 }  // namespace detail
 
@@ -109,7 +109,7 @@ class config_registry {
   static bool check_dirty_and_consume_global();
 
   static config_registry& create() noexcept;
-  static config_table&    all() noexcept;
+  static config_table& all() noexcept;
 
  public:  // for internal use only.
   auto _access_lock() { return std::unique_lock{_update_lock}; }
@@ -119,8 +119,8 @@ class config_registry {
 
  private:
   config_table _opts;
-  json_table   _pending_updates;
-  std::mutex   _update_lock;
+  json_table _pending_updates;
+  std::mutex _update_lock;
 
   static inline std::atomic_bool _global_dirty;
 };
@@ -140,10 +140,10 @@ class config;
 
 template <typename Ty_>
 struct _config_attrib_data {
-  std::string                  description;
-  std::function<bool(Ty_&)>    validate;
-  std::optional<Ty_>           min;
-  std::optional<Ty_>           max;
+  std::string description;
+  std::function<bool(Ty_&)> validate;
+  std::optional<Ty_> min;
+  std::optional<Ty_> max;
   std::optional<std::set<Ty_>> one_of;
 };
 
@@ -186,9 +186,9 @@ class _config_factory {
 
  public:
   struct _init_info {
-    config_registry* dispatcher    = {};
-    std::string      full_key      = {};
-    Ty_              default_value = {};
+    config_registry* dispatcher = {};
+    std::string full_key        = {};
+    Ty_ default_value           = {};
   };
 
   std::shared_ptr<_init_info> _pinfo;
@@ -202,9 +202,9 @@ class config {
  public:
   template <typename Attr_ = _config_factory<Ty_>>
   config(
-      config_registry&         dispatcher,
-      std::string              full_key,
-      Ty_&&                    default_value,
+      config_registry& dispatcher,
+      std::string full_key,
+      Ty_&& default_value,
       _config_attrib_data<Ty_> attribute) noexcept
       : _owner(&dispatcher), _value(std::forward<Ty_>(default_value)) {
     auto description = std::move(attribute.description);
@@ -268,7 +268,7 @@ class config {
   Ty_ const& get() const noexcept { return _value; }
   Ty_ const& operator*() const noexcept { return get(); }
   Ty_ const* operator->() const noexcept { return &get(); }
-  explicit   operator const Ty_&() const noexcept { return get(); }
+  explicit operator const Ty_&() const noexcept { return get(); }
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
   void async_modify(Ty_ v) { _owner->queue_update_value(std::string{_opt->full_key()}, std::move(v)); }
@@ -279,7 +279,7 @@ class config {
   config_ptr _opt;
 
   config_registry* _owner;
-  Ty_              _value;
+  Ty_ _value;
 };
 
 template <typename Ty_>
@@ -290,8 +290,8 @@ using _cvt_ty = std::conditional_t<
 
 template <typename Ty_>
 auto configure(config_registry& dispatcher,
-               std::string&&    full_key,
-               Ty_&&            default_value) noexcept {
+               std::string&& full_key,
+               Ty_&& default_value) noexcept {
   _config_factory<_cvt_ty<Ty_>> attribute;
   attribute._pinfo                = std::make_shared<typename _config_factory<_cvt_ty<Ty_>>::_init_info>();
   attribute._pinfo->dispatcher    = &dispatcher;

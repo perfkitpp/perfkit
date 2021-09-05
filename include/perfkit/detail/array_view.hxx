@@ -70,7 +70,7 @@ class array_view {
   }
 
  private:
-  Ty_*   _ptr;
+  Ty_* _ptr;
   size_t _size;
 };
 

@@ -18,9 +18,9 @@ using stroffset = std::pair<ptrdiff_t, size_t>;
  * @param src
  * @param tokens
  */
-void tokenize_by_argv_rule(std::string*                    io,
+void tokenize_by_argv_rule(std::string* io,
                            std::vector<std::string_view>& tokens,
-                           std::vector<stroffset>*   token_indexes = nullptr);
+                           std::vector<stroffset>* token_indexes = nullptr);
 
 };  // namespace perfkit::cmdutils
 
@@ -53,8 +53,8 @@ class command_registry {
      * @return nullptr if given command is invalid.
      */
     perfkit::ui::command_registry::node* add_subcommand(
-        std::string_view        cmd,
-        handler_fn              handler = {},
+        std::string_view cmd,
+        handler_fn handler              = {},
         autocomplete_suggest_fn suggest = {});
 
     /**
@@ -98,8 +98,8 @@ class command_registry {
      */
     std::string suggest(
         array_view<std::string_view> full_tokens,
-        std::vector<std::string>&    out_candidates,
-        bool*                        out_has_unique_match = nullptr);
+        std::vector<std::string>& out_candidates,
+        bool* out_has_unique_match = nullptr);
 
     /**
      * Invoke command with given arguments.
@@ -113,10 +113,10 @@ class command_registry {
     bool _is_interface() const noexcept { return !_invoke; }
 
    private:
-    std::map<std::string const, node, std::less<>>              _subcommands;
+    std::map<std::string const, node, std::less<>> _subcommands;
     std::map<std::string const, std::string const, std::less<>> _aliases;
 
-    handler_fn              _invoke;
+    handler_fn _invoke;
     autocomplete_suggest_fn _suggest;
   };
 

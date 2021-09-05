@@ -4,11 +4,14 @@
 #include "perfkit/configs.h"
 #include "perfkit/ftxui-extension.hpp"
 
+using namespace std::literals;
+
 std::map<std::string, std::map<std::string, std::string>> ved{
     {"asd", {{"asd", "weqw"}, {"vafe, ewqew", "dwrew"}}},
     {"vadsfew", {{"dav ,ea w", "Ewqsad"}, {"scxz ss", "dwqewqew"}}}};
 
 PERFKIT_CATEGORY(cfg) {
+  PERFKIT_CONFIGURE(active, true).confirm();
   PERFKIT_SUBCATEGORY(labels) {
     PERFKIT_CONFIGURE(foo, 1).confirm();
     PERFKIT_CONFIGURE(bar, false).confirm();
@@ -128,17 +131,26 @@ using namespace ftxui;
 
 int main(int argc, const char* argv[]) {
   auto component = perfkit_fxtui::config_browser();
-
   auto screen = ScreenInteractive::FitComponent();
+
+  std::thread thr{[&] {
+    while (cfg::active.get()) {
+      cfg::registry().apply_update_and_check_if_dirty();
+      std::this_thread::sleep_for(100ms);
+    }
+
+    screen.ExitLoopClosure()();
+  }};
+
   screen.Loop(
       Renderer(component,
                [&] {
-                 cfg::registry().apply_update_and_check_if_dirty();
                  cfg::labels::foo.async_modify(cfg::labels::foo.get() + 1);
                  return window(text("< configs >"), component->Render())
                         | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
                }));
 
+  thr.join();
   return 0;
 }
 

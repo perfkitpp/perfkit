@@ -94,7 +94,7 @@ tracer::proxy tracer::fork(const std::string& n) {
 
 namespace {
 struct message_block_sorter {
-  int         n;
+  int n;
   friend bool operator<(tracer* ptr, message_block_sorter s) { return s.n < ptr->order(); }
 };
 }  // namespace
