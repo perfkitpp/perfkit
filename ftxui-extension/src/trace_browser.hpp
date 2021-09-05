@@ -84,7 +84,7 @@ class trace_browser : public ComponentBase {
       _container->Add(std::make_shared<tracer_instance_browser>(item));
     }
 
-    Add(_container);
+    Add(event_dispatcher(_container));
   }
 
  public:
