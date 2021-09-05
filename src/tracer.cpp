@@ -227,7 +227,7 @@ void tracer::trace::dump_data(std::string& s) const {
     case 0:  //<clock_type::duration,
     {
       auto count = std::chrono::duration<double>{std::get<clock_type ::duration>(data)}.count();
-      s          = fmt::format("{:.4f}ms", count * 1000.);
+      s          = fmt::format("{:.4f}", count * 1000.);
     } break;
 
     case 1:  // int64_t,
@@ -241,7 +241,7 @@ void tracer::trace::dump_data(std::string& s) const {
     case 3:  // std::string,
       s.clear();
       s.append("\"");
-      s = std::get<std::string>(data);
+      s.append(std::get<std::string>(data));
       s.append("\"");
       break;
 

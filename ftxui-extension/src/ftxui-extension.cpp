@@ -9,8 +9,8 @@ ftxui::Component perfkit_ftxui::config_browser() {
   return std::shared_ptr<ftxui::ComponentBase>{new class config_browser};
 }
 
-ftxui::Component perfkit_ftxui::trace_browser() {
-  return std::shared_ptr<ftxui::ComponentBase>{new class trace_browser};
+ftxui::Component perfkit_ftxui::trace_browser(std::shared_ptr<if_subscriber> m) {
+  return std::shared_ptr<ftxui::ComponentBase>{new class trace_browser(std::move(m))};
 }
 
 class perfkit_ftxui::worker_info_t {

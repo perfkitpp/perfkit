@@ -21,15 +21,20 @@
 #include "spinlock.hxx"
 
 namespace perfkit {
+using clock_type = std::chrono::steady_clock;
+struct trace_variant_type : std::variant<clock_type::duration,
+                                         int64_t,
+                                         double,
+                                         std::string,
+                                         bool,
+                                         std::any> {
+  using variant::variant;
+};
+
 class tracer {
  public:
-  using clock_type   = std::chrono::steady_clock;
-  using variant_type = std::variant<clock_type::duration,
-                                    int64_t,
-                                    double,
-                                    std::string,
-                                    bool,
-                                    std::any>;
+  using clock_type   = perfkit::clock_type;
+  using variant_type = trace_variant_type;
 
   struct trace {
     std::optional<clock_type::duration> as_timer() const noexcept {

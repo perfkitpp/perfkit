@@ -142,7 +142,7 @@ perfkit::tracer traces[] = {
 
 int main(int argc, const char* argv[]) {
   auto comp1     = perfkit_ftxui::config_browser();
-  auto comp2     = perfkit_ftxui::trace_browser();
+  auto comp2     = perfkit_ftxui::trace_browser(nullptr);
   auto component = ftxui::Container::Horizontal({
       comp1,
       Renderer([] { return separator(); }),
@@ -170,7 +170,7 @@ int main(int argc, const char* argv[]) {
             }
             return false;
           }),
-      33ms);
+      66ms);
 
   for (int ic = 0; !screen_alive.expired(); ++ic) {
     std::this_thread::sleep_for(10ms);
