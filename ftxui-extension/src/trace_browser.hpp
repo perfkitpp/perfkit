@@ -85,15 +85,20 @@ class tracer_instance_browser : public ComponentBase {
    public:
     explicit _data_label(tracer_instance_browser* owner)
         : _owner(owner) {
-      ToggleOption opts;
-      opts.style_normal   = color(Color::GrayDark);
-      opts.style_selected = color(Color::Red);
-      opts.on_change      = [this] { _do_refresh(); };
-      opts.focused_entry  = &_mod;
+      CheckboxOption opts;
+      opts.on_change       = [this] { _do_refresh(); };
+      opts.style_checked   = "<";
+      opts.style_unchecked = "|";
 
-      static const std::vector<std::string> elems = {"-", "=", "+"};
-      _control_toggle                             = Toggle(&elems, &_mod, opts);
+      CheckboxOption opts_subcr;
+      opts_subcr.on_change       = opts.on_change;
+      opts_subcr.style_checked   = "";
+      opts_subcr.style_unchecked = "";
 
+      _control_toggle = Container::Horizontal({
+          Checkbox("<|", &_folding, opts),
+          Checkbox("(+)", &_subscribing, opts_subcr),
+      });
       Add(_control_toggle);
     }
 
@@ -135,20 +140,19 @@ class tracer_instance_browser : public ComponentBase {
           break;
       }
 
+      auto hrange = hbox(name, filler(), value, text(" "));
+
       auto ret = hbox(text(std::string{}.append(_data.hierarchy.size() * 2, ' ')),
                       _control_toggle->Render(),
-                      text(" "), name,
-                      filler(), value, text(" "))
+                      text(" "), (_data.subscribing() ? hrange | inverted : hrange) | flex)
                  | flex;
-      if (_data.subscribing()) {
-        ret = ret | inverted;
-      }
       return ret;
     }
 
     void configure(tracer::trace&& tr, int mod) {
-      _data = std::move(tr);
-      _mod  = mod;
+      _data        = std::move(tr);
+      _folding     = mod & 1;
+      _subscribing = mod & (1 << 1);
 
       {
         _c_name.clear();
@@ -168,17 +172,14 @@ class tracer_instance_browser : public ComponentBase {
     }
 
     void _do_refresh() {
-      bool fold   = (_mod < 1);
-      bool subscr = (_mod > 1);
+      if (_folding) { _owner->_folded_entities.insert(_data.hash); }
+      if (!_folding) { _owner->_folded_entities.erase(_data.hash); }
 
-      if (fold) { _owner->_folded_entities.insert(_data.hash); }
-      if (!fold) { _owner->_folded_entities.erase(_data.hash); }
-
-      if (_data.subscribing() != subscr) {
-        _data.subscribe(subscr);
-        if (!subscr && _owner->_monitor) { _owner->_monitor->on_end(_owner->_build_param(_data)); }
+      if (_data.subscribing() != _subscribing) {
+        _data.subscribe(_subscribing);
+        if (!_subscribing && _owner->_monitor) { _owner->_monitor->on_end(_owner->_build_param(_data)); }
       }
-      _owner->_cached_modes[_data.hash] = _mod;
+      _owner->_cached_modes[_data.hash] = _folding + (_subscribing << 1);
     }
 
    public:
@@ -188,7 +189,9 @@ class tracer_instance_browser : public ComponentBase {
     tracer_instance_browser* _owner;
     Component _control_toggle;
     tracer::trace _data;
-    int _mod = 0;
+
+    bool _folding     = false;
+    bool _subscribing = false;
   };
 
   void _regenerate() {
@@ -209,7 +212,7 @@ class tracer_instance_browser : public ComponentBase {
       }
 
       auto label        = _assign();
-      auto [it, is_new] = _cached_modes.try_emplace(trace.hash, 1);
+      auto [it, is_new] = _cached_modes.try_emplace(trace.hash, 0);
       auto manip_mod    = &it->second;
       if (is_new) { _folded_entities.emplace(trace.hash); }
 
@@ -227,7 +230,7 @@ class tracer_instance_browser : public ComponentBase {
         if (!keep_subscr) { trace.subscribe(false), subscribing = false; }
       }
 
-      *manip_mod = subscribing ? 2 : *manip_mod & 1;  // refresh mod by external condition
+      *manip_mod = subscribing ? *manip_mod | 2 : *manip_mod & 1;  // refresh mod by external condition
       label->configure(std::move(trace), *manip_mod);
     }
 

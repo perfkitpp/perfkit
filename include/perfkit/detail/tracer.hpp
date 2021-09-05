@@ -135,6 +135,7 @@ class tracer {
     }
 
     proxy& operator=(proxy&& other) noexcept {
+      this->~proxy();
       _owner             = other._owner;
       _ref               = other._ref;
       _epoch_if_required = other._epoch_if_required;
@@ -144,6 +145,10 @@ class tracer {
       other._epoch_if_required = {};
 
       return *this;
+    }
+
+    void commit() noexcept {
+      *this = {};
     }
 
     operator bool() const noexcept {

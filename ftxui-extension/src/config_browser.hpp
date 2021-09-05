@@ -176,7 +176,7 @@ class config_node_builder {
                                          is_content = snode->second.is_content()] {
           auto label_render = label->Render();
           if (is_content) { label_render = color(Color::Cyan, label_render); }
-          return hbox(label_render, filler(), text(" "), deco());
+          return hbox(label_render | flex_grow, filler(), text(" "), deco() | flex_shrink);
         }));
 
         subnodes->Add(
@@ -191,6 +191,7 @@ class config_node_builder {
     }
 
     assert(false && "This routine cannot be entered.");
+    return nullptr;
   }
 
  private:
