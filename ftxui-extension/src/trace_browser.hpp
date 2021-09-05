@@ -13,6 +13,8 @@ class tracer_instance_browser : public ComponentBase {
  public:
   explicit tracer_instance_browser(tracer* target)
       : _target(target) {
+
+
   }
 
  public:

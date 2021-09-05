@@ -30,17 +30,17 @@ std::string INDEXER_STR(int order);
   }                                                                  \
   namespace category
 
-#define PERFKIT_SUBCATEGORY(category)                                                               \
-  namespace category {                                                                              \
-  static inline auto _perfkit_INTERNAL_CATNAME_BEFORE = &_perfkit_INTERNAL_CATNAME;                 \
-  ::perfkit::config_registry& root_registry() { return registry(); }                                \
-  ::std::string _perfkit_INTERNAL_CATNAME() {                                                       \
+#define PERFKIT_SUBCATEGORY(category)                                                                             \
+  namespace category {                                                                                            \
+  static inline auto          _perfkit_INTERNAL_CATNAME_BEFORE = &_perfkit_INTERNAL_CATNAME;                      \
+  ::perfkit::config_registry& root_registry() { return registry(); }                                              \
+  ::std::string               _perfkit_INTERNAL_CATNAME() {                                                       \
     return category::_perfkit_INTERNAL_CATNAME_BEFORE() + INTERNAL_PERFKIT_INDEXER + #category "|"; \
-  }                                                                                                 \
-  ::std::string _perfkit_INTERNAL_CATNAME_2() {                                                     \
-    return _perfkit_INTERNAL_CATNAME();                                                             \
-  }                                                                                                 \
-  }                                                                                                 \
+  }                                                                                                               \
+  ::std::string _perfkit_INTERNAL_CATNAME_2() {                                                                   \
+    return _perfkit_INTERNAL_CATNAME();                                                                           \
+  }                                                                                                               \
+  }                                                                                                               \
   namespace category
 
 #define PERFKIT_CONFIGURE(name, default_value)                                                   \
@@ -48,9 +48,9 @@ std::string INDEXER_STR(int order);
                                  _perfkit_INTERNAL_CATNAME_2() + INTERNAL_PERFKIT_INDEXER #name, \
                                  default_value)
 
-#define PERFKIT_FORWARD_CATEGORY(hierarchy)    \
-  namespace hierarchy {                        \
-  ::std::string _perfkit_INTERNAL_CATNAME_2(); \
-  ::perfkit::config_registry& root_registry(); \
-  }                                            \
+#define PERFKIT_FORWARD_CATEGORY(hierarchy)                  \
+  namespace hierarchy {                                      \
+  ::std::string               _perfkit_INTERNAL_CATNAME_2(); \
+  ::perfkit::config_registry& root_registry();               \
+  }                                                          \
   namespace hierarchy

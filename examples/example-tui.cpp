@@ -12,6 +12,7 @@ std::map<std::string, std::map<std::string, std::string>> ved{
 
 PERFKIT_CATEGORY(cfg) {
   PERFKIT_CONFIGURE(active, true).confirm();
+  PERFKIT_CONFIGURE(active_async, true).confirm();
   PERFKIT_SUBCATEGORY(labels) {
     PERFKIT_CONFIGURE(foo, 1).confirm();
     PERFKIT_CONFIGURE(bar, false).confirm();
@@ -130,27 +131,37 @@ PERFKIT_CATEGORY(vlao55) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 using namespace ftxui;
 
 int main(int argc, const char* argv[]) {
-  auto component = perfkit_fxtui::config_browser();
-  auto screen = ScreenInteractive::FitComponent();
+  auto component = perfkit_ftxui::config_browser();
+  std::shared_ptr<ScreenInteractive> screen{new ScreenInteractive{ScreenInteractive::FitComponent()}};
+  std::weak_ptr screen_alive{screen};
 
-  std::thread thr{[&] {
-    while (cfg::active.get()) {
-      cfg::registry().apply_update_and_check_if_dirty();
-      std::this_thread::sleep_for(100ms);
+  auto kill_switch = perfkit_ftxui::launch_async_loop(
+      std::move(screen),
+      CatchEvent(
+          Renderer(
+              component,
+              [&] {
+                return window(text("< configs >"), component->Render())
+                       | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
+              }),
+          [screen](Event evt) -> bool {
+            if (evt == perfkit_ftxui::event_poll) {
+              if (cfg::active.get() == false) {
+                screen->ExitLoopClosure()();
+              }
+            }
+          }),
+      100ms);
+
+  while (!screen_alive.expired()) {
+    std::this_thread::sleep_for(100ms);
+    cfg::registry().apply_update_and_check_if_dirty();
+
+    if (cfg::active_async.get() == false) {
+      kill_switch.reset();
     }
+  }
 
-    screen.ExitLoopClosure()();
-  }};
-
-  screen.Loop(
-      Renderer(component,
-               [&] {
-                 cfg::labels::foo.async_modify(cfg::labels::foo.get() + 1);
-                 return window(text("< configs >"), component->Render())
-                        | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
-               }));
-
-  thr.join();
   return 0;
 }
 
