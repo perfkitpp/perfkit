@@ -10,7 +10,7 @@ ftxui::Component perfkit_ftxui::config_browser() {
 }
 
 ftxui::Component perfkit_ftxui::trace_browser() {
-  return ftxui::Component();
+  return std::shared_ptr<ftxui::ComponentBase>{new class trace_browser};
 }
 
 class perfkit_ftxui::worker_info_t {
@@ -46,7 +46,7 @@ perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
         clock_ty::time_point next_wakeup = {};
 
         for (; flag->load(std::memory_order_relaxed);) {
-          screen->PostEvent(event_poll);
+          screen->PostEvent(EVENT_POLL);
 
           std::this_thread::sleep_until(next_wakeup);
           next_wakeup = clock_ty::now() + poll_interval;
@@ -55,4 +55,18 @@ perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
       }};
 
   return ptr;
+}
+
+ftxui::Component perfkit_ftxui::event_dispatcher(ftxui::Component c, Event evt_type) {
+  return ftxui::CatchEvent(c, [c, evt_type](ftxui::Event const& evt) -> bool {
+    if (evt == evt_type) {
+      for (size_t index = 0; index < c->ChildCount(); ++index) {
+        c->ChildAt(index)->OnEvent(evt);
+      }
+
+      return false;
+    } else {
+      return c->OnEvent(evt);
+    }
+  });
 }

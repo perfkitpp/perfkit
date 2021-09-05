@@ -3,6 +3,7 @@
 #include "ftxui/component/screen_interactive.hpp"  // for ScreenInteractive
 #include "perfkit/configs.h"
 #include "perfkit/ftxui-extension.hpp"
+#include "perfkit/traces.h"
 
 using namespace std::literals;
 
@@ -130,8 +131,24 @@ PERFKIT_CATEGORY(vlao55) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 
 using namespace ftxui;
 
+perfkit::tracer traces[] = {
+    {0, "root (1)"},
+    {1, "A (2)"},
+    {31, "B (4)"},
+    {-51, "C (0)"},
+    {14, "D (3)"},
+};
+
 int main(int argc, const char* argv[]) {
-  auto component = perfkit_ftxui::config_browser();
+  auto comp1     = perfkit_ftxui::config_browser();
+  auto comp2     = perfkit_ftxui::trace_browser();
+  auto component = ftxui::Container::Horizontal({
+      comp1,
+      Renderer([] { return separator(); }),
+      comp2,
+  });
+  component      = perfkit_ftxui::event_dispatcher(component);
+
   std::shared_ptr<ScreenInteractive> screen{new ScreenInteractive{ScreenInteractive::FitComponent()}};
   std::weak_ptr screen_alive{screen};
 
@@ -144,12 +161,13 @@ int main(int argc, const char* argv[]) {
                 return window(text("< configs >"), component->Render())
                        | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
               }),
-          [screen](Event evt) -> bool {
-            if (evt == perfkit_ftxui::event_poll) {
+          [screen_alive](Event evt) -> bool {
+            if (evt == perfkit_ftxui::EVENT_POLL) {
               if (cfg::active.get() == false) {
-                screen->ExitLoopClosure()();
+                screen_alive.lock()->ExitLoopClosure()();
               }
             }
+            return false;
           }),
       100ms);
 
@@ -157,6 +175,7 @@ int main(int argc, const char* argv[]) {
     std::this_thread::sleep_for(100ms);
     cfg::registry().apply_update_and_check_if_dirty();
 
+    cfg::labels::foo.async_modify(cfg::labels::foo.get() + 1);
     if (cfg::active_async.get() == false) {
       kill_switch.reset();
     }

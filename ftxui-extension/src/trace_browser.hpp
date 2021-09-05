@@ -13,32 +13,61 @@ class tracer_instance_browser : public ComponentBase {
  public:
   explicit tracer_instance_browser(tracer* target)
       : _target(target) {
+    {
+      CheckboxOption opts;
+      opts.style_checked   = "";
+      opts.style_unchecked = "";
 
-
+      _title = Checkbox(_target->name(), &_is_fetching, opts);
+      Add(_title);
+    }
+    {
+      _outer = Container::Vertical({});
+    }
   }
 
  public:
   Element Render() override {
-    return _outer->Render();
+    auto title = hbox(spinner(15, poll_count), _title->Render(), text(fmt::format("{}", poll_count)));
+
+    if (_is_fetching) {
+      return vbox(title | color(Color::DarkGreen), hbox(text("  "), _outer));
+    } else {
+      return title;
+    }
   }
+
   bool OnEvent(Event event) override {
-    return _outer->OnEvent(event);
-  }
-  Component ActiveChild() override {
-    return _outer->ActiveChild();
-  }
-  bool Focusable() const override {
-    return _outer->Focusable();
-  }
-  void SetActiveChild(ComponentBase* child) override {
-    _outer->SetActiveChild(child);
+    if (event == EVENT_POLL) {
+      // Request trace result fetch periodically.
+      if (_async_result.valid()) {
+        if (_async_result.wait_for(0ms) == std::future_status::ready) {
+          auto result = _async_result.get();
+          _traces.clear(), result.copy_sorted(_traces);
+          _async_result = {};
+        }
+      } else if (_is_fetching) {
+        _async_result = _target->async_fetch_request();
+      }
+
+      // Increase poll index. This is used to visualize spinner
+      ++poll_count;
+      return false;
+    }
+    return ComponentBase::OnEvent(event);
   }
 
  private:
+  Component _title;
   Component _outer;
+
+  bool _is_fetching = false;
+  std::map<uint64_t, bool> is_folded;
+
   tracer* _target;
   tracer::fetched_traces _traces;
-  std::future<tracer::async_trace_result> _async_result;
+  tracer::future_result _async_result;
+  size_t poll_count = 0;
 };
 
 // 1. 루트 트레이스 -> 각 tracer 인스턴스에 대한 fetch content 활성 제어
@@ -54,23 +83,13 @@ class trace_browser : public ComponentBase {
     for (auto item : tracer::all()) {
       _container->Add(std::make_shared<tracer_instance_browser>(item));
     }
+
+    Add(_container);
   }
 
  public:
   Element Render() override {
-    return _container->Render();
-  }
-  bool OnEvent(Event event) override {
-    return _container->OnEvent(event);
-  }
-  Component ActiveChild() override {
-    return _container->ActiveChild();
-  }
-  bool Focusable() const override {
-    return _container->Focusable();
-  }
-  void SetActiveChild(ComponentBase* child) override {
-    _container->SetActiveChild(child);
+    return _container->Render() | flex | frame;
   }
 
  private:
