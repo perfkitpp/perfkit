@@ -2,14 +2,14 @@
 // Distributed under the MIT License (http://opensource.org/licenses/MIT)
 
 #ifndef SPDLOG_COMPILED_LIB
-#error Please define SPDLOG_COMPILED_LIB to compile this file.
+#    error Please define SPDLOG_COMPILED_LIB to compile this file.
 #endif
 
-#include <spdlog/async.h>
-#include <spdlog/details/null_mutex.h>
-#include <spdlog/sinks/stdout_sinks-inl.h>
-
 #include <mutex>
+
+#include <spdlog/details/null_mutex.h>
+#include <spdlog/async.h>
+#include <spdlog/sinks/stdout_sinks-inl.h>
 
 template class SPDLOG_API spdlog::sinks::stdout_sink_base<spdlog::details::console_mutex>;
 template class SPDLOG_API spdlog::sinks::stdout_sink_base<spdlog::details::console_nullmutex>;

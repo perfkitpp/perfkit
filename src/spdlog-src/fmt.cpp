@@ -3,37 +3,38 @@
 // All rights reserved.
 
 #ifndef SPDLOG_COMPILED_LIB
-#error Please define SPDLOG_COMPILED_LIB to compile this file.
+#    error Please define SPDLOG_COMPILED_LIB to compile this file.
 #endif
 
 #if !defined(SPDLOG_FMT_EXTERNAL)
-#include <spdlog/fmt/bundled/format-inl.h>
+#    include <spdlog/fmt/bundled/format-inl.h>
 
 FMT_BEGIN_NAMESPACE
 namespace detail {
 
-template <typename T>
-int format_float(char *buf, std::size_t size, const char *format, int precision, T value) {
-#ifdef FMT_FUZZ
-  if (precision > 100000)
-    throw std::runtime_error("fuzz mode - avoid large allocation inside snprintf");
-#endif
-  // Suppress the warning about nonliteral format string.
-  int (*snprintf_ptr)(char *, size_t, const char *, ...) = FMT_SNPRINTF;
-  return precision < 0 ? snprintf_ptr(buf, size, format, value) : snprintf_ptr(buf, size, format, precision, value);
+template<typename T>
+int format_float(char *buf, std::size_t size, const char *format, int precision, T value)
+{
+#    ifdef FMT_FUZZ
+    if (precision > 100000)
+        throw std::runtime_error("fuzz mode - avoid large allocation inside snprintf");
+#    endif
+    // Suppress the warning about nonliteral format string.
+    int (*snprintf_ptr)(char *, size_t, const char *, ...) = FMT_SNPRINTF;
+    return precision < 0 ? snprintf_ptr(buf, size, format, value) : snprintf_ptr(buf, size, format, precision, value);
 }
 
 template FMT_API dragonbox::decimal_fp<float> dragonbox::to_decimal(float x) FMT_NOEXCEPT;
 template FMT_API dragonbox::decimal_fp<double> dragonbox::to_decimal(double x) FMT_NOEXCEPT;
-}  // namespace detail
+} // namespace detail
 
 // Workaround a bug in MSVC2013 that prevents instantiation of format_float.
 int (*instantiate_format_float)(double, int, detail::float_specs, detail::buffer<char> &) = detail::format_float;
 
-#ifndef FMT_STATIC_THOUSANDS_SEPARATOR
+#    ifndef FMT_STATIC_THOUSANDS_SEPARATOR
 template FMT_API detail::locale_ref::locale_ref(const std::locale &loc);
 template FMT_API std::locale detail::locale_ref::get<std::locale>() const;
-#endif
+#    endif
 
 // Explicit instantiations for char.
 
@@ -64,4 +65,4 @@ template struct detail::basic_data<void>;
 
 FMT_END_NAMESPACE
 
-#endif  // !SPDLOG_FMT_EXTERNAL
+#endif // !SPDLOG_FMT_EXTERNAL
