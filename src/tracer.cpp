@@ -3,6 +3,7 @@
 //
 #include <nlohmann/detail/conversions/from_json.hpp>
 #include <perfkit/detail/tracer.hpp>
+#include <variant>
 
 #include "spdlog/fmt/fmt.h"
 using namespace std::literals;
@@ -222,6 +223,11 @@ void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept {
 }
 
 void tracer::trace::dump_data(std::string& s) const {
+  if (data.index() == std::variant_npos) {
+    s = "none";
+    return;
+  }
+
   s = std::visit(
       [](auto&& v) {
         using T = std::remove_const_t<std::remove_reference_t<decltype(v)>>;
