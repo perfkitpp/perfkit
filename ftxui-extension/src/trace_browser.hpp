@@ -4,6 +4,7 @@
 #pragma once
 #include "ftxui/component/component.hpp"
 #include "perfkit/traces.h"
+#include "range/v3/algorithm.hpp"
 
 namespace perfkit_ftxui {
 using namespace ftxui;
@@ -18,25 +19,37 @@ class tracer_instance_browser : public ComponentBase {
       opts.style_checked   = "";
       opts.style_unchecked = "";
 
+      opts.on_change
+          = [this] {
+              if (_is_fetching && _container->ChildCount() == 1) { _container->Add(_outer); }
+              if (!_is_fetching && _container->ChildCount() == 2) { _container->ChildAt(1)->Detach(); }
+            };
+
       _title = Checkbox(_target->name(), &_is_fetching, opts);
-      Add(_title);
     }
     {
       _outer = Container::Vertical({});
     }
+    _container = Container::Vertical({_title, _outer});
+    Add(_container);
   }
 
  public:
   Element Render() override {
-    auto title = hbox(spinner(15, poll_count), text(" "), _title->Render(), text(std::to_string(poll_count)));
+    auto title = hbox(spinner(15, _latest_fence), text(" "), _title->Render());
+    Pixel sep;
+    sep.character = ".";
+    sep.dim       = true;
 
     if (_is_fetching) {
-      Pixel sep;
-      sep.character = ".";
-      sep.dim       = true;
-      return vbox(separator(sep), title | color(Color::DarkGreen), hbox(text("  "), _outer));
+      return vbox(
+          separator(sep),
+          hbox(title | color(Color::DarkGreen),
+               filler(),
+               text(std::to_string(_latest_fence)) | color(Color::GrayDark)),
+          (_outer->Render() | flex));
     } else {
-      return title | color(Color::GrayDark);
+      return vbox(separator(sep), title | color(Color::GrayDark));
     }
   }
 
@@ -51,35 +64,185 @@ class tracer_instance_browser : public ComponentBase {
 
           _regenerate();
         }
-      } else if (_is_fetching) {
-        _async_result = _target->async_fetch_request();
       }
 
-      if (_is_fetching) {
-        ++poll_count;
+      if (!_async_result.valid() && _is_fetching) {
+        _async_result = _target->async_fetch_request();
       }
 
       // Increase poll index. This is used to visualize spinner
       return false;
+    } else if (event == Event::Backspace) {
+      _title->TakeFocus();
+      return true;
+    } else {
+      return _container->OnEvent(event);
     }
-    return ComponentBase::OnEvent(event);
   }
 
  private:
+  struct _data_label : ComponentBase {
+   public:
+    explicit _data_label(tracer_instance_browser* owner)
+        : _owner(owner) {
+      ToggleOption opts;
+      opts.style_normal   = color(Color::GrayDark);
+      opts.style_selected = color(Color::Red);
+      opts.on_change      = [this] { _do_refresh(); };
+      opts.focused_entry  = &_mod;
+
+      static const std::vector<std::string> elems = {"-", "=", "+"};
+      _control_toggle                             = Toggle(&elems, &_mod, opts);
+
+      Add(_control_toggle);
+    }
+
+    Element Render() override {
+      auto name  = text(_c_name);
+      auto value = text(_c_value);
+
+      if (_data.fence < _owner->_latest_fence) {
+        name = name | color(Color::GrayDark);
+      } else if (_data.data.index() == 0) {
+        name = name | color(Color::Yellow) | bold;
+      } else {
+        name = name | color(Color::White);
+      }
+
+      switch (_data.data.index()) {
+        case 0:  //<clock_type::duration,
+          value = value | color(Color::Yellow) | underlined;
+          break;
+
+        case 1:  // int64_t,
+        case 2:  // double,
+          value = value | color(Color::GreenLight);
+          break;
+
+        case 4:  // bool,
+          value = value | color(Color::BlueLight);
+          break;
+
+        case 3:  // std::string,
+          value = value | color(Color::SandyBrown);
+          break;
+
+        case 5:  // std::any;
+          value = value | color(Color::White) | underlined;
+          break;
+
+        default:
+          break;
+      }
+
+      return hbox(text(std::string{}.append(_data.hierarchy.size() * 2, ' ')),
+                  _control_toggle->Render(),
+                  text(" "), name,
+                  filler(), value, text(" "))
+             | flex;
+    }
+
+    void configure(tracer::trace&& tr, int mod) {
+      _data = std::move(tr);
+      _mod  = mod;
+
+      _c_name.assign(_data.key.begin(), _data.key.end());
+      _data.dump_data(_c_value);
+
+      _do_refresh();
+    }
+
+    void _do_refresh() {
+      bool fold   = (_mod < 1);
+      bool subscr = (_mod > 1);
+
+      if (fold) { _owner->_folded_entities.insert(_data.hash); }
+      if (!fold) { _owner->_folded_entities.erase(_data.hash); }
+      _data.subscribe(subscr);
+
+      _owner->_cached_modes[_data.hash] = _mod;
+    }
+
+   public:
+    std::string _c_name;
+    std::string _c_value;
+
+    tracer_instance_browser* _owner;
+    Component _control_toggle;
+    tracer::trace _data;
+    int _mod = 0;
+  };
+
   void _regenerate() {
+    _reserve_pool(_traces.size());
+    _outer->DetachAllChildren();
+
+    array_view<std::string_view> skipping = {};
+
+    size_t max_fence = 0;
+    for (auto& trace : _traces) {
+      max_fence = std::max(max_fence, trace.fence);
+
+      if (!skipping.empty() && _one_is_root_of(skipping, trace.hierarchy)) {
+        continue;
+      } else {
+        // order is always guaranteed.
+        skipping = {};
+      }
+
+      auto label        = _assign();
+      auto [it, is_new] = _cached_modes.try_emplace(trace.hash, 1);
+      if (is_new) { _folded_entities.emplace(trace.hash); }
+
+      if (_is_folded(trace.hash)) {  // check folded subnode
+        skipping = trace.hierarchy;
+      }
+
+      it->second = trace.subscribing() ? 2 : it->second & 1;  // refresh mod by external condition
+      label->configure(std::move(trace), it->second);
+    }
+
+    _latest_fence = max_fence;
+  }
+
+  void _reserve_pool(size_t s) {
+    while (_pool.size() < s) {
+      _pool.emplace_back(std::make_shared<_data_label>(this));
+    }
+  }
+
+  auto _assign() -> std::shared_ptr<_data_label> {
+    auto ret = _pool[_outer->ChildCount()];
+    return _outer->Add(ret), ret;
+  }
+
+  bool _is_folded(uint64_t hash) const {
+    auto it = _folded_entities.find(hash);
+    return it != _folded_entities.end();
+  }
+
+  static bool _one_is_root_of(
+      array_view<std::string_view> root,
+      array_view<std::string_view> sub) {
+    if (root.size() >= sub.size()) { return false; }
+    return std::equal(root.begin(), root.end(), sub.begin());
   }
 
  private:
+  Component _container;
   Component _title;
   Component _outer;
 
   bool _is_fetching = false;
-  std::map<uint64_t, bool> is_folded;
+  std::set<uint64_t> _folded_entities;
+  std::map<uint64_t, int> _cached_modes;
+
+  std::vector<std::shared_ptr<_data_label>> _pool;
 
   tracer* _target;
   tracer::fetched_traces _traces;
   tracer::future_result _async_result;
-  size_t poll_count = 0;
+  size_t _latest_fence = 0;
 };
 
 // 1. 루트 트레이스 -> 각 tracer 인스턴스에 대한 fetch content 활성 제어

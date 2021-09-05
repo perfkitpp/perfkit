@@ -4,6 +4,7 @@
 #include "perfkit/configs.h"
 #include "perfkit/ftxui-extension.hpp"
 #include "perfkit/traces.h"
+#include "spdlog/fmt/fmt.h"
 
 using namespace std::literals;
 
@@ -149,7 +150,7 @@ int main(int argc, const char* argv[]) {
   });
   component      = perfkit_ftxui::event_dispatcher(component);
 
-  std::shared_ptr<ScreenInteractive> screen{new ScreenInteractive{ScreenInteractive::FitComponent()}};
+  std::shared_ptr<ScreenInteractive> screen{new ScreenInteractive{ScreenInteractive::Fullscreen()}};
   std::weak_ptr screen_alive{screen};
 
   auto kill_switch = perfkit_ftxui::launch_async_loop(
@@ -169,11 +170,29 @@ int main(int argc, const char* argv[]) {
             }
             return false;
           }),
-      100ms);
+      33ms);
 
-  while (!screen_alive.expired()) {
-    std::this_thread::sleep_for(100ms);
+  for (int ic = 0; !screen_alive.expired(); ++ic) {
+    std::this_thread::sleep_for(10ms);
     cfg::registry().apply_update_and_check_if_dirty();
+
+    auto trc_root = traces[0].fork("Root Trace");
+
+    auto timer                         = trc_root.timer("Some Timer");
+    trc_root["Value 0"]                = 3;
+    trc_root["Value 1"]                = *cfg::labels::foo;
+    trc_root["Value 2"]                = fmt::format("Hell, world! {}", *cfg::labels::foo);
+    trc_root["Value 3"]                = false;
+    trc_root["Value 3"]["Subvalue 0"]  = ic;
+    trc_root["Value 3"]["Subvalue GR"] = std::vector<int>{3, 4, 5};
+    trc_root["Value 3"]["Subvalue 1"]  = double(ic);
+    trc_root["Value 3"]["Subvalue 2"]  = !!(ic & 1);
+    trc_root["Value 4"]["Subvalue 3"]  = fmt::format("Hell, world! {}", ic);
+
+    auto r                            = trc_root["Value 5"];
+    trc_root["Value 5"]["Subvalue 0"] = ic;
+    if (r) { trc_root["Value 5"]["Subvalue 1 Cond"] = double(ic); }
+    trc_root["Value 5"]["Subvalue 2"] = !!(ic & 1);
 
     cfg::labels::foo.async_modify(cfg::labels::foo.get() + 1);
     if (cfg::active_async.get() == false) {

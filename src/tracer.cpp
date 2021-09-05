@@ -223,23 +223,37 @@ void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept {
 }
 
 void tracer::trace::dump_data(std::string& s) const {
-  if (data.index() == std::variant_npos) {
-    s = "none";
-    return;
-  }
+  switch (data.index()) {
+    case 0:  //<clock_type::duration,
+    {
+      auto count = std::chrono::duration<double>{std::get<clock_type ::duration>(data)}.count();
+      s          = fmt::format("{:.4f}ms", count * 1000.);
+    } break;
 
-  s = std::visit(
-      [](auto&& v) {
-        using T = std::remove_const_t<std::remove_reference_t<decltype(v)>>;
-        if constexpr (std::is_same_v<T, std::any>) {
-          return std::string{v.type().name()};
-        } else if constexpr (std::is_same_v<T, clock_type::duration>) {
-          return fmt::format("{:.4f}s", std::chrono::duration<double>{v}.count());
-        } else if constexpr (std::is_same_v<T, std::string>) {
-          return v;
-        } else {
-          return std::to_string(v);
-        }
-      },
-      data);
+    case 1:  // int64_t,
+      s = std::to_string(std::get<int64_t>(data));
+      break;
+
+    case 2:  // double,
+      s = std::to_string(std::get<double>(data));
+      break;
+
+    case 3:  // std::string,
+      s.clear();
+      s.append("\"");
+      s = std::get<std::string>(data);
+      s.append("\"");
+      break;
+
+    case 4:  // bool,
+      s = std::get<bool>(data) ? "true" : "false";
+      break;
+
+    case 5:  // std::any;
+      s = "--custom type--";
+      break;
+
+    default:
+      s = "none";
+  }
 }

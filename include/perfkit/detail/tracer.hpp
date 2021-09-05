@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "array_view.hxx"
+#include "spdlog/fmt/fmt.h"
 #include "spinlock.hxx"
 
 namespace perfkit {
@@ -82,6 +83,8 @@ class tracer {
     proxy branch(std::string_view n) noexcept;
     proxy timer(std::string_view n) noexcept;
 
+    template <size_t N_>
+    proxy operator[](char const (&s)[N_]) noexcept { return branch(s); }
     proxy operator[](std::string_view n) noexcept { return branch(n); }
 
     ~proxy() noexcept;  // if no data specified, ...
@@ -99,17 +102,24 @@ class tracer {
     auto& string() noexcept { return data_as<std::string>(); }
     auto& any() noexcept { return data_as<std::any>(); }
 
+    template <typename... Args_>
+    void format(std::string_view fmt, Args_&&... args) {
+      string() = fmt::format(fmt, std::forward<Args_>(args)...);
+    }
+
     template <typename Other_>
     proxy& operator=(Other_&& oty) noexcept {
-      if constexpr (std::is_integral_v<Other_>) {
-        data() = static_cast<int64_t>(oty);
-      } else if constexpr (std::is_floating_point_v<Other_>) {
-        data() = static_cast<double>(oty);
-      } else if constexpr (std::is_convertible_v<Other_, std::string>) {
-        string() = static_cast<std::string>(oty);
-      } else if constexpr (std::is_same_v<Other_, bool>) {
+      using other_t = std::remove_const_t<std::remove_reference_t<Other_>>;
+
+      if constexpr (std::is_same_v<other_t, bool>) {
         data() = oty;
-      } else if constexpr (std::is_same_v<Other_, clock_type::duration>) {
+      } else if constexpr (std::is_integral_v<other_t>) {
+        data() = static_cast<int64_t>(oty);
+      } else if constexpr (std::is_floating_point_v<other_t>) {
+        data() = static_cast<double>(oty);
+      } else if constexpr (std::is_convertible_v<other_t, std::string>) {
+        string() = static_cast<std::string>(oty);
+      } else if constexpr (std::is_same_v<other_t, clock_type::duration>) {
         data() = oty;
       } else {
         any() = oty;
@@ -118,9 +128,14 @@ class tracer {
     }
 
     proxy& operator=(proxy&& other) noexcept {
-      std::swap(_owner, other._owner);
-      std::swap(_ref, other._ref);
-      std::swap(_epoch_if_required, other._epoch_if_required);
+      _owner             = other._owner;
+      _ref               = other._ref;
+      _epoch_if_required = other._epoch_if_required;
+
+      other._owner             = {};
+      other._ref               = {};
+      other._epoch_if_required = {};
+
       return *this;
     }
 

@@ -126,6 +126,9 @@ class config_node_builder {
         if (snode->second.is_content()) {
           opts.style_checked   = "*";
           opts.style_unchecked = "";
+        } else {
+          opts.style_checked   = "";
+          opts.style_unchecked = "";
         }
 
         static auto is_active = [](auto&& container) {
