@@ -19,7 +19,7 @@ ftxui::Component trace_browser();
 using exclusive_file_ptr = std::unique_ptr<FILE*, void (*)(FILE*)>;
 ftxui::Component log_output_window(exclusive_file_ptr stream);
 ftxui::Component cmd_line_window(std::function<void(std::string_view)> on_cmd);
-ftxui::Component event_dispatcher(ftxui::Component, ftxui::Event evt_type = EVENT_POLL);
+ftxui::Component event_dispatcher(ftxui::Component, const ftxui::Event& evt_type = EVENT_POLL);
 
 class worker_info_t;
 using kill_switch_ty = std::shared_ptr<worker_info_t>;

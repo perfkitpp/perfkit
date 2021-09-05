@@ -28,12 +28,15 @@ class tracer_instance_browser : public ComponentBase {
 
  public:
   Element Render() override {
-    auto title = hbox(spinner(15, poll_count), _title->Render(), text(fmt::format("{}", poll_count)));
+    auto title = hbox(spinner(15, poll_count), text(" "), _title->Render(), text(std::to_string(poll_count)));
 
     if (_is_fetching) {
-      return vbox(title | color(Color::DarkGreen), hbox(text("  "), _outer));
+      Pixel sep;
+      sep.character = ".";
+      sep.dim       = true;
+      return vbox(separator(sep), title | color(Color::DarkGreen), hbox(text("  "), _outer));
     } else {
-      return title;
+      return title | color(Color::GrayDark);
     }
   }
 
@@ -45,16 +48,25 @@ class tracer_instance_browser : public ComponentBase {
           auto result = _async_result.get();
           _traces.clear(), result.copy_sorted(_traces);
           _async_result = {};
+
+          _regenerate();
         }
       } else if (_is_fetching) {
         _async_result = _target->async_fetch_request();
       }
 
+      if (_is_fetching) {
+        ++poll_count;
+      }
+
       // Increase poll index. This is used to visualize spinner
-      ++poll_count;
       return false;
     }
     return ComponentBase::OnEvent(event);
+  }
+
+ private:
+  void _regenerate() {
   }
 
  private:

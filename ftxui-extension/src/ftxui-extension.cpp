@@ -57,16 +57,33 @@ perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
   return ptr;
 }
 
-ftxui::Component perfkit_ftxui::event_dispatcher(ftxui::Component c, Event evt_type) {
-  return ftxui::CatchEvent(c, [c, evt_type](ftxui::Event const& evt) -> bool {
-    if (evt == evt_type) {
-      for (size_t index = 0; index < c->ChildCount(); ++index) {
-        c->ChildAt(index)->OnEvent(evt);
+namespace {
+class EventCatcher : public ftxui::ComponentBase {
+ public:
+  EventCatcher(ftxui::Component child, ftxui::Event const& evt_type)
+      : _root(child), _evt_type(evt_type) {
+    Add(_root);
+  }
+
+  bool OnEvent(ftxui::Event event) override {
+    if (event == _evt_type) {
+      for (size_t index = 0; index < _root->ChildCount(); ++index) {
+        _root->ChildAt(index)->OnEvent(event);
       }
 
       return false;
     } else {
-      return c->OnEvent(evt);
+      return _root->OnEvent(event);
     }
-  });
+  }
+
+ private:
+  ftxui::Component _root;
+  ftxui::Event _evt_type;
+};
+}  // namespace
+
+ftxui::Component perfkit_ftxui::event_dispatcher(ftxui::Component c, const Event& evt_type) {
+  return std::static_pointer_cast<ftxui::ComponentBase>(
+      std::make_shared<EventCatcher>(c, evt_type));
 }
