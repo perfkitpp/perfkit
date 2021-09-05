@@ -13,16 +13,10 @@ add_library(perfkit::core ALIAS ${PROJECT_NAME})
 
 # TUI integration
 option(perfkit_BUILD_FTXUI_EXTENSION "" ON)
-option(perfkit_BUILD_TVISION_EXTENSION "" ON)
 
 if (perfkit_BUILD_FTXUI_EXTENSION)
     message("Configuring FTXUI Extension Library ...")
     add_subdirectory(ftxui-extension)
-endif ()
-
-if (perfkit_BUILD_TVISION_EXTENSION)
-    message("Configuring Turbo Vision Extension Library ...")
-    add_subdirectory(tvision-extension)
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------
