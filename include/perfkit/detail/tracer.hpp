@@ -157,6 +157,8 @@ class tracer {
     fetched_traces* _data;
   };
 
+  using future_result = std::shared_future<async_trace_result>;
+
  public:
   /**
    * Registers new memory block to global storage.
@@ -183,7 +185,7 @@ class tracer {
    * Reserves for async data sort
    * @return empty optional when there's any already queued operation.
    */
-  std::shared_future<async_trace_result> async_fetch_request();
+  future_result async_fetch_request();
 
   auto name() const noexcept { return _name; }
   auto order() const noexcept { return _occurence_order; }

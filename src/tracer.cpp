@@ -95,7 +95,7 @@ tracer::proxy tracer::fork(const std::string& n) {
 namespace {
 struct message_block_sorter {
   int n;
-  friend bool operator<(tracer* ptr, message_block_sorter s) { return s.n < ptr->order(); }
+  friend bool operator<(tracer* ptr, message_block_sorter s) { return s.n > ptr->order(); }
 };
 }  // namespace
 
@@ -114,7 +114,7 @@ array_view<tracer*> tracer::all() noexcept {
   return _all();
 }
 
-std::shared_future<tracer::async_trace_result> tracer::async_fetch_request() {
+tracer::future_result tracer::async_fetch_request() {
   auto _lck = std::unique_lock{_sort_merge_lock};
 
   // if there's already queued merge operation, share future once more.
