@@ -195,8 +195,8 @@ ftxui::Component perfkit_ftxui::PRESET(
   });
 
   components = Container::Vertical({
-      Renderer(cmd, [cmd] { return window(text("< commands >"), cmd->Render()); }),
-      Renderer(components, [components] { return components->Render() | border | flex; }),
+      Renderer(cmd, [cmd] { return window(text("< command >"), hbox(text(" "), cmd->Render(), text(" "))); }),
+      Renderer(components, [components] { return window(text("< monitor >"), components->Render()) | flex; }),
   });
 
   return event_dispatcher(components);

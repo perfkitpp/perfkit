@@ -115,7 +115,10 @@ PERFKIT_CATEGORY(cfg) {
   PERFKIT_CONFIGURE(e_cedrs, 1).confirm();
 }
 
-PERFKIT_CATEGORY(vlao) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+PERFKIT_CATEGORY(vlao) {
+  PERFKIT_CONFIGURE(e_cedrs, 1).confirm();
+  PERFKIT_CONFIGURE(e_cedrsd, "").confirm();
+}
 PERFKIT_CATEGORY(vlao1) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 PERFKIT_CATEGORY(vlao2) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 PERFKIT_CATEGORY(vlao3) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
@@ -140,11 +143,25 @@ perfkit::tracer traces[] = {
     {14, "D (3)"},
 };
 
+class my_subscriber : public perfkit_ftxui::if_subscriber {
+ public:
+  bool on_update(const update_param_type& param_type, const perfkit::trace_variant_type& value) override {
+    traces[1].fork("Value update A")["NAME"] = param_type.name;
+    return true;
+  }
+
+  void on_end(const update_param_type& param_type) override {
+    vlao::e_cedrs.async_modify(vlao::e_cedrs.get() + 1);
+    vlao::e_cedrsd.async_modify(std::string(param_type.name));
+    vlao::registry().apply_update_and_check_if_dirty();
+  }
+};
+
 int main(int argc, const char* argv[]) {
   auto screen = ScreenInteractive::Fullscreen();
 
   std::shared_ptr<perfkit_ftxui::string_queue> commands;
-  auto preset      = perfkit_ftxui::PRESET(&commands, {}, nullptr);
+  auto preset      = perfkit_ftxui::PRESET(&commands, {}, std::make_shared<my_subscriber>());
   auto kill_switch = perfkit_ftxui::launch_async_loop(&screen, preset);
 
   for (int ic = 0; perfkit_ftxui::is_alive(kill_switch.get()); ++ic) {
@@ -168,6 +185,11 @@ int main(int argc, const char* argv[]) {
     trc_root["Value 5"]["Subvalue 0"] = ic;
     if (r) { trc_root["Value 5"]["Subvalue 1 Cond"] = double(ic); }
     trc_root["Value 5"]["Subvalue 2"] = !!(ic & 1);
+
+    std::string to_get;
+    if (commands->try_getline(to_get)) {
+      trc_root["TEXT"] = to_get;
+    }
 
     cfg::labels::foo.async_modify(cfg::labels::foo.get() + 1);
     if (cfg::active_async.get() == false) {

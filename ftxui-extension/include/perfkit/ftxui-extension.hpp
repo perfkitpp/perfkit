@@ -35,7 +35,7 @@ class if_subscriber {
   };
 
  public:
-  virtual ~if_subscriber();
+  virtual ~if_subscriber() = default;
 
   virtual bool on_update(
       update_param_type const& param_type,
@@ -51,7 +51,8 @@ ftxui::Component trace_browser(std::shared_ptr<if_subscriber> m);
 class string_queue {
  public:
   virtual bool getline(std::string&, std::chrono::milliseconds) = 0;
-  virtual ~string_queue()                                       = default;
+  bool try_getline(std::string& s) { return this->getline(s, 0ms); }
+  virtual ~string_queue() = default;
 };
 
 ftxui::Component command_input(std::shared_ptr<string_queue>* out_supplier,

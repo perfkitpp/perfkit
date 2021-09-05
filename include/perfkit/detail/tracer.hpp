@@ -119,15 +119,17 @@ class tracer {
       if constexpr (std::is_same_v<other_t, bool>) {
         data() = oty;
       } else if constexpr (std::is_integral_v<other_t>) {
-        data() = static_cast<int64_t>(oty);
+        data() = static_cast<int64_t>(std::forward<Other_>(oty));
       } else if constexpr (std::is_floating_point_v<other_t>) {
-        data() = static_cast<double>(oty);
+        data() = static_cast<double>(std::forward<Other_>(oty));
       } else if constexpr (std::is_convertible_v<other_t, std::string>) {
-        string() = static_cast<std::string>(oty);
+        string() = static_cast<std::string>(std::forward<Other_>(oty));
+      } else if constexpr (std::is_same_v<other_t, std::string_view>) {
+        string() = static_cast<std::string>(std::forward<Other_>(oty));
       } else if constexpr (std::is_same_v<other_t, clock_type::duration>) {
-        data() = oty;
+        data() = std::forward<Other_>(oty);
       } else {
-        any() = oty;
+        any() = std::forward<Other_>(oty);
       }
       return *this;
     }

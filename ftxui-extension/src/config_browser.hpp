@@ -353,7 +353,7 @@ class config_browser : public ftxui::ComponentBase {
     _container = Renderer(
         built,
         [built] {
-          return (built->Render() | xflex | yframe);
+          return hbox(built->Render() | xflex | yframe, text("  "));
         });
   }
 

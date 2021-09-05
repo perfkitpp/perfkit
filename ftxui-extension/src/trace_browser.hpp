@@ -106,7 +106,7 @@ class tracer_instance_browser : public ComponentBase {
       } else if (_data.data.index() == 0) {
         name = name | color(Color::Cyan) | bold;
       } else {
-        name = name | dim;
+        //        name = name ;
       }
 
       switch (_data.data.index()) {
@@ -173,8 +173,11 @@ class tracer_instance_browser : public ComponentBase {
 
       if (fold) { _owner->_folded_entities.insert(_data.hash); }
       if (!fold) { _owner->_folded_entities.erase(_data.hash); }
-      _data.subscribe(subscr);
 
+      if (_data.subscribing() != subscr) {
+        _data.subscribe(subscr);
+        if (!subscr && _owner->_monitor) { _owner->_monitor->on_end(_owner->_build_param(_data)); }
+      }
       _owner->_cached_modes[_data.hash] = _mod;
     }
 
@@ -222,10 +225,6 @@ class tracer_instance_browser : public ComponentBase {
         // update subscription
         auto keep_subscr = _monitor->on_update(_build_param(trace), trace.data);
         if (!keep_subscr) { trace.subscribe(false), subscribing = false; }
-      }
-      if (*manip_mod >= 2 && !subscribing && _monitor) {
-        // subscription aborted.
-        _monitor->on_end(_build_param(trace));
       }
 
       *manip_mod = subscribing ? 2 : *manip_mod & 1;  // refresh mod by external condition
