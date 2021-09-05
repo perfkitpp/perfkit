@@ -1,4 +1,4 @@
-# C++17 PERFORMANCE KIT
+# C++17 PERFORMANCE BENCHMARK & CONFIGURATION KIT
 
 This library introduces comportable way to manage program config / real time performance analysis
 for any kind of c++ applications.
