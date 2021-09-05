@@ -29,7 +29,7 @@ class perfkit_ftxui::worker_info_t {
 };
 
 perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
-    std::shared_ptr<ftxui::ScreenInteractive> screen,
+    ftxui::ScreenInteractive* screen,
     ftxui::Component root_component,
     std::chrono::milliseconds poll_interval) {
   auto ptr = std::make_shared<worker_info_t>();
@@ -86,4 +86,122 @@ class EventCatcher : public ftxui::ComponentBase {
 ftxui::Component perfkit_ftxui::event_dispatcher(ftxui::Component c, const Event& evt_type) {
   return std::static_pointer_cast<ftxui::ComponentBase>(
       std::make_shared<EventCatcher>(c, evt_type));
+}
+
+namespace {
+using namespace ftxui;
+
+class atomic_string_queue : public perfkit_ftxui::string_queue {
+ public:
+  bool getline(std::string& string, std::chrono::milliseconds milliseconds) override {
+    std::unique_lock _{_lock};
+    if (!_queue.empty()) { return string = _pop(), true; }
+
+    std::string result;
+    return _cvar.wait_for(_, milliseconds,
+                          [&result, this] {
+                            if (_queue.empty()) { return false; }
+                            result = _pop();
+                            return true;
+                          });
+  }
+
+ public:
+  void putline(std::string&& str) {
+    std::unique_lock _{_lock};
+    _queue.emplace_back(std::move(str));
+    _cvar.notify_one();
+  }
+
+ private:
+  std::string _pop() {
+    auto result = _queue.front();
+    _queue.pop_front();
+    return result;
+  }
+
+ private:
+  std::condition_variable _cvar;
+  std::mutex _lock;
+  std::list<std::string> _queue;
+};
+}  // namespace
+
+namespace perfkit {
+namespace {
+class _inputbox : public ComponentBase {
+ public:
+  explicit _inputbox(std::shared_ptr<atomic_string_queue> queue,
+                     std::string const& prompt) {
+    _queue = queue;
+
+    InputOption opts;
+    opts.cursor_position = &_cpos;
+    opts.on_enter        = [this] { _on_enter(); };
+    _box                 = Input(&_cmd, prompt, opts);
+
+    Add(_box);
+  }
+
+ private:
+  void _on_enter() {
+    _queue->putline(ftxui::to_string(_cmd));
+    _cmd.clear();
+  }
+
+ public:
+  Element Render() override {
+    return _box->Render() | xflex;
+  }
+
+ private:
+  std::shared_ptr<atomic_string_queue> _queue;
+  int _cpos = {};
+  std::wstring _cmd;
+  Component _box;
+};
+}  // namespace
+}  // namespace perfkit
+
+ftxui::Component perfkit_ftxui::command_input(
+    std::shared_ptr<perfkit_ftxui::string_queue>* out_supplier,
+    std::weak_ptr<perfkit::ui::command_registry> support,
+    std::string prompt) {
+  auto ptr      = std::make_shared<atomic_string_queue>();
+  *out_supplier = ptr;
+
+  return std::make_shared<_inputbox>(ptr, std::move(prompt));
+}
+
+ftxui::Component perfkit_ftxui::PRESET(
+    std::shared_ptr<string_queue>* out_commands,
+    std::weak_ptr<perfkit::ui::command_registry> command_support,
+    std::shared_ptr<if_subscriber> subscriber) {
+  auto cmd   = command_input(out_commands, command_support, ":> enter command");
+  auto cfg   = config_browser();
+  auto trace = trace_browser(subscriber);
+  // TODO: in future, put log output window ...
+
+  auto resize_context = std::make_shared<int>(30);
+  auto components     = ResizableSplitLeft(cfg, trace, resize_context.get());
+
+  components = CatchEvent(components, [components](Event evt) {
+    if (evt == EVENT_POLL) {
+      for (size_t j = 0; j < components->ChildAt(0)->ChildCount(); ++j) {
+        components->ChildAt(0)->ChildAt(j)->OnEvent(evt);
+      }
+    }
+    return false;
+  });
+
+  components = Container::Vertical({
+      Renderer(cmd, [cmd] { return window(text("< commands >"), cmd->Render()); }),
+      Renderer(components, [components] { return components->Render() | border | flex; }),
+  });
+
+  return event_dispatcher(components);
+}
+
+bool perfkit_ftxui::is_alive(const perfkit_ftxui::worker_info_t* kill_switch) {
+  return kill_switch->_alive.load(std::memory_order_relaxed);
 }

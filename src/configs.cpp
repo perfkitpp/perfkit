@@ -12,7 +12,7 @@
 perfkit::config_registry& perfkit::config_registry::create() noexcept {
   static container _all;
   auto& rg = *_all.emplace_back(std::make_unique<perfkit::config_registry>());
-  glog()->info("Creating new config registry {}", (void*)&rg);
+  glog()->debug("Creating new config registry {}", (void*)&rg);
   return rg;
 }
 
@@ -64,8 +64,8 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
   _opts.try_emplace(o->full_key(), o);
   all().try_emplace(o->full_key(), o);
 
-  glog()->info("({:04}) declaring new config ... [{}] -> [{}]",
-               all().size(), o->display_key(), o->full_key());
+  glog()->debug("({:04}) declaring new config ... [{}] -> [{}]",
+                all().size(), o->display_key(), o->full_key());
 }
 
 std::string_view perfkit::config_registry::find_key(std::string_view display_key) {

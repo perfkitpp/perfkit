@@ -5,6 +5,7 @@
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/event.hpp"
 #include "perfkit/detail/array_view.hxx"
+#include "perfkit/detail/circular_queue.hxx"
 
 namespace ftxui {
 class ScreenInteractive;
@@ -13,6 +14,10 @@ class ScreenInteractive;
 namespace perfkit {
 struct trace_variant_type;
 };
+
+namespace perfkit::ui {
+class command_registry;
+}
 
 namespace perfkit_ftxui {
 
@@ -43,10 +48,21 @@ class if_subscriber {
 ftxui::Component config_browser();
 ftxui::Component trace_browser(std::shared_ptr<if_subscriber> m);
 
-using exclusive_file_ptr = std::unique_ptr<FILE*, void (*)(FILE*)>;
-ftxui::Component log_output_window(exclusive_file_ptr stream);
-ftxui::Component cmd_line_window(std::function<void(std::string_view)> on_cmd);
+class string_queue {
+ public:
+  virtual bool getline(std::string&, std::chrono::milliseconds) = 0;
+  virtual ~string_queue()                                       = default;
+};
+
+ftxui::Component command_input(std::shared_ptr<string_queue>* out_supplier,
+                               std::weak_ptr<perfkit::ui::command_registry> support,
+                               std::string prompt = {});
 ftxui::Component event_dispatcher(ftxui::Component, const ftxui::Event& evt_type = EVENT_POLL);
+
+ftxui::Component PRESET(
+    std::shared_ptr<string_queue>* out_commands,
+    std::weak_ptr<perfkit::ui::command_registry> command_support,
+    std::shared_ptr<if_subscriber> subscriber);
 
 class worker_info_t;
 using kill_switch_ty = std::shared_ptr<worker_info_t>;
@@ -58,7 +74,10 @@ using kill_switch_ty = std::shared_ptr<worker_info_t>;
  * @return kill switch. To stop worker threads gently, release given pointer.
  */
 kill_switch_ty launch_async_loop(
-    std::shared_ptr<ftxui::ScreenInteractive> screen,
+    ftxui::ScreenInteractive* screen,
     ftxui::Component root_component,
-    std::chrono::milliseconds poll_interval = 0ms);
+    std::chrono::milliseconds poll_interval = 33ms);
+
+bool is_alive(worker_info_t const* kill_switch);
+
 }  // namespace perfkit_ftxui

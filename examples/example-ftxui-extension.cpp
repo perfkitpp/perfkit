@@ -141,35 +141,11 @@ perfkit::tracer traces[] = {
 };
 
 int main(int argc, const char* argv[]) {
-  auto comp1     = perfkit_ftxui::config_browser();
-  auto comp2     = perfkit_ftxui::trace_browser(nullptr);
-  auto component = ftxui::Container::Horizontal({
-      comp1,
-      Renderer([] { return separator(); }),
-      comp2,
-  });
-  component      = perfkit_ftxui::event_dispatcher(component);
-
   auto screen = ScreenInteractive::Fullscreen();
 
-  auto kill_switch = perfkit_ftxui::launch_async_loop(
-      &screen,
-      CatchEvent(
-          Renderer(
-              component,
-              [&] {
-                return window(text("< configs >"), component->Render())
-                       | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
-              }),
-          [p = &screen](Event evt) -> bool {
-            if (evt == perfkit_ftxui::EVENT_POLL) {
-              if (cfg::active.get() == false) {
-                p->ExitLoopClosure()();
-              }
-            }
-            return false;
-          }),
-      50ms);
+  std::shared_ptr<perfkit_ftxui::string_queue> commands;
+  auto preset      = perfkit_ftxui::PRESET(&commands, {}, nullptr);
+  auto kill_switch = perfkit_ftxui::launch_async_loop(&screen, preset);
 
   for (int ic = 0; perfkit_ftxui::is_alive(kill_switch.get()); ++ic) {
     std::this_thread::sleep_for(10ms);
