@@ -31,7 +31,7 @@ if (perfkit_BUILD_FTXUI_EXTENSION)
     message("Configuring FTXUI Extension Library ...")
 
     target_sources(${PROJECT_NAME} PRIVATE "src/vis-ftxui/vis-ftxui-impl.cpp")
-    add_subdirectory(ftxui-extension)
+    add_subdirectory(extensions/ftxui)
 endif ()
 
 # NET Extension

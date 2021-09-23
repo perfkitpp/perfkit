@@ -56,7 +56,7 @@ TEST_CASE("Create Message Blocks") {
 TEST_CASE("Tokenize") {
   std::vector<std::string_view> tokens;
   std::string                   buff = "umai\\ bong\\ daesu a alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over";
-  perfkit::cmdutils::tokenize_by_argv_rule(&buff, tokens, nullptr);
+  perfkit::util::tokenize_by_argv_rule(&buff, tokens, nullptr);
 
   std::vector<std::string> compared(
       {"umai bong daesu",
@@ -73,7 +73,7 @@ TEST_CASE("Sort Messages") {
 }
 
 TEST_CASE("Command Name Verify") {
-  perfkit::ui::command_registry rg;
+  perfkit::util::command_registry rg;
   auto                          rt = rg._get_root();
 
   CHECK(rt->add_subcommand("  ea ") == nullptr);
