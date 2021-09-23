@@ -5,15 +5,23 @@ project(perfkit)
 add_subdirectory(range-v3-master EXCLUDE_FROM_ALL)
 
 # Module ---------------------------------------------------------------------------------------------------------------
-file(GLOB_RECURSE ${PROJECT_NAME}_SOURCES "src/*")
-file(GLOB_RECURSE ${PROJECT_NAME}_HEADERS "include/*")
+set(
+    PERFKIT_CORE_SOURCES 
+    "src/command_registry.cpp"
+    "src/configs.cpp"
+    "src/main.cpp"
+    "src/perfkit.cpp"
+    "src/tracer.cpp"
+)
 
-add_library(${PROJECT_NAME} STATIC ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_HEADERS})
+add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
 add_library(perfkit::core ALIAS ${PROJECT_NAME})
 
-# TUI integration
+# Configurations -------------------------------------------------------------------------------------------------------
 option(perfkit_BUILD_FTXUI_EXTENSION "" ON)
+option(perfkit_BUILD_AS_CLIENT "" ON)
 
+# TUI Extension
 if (perfkit_BUILD_FTXUI_EXTENSION)
     message("Configuring FTXUI Extension Library ...")
     add_subdirectory(ftxui-extension)
