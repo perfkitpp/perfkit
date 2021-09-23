@@ -31,7 +31,7 @@ struct trace_variant_type : std::variant<clock_type::duration,
                                          double,
                                          std::string,
                                          bool,
-                                         util::interactive_image_t,
+                                         util::interactive_image,
                                          std::any> {
   using variant::variant;
 };
