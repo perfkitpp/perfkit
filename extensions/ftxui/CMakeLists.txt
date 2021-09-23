@@ -9,9 +9,11 @@ endif ()
 
 add_library(
         ${PROJECT_NAME} STATIC
-        src/ftxui-extension.cpp
-        src/config_browser.hpp
-        src/trace_browser.hpp)
+        "src/ftxui-extension.cpp"
+        "src/config_browser.hpp"
+        "src/trace_browser.hpp"
+        "src/net-ftxui.cpp"
+)
 
 add_library(perfkit::ftxui ALIAS ${PROJECT_NAME})
 

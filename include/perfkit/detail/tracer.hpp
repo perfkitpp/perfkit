@@ -1,7 +1,10 @@
 //
 // Created by Seungwoo on 2021-08-25.
 //
+// TODO: APPLY PIMPL!!! Currently this class has too heavy dependencies ...
 #pragma once
+#include <spdlog/fmt/fmt.h>
+
 #include <any>
 #include <atomic>
 #include <chrono>
@@ -17,16 +20,18 @@
 #include <vector>
 
 #include "array_view.hxx"
-#include "spdlog/fmt/fmt.h"
+#include "interactive_image.hpp"
 #include "spinlock.hxx"
 
 namespace perfkit {
+
 using clock_type = std::chrono::steady_clock;
 struct trace_variant_type : std::variant<clock_type::duration,
                                          int64_t,
                                          double,
                                          std::string,
                                          bool,
+                                         util::interactive_image_t,
                                          std::any> {
   using variant::variant;
 };
@@ -170,8 +175,8 @@ class tracer {
   struct async_trace_result {
    public:
     std::pair<
-        std::unique_lock<perfkit::spinlock>,
-        fetched_traces*>
+            std::unique_lock<perfkit::spinlock>,
+            fetched_traces*>
     acquire() const noexcept {
       return std::make_pair(std::unique_lock{*_mtx_access}, _data);
     }

@@ -14,31 +14,30 @@ set(
         "src/tracer.cpp"
 )
 
-set(
-        PERFKIT_NET_CLIENT_SOURCES
-        "src/vis-net/vis-net-impl.cpp"
-)
-
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
 add_library(perfkit::core ALIAS ${PROJECT_NAME})
 
 # Configurations -------------------------------------------------------------------------------------------------------
-option(perfkit_BUILD_FTXUI_EXTENSION "" ON)
+option(perfkit_BUILD_FTXUI_EXTENSION "" OFF)
 option(perfkit_BUILD_NET_CLIENT "" ON)
+option(perfkit_USE_BUNDLED_JSON "" ON)
+
+# JSON Bundling
+if (perfkit_USE_BUNDLED_JSON)
+    message("Using bundled json")
+    target_include_directories(${PROJECT_NAME} PUBLIC "extensions/json")
+endif ()
 
 # TUI Extension
 if (perfkit_BUILD_FTXUI_EXTENSION)
     message("Configuring FTXUI Extension Library ...")
-
-    target_sources(${PROJECT_NAME} PRIVATE "src/vis-ftxui/vis-ftxui-impl.cpp")
     add_subdirectory(extensions/ftxui)
 endif ()
 
 # NET Extension
 if (perfkit_BUILD_NET_CLIENT)
     message("Configuring NET CLIENT extension ...")
-
-    target_sources(${PROJECT_NAME} PRIVATE)
+    add_subdirectory(extensions/net-client)
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------

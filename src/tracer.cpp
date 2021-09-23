@@ -249,7 +249,11 @@ void tracer::trace::dump_data(std::string& s) const {
       s = std::get<bool>(data) ? "true" : "false";
       break;
 
-    case 5:  // std::any;
+    case 5:  // interactive_image_t;
+      s = "interactive_image"; // TODO
+      break;
+
+    case 6:  // std::any;
       s = "--custom type--";
       break;
 
