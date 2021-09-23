@@ -15,7 +15,7 @@ namespace perfkit {
 struct trace_variant_type;
 };
 
-namespace perfkit::ui {
+namespace perfkit::util {
 class command_registry;
 }
 
@@ -56,13 +56,13 @@ class string_queue {
 };
 
 ftxui::Component command_input(std::shared_ptr<string_queue>* out_supplier,
-                               std::weak_ptr<perfkit::ui::command_registry> support,
+                               std::weak_ptr<perfkit::util::command_registry> support,
                                std::string prompt = {});
 ftxui::Component event_dispatcher(ftxui::Component, const ftxui::Event& evt_type = EVENT_POLL);
 
 ftxui::Component PRESET(
     std::shared_ptr<string_queue>* out_commands,
-    std::weak_ptr<perfkit::ui::command_registry> command_support,
+    std::weak_ptr<perfkit::util::command_registry> command_support,
     std::shared_ptr<if_subscriber> subscriber);
 
 class worker_info_t;

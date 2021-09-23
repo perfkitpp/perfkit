@@ -9,7 +9,7 @@
 
 #include "perfkit/detail/array_view.hxx"
 
-namespace perfkit::cmdutils {
+namespace perfkit::util {
 using stroffset = std::pair<ptrdiff_t, size_t>;
 
 /**
@@ -24,7 +24,7 @@ void tokenize_by_argv_rule(std::string* io,
 
 };  // namespace perfkit::cmdutils
 
-namespace perfkit::ui {
+namespace perfkit::util {
 
 /**
  * Invocation Handler
@@ -52,7 +52,7 @@ class command_registry {
      * @param suggest Autocomplete suggest handler.
      * @return nullptr if given command is invalid.
      */
-    perfkit::ui::command_registry::node* add_subcommand(
+    perfkit::util::command_registry::node* add_subcommand(
         std::string_view cmd,
         handler_fn handler              = {},
         autocomplete_suggest_fn suggest = {});

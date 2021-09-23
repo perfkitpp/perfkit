@@ -165,7 +165,7 @@ class _inputbox : public ComponentBase {
 
 ftxui::Component perfkit_ftxui::command_input(
     std::shared_ptr<perfkit_ftxui::string_queue>* out_supplier,
-    std::weak_ptr<perfkit::ui::command_registry> support,
+    std::weak_ptr<perfkit::util::command_registry> support,
     std::string prompt) {
   auto ptr      = std::make_shared<atomic_string_queue>();
   *out_supplier = ptr;
@@ -175,7 +175,7 @@ ftxui::Component perfkit_ftxui::command_input(
 
 ftxui::Component perfkit_ftxui::PRESET(
     std::shared_ptr<string_queue>* out_commands,
-    std::weak_ptr<perfkit::ui::command_registry> command_support,
+    std::weak_ptr<perfkit::util::command_registry> command_support,
     std::shared_ptr<if_subscriber> subscriber) {
   auto cmd   = command_input(out_commands, command_support, ":> enter command");
   auto cfg   = config_browser();

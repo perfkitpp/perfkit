@@ -6,12 +6,17 @@ add_subdirectory(range-v3-master EXCLUDE_FROM_ALL)
 
 # Module ---------------------------------------------------------------------------------------------------------------
 set(
-    PERFKIT_CORE_SOURCES 
-    "src/command_registry.cpp"
-    "src/configs.cpp"
-    "src/main.cpp"
-    "src/perfkit.cpp"
-    "src/tracer.cpp"
+        PERFKIT_CORE_SOURCES
+        "src/command_registry.cpp"
+        "src/configs.cpp"
+        "src/main.cpp"
+        "src/perfkit.cpp"
+        "src/tracer.cpp"
+)
+
+set(
+        PERFKIT_NET_CLIENT_SOURCES
+        "src/vis-net/vis-net-impl.cpp"
 )
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
@@ -19,12 +24,21 @@ add_library(perfkit::core ALIAS ${PROJECT_NAME})
 
 # Configurations -------------------------------------------------------------------------------------------------------
 option(perfkit_BUILD_FTXUI_EXTENSION "" ON)
-option(perfkit_BUILD_AS_CLIENT "" ON)
+option(perfkit_BUILD_NET_CLIENT "" ON)
 
 # TUI Extension
 if (perfkit_BUILD_FTXUI_EXTENSION)
     message("Configuring FTXUI Extension Library ...")
+
+    target_sources(${PROJECT_NAME} PRIVATE "src/vis-ftxui/vis-ftxui-impl.cpp")
     add_subdirectory(ftxui-extension)
+endif ()
+
+# NET Extension
+if (perfkit_BUILD_NET_CLIENT)
+    message("Configuring NET CLIENT extension ...")
+
+    target_sources(${PROJECT_NAME} PRIVATE)
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------
@@ -37,9 +51,9 @@ endif ()
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_compile_definitions(${PROJECT_NAME}
-        PUBLIC
-        -DKANGSW_ARRAY_VIEW_NAMESPACE=perfkit
-        -DSPDLOG_COMPILED_LIB=1)
+                           PUBLIC
+                           -DKANGSW_ARRAY_VIEW_NAMESPACE=perfkit
+                           -DSPDLOG_COMPILED_LIB=1)
 target_link_libraries(${PROJECT_NAME} PUBLIC range-v3::range-v3 spdlog::spdlog)
 
 if (UNIX)
