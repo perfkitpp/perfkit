@@ -37,7 +37,7 @@ endif ()
 # NET Extension
 if (perfkit_BUILD_NET_CLIENT)
     message("Configuring NET CLIENT extension ...")
-    add_subdirectory(extensions/net-client)
+    add_subdirectory(extensions/net-provider)
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------

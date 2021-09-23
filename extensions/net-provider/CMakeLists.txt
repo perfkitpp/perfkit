@@ -1,4 +1,4 @@
-project(perfkit-net-client)
+project(perfkit-net-provider)
 
 add_library(
         ${PROJECT_NAME} STATIC
