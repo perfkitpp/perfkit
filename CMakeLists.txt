@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 3.20)
 project(perfkit)
 
 # Imports --------------------------------------------------------------------------------------------------------------
-add_subdirectory(range-v3-master EXCLUDE_FROM_ALL)
+if (NOT TARGET range-v3::range-v3)
+    add_subdirectory(range-v3-master EXCLUDE_FROM_ALL)
+endif ()
 
 # Module ---------------------------------------------------------------------------------------------------------------
 set(
         PERFKIT_CORE_SOURCES
-        
+
         "src/command_registry.cpp"
         "src/configs.cpp"
         "src/main.cpp"
