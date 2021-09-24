@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
 
 set(TARGET_CONTEXT_NAME)
 add_executable(perfkit-automated-test automation.cpp automation-perfkit.cpp)
