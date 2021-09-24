@@ -55,8 +55,8 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
 
   if (!find_key(o->display_key()).empty()) {
     throw std::invalid_argument(fmt::format(
-        "Duplicated Display Key Found: \n\t{} (from full key {})",
-        o->display_key(), o->full_key()));
+            "Duplicated Display Key Found: \n\t{} (from full key {})",
+            o->display_key(), o->full_key()));
   }
 
   key_mapping().try_emplace(o->display_key(), o->full_key());
@@ -94,17 +94,17 @@ bool perfkit::config_registry::check_dirty_and_consume_global() {
 }
 
 perfkit::detail::config_base::config_base(
-    config_registry* owner,
-    void* raw, std::string full_key,
-    std::string description,
-    perfkit::detail::config_base::deserializer fn_deserial,
-    perfkit::detail::config_base::serializer fn_serial)
-    : _owner(owner)
-    , _full_key(std::move(full_key))
-    , _description(std::move(description))
-    , _raw(raw)
-    , _deserialize(std::move(fn_deserial))
-    , _serialize(std::move(fn_serial)) {
+        config_registry* owner,
+        void* raw, std::string full_key,
+        std::string description,
+        perfkit::detail::config_base::deserializer fn_deserial,
+        perfkit::detail::config_base::serializer fn_serial)
+        : _owner(owner)
+        , _full_key(std::move(full_key))
+        , _description(std::move(description))
+        , _raw(raw)
+        , _deserialize(std::move(fn_deserial))
+        , _serialize(std::move(fn_serial)) {
   static std::regex rg_trim_whitespace{R"((?:^|\|?)\s*(\S?[^|]*\S)\s*(?:\||$))"};
   static std::regex rg_remove_order_marker{R"(\+[^|]+\|)"};
 
@@ -125,13 +125,13 @@ perfkit::detail::config_base::config_base(
 
   if (_full_key.back() == '|') {
     throw std::invalid_argument(
-        fmt::format("Invalid Key Name: {}", _full_key));
+            fmt::format("Invalid Key Name: {}", _full_key));
   }
 
   if (_display_key.empty()) {
     throw std::invalid_argument(
-        fmt::format("Invalid Generated Display Key Name: {} from full key {}",
-                    _display_key, _full_key));
+            fmt::format("Invalid Generated Display Key Name: {} from full key {}",
+                        _display_key, _full_key));
   }
 
   _split_categories(_display_key, _categories);

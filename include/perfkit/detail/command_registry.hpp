@@ -22,7 +22,7 @@ void tokenize_by_argv_rule(std::string* io,
                            std::vector<std::string_view>& tokens,
                            std::vector<stroffset>* token_indexes = nullptr);
 
-};  // namespace perfkit::cmdutils
+};  // namespace perfkit::util
 
 namespace perfkit::util {
 
@@ -53,9 +53,9 @@ class command_registry {
      * @return nullptr if given command is invalid.
      */
     perfkit::util::command_registry::node* add_subcommand(
-        std::string_view cmd,
-        handler_fn handler              = {},
-        autocomplete_suggest_fn suggest = {});
+            std::string_view cmd,
+            handler_fn handler              = {},
+            autocomplete_suggest_fn suggest = {});
 
     /**
      * Find subcommand of current node.
@@ -97,9 +97,9 @@ class command_registry {
      * @return Common parts of given suggestions, which is used to smart autocomplete
      */
     std::string suggest(
-        array_view<std::string_view> full_tokens,
-        std::vector<std::string>& out_candidates,
-        bool* out_has_unique_match = nullptr);
+            array_view<std::string_view> full_tokens,
+            std::vector<std::string>& out_candidates,
+            bool* out_has_unique_match = nullptr);
 
     /**
      * Invoke command with given arguments.
@@ -130,4 +130,4 @@ class command_registry {
   std::unique_ptr<node> _root = std::make_unique<node>();
 };
 
-}  // namespace perfkit::ui
+}  // namespace perfkit::util

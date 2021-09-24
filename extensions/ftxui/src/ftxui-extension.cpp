@@ -29,30 +29,30 @@ class perfkit_ftxui::worker_info_t {
 };
 
 perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
-    ftxui::ScreenInteractive* screen,
-    ftxui::Component root_component,
-    std::chrono::milliseconds poll_interval) {
+        ftxui::ScreenInteractive* screen,
+        ftxui::Component root_component,
+        std::chrono::milliseconds poll_interval) {
   auto ptr = std::make_shared<worker_info_t>();
 
   ptr->thrd_loop = std::thread{
-      [screen, root_component, flag = &ptr->_alive] {
-        screen->Loop(root_component);
-        flag->store(false, std::memory_order_relaxed);  // for when screen turned off first ...
-      }};
+          [screen, root_component, flag = &ptr->_alive] {
+            screen->Loop(root_component);
+            flag->store(false, std::memory_order_relaxed);  // for when screen turned off first ...
+          }};
 
   ptr->thrd_poll = std::thread{
-      [screen, flag = &ptr->_alive, poll_interval] {
-        using clock_ty                   = std::chrono::steady_clock;
-        clock_ty::time_point next_wakeup = {};
+          [screen, flag = &ptr->_alive, poll_interval] {
+            using clock_ty                   = std::chrono::steady_clock;
+            clock_ty::time_point next_wakeup = {};
 
-        for (; flag->load(std::memory_order_relaxed);) {
-          screen->PostEvent(EVENT_POLL);
+            for (; flag->load(std::memory_order_relaxed);) {
+              screen->PostEvent(EVENT_POLL);
 
-          std::this_thread::sleep_until(next_wakeup);
-          next_wakeup = clock_ty::now() + poll_interval;
-        }
-        screen->ExitLoopClosure()();
-      }};
+              std::this_thread::sleep_until(next_wakeup);
+              next_wakeup = clock_ty::now() + poll_interval;
+            }
+            screen->ExitLoopClosure()();
+          }};
 
   return ptr;
 }
@@ -61,7 +61,7 @@ namespace {
 class EventCatcher : public ftxui::ComponentBase {
  public:
   EventCatcher(ftxui::Component child, ftxui::Event const& evt_type)
-      : _root(child), _evt_type(evt_type) {
+          : _root(child), _evt_type(evt_type) {
     Add(_root);
   }
 
@@ -85,7 +85,7 @@ class EventCatcher : public ftxui::ComponentBase {
 
 ftxui::Component perfkit_ftxui::event_dispatcher(ftxui::Component c, const Event& evt_type) {
   return std::static_pointer_cast<ftxui::ComponentBase>(
-      std::make_shared<EventCatcher>(c, evt_type));
+          std::make_shared<EventCatcher>(c, evt_type));
 }
 
 namespace {
@@ -164,9 +164,9 @@ class _inputbox : public ComponentBase {
 }  // namespace perfkit
 
 ftxui::Component perfkit_ftxui::command_input(
-    std::shared_ptr<perfkit_ftxui::string_queue>* out_supplier,
-    std::weak_ptr<perfkit::util::command_registry> support,
-    std::string prompt) {
+        std::shared_ptr<perfkit_ftxui::string_queue>* out_supplier,
+        std::weak_ptr<perfkit::util::command_registry> support,
+        std::string prompt) {
   auto ptr      = std::make_shared<atomic_string_queue>();
   *out_supplier = ptr;
 
@@ -174,9 +174,9 @@ ftxui::Component perfkit_ftxui::command_input(
 }
 
 ftxui::Component perfkit_ftxui::PRESET(
-    std::shared_ptr<string_queue>* out_commands,
-    std::weak_ptr<perfkit::util::command_registry> command_support,
-    std::shared_ptr<if_subscriber> subscriber) {
+        std::shared_ptr<string_queue>* out_commands,
+        std::weak_ptr<perfkit::util::command_registry> command_support,
+        std::shared_ptr<if_subscriber> subscriber) {
   auto cmd   = command_input(out_commands, command_support, ":> enter command");
   auto cfg   = config_browser();
   auto trace = trace_browser(subscriber);
@@ -195,8 +195,8 @@ ftxui::Component perfkit_ftxui::PRESET(
   });
 
   components = Container::Vertical({
-      Renderer(cmd, [cmd] { return window(text("< command >"), hbox(text(" "), cmd->Render(), text(" "))); }),
-      Renderer(components, [components] { return window(text("< monitor >"), components->Render()) | flex; }),
+          Renderer(cmd, [cmd] { return window(text("< command >"), hbox(text(" "), cmd->Render(), text(" "))); }),
+          Renderer(components, [components] { return window(text("< monitor >"), components->Render()) | flex; }),
   });
 
   return event_dispatcher(components);

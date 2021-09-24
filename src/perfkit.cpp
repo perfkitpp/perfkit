@@ -20,8 +20,8 @@ bool perfkit::import_options(std::string_view srcpath_s) {
     std::ifstream src{srcpath};
     if (!src) { return spdlog::critical("not a valid configuration file"), false; }
     nlohmann::json json = nlohmann::json::parse(
-        ((std::stringstream&)(std::stringstream{} << src.rdbuf())).str(),
-        nullptr);
+            ((std::stringstream&)(std::stringstream{} << src.rdbuf())).str(),
+            nullptr);
 
     auto& opts = json["___OPTIONS___"];
     if (opts.empty()) { return spdlog::critical("invalid json file specified."), false; }

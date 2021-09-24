@@ -45,7 +45,5 @@ class if_terminal {
    * Put string to terminal
    */
   virtual void putstr(std::string_view str) = 0;
-
-
 };
 }  // namespace perfkit

@@ -20,11 +20,11 @@ class array_view {
  public:
   constexpr array_view() noexcept = default;
   constexpr array_view(Ty_* p, size_t n) noexcept
-      : _ptr(p), _size(n) {}
+          : _ptr(p), _size(n) {}
 
   template <typename Range_>
   constexpr array_view(Range_&& p) noexcept
-      : array_view(p.data(), p.size()) {}
+          : array_view(p.data(), p.size()) {}
 
   constexpr auto size() const noexcept { return _size; }
   constexpr auto data() const noexcept { return _ptr; }

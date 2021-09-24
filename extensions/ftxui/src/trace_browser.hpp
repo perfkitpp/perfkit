@@ -13,17 +13,17 @@ using namespace perfkit;
 class tracer_instance_browser : public ComponentBase {
  public:
   explicit tracer_instance_browser(tracer* target, std::shared_ptr<if_subscriber> monitor)
-      : _target(target), _monitor(std::move(monitor)) {
+          : _target(target), _monitor(std::move(monitor)) {
     {
       CheckboxOption opts;
       opts.style_checked   = "";
       opts.style_unchecked = "";
 
       opts.on_change
-          = [this] {
-              if (_is_fetching && _container->ChildCount() == 1) { _container->Add(_outer); }
-              if (!_is_fetching && _container->ChildCount() == 2) { _container->ChildAt(1)->Detach(); }
-            };
+              = [this] {
+                  if (_is_fetching && _container->ChildCount() == 1) { _container->Add(_outer); }
+                  if (!_is_fetching && _container->ChildCount() == 2) { _container->ChildAt(1)->Detach(); }
+                };
 
       _title = Checkbox(_target->name(), &_is_fetching, opts);
     }
@@ -43,11 +43,11 @@ class tracer_instance_browser : public ComponentBase {
 
     if (_is_fetching) {
       return vbox(
-          separator(sep),
-          hbox(title | color(Color::DarkGreen),
-               filler(),
-               text(std::to_string(_latest_fence)) | color(Color::GrayDark)),
-          (_outer->Render() | flex));
+              separator(sep),
+              hbox(title | color(Color::DarkGreen),
+                   filler(),
+                   text(std::to_string(_latest_fence)) | color(Color::GrayDark)),
+              (_outer->Render() | flex));
     } else {
       return vbox(separator(sep), title | color(Color::GrayDark));
     }
@@ -84,7 +84,7 @@ class tracer_instance_browser : public ComponentBase {
   struct _data_label : ComponentBase {
    public:
     explicit _data_label(tracer_instance_browser* owner)
-        : _owner(owner) {
+            : _owner(owner) {
       CheckboxOption opts;
       opts.on_change       = [this] { _do_refresh(); };
       opts.style_checked   = "<";
@@ -96,8 +96,8 @@ class tracer_instance_browser : public ComponentBase {
       opts_subcr.style_unchecked = "";
 
       _control_toggle = Container::Horizontal({
-          Checkbox("<|", &_folding, opts),
-          Checkbox("(+)", &_subscribing, opts_subcr),
+              Checkbox("<|", &_folding, opts),
+              Checkbox("(+)", &_subscribing, opts_subcr),
       });
       Add(_control_toggle);
     }
@@ -263,8 +263,8 @@ class tracer_instance_browser : public ComponentBase {
   }
 
   static bool _one_is_root_of(
-      array_view<std::string_view> root,
-      array_view<std::string_view> sub) {
+          array_view<std::string_view> root,
+          array_view<std::string_view> sub) {
     if (root.size() >= sub.size()) { return false; }
     return std::equal(root.begin(), root.end(), sub.begin());
   }

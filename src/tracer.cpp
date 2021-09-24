@@ -23,7 +23,7 @@ struct hasher {
 using namespace perfkit;
 
 tracer::_entity_ty* tracer::_fork_branch(
-    _entity_ty const* parent, std::string_view name, bool initial_subscribe_state) {
+        _entity_ty const* parent, std::string_view name, bool initial_subscribe_state) {
   auto hash = _hash_active(parent, name);
 
   auto [it, is_new] = _table.try_emplace(hash);
@@ -101,7 +101,7 @@ struct message_block_sorter {
 }  // namespace
 
 tracer::tracer(int order, std::string_view name) noexcept
-    : _occurence_order(order), _name(name) {
+        : _occurence_order(order), _name(name) {
   auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
   _all().insert(it_insert, this);
 }
@@ -182,8 +182,8 @@ auto compare_hierarchy(array_view<std::string_view> a, array_view<std::string_vi
 
   if (a.size() == b.size()) {
     return num_equals == a.size()
-               ? hierarchy_compare_result::equal
-               : hierarchy_compare_result::irrelevant;
+                   ? hierarchy_compare_result::equal
+                   : hierarchy_compare_result::irrelevant;
   }
   if (num_equals != a.size() && num_equals != b.size()) {
     return hierarchy_compare_result::irrelevant;
@@ -200,26 +200,26 @@ auto compare_hierarchy(array_view<std::string_view> a, array_view<std::string_vi
 
 void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept {
   std::sort(
-      msg.begin(), msg.end(),
-      [](tracer::trace const& a, tracer::trace const& b) {
-        auto r_hcmp = compare_hierarchy(a.hierarchy, b.hierarchy);
-        if (r_hcmp == hierarchy_compare_result::equal) {
-          return a.fence == b.fence
-                     ? a.order < b.order
-                     : a.fence < b.fence;
-        }
-        if (r_hcmp == hierarchy_compare_result::irrelevant) {
-          return a.order < b.order;
-        }
-        if (r_hcmp == hierarchy_compare_result::a_contains_b) {
-          return false;
-        }
-        if (r_hcmp == hierarchy_compare_result::b_contains_a) {
-          return true;
-        }
+          msg.begin(), msg.end(),
+          [](tracer::trace const& a, tracer::trace const& b) {
+            auto r_hcmp = compare_hierarchy(a.hierarchy, b.hierarchy);
+            if (r_hcmp == hierarchy_compare_result::equal) {
+              return a.fence == b.fence
+                             ? a.order < b.order
+                             : a.fence < b.fence;
+            }
+            if (r_hcmp == hierarchy_compare_result::irrelevant) {
+              return a.order < b.order;
+            }
+            if (r_hcmp == hierarchy_compare_result::a_contains_b) {
+              return false;
+            }
+            if (r_hcmp == hierarchy_compare_result::b_contains_a) {
+              return true;
+            }
 
-        throw;
-      });
+            throw;
+          });
 }
 
 void tracer::trace::dump_data(std::string& s) const {
@@ -249,8 +249,8 @@ void tracer::trace::dump_data(std::string& s) const {
       s = std::get<bool>(data) ? "true" : "false";
       break;
 
-    case 5:  // interactive_image_t;
-      s = "interactive_image"; // TODO
+    case 5:                     // interactive_image_t;
+      s = "interactive_image";  // TODO
       break;
 
     case 6:  // std::any;

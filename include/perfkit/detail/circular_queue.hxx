@@ -69,7 +69,7 @@ class circular_queue {
 
    private:
     iterator(owner_type* o, size_t h)
-        : _owner(o), _head(h) {}
+            : _owner(o), _head(h) {}
     friend class circular_queue;
 
     owner_type* _owner;
@@ -78,7 +78,7 @@ class circular_queue {
 
  public:
   circular_queue(size_t capacity) noexcept
-      : _capacity(capacity + 1), _data(capacity ? std::make_unique<chunk_t[]>(_capacity) : nullptr) {}
+          : _capacity(capacity + 1), _data(capacity ? std::make_unique<chunk_t[]>(_capacity) : nullptr) {}
   circular_queue(const circular_queue& op) noexcept { *this = op; }
   circular_queue(circular_queue&& op) noexcept = default;
   circular_queue& operator                     =(circular_queue&& op) noexcept {

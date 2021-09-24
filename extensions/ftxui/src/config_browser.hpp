@@ -31,13 +31,13 @@ class config_node_builder {
 
     if (category.empty()) {
       if (!_subnodes.empty()) { throw std::invalid_argument(
-          fmt::format("A variable name cannot duplicate category name! ({})",
-                      ptr->display_key())); }
+              fmt::format("A variable name cannot duplicate category name! ({})",
+                          ptr->display_key())); }
       _content = std::move(ptr);
     } else {
       if (_content) { throw std::invalid_argument(
-          fmt::format("A category name cannot duplicate variable name! ({})",
-                      _content->display_key())); }
+              fmt::format("A category name cannot duplicate variable name! ({})",
+                          _content->display_key())); }
 
       auto key = category[0];
       auto it  = _subnodes.find(key);
@@ -99,7 +99,7 @@ class config_node_builder {
   bool is_content() const { return !!_content; }
 
   ftxui::Component build(
-      std::shared_ptr<std::function<void(bool)>> parent_fold = nullptr) {
+          std::shared_ptr<std::function<void(bool)>> parent_fold = nullptr) {
     if (_content) {
       return _build_content_modifier();
 
@@ -164,13 +164,13 @@ class config_node_builder {
 
         auto label = Checkbox(snode->first, state_boolean.get(), std::move(opts));
         label
-            = CatchEvent(label,
-                         [fold_fn_all](Event const& evt) -> bool {
-                           if (evt == Event::Backspace) {
-                             (*fold_fn_all)(false);
-                           }
-                           return false;
-                         });
+                = CatchEvent(label,
+                             [fold_fn_all](Event const& evt) -> bool {
+                               if (evt == Event::Backspace) {
+                                 (*fold_fn_all)(false);
+                               }
+                               return false;
+                             });
 
         label_cont->Add(Renderer(label, [label, deco = snode->second.decorator(),
                                          is_content = snode->second.is_content()] {
@@ -180,7 +180,7 @@ class config_node_builder {
         }));
 
         subnodes->Add(
-            Renderer(label_cont, [label_cont] { return hbox(text("  "), label_cont->Render() | flex); }));
+                Renderer(label_cont, [label_cont] { return hbox(text("  "), label_cont->Render() | flex); }));
       }
 
       parent_fold && (*parent_fold = *fold_fn_all, 1);
@@ -216,8 +216,8 @@ class config_node_builder {
                                    key = text(fmt::format("\"{}\":", it.key())),
                                    inner_value] {
                                     return hbox(
-                                               color(Color::Yellow, key),
-                                               text(" {"), inner_value->Render(), text("}"))
+                                                   color(Color::Yellow, key),
+                                                   text(" {"), inner_value->Render(), text("}"))
                                            | flex;
                                   });
 
@@ -238,8 +238,8 @@ class config_node_builder {
                                    key = text(fmt::format("[{}]:", i)),
                                    inner_value] {
                                     return hbox(
-                                        color(Color::Violet, key),
-                                        text(" {"), inner_value->Render(), text("}"));
+                                            color(Color::Violet, key),
+                                            text(" {"), inner_value->Render(), text("}"));
                                   });
             outer->Add(inner);
           }
@@ -293,7 +293,7 @@ class config_node_builder {
       ButtonOption nulloption;
       nulloption.border = false;
       return Button(
-          obj->type_name(), [] {}, nulloption);
+              obj->type_name(), [] {}, nulloption);
     }
   };
 
@@ -352,10 +352,10 @@ class config_browser : public ftxui::ComponentBase {
 
     auto built = root.build();
     _container = Renderer(
-        built,
-        [built] {
-          return hbox(built->Render() | xflex | yframe, text("  "));
-        });
+            built,
+            [built] {
+              return hbox(built->Render() | xflex | yframe, text("  "));
+            });
   }
 
  public:

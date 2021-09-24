@@ -172,10 +172,10 @@ class _config_factory {
 
   auto confirm() noexcept {
     return config<Ty_>{
-        *_pinfo->dispatcher,
-        std::move(_pinfo->full_key),
-        std::forward<Ty_>(_pinfo->default_value),
-        std::move(_data)};
+            *_pinfo->dispatcher,
+            std::move(_pinfo->full_key),
+            std::forward<Ty_>(_pinfo->default_value),
+            std::move(_data)};
   }
 
  private:
@@ -202,43 +202,43 @@ class config {
  public:
   template <typename Attr_ = _config_factory<Ty_>>
   config(
-      config_registry& dispatcher,
-      std::string full_key,
-      Ty_&& default_value,
-      _config_attrib_data<Ty_> attribute) noexcept
-      : _owner(&dispatcher), _value(std::forward<Ty_>(default_value)) {
+          config_registry& dispatcher,
+          std::string full_key,
+          Ty_&& default_value,
+          _config_attrib_data<Ty_> attribute) noexcept
+          : _owner(&dispatcher), _value(std::forward<Ty_>(default_value)) {
     auto description = std::move(attribute.description);
 
     // setup marshaller / de-marshaller with given rule of attribute
     detail::config_base::deserializer fn_m = [attrib = std::move(attribute)]  //
-        (const nlohmann::json& in, void* out) {
-          // TODO: Apply attributes
-          try {
-            Ty_ parsed;
+            (const nlohmann::json& in, void* out) {
+              // TODO: Apply attributes
+              try {
+                Ty_ parsed;
 
-            _config_attrib_data<Ty_> const& attr = attrib;
-            nlohmann::from_json(in, parsed);
+                _config_attrib_data<Ty_> const& attr = attrib;
+                nlohmann::from_json(in, parsed);
 
-            if constexpr (Attr_::flag & _attr_flag::has_min) {
-              parsed = std::min<Ty_>(*attr.min, parsed);
-            }
-            if constexpr (Attr_::flag & _attr_flag::has_max) {
-              parsed = std::max<Ty_>(*attr.min, parsed);
-            }
-            if constexpr (Attr_::flag & _attr_flag::has_one_of) {
-              auto oneof = attr->oneof;
-              if (oneof.find(parsed) == oneof.end()) { return false; }
-            }
-            if constexpr (Attr_::flag & _attr_flag::has_validate) {
-              if (!attr.validate(parsed)) { return false; }
-            }
+                if constexpr (Attr_::flag & _attr_flag::has_min) {
+                  parsed = std::min<Ty_>(*attr.min, parsed);
+                }
+                if constexpr (Attr_::flag & _attr_flag::has_max) {
+                  parsed = std::max<Ty_>(*attr.min, parsed);
+                }
+                if constexpr (Attr_::flag & _attr_flag::has_one_of) {
+                  auto oneof = attr->oneof;
+                  if (oneof.find(parsed) == oneof.end()) { return false; }
+                }
+                if constexpr (Attr_::flag & _attr_flag::has_validate) {
+                  if (!attr.validate(parsed)) { return false; }
+                }
 
-            *(Ty_*)out = parsed;
-            return true;
-          } catch (std::exception&) {
-            return false;
-          }
-        };
+                *(Ty_*)out = parsed;
+                return true;
+              } catch (std::exception&) {
+                return false;
+              }
+            };
 
     detail::config_base::serializer fn_d = [this](nlohmann::json& out, const void* in) {
       out = *(Ty_*)in;
@@ -246,12 +246,12 @@ class config {
 
     // instantiate config instance
     _opt = std::make_shared<detail::config_base>(
-        _owner,
-        &_value,
-        std::move(full_key),
-        std::move(description),
-        std::move(fn_m),
-        std::move(fn_d));
+            _owner,
+            &_value,
+            std::move(full_key),
+            std::move(description),
+            std::move(fn_m),
+            std::move(fn_d));
     // put instance to global queue
     dispatcher._put(_opt);
   }
@@ -284,9 +284,9 @@ class config {
 
 template <typename Ty_>
 using _cvt_ty = std::conditional_t<
-    std::is_convertible_v<Ty_, std::string>,
-    std::string,
-    Ty_>;
+        std::is_convertible_v<Ty_, std::string>,
+        std::string,
+        Ty_>;
 
 template <typename Ty_>
 auto configure(config_registry& dispatcher,

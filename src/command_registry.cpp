@@ -24,9 +24,9 @@ const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 }  // namespace
 
 perfkit::util::command_registry::node* perfkit::util::command_registry::node::add_subcommand(
-    std::string_view cmd,
-    handler_fn handler,
-    autocomplete_suggest_fn suggest) {
+        std::string_view cmd,
+        handler_fn handler,
+        autocomplete_suggest_fn suggest) {
   if (_check_name_exist(cmd)) {
     glog()->error("command name [{}] already exists as command or token.", cmd);
     return nullptr;
@@ -110,7 +110,7 @@ bool perfkit::util::command_registry::node::erase_subcommand(std::string_view cm
 }
 
 bool perfkit::util::command_registry::node::alias(
-    std::string_view cmd, std::string alias) {
+        std::string_view cmd, std::string alias) {
   if (_check_name_exist(alias)) {
     glog()->error("alias name [{}] already exists as command or token.");
     return false;
@@ -138,9 +138,9 @@ bool check_unique(std::string_view cmp, perfkit::array_view<std::string> candida
 }  // namespace
 
 std::string perfkit::util::command_registry::node::suggest(
-    array_view<std::string_view> full_tokens,
-    std::vector<std::string>& out_candidates,
-    bool* out_has_unique_match) {
+        array_view<std::string_view> full_tokens,
+        std::vector<std::string>& out_candidates,
+        bool* out_has_unique_match) {
   std::set<std::string> user_candidates;
 
   if (full_tokens.empty()) {
@@ -205,7 +205,7 @@ std::string perfkit::util::command_registry::node::suggest(
 }
 
 bool perfkit::util::command_registry::node::invoke(
-    perfkit::array_view<std::string_view> full_tokens) {
+        perfkit::array_view<std::string_view> full_tokens) {
   if (full_tokens.size() > 0) {
     auto subcmd = find_subcommand(full_tokens[0]);
     if (subcmd) {
@@ -224,9 +224,9 @@ void perfkit::util::command_registry::node::reset_handler(perfkit::util::handler
 }
 
 void perfkit::util::tokenize_by_argv_rule(
-    std::string* io,
-    std::vector<std::string_view>& tokens,
-    std::vector<std::pair<ptrdiff_t, size_t>>* token_indexes) {
+        std::string* io,
+        std::vector<std::string_view>& tokens,
+        std::vector<std::pair<ptrdiff_t, size_t>>* token_indexes) {
   auto const src = *io;
   io->clear(), io->reserve(src.size());
 
