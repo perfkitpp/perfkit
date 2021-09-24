@@ -8,7 +8,9 @@ if (perfkit_USE_BUNDLED_FTXUI)
 endif ()
 
 add_library(
-        ${PROJECT_NAME} STATIC
+        ${PROJECT_NAME}
+        STATIC
+
         "src/ftxui-extension.cpp"
         "src/config_browser.hpp"
         "src/trace_browser.hpp"
@@ -19,13 +21,20 @@ add_library(perfkit::ftxui ALIAS ${PROJECT_NAME})
 
 target_link_libraries(
         ${PROJECT_NAME} PUBLIC
-        PUBLIC ftxui::screen
-        PUBLIC ftxui::dom
-        PUBLIC ftxui::component
+
+        PUBLIC
+        ftxui::screen
+        ftxui::dom
+        ftxui::component
         perfkit::core
+
+        PRIVATE
+        range-v3::range-v3
 )
 
 target_include_directories(
-        ${PROJECT_NAME} PUBLIC
+        ${PROJECT_NAME}
+
+        PUBLIC
         include
 )

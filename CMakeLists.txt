@@ -7,6 +7,7 @@ add_subdirectory(range-v3-master EXCLUDE_FROM_ALL)
 # Module ---------------------------------------------------------------------------------------------------------------
 set(
         PERFKIT_CORE_SOURCES
+        
         "src/command_registry.cpp"
         "src/configs.cpp"
         "src/main.cpp"
@@ -47,13 +48,37 @@ if (NOT TARGET spdlog)
     find_package(spdlog REQUIRED)
 endif ()
 
-target_include_directories(${PROJECT_NAME} PUBLIC include)
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_compile_definitions(${PROJECT_NAME}
-                           PUBLIC
-                           -DKANGSW_ARRAY_VIEW_NAMESPACE=perfkit
-                           -DSPDLOG_COMPILED_LIB=1)
-target_link_libraries(${PROJECT_NAME} PUBLIC range-v3::range-v3 spdlog::spdlog)
+target_include_directories(
+        ${PROJECT_NAME}
+
+        PUBLIC
+        include
+)
+
+target_compile_features(
+        ${PROJECT_NAME}
+
+        PUBLIC
+        cxx_std_17
+)
+
+target_compile_definitions(
+        ${PROJECT_NAME}
+
+        PUBLIC
+        -DKANGSW_ARRAY_VIEW_NAMESPACE=perfkit
+        -DSPDLOG_COMPILED_LIB=1
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}
+
+        PUBLIC
+        spdlog::spdlog
+
+        PRIVATE
+        range-v3::range-v3
+)
 
 if (UNIX)
     target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
