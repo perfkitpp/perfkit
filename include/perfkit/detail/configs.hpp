@@ -96,16 +96,16 @@ class config_base {
  */
 class config_registry {
  public:
-  using json_table   = std::map<std::string, nlohmann::json>;
+  using json_table   = std::map<std::string_view, nlohmann::json>;
   using config_table = std::map<std::string_view, std::shared_ptr<detail::config_base>>;
   using container    = std::vector<std::unique_ptr<config_registry>>;
 
  public:
   bool apply_update_and_check_if_dirty();
 
-  void queue_update_value(std::string full_key, nlohmann::json const& value);
+  void queue_update_value(std::string_view full_key, nlohmann::json const& value);
 
-  static bool request_update_value(std::string full_key, nlohmann::json const& value);
+  static bool request_update_value(std::string_view full_key, nlohmann::json const& value);
 
   static std::string_view find_key(std::string_view display_key);
 
@@ -122,7 +122,7 @@ class config_registry {
 
  private:
   config_table _opts;
-  json_table _pending_updates;
+  std::set<detail::config_base*> _pending_updates;
   std::mutex _update_lock;
 
   static inline std::atomic_bool _global_dirty;
@@ -273,7 +273,7 @@ class config {
   explicit operator const Ty_&() const noexcept { return get(); }
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
-  void async_modify(Ty_ v) { _owner->queue_update_value(std::string{_opt->full_key()}, std::move(v)); }
+  void async_modify(Ty_ v) { _owner->queue_update_value(_opt->full_key(), std::move(v)); }
 
   auto& base() const { return *_opt; }
 

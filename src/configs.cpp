@@ -29,12 +29,12 @@ bool perfkit::config_registry::apply_update_and_check_if_dirty() {
     update = std::move(_pending_updates);
     _pending_updates.clear();
 
-    for (auto& [name, json] : update) {
-      auto [key, opt] = *_opts.find(name);
-      auto r_desrl    = opt->_try_deserialize(json);
+    for (auto ptr : update) {
+      auto r_desrl = ptr->_try_deserialize(ptr->_cached_serialized);
 
       if (!r_desrl) {
-        glog()->error("parse failed: '{}' <- {}", opt->display_key(), json.dump());
+        glog()->error("parse failed: '{}' <- {}", ptr->display_key(), ptr->_cached_serialized.dump());
+        ptr->_serialize(ptr->_cached_serialized, ptr->_raw); // roll back
       }
     }
 
@@ -76,14 +76,21 @@ std::string_view perfkit::config_registry::find_key(std::string_view display_key
   }
 }
 
-void perfkit::config_registry::queue_update_value(std::string full_key, const nlohmann::json& value) {
-  std::unique_lock _l{_update_lock};
-  _pending_updates[std::move(full_key)] = value;
+void perfkit::config_registry::queue_update_value(std::string_view full_key, const nlohmann::json& value) {
+  auto _ = _access_lock();
+
+  auto it  = _opts.find(full_key);
+  full_key = it->first;
+
+  // to prevent value ignorance on contiguous load-save call without apply_changes(),
+  // stores cache without validation.
+  it->second->_cached_serialized = value;
+  _pending_updates.insert(it->second.get());
 }
 
-bool perfkit::config_registry::request_update_value(std::string full_key, const nlohmann::json& value) {
+bool perfkit::config_registry::request_update_value(std::string_view full_key, const nlohmann::json& value) {
   if (auto it = all().find(full_key); it != all().end()) {
-    it->second->_owner->queue_update_value(std::move(full_key), value);
+    it->second->_owner->queue_update_value(std::string(full_key), value);
     return true;
   }
   return false;
