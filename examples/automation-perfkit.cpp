@@ -1,8 +1,12 @@
 #define DOCTEST_CONFIG_NO_EXCEPTIONS
+
+#include <perfkit/perfkit.h>
+
+#include <perfkit/detail/command_registry.hpp>
+#include <perfkit/detail/trace_future.hpp>
+#include <range/v3/view.hpp>
+
 #include "doctest.h"
-#include "perfkit/detail/command_registry.hpp"
-#include "perfkit/perfkit.h"
-#include "range/v3/view.hpp"
 
 using namespace std::literals;
 using namespace ranges;
@@ -33,7 +37,8 @@ TEST_CASE("Create Options") {
 
 TEST_CASE("Create Message Blocks") {
   for (int i = 0; i < 5; ++i) {
-    auto fut  = my_block.async_fetch_request();
+    perfkit::tracer_future_result fut;
+    my_block.async_fetch_request(&fut);
     auto TM_0 = my_block.fork("Foo");
 
     auto DT_0_0 = TM_0.branch("My");
@@ -55,12 +60,12 @@ TEST_CASE("Create Message Blocks") {
 
 TEST_CASE("Tokenize") {
   std::vector<std::string_view> tokens;
-  std::string                   buff = "umai\\ bong\\ daesu a alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over";
+  std::string buff = "umai\\ bong\\ daesu a alpha veta \"and there will \\\"be\\\' light\"  mo\\'ve\\ space\\ over";
   perfkit::util::tokenize_by_argv_rule(&buff, tokens, nullptr);
 
   std::vector<std::string> compared(
-      {"umai bong daesu",
-       "a", "alpha", "veta", "and there will \\\"be\\\' light", "mo\\'ve space over"});
+          {"umai bong daesu",
+           "a", "alpha", "veta", "and there will \\\"be\\\' light", "mo\\'ve space over"});
 
   for (auto it : zip(tokens, compared)) {
     auto& gen = it.first;
@@ -74,7 +79,7 @@ TEST_CASE("Sort Messages") {
 
 TEST_CASE("Command Name Verify") {
   perfkit::util::command_registry rg;
-  auto                          rt = rg._get_root();
+  auto rt = rg._get_root();
 
   CHECK(rt->add_subcommand("  ea ") == nullptr);
   CHECK(rt->add_subcommand("  ea fas evas ") == nullptr);

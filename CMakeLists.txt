@@ -15,7 +15,7 @@ set(
         src/main.cpp
         src/perfkit.cpp
         src/tracer.cpp
-        src/terminal.cpp)
+        src/terminal.cpp include/perfkit/detail/trace_future.hpp)
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
 add_library(perfkit::core ALIAS ${PROJECT_NAME})

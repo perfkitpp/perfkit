@@ -1,11 +1,15 @@
 //
 // Created by Seungwoo on 2021-08-25.
 //
+#include <future>
+#include <mutex>
 #include <nlohmann/detail/conversions/from_json.hpp>
+#include <perfkit/detail/trace_future.hpp>
 #include <perfkit/detail/tracer.hpp>
 #include <variant>
 
 #include "spdlog/fmt/fmt.h"
+
 using namespace std::literals;
 
 namespace {
@@ -21,6 +25,12 @@ struct hasher {
 }  // namespace
 
 using namespace perfkit;
+
+
+struct tracer::_impl {
+  std::optional<std::promise<async_trace_result>> msg_promise;
+  tracer_future_result msg_future;
+};
 
 tracer::_entity_ty* tracer::_fork_branch(
         _entity_ty const* parent, std::string_view name, bool initial_subscribe_state) {
@@ -62,8 +72,8 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top) {
 tracer::proxy tracer::fork(const std::string& n) {
   if (auto _lck = std::unique_lock{_sort_merge_lock}) {
     // perform queued sort-merge operation
-    if (_msg_promise) {
-      auto& promise = *_msg_promise;
+    if (self->msg_promise) {
+      auto& promise = *self->msg_promise;
 
       // copies all messages and put them to cache buffer to prevent memory reallocation
       _local_reused_memory.resize(_table.size());
@@ -76,8 +86,8 @@ tracer::proxy tracer::fork(const std::string& n) {
       rs._data       = &_local_reused_memory;
       promise.set_value(rs);
 
-      _msg_future  = {};
-      _msg_promise = {};
+      self->msg_future  = {};
+      self->msg_promise = {};
     }
   }
 
@@ -101,7 +111,7 @@ struct message_block_sorter {
 }  // namespace
 
 tracer::tracer(int order, std::string_view name) noexcept
-        : _occurence_order(order), _name(name) {
+        : self(new _impl), _occurence_order(order), _name(name) {
   auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
   _all().insert(it_insert, this);
 }
@@ -115,19 +125,21 @@ array_view<tracer*> tracer::all() noexcept {
   return _all();
 }
 
-tracer::future_result tracer::async_fetch_request() {
+void tracer::async_fetch_request(tracer::future_result* out) {
   auto _lck = std::unique_lock{_sort_merge_lock};
 
   // if there's already queued merge operation, share future once more.
-  if (_msg_promise) {
-    return _msg_future;
+  if (self->msg_promise) {
+    *out = self->msg_future;
+    return;
   }
 
   // if not, queue new promise and make its future shared.
-  _msg_promise.emplace();
-  _msg_future = std::shared_future(_msg_promise->get_future());
-  return _msg_future;
+  self->msg_promise.emplace();
+  self->msg_future = std::shared_future(self->msg_promise->get_future());
+  *out             = self->msg_future;
 }
+perfkit::tracer::~tracer() noexcept = default;
 
 tracer::proxy tracer::proxy::branch(std::string_view n) noexcept {
   proxy px;

@@ -8,11 +8,9 @@
 #include <any>
 #include <atomic>
 #include <chrono>
-#include <future>
 #include <list>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <type_traits>
@@ -24,6 +22,7 @@
 #include "spinlock.hxx"
 
 namespace perfkit {
+class tracer_future_result;
 
 using clock_type = std::chrono::steady_clock;
 struct trace_variant_type : std::variant<clock_type::duration,
@@ -189,7 +188,7 @@ class tracer {
     fetched_traces* _data;
   };
 
-  using future_result = std::shared_future<async_trace_result>;
+  using future_result = tracer_future_result;
 
  public:
   /**
@@ -199,6 +198,7 @@ class tracer {
    * @param name
    */
   tracer(int order, std::string_view name) noexcept;
+  ~tracer() noexcept;
 
   static array_view<tracer*> all() noexcept;
 
@@ -217,7 +217,7 @@ class tracer {
    * Reserves for async data sort
    * @return empty optional when there's any already queued operation.
    */
-  future_result async_fetch_request();
+  void async_fetch_request(tracer::future_result* out);
 
   auto name() const noexcept { return _name; }
   auto order() const noexcept { return _occurence_order; }
@@ -237,6 +237,8 @@ class tracer {
   //    따라서 항상 데이터 할당은 기존 데이터에 덮는 식으로 이루어져야.
   // 2. 프록시 생성 시 문자열 할당 최소화되어야 함. (가능한 룩업 한 번으로 끝내기)
   // 3.
+  struct _impl;
+  std::unique_ptr<_impl> self;
 
   // 0. fork가 호출되면 시퀀스 번호가 1 증가
   // 1. 새로운 문자열로 프록시 최초 생성 시 고정 슬롯 할당.
@@ -249,8 +251,6 @@ class tracer {
   int _order_active = 0;  // temporary variable for single iteration
 
   mutable spinlock _sort_merge_lock;
-  std::optional<std::promise<async_trace_result>> _msg_promise;
-  std::shared_future<async_trace_result> _msg_future;
   fetched_traces _local_reused_memory;
 
   int _occurence_order;

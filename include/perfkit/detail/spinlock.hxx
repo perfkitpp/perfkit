@@ -8,7 +8,10 @@
  */
 #pragma once
 #include <atomic>
-#include <thread>
+
+namespace std::this_thread {
+void yield() noexcept;
+}
 
 namespace perfkit {
 //! @see https://rigtorp.se/spinlock/
