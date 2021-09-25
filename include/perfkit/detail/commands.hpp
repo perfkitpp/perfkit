@@ -36,8 +36,8 @@ void tokenize_by_argv_rule(
  */
 void register_config_io_commands(
         registry* ref,
-        std::string_view cmd_load,  // e.g. "ld"
-        std::string_view cmd_store,
+        std::string_view cmd_load     = "load-config",  // e.g. "ld"
+        std::string_view cmd_store    = "save-config",
         std::string_view initial_path = {});  // e.g. "w"
 
 /**

@@ -272,10 +272,8 @@ void perfkit::commands::tokenize_by_argv_rule(
   }
 }
 
-using namespace perfkit::commands;
-
-namespace {
-class config_saveload_manager {
+namespace perfkit::commands {
+class _config_saveload_manager {
  public:
   bool load_from(args_view args = {}) {
     auto path = args.empty() ? _latest : args[0];
@@ -306,14 +304,13 @@ class config_saveload_manager {
  public:
   std::string _latest = {};
 };
-}  // namespace
 
-void perfkit::commands::register_config_io_commands(
+void register_config_io_commands(
         perfkit::commands::registry* ref,
         std::string_view cmd_load,
         std::string_view cmd_store,
         std::string_view initial_path) {
-  auto manip     = std::make_shared<config_saveload_manager>();
+  auto manip     = std::make_shared<_config_saveload_manager>();
   manip->_latest = initial_path;
 
   auto rootnode  = ref->_get_root();
@@ -330,9 +327,19 @@ void perfkit::commands::register_config_io_commands(
   if (!node_load || !node_save) { throw command_already_exist_exception{}; }
 }
 
+void register_logging_manip_command(registry* ref, std::string_view cmd) {
+}
+
+void register_trace_manip_command(registry* ref, std::string_view cmd) {
+}
+
+void register_config_manip_command(registry* ref, std::string_view cmd) {
+}
+
 bool registry::invoke_command(std::string command) {
   std::vector<std::string_view> tokens;
   tokenize_by_argv_rule(&command, tokens, nullptr);
 
   return false;
 }
+}  // namespace perfkit::commands

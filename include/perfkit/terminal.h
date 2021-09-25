@@ -43,7 +43,7 @@ class if_terminal {
    * @param timeout seconds to wait until receive command.
    * @return valid optional string, if dequeueing was successful.
    */
-  virtual std::optional<std::string> dequeue_user_command(milliseconds timeout = {}) = 0;
+  virtual std::optional<std::string> fetch_command(milliseconds timeout = {}) = 0;
 
   /**
    * Put string to terminal

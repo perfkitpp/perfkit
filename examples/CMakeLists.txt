@@ -14,6 +14,19 @@ target_link_libraries(
         range-v3::range-v3
 )
 
+add_executable(
+        example-interactive-terminal
+
+        example-interactive-terminal.cpp
+)
+
+target_link_libraries(
+        example-interactive-terminal
+
+        PRIVATE
+        perfkit::core
+)
+
 if (perfkit_BUILD_FTXUI_EXTENSION)
     # example-tui
     add_executable(
