@@ -10,12 +10,12 @@ endif ()
 set(
         PERFKIT_CORE_SOURCES
 
-        "src/command_registry.cpp"
-        "src/configs.cpp"
-        "src/main.cpp"
-        "src/perfkit.cpp"
-        "src/tracer.cpp"
-)
+        src/command_registry.cpp
+        src/configs.cpp
+        src/main.cpp
+        src/perfkit.cpp
+        src/tracer.cpp
+        src/terminal.cpp)
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
 add_library(perfkit::core ALIAS ${PROJECT_NAME})
@@ -24,6 +24,7 @@ add_library(perfkit::core ALIAS ${PROJECT_NAME})
 option(perfkit_BUILD_FTXUI_EXTENSION "" OFF)
 option(perfkit_BUILD_NET_CLIENT "" ON)
 option(perfkit_USE_BUNDLED_JSON "" ON)
+option(perfkit_BUILD_EXAMPLES "" OFF)
 
 # JSON Bundling
 if (perfkit_USE_BUNDLED_JSON)
@@ -87,7 +88,6 @@ if (UNIX)
 endif ()
 
 # Example Directory ----------------------------------------------------------------------------------------------------
-option(perfkit_BUILD_EXAMPLES "" ON)
 if (perfkit_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif ()

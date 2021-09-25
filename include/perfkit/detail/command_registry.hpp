@@ -10,6 +10,7 @@
 #include "perfkit/detail/array_view.hxx"
 
 namespace perfkit::util {
+class command_registry;
 using stroffset = std::pair<ptrdiff_t, size_t>;
 
 /**
@@ -18,13 +19,30 @@ using stroffset = std::pair<ptrdiff_t, size_t>;
  * @param src
  * @param tokens
  */
-void tokenize_by_argv_rule(std::string* io,
-                           std::vector<std::string_view>& tokens,
-                           std::vector<stroffset>* token_indexes = nullptr);
+void tokenize_by_argv_rule(
+        std::string* io,
+        std::vector<std::string_view>& tokens,
+        std::vector<stroffset>* token_indexes = nullptr);
 
-};  // namespace perfkit::util
+/**
+ * Register configuration load, store commands
+ * @param to
+ * @param cmd_write usage: cmd_write [path]. if path is not specified, previous path will be used.
+ * @param cmd_read usage: cmd_read [path]. if path is not specified, previous path will be used.
+ */
+void register_config_io_commands(
+        command_registry* to,
+        std::string_view cmd_load, // e.g. "ld"
+        std::string_view cmd_store); // e.g. "w"
 
-namespace perfkit::util {
+/**
+ * Register option manipulation command
+ * @param to
+ * @param cmd
+ */
+void register_option_manip_command(
+        command_registry* to,
+        std::string_view cmd);
 
 /**
  * Invocation Handler
