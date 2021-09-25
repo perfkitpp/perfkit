@@ -15,6 +15,7 @@ using stroffset = std::pair<ptrdiff_t, size_t>;
 
 struct command_exception : std::exception {};
 struct command_already_exist_exception : std::exception {};
+struct command_name_invalid_exception : std::exception {};
 
 /**
  * Tokenize given string with os argc-argv rule.

@@ -54,6 +54,16 @@ class if_terminal {
    *
    */
   virtual std::shared_ptr<spdlog::sinks::sink> sink() = 0;
+
+  /**
+   * Property manipulations
+   */
+  virtual bool set(std::string_view key) { return false; };
+  virtual bool set(std::string_view key, std::string_view value) { return false; };
+  virtual bool set(std::string_view key, double value) { return false; };
+
+  virtual bool get(std::string_view key, std::string_view* out) { return false; };
+  virtual bool get(std::string_view key, double* out) { return false; };
 };
 
 }  // namespace perfkit

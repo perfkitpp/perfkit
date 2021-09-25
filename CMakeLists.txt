@@ -19,6 +19,8 @@ set(
         include/perfkit/detail/trace_future.hpp
         src/detail/basic_interactive_terminal.cpp
         src/detail/basic_interactive_terminal.hpp
+
+        third/linenoise-1.0/linenoise.c
 )
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
@@ -39,17 +41,17 @@ endif ()
 # TUI Extension
 if (perfkit_BUILD_FTXUI_EXTENSION)
     if (NOT TARGET ftxui::dom)
-        add_subdirectory(third/FTXUI)
+        add_subdirectory(third/FTXUI/)
     endif ()
 
     message("Configuring FTXUI Extension Library ...")
-    add_subdirectory(extensions/ftxui)
+    add_subdirectory(extensions/ftxui/)
 endif ()
 
 # NET Extension
 if (perfkit_BUILD_NET_CLIENT)
     message("Configuring NET CLIENT extension ...")
-    add_subdirectory(extensions/net-provider)
+    add_subdirectory(extensions/net-provider/)
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------
@@ -63,7 +65,10 @@ target_include_directories(
         ${PROJECT_NAME}
 
         PUBLIC
-        include
+        include/
+
+        PRIVATE
+        third/linenoise-1.0/
 )
 
 target_compile_features(
@@ -92,7 +97,12 @@ target_link_libraries(
 )
 
 if (UNIX)
-    target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
+    target_link_libraries(
+            ${PROJECT_NAME}
+
+            PUBLIC
+            pthread
+    )
 endif ()
 
 # Example Directory ----------------------------------------------------------------------------------------------------

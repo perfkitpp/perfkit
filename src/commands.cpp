@@ -28,13 +28,13 @@ perfkit::commands::registry::node* perfkit::commands::registry::node::add_subcom
         autocomplete_suggest_fn suggest) {
   if (_check_name_exist(cmd)) {
     glog()->error("command name [{}] already exists as command or token.", cmd);
-    return nullptr;
+    throw command_already_exist_exception{};
   }
 
   std::cmatch match;
   if (!std::regex_match(cmd.data(), cmd.data() + cmd.size(), match, rg_cmd_token)) {
     glog()->error("invalid command name [{}])", cmd);
-    return nullptr;
+    throw command_name_invalid_exception{};
   }
 
   auto& subcmd    = _subcommands[std::string(cmd)];
