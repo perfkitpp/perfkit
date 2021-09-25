@@ -235,6 +235,26 @@ void perfkit::commands::registry::node::reset_handler(perfkit::commands::handler
   _invoke = std::move(fn);
 }
 
+bool perfkit::commands::registry::node::rename_subcommand(std::string_view from, std::string_view to) {
+  if (find_subcommand(to) != nullptr) {
+    glog()->error("subcommand rename failed: name {} already exist.", to);
+    return false;
+  }
+
+  if (auto it1 = _subcommands.find(from); it1 != _subcommands.end()) {
+    _subcommands.try_emplace(std::string{to}, std::move(it1->second));
+    _subcommands.erase(it1);
+  } else if (auto it2 = _aliases.find(from); it2 != _aliases.end()) {
+    _aliases.try_emplace(std::string{to}, it2->second);
+    _aliases.erase(it2);
+  } else {
+    glog()->error("subcommand rename failed: command {} does not exist.");
+    return false;
+  }
+
+  return true;
+}
+
 void perfkit::commands::tokenize_by_argv_rule(
         std::string* io,
         std::vector<std::string_view>& tokens,
