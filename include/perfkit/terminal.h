@@ -46,6 +46,13 @@ class if_terminal {
   virtual std::optional<std::string> fetch_command(milliseconds timeout = {}) = 0;
 
   /**
+   * Enqueue command to internal queue.
+   *
+   * This should appear in fetch_command();
+   */
+  virtual void push_command(std::string_view command) = 0;
+
+  /**
    * Put string to terminal
    */
   virtual void puts(std::string_view str) = 0;

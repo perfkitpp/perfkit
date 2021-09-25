@@ -7,14 +7,11 @@
 #include <set>
 #include <vector>
 
+#include <linenoise.h>
 #include <perfkit/detail/base.hpp>
 #include <spdlog/logger.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
-
-#if __linux__
-#include <linenoise.h>
-#endif
 
 using namespace perfkit;
 using namespace std::literals;
@@ -33,6 +30,12 @@ perfkit::basic_interactive_terminal::fetch_command(
 
       return retval;
     });
+  }
+
+  if (auto _ = std::unique_lock{_cmd_queue_lock}; !_cmd_queued.empty()) {
+    auto cmd = std::move(_cmd_queued.front());
+    _cmd_queued.pop_front();
+    return cmd;
   }
 
   if (_cmd.wait_for(timeout) != std::future_status::ready) {
@@ -111,4 +114,9 @@ void basic_interactive_terminal::_register_autocomplete() {
 void basic_interactive_terminal::_unregister_autocomplete() {
   linenoiseSetCompletionCallback(nullptr);
   locked_command_registry.store(nullptr);
+}
+
+void basic_interactive_terminal::push_command(std::string_view command) {
+  std::unique_lock _{_cmd_queue_lock};
+  _cmd_queued.emplace_back(command);
 }
