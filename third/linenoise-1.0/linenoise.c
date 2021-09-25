@@ -119,7 +119,16 @@
 
 #define LINENOISE_DEFAULT_HISTORY_MAX_LEN 100
 #define LINENOISE_MAX_LINE                4096
-static char *unsupported_term[]                        = {"dumb", "cons25", "emacs", NULL};
+static char *unsupported_term[] = {"dumb", "cons25", "emacs", NULL};
+static char *supported_term[]   = {
+        "xterm",
+        "xterm-256color",
+        "linux",
+        "vt100",
+        "screen",
+        "dumb",
+};
+
 static linenoiseCompletionCallback *completionCallback = NULL;
 
 static struct termios orig_termios; /* In order to restore at exit.*/
@@ -208,10 +217,14 @@ static int isUnsupportedTerm(void) {
   char *term = getenv("TERM");
   int j;
 
-  if (term == NULL) return 0;
-  for (j = 0; unsupported_term[j]; j++)
-    if (!strcasecmp(term, unsupported_term[j])) return 1;
-  return 0;
+  if (term == NULL) return 1;
+  for (j = 0; supported_term[j]; j++)
+    if (!strcasecmp(term, supported_term[j])) return 0;
+  return 1;
+}
+
+int linenoiseIsUnsupportedTerm() {
+  return isUnsupportedTerm();
 }
 
 /* Raw mode: 1960 magic shit. */
@@ -354,10 +367,14 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
   char c = 0;
 
   int word_pos = completionCallback(ls->buf, &lc);
-  if (lc.len == 0 || word_pos < 0 || word_pos >= ls->len) {
+  if (lc.len == 0 || word_pos < 0 || word_pos > ls->len) {
     linenoiseBeep();
   } else if (1) {
     int fd = ls->ofd;
+
+    // if any other output interrupted prompt ...
+    ls->prompt = prompt;
+    refreshLine(ls);
 
     // dump all candidates
     int nmaxcandlen = 0;
@@ -403,12 +420,15 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
 
     // only when shared portion is longer than word portion ...
     if (ncommon > ls->len - word_pos && word_pos + ncommon < ls->buflen) {
-      ls->len = ls->pos = word_pos + ncommon;
+      int match_exact = ncommon == nmaxcandlen;
+
+      ls->len = ls->pos = word_pos + ncommon + match_exact;
       char *str         = *lc.cvec;
 
-      // if candidate matches exactly, insert space at end
       memcpy(ls->buf + word_pos, str, ncommon);
-      ls->prompt = prompt;
+
+      // if candidate matches exactly, insert space at end
+      if (match_exact) { ls->buf[word_pos + ncommon] = ' '; }
     }
 
     refreshLine(ls);

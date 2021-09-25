@@ -11,7 +11,10 @@
 
 namespace perfkit::commands {
 class registry;
-using stroffset = std::pair<ptrdiff_t, size_t>;
+struct stroffset {
+  size_t position = {};
+  size_t length   = {};
+};
 
 struct command_exception : std::exception {};
 struct command_already_exist_exception : std::exception {};
@@ -29,13 +32,20 @@ void tokenize_by_argv_rule(
         std::vector<stroffset>* token_indexes = nullptr);
 
 /**
+ * Register basic commands
+ *
+ * @param ref
+ */
+void initialize_registry_with_basic_commands(registry* ref);
+
+/**
  * Register configuration load, store commands
  *
  * @param to
  * @param cmd_write usage: cmd_write [path]. if path is not specified, previous path will be used.
  * @param cmd_read usage: cmd_read [path]. if path is not specified, previous path will be used.
  */
-void register_config_io_commands(
+void register_conffile_io_commands(
         registry* ref,
         std::string_view cmd_load     = "load-config",  // e.g. "ld"
         std::string_view cmd_store    = "save-config",
@@ -135,6 +145,15 @@ class registry {
      * @return
      */
     bool erase_subcommand(std::string_view cmd_or_alias);
+
+    /**
+     * Rename subcommand. If target is alias, alias will be moved.
+     *
+     * @param cmd_or_alias
+     * @param to
+     * @return false if given key is invalid, or destination already exist
+     */
+    bool rename_subcommand(std::string_view from, std::string_view to);
 
     /**
      * Alias command.

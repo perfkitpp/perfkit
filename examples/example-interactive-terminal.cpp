@@ -9,7 +9,7 @@ using namespace std::literals;
 
 int main(void) {
   auto term = perfkit::create_basic_interactive_terminal();
-  perfkit::commands::register_config_io_commands(term->commands());
+  perfkit::commands::register_conffile_io_commands(term->commands());
   perfkit::commands::register_config_manip_command(term->commands());
   perfkit::commands::register_logging_manip_command(term->commands());
   perfkit::commands::register_trace_manip_command(term->commands());

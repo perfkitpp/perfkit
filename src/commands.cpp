@@ -234,7 +234,7 @@ void perfkit::commands::registry::node::reset_handler(perfkit::commands::handler
 void perfkit::commands::tokenize_by_argv_rule(
         std::string* io,
         std::vector<std::string_view>& tokens,
-        std::vector<std::pair<ptrdiff_t, size_t>>* token_indexes) {
+        std::vector<stroffset>* token_indexes) {
   auto const src = *io;
   io->clear(), io->reserve(src.size());
 
@@ -257,7 +257,7 @@ void perfkit::commands::tokenize_by_argv_rule(
     position = match.position(n), length = match.length(n);
 
     if (token_indexes) {
-      token_indexes->emplace_back(position, length);
+      token_indexes->push_back({position, length});
     }
 
     // correct escapes
@@ -305,7 +305,7 @@ class _config_saveload_manager {
   std::string _latest = {};
 };
 
-void register_config_io_commands(
+void register_conffile_io_commands(
         perfkit::commands::registry* ref,
         std::string_view cmd_load,
         std::string_view cmd_store,
@@ -334,6 +334,13 @@ void register_trace_manip_command(registry* ref, std::string_view cmd) {
 }
 
 void register_config_manip_command(registry* ref, std::string_view cmd) {
+}
+
+void initialize_registry_with_basic_commands(registry* ref) {
+  register_logging_manip_command(ref);
+  register_trace_manip_command(ref);
+  register_conffile_io_commands(ref);
+  register_config_manip_command(ref);
 }
 
 bool registry::invoke_command(std::string command) {

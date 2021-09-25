@@ -22,6 +22,7 @@ class basic_interactive_terminal : public if_terminal {
 
  private:
   void _register_autocomplete();
+  void _unregister_autocomplete();
 
  private:
   commands::registry _registry;

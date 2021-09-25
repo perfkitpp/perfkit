@@ -62,6 +62,7 @@ int linenoiseHistoryLoad(const char *filename);
 void linenoiseClearScreen(void);
 void linenoiseSetMultiLine(int ml);
 void linenoisePrintKeyCodes(void);
+int linenoiseIsUnsupportedTerm();
 
 #ifdef __cplusplus
 }
