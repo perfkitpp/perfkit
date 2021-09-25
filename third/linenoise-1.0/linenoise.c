@@ -406,6 +406,8 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
     if (ls->pos > 0 && ls->buf[ls->pos - 1] != ' ' && ls->pos == word_pos) {
       ls->buf[word_pos] = ' ';
       ls->len = ls->pos = ++word_pos;
+    } else if (ls->buf[ls->len - 1] == ' ' && word_pos < ls->pos) {
+      word_pos = ls->len;
     }
 
     // only when shared portion is longer than word portion ...
