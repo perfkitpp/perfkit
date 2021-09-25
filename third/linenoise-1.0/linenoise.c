@@ -403,8 +403,13 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
       }
     }
 
+    if (ls->pos > 0 && ls->buf[ls->pos - 1] != ' ' && ls->pos == word_pos) {
+      ls->buf[word_pos] = ' ';
+      ls->len = ls->pos = ++word_pos;
+    }
+
     // only when shared portion is longer than word portion ...
-    if (ncommon >= ls->len - word_pos && word_pos + ncommon < ls->buflen) {
+    if (ncommon >= ls->len - word_pos && word_pos + ncommon + 1 < ls->buflen) {
       int match_exact = ncommon == nmaxcandlen;
 
       ls->len = ls->pos = word_pos + ncommon;

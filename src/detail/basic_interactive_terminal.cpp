@@ -97,7 +97,7 @@ void basic_interactive_terminal::_register_autocomplete() {
 
     if (!offsets.empty()) {
       position = offsets.back().position
-               + (target_token >= tokens.size()) * (offsets.back().length + 1);
+               + (target_token >= tokens.size()) * (offsets.back().length);
     }
 
     // glog()->info("target: {}, position: {}", target_token, position);
