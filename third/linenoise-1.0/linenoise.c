@@ -174,6 +174,8 @@ static void linenoiseAtExit(void);
 int linenoiseHistoryAdd(const char *line);
 static void refreshLine(struct linenoiseState *l);
 
+int linenoiseEditInsert(struct linenoiseState *l, char c);
+
 /* Debugging macro. */
 #if 0
 FILE *lndebug_fp = NULL;
@@ -346,58 +348,70 @@ static void freeCompletions(linenoiseCompletions *lc) {
  *
  * The state of the editing is encapsulated into the pointed linenoiseState
  * structure as described in the structure definition. */
-static int completeLine(struct linenoiseState *ls) {
+static int completeLine(struct linenoiseState *ls, char const *prompt) {
   linenoiseCompletions lc = {0, NULL};
   int nread, nwritten;
   char c = 0;
 
-  completionCallback(ls->buf, &lc);
-  if (lc.len == 0) {
+  int word_pos = completionCallback(ls->buf, &lc);
+  if (lc.len == 0 || word_pos < 0 || word_pos >= ls->len) {
     linenoiseBeep();
-  } else {
-    size_t stop = 0, i = 0;
+  } else if (1) {
+    int fd = ls->ofd;
 
-    while (!stop) {
-      /* Show completion or original buffer */
-      if (i < lc.len) {
-        struct linenoiseState saved = *ls;
+    // dump all candidates
+    int nmaxcandlen = 0;
 
-        ls->len = ls->pos = strlen(lc.cvec[i]);
-        ls->buf           = lc.cvec[i];
-        refreshLine(ls);
-        ls->len = saved.len;
-        ls->pos = saved.pos;
-        ls->buf = saved.buf;
-      } else {
-        refreshLine(ls);
-      }
+    // find maximum length of given entities
+    for (int i = 0; i < lc.len; ++i) {
+      int len = strlen(lc.cvec[i]);
+      nmaxcandlen < len && (nmaxcandlen = len);
+    }
 
-      nread = read(ls->ifd, &c, 1);
-      if (nread <= 0) {
-        freeCompletions(&lc);
-        return -1;
-      }
+    // pretty draw
+    int column    = 0;
+    int alignment = nmaxcandlen + 6;
+    alignment < 20 && (alignment = 20);
 
-      switch (c) {
-        case 9: /* tab */
-          i = (i + 1) % (lc.len + 1);
-          if (i == lc.len) linenoiseBeep();
-          break;
-        case 27: /* escape */
-          /* Re-show original buffer */
-          if (i < lc.len) refreshLine(ls);
-          stop = 1;
-          break;
-        default:
-          /* Update buffer and return */
-          if (i < lc.len) {
-            nwritten = snprintf(ls->buf, ls->buflen, "%s", lc.cvec[i]);
-            ls->len = ls->pos = nwritten;
-          }
-          stop = 1;
-          break;
+    write(fd, "\r\n", 2);
+    for (int i = 0; i < lc.len; ++i) {
+      int len = strlen(lc.cvec[i]);
+      if (column > 0 && column + len >= ls->cols) { write(fd, "\r\n", 2), column = 0; }
+
+      write(fd, lc.cvec[i], len);
+      column += len;
+      while (column < ls->cols && ++column % alignment != 0) { write(fd, " ", 1); }
+    }
+    write(fd, "\r\n", 2);
+
+    // find common portion of output candidates
+    int ncommon = ~(1 << 31);  // INTMAX
+
+    if (lc.len == 1) {
+      // if entity is unique, simply substitute
+      ncommon = strlen(lc.cvec[0]);
+    } else {
+      // find minimal common portion of all candidates
+      for (int i = 0; i < lc.len - 1; ++i) {
+        int len = 0;
+        char *a = lc.cvec[i], *b = lc.cvec[i + 1];
+
+        while (*a && *b && *(a++) == *(b++)) { ++len; }
+        len < ncommon && (ncommon = len);
       }
     }
+
+    // only when shared portion is longer than word portion ...
+    if (ncommon > ls->len - word_pos && word_pos + ncommon < ls->buflen) {
+      ls->len = ls->pos = word_pos + ncommon;
+      char *str         = *lc.cvec;
+
+      // if candidate matches exactly, insert space at end
+      memcpy(ls->buf + word_pos, str, ncommon);
+      ls->prompt = prompt;
+    }
+
+    refreshLine(ls);
   }
 
   freeCompletions(&lc);
@@ -758,7 +772,7 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
      * there was an error reading from fd. Otherwise it will return the
      * character that should be handled next. */
     if (c == 9 && completionCallback != NULL) {
-      c = completeLine(&l);
+      c = completeLine(&l, prompt);
       /* Return on errors */
       if (c < 0) return l.len;
       /* Read next character when 0 */
