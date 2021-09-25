@@ -403,10 +403,10 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
       }
     }
 
-    if (ls->pos > 0 && ls->buf[ls->pos - 1] != ' ' && ls->pos == word_pos) {
+    if (ls->len > 0 && ls->buf[ls->len - 1] != ' ' && ls->len == word_pos) {
       ls->buf[word_pos] = ' ';
       ls->len = ls->pos = ++word_pos;
-    } else if (ls->buf[ls->len - 1] == ' ' && word_pos < ls->pos) {
+    } else if (ls->buf[ls->len - 1] == ' ' && word_pos < ls->len) {
       word_pos = ls->len;
     }
 
@@ -418,6 +418,7 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
       char *str         = *lc.cvec;
 
       memcpy(ls->buf + word_pos, str, ncommon);
+      ls->buf[word_pos + ncommon] = '\0';
 
       // if candidate matches exactly, insert space at end
       if (match_exact) {
