@@ -26,23 +26,51 @@ void tokenize_by_argv_rule(
 
 /**
  * Register configuration load, store commands
+ *
  * @param to
  * @param cmd_write usage: cmd_write [path]. if path is not specified, previous path will be used.
  * @param cmd_read usage: cmd_read [path]. if path is not specified, previous path will be used.
  */
 void register_config_io_commands(
-        command_registry* to,
-        std::string_view cmd_load, // e.g. "ld"
-        std::string_view cmd_store); // e.g. "w"
+        command_registry* ref,
+        std::string_view cmd_load,    // e.g. "ld"
+        std::string_view cmd_store);  // e.g. "w"
 
 /**
  * Register option manipulation command
+ *
  * @param to
  * @param cmd
+ *
+ * @details
+ *
+ *      <cmd> get <config>
+ *      <cmd> set <config> [values...]
+ *      <cmd> toggle <config:bool>
+ *
  */
-void register_option_manip_command(
-        command_registry* to,
-        std::string_view cmd);
+void register_config_manip_command(
+        command_registry* ref,
+        std::string_view cmd = "config");
+
+/**
+ * Register trace manipulation command
+ *
+ * @param ref
+ * @param cmd
+ *
+ * @details
+ *
+ *      <cmd> get <trace root>
+ *      <cmd> subscribe <trace>
+ */
+void register_trace_manip_command(
+        command_registry* ref,
+        std::string_view cmd = "trace");
+
+void register_logging_manip_command(
+        command_registry* ref,
+        std::string_view cmd = "trace");
 
 /**
  * Invocation Handler

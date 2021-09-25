@@ -22,6 +22,8 @@ namespace detail {
 
 /**
  * basic config class
+ *
+ * TODO: Attribute retrieval for config class
  */
 class config_base {
  public:
@@ -212,7 +214,6 @@ class config {
     // setup marshaller / de-marshaller with given rule of attribute
     detail::config_base::deserializer fn_m = [attrib = std::move(attribute)]  //
             (const nlohmann::json& in, void* out) {
-              // TODO: Apply attributes
               try {
                 Ty_ parsed;
 

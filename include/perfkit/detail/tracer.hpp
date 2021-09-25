@@ -1,7 +1,6 @@
 //
 // Created by Seungwoo on 2021-08-25.
 //
-// TODO: APPLY PIMPL!!! Currently this class has too heavy dependencies ...
 #pragma once
 #include <spdlog/fmt/fmt.h>
 
