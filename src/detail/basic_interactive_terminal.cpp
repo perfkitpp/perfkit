@@ -49,9 +49,9 @@ basic_interactive_terminal::basic_interactive_terminal() {
   env_term == nullptr && (env_term = "<empty>");
 
   if (linenoiseIsUnsupportedTerm()) {
-    spdlog::warn("linenoise unsupported for $TERM={}", env_term);
+    glog()->warn("linenoise unsupported for $TERM={}", env_term);
   } else {
-    spdlog::info("$TERM={}", env_term);
+    glog()->info("$TERM={}", env_term);
   }
 }
 
@@ -91,14 +91,16 @@ void basic_interactive_terminal::_register_autocomplete() {
 
     commands::tokenize_by_argv_rule(&str, tokens, &offsets);
 
-    if (!tokens.empty()) {
-      position = offsets.back().position
-               + (buf[strlen(buf) - 1] == ' ') * (offsets.back().length + 1);
-    }
-
-    rg->suggest(tokens, suggests);
+    int target_token = 0;
+    rg->suggest(tokens, suggests, &target_token);
     for (const auto &suggest : suggests) { linenoiseAddCompletion(lc, suggest.c_str()); }
 
+    if (!offsets.empty()) {
+      position = offsets.back().position
+               + (target_token >= tokens.size()) * (offsets.back().length + 1);
+    }
+
+    // glog()->info("target: {}, position: {}", target_token, position);
     return position;
   };
 

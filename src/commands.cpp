@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <filesystem>
 #include <regex>
 
 #include <range/v3/action/push_back.hpp>
@@ -147,6 +146,7 @@ bool check_unique(std::string_view cmp, perfkit::array_view<std::string> candida
 std::string perfkit::commands::registry::node::suggest(
         array_view<std::string_view> full_tokens,
         std::vector<std::string>& out_candidates,
+        int* target_token_index,
         bool* out_has_unique_match) const {
   using namespace ranges;
   std::set<std::string> user_candidates;
@@ -170,7 +170,11 @@ std::string perfkit::commands::registry::node::suggest(
   if ((subcmd = find_subcommand(exec)) && _check_name_exist(exec)) {
     // Only when full name is configured ...
     out_has_unique_match && (*out_has_unique_match = check_unique(exec, out_candidates));
-    return subcmd->suggest(full_tokens.subspan(1), out_candidates, out_has_unique_match);
+    target_token_index && ++*target_token_index;
+    return subcmd->suggest(full_tokens.subspan(1),
+                           out_candidates,
+                           target_token_index,
+                           out_has_unique_match);
   }
 
   // find default suggestion list by rule.
@@ -272,81 +276,9 @@ void perfkit::commands::tokenize_by_argv_rule(
   }
 }
 
-namespace perfkit::commands {
-class _config_saveload_manager {
- public:
-  bool load_from(args_view args = {}) {
-    auto path = args.empty() ? _latest : args[0];
-    return perfkit::import_options(path);
-  }
-
-  bool save_to(args_view args = {}) {
-    auto path = args.empty() ? _latest : args[0];
-    if (path.empty()) { return false; }
-    return perfkit::export_options(path);
-  }
-
-  void retrieve_filenames(args_view args, string_set& cands) {
-    namespace fs = std::filesystem;
-
-    fs::path path;
-    if (!args.empty()) { path = args[0]; }
-    if (path.empty()) { path = "./"; }
-
-    if (!is_directory(path)) { path = path.parent_path(); }
-    if (path.empty()) { path = "./"; }
-
-    fs::directory_iterator it{path}, end{};
-    std::transform(it, end, std::inserter(cands, cands.end()),
-                   [](auto&& p) { return p.path().string(); });
-  }
-
- public:
-  std::string _latest = {};
-};
-
-void register_conffile_io_commands(
-        perfkit::commands::registry* ref,
-        std::string_view cmd_load,
-        std::string_view cmd_store,
-        std::string_view initial_path) {
-  auto manip     = std::make_shared<_config_saveload_manager>();
-  manip->_latest = initial_path;
-
-  auto rootnode  = ref->_get_root();
-  auto node_load = rootnode->add_subcommand(
-          cmd_load,
-          [manip](auto&& tok) { return manip->load_from(tok); },
-          [manip](auto&& tok, auto&& set) { return manip->retrieve_filenames(tok, set); });
-
-  auto node_save = rootnode->add_subcommand(
-          cmd_store,
-          [manip](auto&& tok) { return manip->save_to(tok); },
-          [manip](auto&& tok, auto&& set) { return manip->retrieve_filenames(tok, set); });
-
-  if (!node_load || !node_save) { throw command_already_exist_exception{}; }
-}
-
-void register_logging_manip_command(registry* ref, std::string_view cmd) {
-}
-
-void register_trace_manip_command(registry* ref, std::string_view cmd) {
-}
-
-void register_config_manip_command(registry* ref, std::string_view cmd) {
-}
-
-void initialize_registry_with_basic_commands(registry* ref) {
-  register_logging_manip_command(ref);
-  register_trace_manip_command(ref);
-  register_conffile_io_commands(ref);
-  register_config_manip_command(ref);
-}
-
-bool registry::invoke_command(std::string command) {
+bool perfkit::commands::registry::invoke_command(std::string command) {
   std::vector<std::string_view> tokens;
   tokenize_by_argv_rule(&command, tokens, nullptr);
 
   return false;
 }
-}  // namespace perfkit::commands

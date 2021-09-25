@@ -407,14 +407,14 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
     if (ncommon >= ls->len - word_pos && word_pos + ncommon < ls->buflen) {
       int match_exact = ncommon == nmaxcandlen;
 
-      ls->len = ls->pos = word_pos + ncommon + match_exact;
+      ls->len = ls->pos = word_pos + ncommon;
       char *str         = *lc.cvec;
 
       memcpy(ls->buf + word_pos, str, ncommon);
 
       // if candidate matches exactly, insert space at end
       if (match_exact) {
-        ls->buf[word_pos + ncommon] = ' ';
+        //        ls->buf[word_pos + ncommon] = ' ';
       } else {
         // pretty draw
         int column    = 0;

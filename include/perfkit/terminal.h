@@ -66,4 +66,73 @@ class if_terminal {
   virtual bool get(std::string_view key, double* out) { return false; };
 };
 
+namespace terminal {
+/**
+ * Register basic commands
+ *
+ * @param ref
+ */
+void initialize_with_basic_commands(if_terminal* ref);
+
+/**
+ * Register configuration load, store commands
+ *
+ * @param to
+ * @param cmd_write usage: cmd_write [path]. if path is not specified, previous path will be used.
+ * @param cmd_read usage: cmd_read [path]. if path is not specified, previous path will be used.
+ */
+void register_conffile_io_commands(
+        if_terminal* ref,
+        std::string_view cmd_load     = "load-config",  // e.g. "ld"
+        std::string_view cmd_store    = "save-config",
+        std::string_view initial_path = {});  // e.g. "w"
+
+/**
+ * Register option manipulation command
+ *
+ * @param to
+ * @param cmd
+ *
+ * @details
+ *
+ *      <cmd> get <config>
+ *      <cmd> set <config> [values...]
+ *      <cmd> toggle <config:bool>
+ *
+ */
+void register_config_manip_command(
+        if_terminal* ref,
+        std::string_view cmd = "config");
+
+/**
+ * Register trace manipulation command
+ *
+ * @param ref
+ * @param cmd
+ *
+ * @details
+ *
+ *      <cmd> get <trace root>
+ *      <cmd> subscribe <trace>
+ */
+void register_trace_manip_command(
+        if_terminal* ref,
+        std::string_view cmd = "trace");
+
+/**
+ * Register logging manipulation command
+ *
+ * @param ref
+ * @param cmd
+ *
+ * @details
+ *
+ *      <cmd> get <logger>: returns current loglevel
+ *      <cmd> set [logger]: sets loglevel of given logger. set none, applies to global
+ */
+void register_logging_manip_command(
+        if_terminal* ref,
+        std::string_view cmd = "logging");
+
+}  // namespace terminal
 }  // namespace perfkit
