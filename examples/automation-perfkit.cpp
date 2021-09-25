@@ -2,7 +2,7 @@
 
 #include <perfkit/perfkit.h>
 
-#include <perfkit/detail/command_registry.hpp>
+#include <perfkit/detail/commands.hpp>
 #include <perfkit/detail/trace_future.hpp>
 #include <range/v3/view.hpp>
 
@@ -78,7 +78,7 @@ TEST_CASE("Sort Messages") {
 }
 
 TEST_CASE("Command Name Verify") {
-  perfkit::commands::command_registry rg;
+  perfkit::commands::registry rg;
   auto rt = rg._get_root();
 
   CHECK(rt->add_subcommand("  ea ") == nullptr);

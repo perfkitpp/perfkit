@@ -10,7 +10,7 @@
 #include "perfkit/detail/array_view.hxx"
 
 namespace perfkit::commands {
-class command_registry;
+class registry;
 using stroffset = std::pair<ptrdiff_t, size_t>;
 
 struct command_exception : std::exception {};
@@ -35,7 +35,7 @@ void tokenize_by_argv_rule(
  * @param cmd_read usage: cmd_read [path]. if path is not specified, previous path will be used.
  */
 void register_config_io_commands(
-        command_registry* ref,
+        registry* ref,
         std::string_view cmd_load,  // e.g. "ld"
         std::string_view cmd_store,
         std::string_view initial_path = {});  // e.g. "w"
@@ -54,7 +54,7 @@ void register_config_io_commands(
  *
  */
 void register_config_manip_command(
-        command_registry* ref,
+        registry* ref,
         std::string_view cmd = "config");
 
 /**
@@ -69,7 +69,7 @@ void register_config_manip_command(
  *      <cmd> subscribe <trace>
  */
 void register_trace_manip_command(
-        command_registry* ref,
+        registry* ref,
         std::string_view cmd = "trace");
 
 /**
@@ -84,7 +84,7 @@ void register_trace_manip_command(
  *      <cmd> set [logger]: sets loglevel of given logger. set none, applies to global
  */
 void register_logging_manip_command(
-        command_registry* ref,
+        registry* ref,
         std::string_view cmd = "logging");
 
 /**
@@ -100,7 +100,7 @@ using handler_fn = std::function<bool(args_view full_tokens)>;
 using string_set              = std::set<std::string>;
 using autocomplete_suggest_fn = std::function<void(args_view hint, string_set& candidates)>;
 
-class command_registry {
+class registry {
  public:
  public:
   class node {
@@ -113,7 +113,7 @@ class command_registry {
      * @param suggest Autocomplete suggest handler.
      * @return nullptr if given command is invalid.
      */
-    perfkit::commands::command_registry::node* add_subcommand(
+    perfkit::commands::registry::node* add_subcommand(
             std::string_view cmd,
             handler_fn handler              = {},
             autocomplete_suggest_fn suggest = {});
@@ -124,6 +124,7 @@ class command_registry {
      * @param cmd_or_alias
      * @return
      */
+    node const* find_subcommand(std::string_view cmd_or_alias) const;
     node* find_subcommand(std::string_view cmd_or_alias);
 
     /**
@@ -160,7 +161,7 @@ class command_registry {
     std::string suggest(
             array_view<std::string_view> full_tokens,
             std::vector<std::string>& out_candidates,
-            bool* out_has_unique_match = nullptr);
+            bool* out_has_unique_match = nullptr) const;
 
     /**
      * Invoke command with given arguments.
@@ -180,6 +181,11 @@ class command_registry {
     handler_fn _invoke;
     autocomplete_suggest_fn _suggest;
   };
+
+ public:
+  bool invoke_command(std::string command);
+  node* root() { return _root.get(); }
+  node const* root() const { return _root.get(); }
 
  public:
   node* _get_root() { return _root.get(); }

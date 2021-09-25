@@ -10,12 +10,16 @@ endif ()
 set(
         PERFKIT_CORE_SOURCES
 
-        src/command_registry.cpp
+        src/commands.cpp
         src/configs.cpp
         src/main.cpp
         src/perfkit.cpp
         src/tracer.cpp
-        src/terminal.cpp include/perfkit/detail/trace_future.hpp)
+        src/terminal.cpp
+        include/perfkit/detail/trace_future.hpp
+        src/detail/basic_interactive_terminal.cpp
+        src/detail/basic_interactive_terminal.hpp
+)
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
 add_library(perfkit::core ALIAS ${PROJECT_NAME})

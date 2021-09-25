@@ -4,7 +4,7 @@
 #include <chrono>
 #include <memory>
 
-#include "detail/command_registry.hpp"
+#include "detail/commands.hpp"
 
 namespace perfkit {
 class if_terminal;
@@ -28,20 +28,11 @@ auto create_net_provider_terminal(
 class if_terminal {
  public:
   /**
-   * Register custom command registry.
-   *
-   * @param registry reference to registry
-   * @return reference to existing command registry.
-   */
-  virtual auto reset_command_registery(std::unique_ptr<commands::command_registry> registry)
-          -> std::unique_ptr<commands::command_registry> = 0;
-
-  /**
    * Reference to registered command registry.
    *
    * @return reference to registered command registry.
    */
-  virtual commands::command_registry* commands() = 0;
+  virtual commands::registry* commands() = 0;
 
   /**
    * Consume single command from user command input queue.
