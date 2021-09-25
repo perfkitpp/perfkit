@@ -1,12 +1,15 @@
 #pragma once
-#include <spdlog/fwd.h>
-
 #include <chrono>
 #include <memory>
+#include <optional>
 
-#include "detail/commands.hpp"
+#include <spdlog/fwd.h>
 
 namespace perfkit {
+namespace commands {
+class registry;
+}
+
 class if_terminal;
 using std::chrono::milliseconds;
 

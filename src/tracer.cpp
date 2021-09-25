@@ -3,10 +3,11 @@
 //
 #include <future>
 #include <mutex>
+#include <variant>
+
 #include <nlohmann/detail/conversions/from_json.hpp>
 #include <perfkit/detail/trace_future.hpp>
 #include <perfkit/detail/tracer.hpp>
-#include <variant>
 
 #include "spdlog/fmt/fmt.h"
 
@@ -25,7 +26,6 @@ struct hasher {
 }  // namespace
 
 using namespace perfkit;
-
 
 struct tracer::_impl {
   std::optional<std::promise<async_trace_result>> msg_promise;

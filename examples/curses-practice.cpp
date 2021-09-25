@@ -1,15 +1,15 @@
 //
 // Created by Seungwoo on 2021-08-28.
 //
+#include <thread>
+
 #include <curses.h>
 #include <unistd.h>
-
-#include <thread>
 
 static SCREEN *myscr;
 
 WINDOW *create_newwin(int height, int width, int starty, int startx);
-void    destroy_win(WINDOW *local_win);
+void destroy_win(WINDOW *local_win);
 
 int main(int argc, char *argv[]) {
   auto prev_stdout = stdout;
@@ -21,8 +21,8 @@ int main(int argc, char *argv[]) {
   set_term(myscr);
 
   WINDOW *my_win;
-  int     startx, starty, width, height;
-  int     ch;
+  int startx, starty, width, height;
+  int ch;
 
   // initscr();            /* Start curses mode 		*/
   cbreak();             /* Line buffering disabled, Pass on

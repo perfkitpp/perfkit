@@ -9,8 +9,8 @@
 using namespace std::literals;
 
 std::map<std::string, std::map<std::string, std::string>> ved{
-    {"asd", {{"asd", "weqw"}, {"vafe, ewqew", "dwrew"}}},
-    {"vadsfew", {{"dav ,ea w", "Ewqsad"}, {"scxz ss", "dwqewqew"}}}};
+        {"asd", {{"asd", "weqw"}, {"vafe, ewqew", "dwrew"}}},
+        {"vadsfew", {{"dav ,ea w", "Ewqsad"}, {"scxz ss", "dwqewqew"}}}};
 
 PERFKIT_CATEGORY(cfg) {
   PERFKIT_CONFIGURE(active, true).confirm();
@@ -133,43 +133,43 @@ PERFKIT_CATEGORY(vlao55) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 using namespace ftxui;
 
 perfkit::tracer traces[] = {
-    {0, "root (1)"},
-    {1, "A (2)"},
-    {31, "B (4)"},
-    {-51, "C (0)"},
-    {14, "D (3)"},
+        {0, "root (1)"},
+        {1, "A (2)"},
+        {31, "B (4)"},
+        {-51, "C (0)"},
+        {14, "D (3)"},
 };
 
 int main(int argc, const char* argv[]) {
   auto comp1     = perfkit_ftxui::config_browser();
   auto comp2     = perfkit_ftxui::trace_browser(nullptr);
   auto component = ftxui::Container::Horizontal({
-      comp1,
-      Renderer([] { return separator(); }),
-      comp2,
+          comp1,
+          Renderer([] { return separator(); }),
+          comp2,
   });
   component      = perfkit_ftxui::event_dispatcher(component);
 
   auto screen = ScreenInteractive::Fullscreen();
 
   auto kill_switch = perfkit_ftxui::launch_async_loop(
-      &screen,
-      CatchEvent(
-          Renderer(
-              component,
-              [&] {
-                return window(text("< configs >"), component->Render())
-                       | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
-              }),
-          [p = &screen](Event evt) -> bool {
-            if (evt == perfkit_ftxui::EVENT_POLL) {
-              if (cfg::active.get() == false) {
-                p->ExitLoopClosure()();
-              }
-            }
-            return false;
-          }),
-      50ms);
+          &screen,
+          CatchEvent(
+                  Renderer(
+                          component,
+                          [&] {
+                            return window(text("< configs >"), component->Render())
+                                   | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
+                          }),
+                  [p = &screen](Event evt) -> bool {
+                    if (evt == perfkit_ftxui::EVENT_POLL) {
+                      if (cfg::active.get() == false) {
+                        p->ExitLoopClosure()();
+                      }
+                    }
+                    return false;
+                  }),
+          50ms);
 
   for (int ic = 0; perfkit_ftxui::is_alive(kill_switch.get()); ++ic) {
     std::this_thread::sleep_for(10ms);

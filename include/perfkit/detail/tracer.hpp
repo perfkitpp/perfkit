@@ -2,8 +2,6 @@
 // Created by Seungwoo on 2021-08-25.
 //
 #pragma once
-#include <spdlog/fmt/fmt.h>
-
 #include <any>
 #include <atomic>
 #include <chrono>
@@ -15,6 +13,8 @@
 #include <type_traits>
 #include <variant>
 #include <vector>
+
+#include <spdlog/fmt/fmt.h>
 
 #include "array_view.hxx"
 #include "interactive_image.hpp"

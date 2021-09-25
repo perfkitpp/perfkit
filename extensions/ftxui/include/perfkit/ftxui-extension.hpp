@@ -1,11 +1,13 @@
 #pragma once
 #include <chrono>
+#include <string_view>
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
+#include <perfkit/detail/fwd.hpp>
+
 #include <perfkit/detail/array_view.hxx>
 #include <perfkit/detail/circular_queue.hxx>
-#include <perfkit/detail/fwd.hpp>
-#include <string_view>
 
 namespace ftxui {
 class ScreenInteractive;

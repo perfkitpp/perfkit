@@ -6,12 +6,13 @@
 #include <atomic>
 #include <functional>
 #include <mutex>
-#include <nlohmann/json.hpp>
 #include <optional>
 #include <set>
 #include <string>
 #include <string_view>
 #include <utility>
+
+#include <nlohmann/json.hpp>
 
 #include "array_view.hxx"
 

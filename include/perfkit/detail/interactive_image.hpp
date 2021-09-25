@@ -86,4 +86,4 @@ class interactive_image {
   void retrieve_interactions();
 };
 
-}  // namespace perfkit::util
+}  // namespace perfkit::trace

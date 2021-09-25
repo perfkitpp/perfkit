@@ -3,16 +3,16 @@
 //
 #include "perfkit/detail/commands.hpp"
 
-#include <spdlog/spdlog.h>
-
 #include <algorithm>
 #include <cassert>
 #include <filesystem>
+#include <regex>
+
 #include <range/v3/action/push_back.hpp>
 #include <range/v3/algorithm.hpp>
 #include <range/v3/range.hpp>
 #include <range/v3/view.hpp>
-#include <regex>
+#include <spdlog/spdlog.h>
 
 #include "perfkit/perfkit.h"
 #include "spdlog/fmt/bundled/ranges.h"

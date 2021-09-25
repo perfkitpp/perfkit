@@ -9,8 +9,8 @@
 using namespace std::literals;
 
 std::map<std::string, std::map<std::string, std::string>> ved{
-    {"asd", {{"asd", "weqw"}, {"vafe, ewqew", "dwrew"}}},
-    {"vadsfew", {{"dav ,ea w", "Ewqsad"}, {"scxz ss", "dwqewqew"}}}};
+        {"asd", {{"asd", "weqw"}, {"vafe, ewqew", "dwrew"}}},
+        {"vadsfew", {{"dav ,ea w", "Ewqsad"}, {"scxz ss", "dwqewqew"}}}};
 
 PERFKIT_CATEGORY(cfg) {
   PERFKIT_CONFIGURE(active, true).confirm();
@@ -136,11 +136,11 @@ PERFKIT_CATEGORY(vlao55) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 using namespace ftxui;
 
 perfkit::tracer traces[] = {
-    {0, "root (1)"},
-    {1, "A (2)"},
-    {31, "B (4)"},
-    {-51, "C (0)"},
-    {14, "D (3)"},
+        {0, "root (1)"},
+        {1, "A (2)"},
+        {31, "B (4)"},
+        {-51, "C (0)"},
+        {14, "D (3)"},
 };
 
 class my_subscriber : public perfkit_ftxui::if_subscriber {
