@@ -1,3 +1,0 @@
-[submodule "extensions/ftxui/FTXUI"]
-	path = extensions/ftxui/FTXUI
-	url = git@github.com:kang-sw/FTXUI.git
