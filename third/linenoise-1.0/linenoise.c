@@ -241,14 +241,15 @@ static int enableRawMode(int fd) {
   raw = orig_termios; /* modify the original mode */
   /* input modes: no break, no CR to NL, no parity check, no strip char,
    * no start/stop output control. */
-  raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+  raw.c_iflag &= ~(/*BRKINT |*/ ICRNL | INPCK | ISTRIP | IXON);
+
   /* output modes - disable post processing */
   raw.c_oflag &= ~(OPOST);
   /* control modes - set 8 bit chars */
   raw.c_cflag |= (CS8);
   /* local modes - choing off, canonical off, no extended functions,
    * no signal chars (^Z,^C) */
-  raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+  raw.c_lflag &= ~(ECHO | ICANON | IEXTEN /*| ISIG*/);
   /* control chars - set return condition: min number of bytes and timer.
    * We want read to return every single byte, without timeout. */
   raw.c_cc[VMIN]  = 1;
@@ -385,22 +386,6 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
       nmaxcandlen < len && (nmaxcandlen = len);
     }
 
-    // pretty draw
-    int column    = 0;
-    int alignment = nmaxcandlen + 6;
-    alignment < 20 && (alignment = 20);
-
-    write(fd, "\r\n", 2);
-    for (int i = 0; i < lc.len; ++i) {
-      int len = strlen(lc.cvec[i]);
-      if (column > 0 && column + len >= ls->cols) { write(fd, "\r\n", 2), column = 0; }
-
-      write(fd, lc.cvec[i], len);
-      column += len;
-      while (column < ls->cols && ++column % alignment != 0) { write(fd, " ", 1); }
-    }
-    write(fd, "\r\n", 2);
-
     // find common portion of output candidates
     int ncommon = ~(1 << 31);  // INTMAX
 
@@ -419,7 +404,7 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
     }
 
     // only when shared portion is longer than word portion ...
-    if (ncommon > ls->len - word_pos && word_pos + ncommon < ls->buflen) {
+    if (ncommon >= ls->len - word_pos && word_pos + ncommon < ls->buflen) {
       int match_exact = ncommon == nmaxcandlen;
 
       ls->len = ls->pos = word_pos + ncommon + match_exact;
@@ -428,7 +413,25 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
       memcpy(ls->buf + word_pos, str, ncommon);
 
       // if candidate matches exactly, insert space at end
-      if (match_exact) { ls->buf[word_pos + ncommon] = ' '; }
+      if (match_exact) {
+        ls->buf[word_pos + ncommon] = ' ';
+      } else {
+        // pretty draw
+        int column    = 0;
+        int alignment = nmaxcandlen + 6;
+        alignment < 20 && (alignment = 20);
+
+        write(fd, "\r\n", 2);
+        for (int i = 0; i < lc.len; ++i) {
+          int len = strlen(lc.cvec[i]);
+          if (column > 0 && column + len >= ls->cols) { write(fd, "\r\n", 2), column = 0; }
+
+          write(fd, lc.cvec[i], len);
+          column += len;
+          while (column < ls->cols && ++column % alignment != 0) { write(fd, " ", 1); }
+        }
+        write(fd, "\r\n", 2);
+      }
     }
 
     refreshLine(ls);

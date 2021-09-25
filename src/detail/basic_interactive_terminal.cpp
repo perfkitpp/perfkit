@@ -92,7 +92,8 @@ void basic_interactive_terminal::_register_autocomplete() {
     commands::tokenize_by_argv_rule(&str, tokens, &offsets);
 
     if (!tokens.empty()) {
-      position = offsets.back().position;
+      position = offsets.back().position
+               + (buf[strlen(buf) - 1] == ' ') * (offsets.back().length + 1);
     }
 
     rg->suggest(tokens, suggests);
