@@ -6,6 +6,8 @@
 #include <perfkit/detail/base.hpp>
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/terminal.h>
+#include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 
 #include "detail/basic_interactive_terminal.hpp"
 
@@ -16,7 +18,10 @@ auto create_basic_interactive_terminal() -> std::shared_ptr<if_terminal> {
 }  // namespace perfkit
 
 namespace perfkit::terminal {
-using namespace commands;
+using commands::args_view;
+using commands::command_already_exist_exception;
+using commands::command_name_invalid_exception;
+using commands::string_set;
 
 class _config_saveload_manager {
  public:
@@ -80,6 +85,57 @@ void register_conffile_io_commands(
 }
 
 void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
+  std::string cmdstr{cmd};
+  auto logging = ref->commands()->root()->add_subcommand(
+          cmd,
+          [ref, cmdstr](args_view args) -> bool {
+            if (args.empty() || args.size() > 2) {
+              glog()->error("usage: {} <'_global_'|'_default_'|logger> [loglevel]", cmdstr);
+              return false;
+            }
+
+            if (args.size() == 1) {
+              spdlog::string_view_t sv = {};
+              if (args[0] == "_global_") {
+                sv = to_string_view(spdlog::get_level());
+              } else if (args[0] == "_default_") {
+                sv = to_string_view(spdlog::default_logger()->level());
+              } else if (auto logger = spdlog::get(std::string{args[0]})) {
+                sv = to_string_view(logger->level());
+              } else {
+                glog()->error("logger {} not found.", args[0]);
+                return false;
+              }
+
+              ref->puts(fmt::format("{}={}", args[0], sv));
+            } else {
+              auto lv = spdlog::level::from_str(std::string{args[1]});
+
+              if (args[0] == "_global_") {
+                spdlog::set_level(lv);
+              } else if (args[0] == "_default_") {
+                spdlog::default_logger()->set_level(lv);
+              } else if (auto logger = spdlog::get(std::string{args[0]})) {
+                logger->set_level(lv);
+              } else {
+                glog()->error("logger {} not found.", args[0]);
+                return false;
+              }
+            }
+
+            return true;
+          },
+          [ref, cmdstr](auto&&, auto&& cands) -> bool {
+            auto node = ref->commands()->root()->find_subcommand(cmdstr);
+            spdlog::details::registry::instance().apply_all(
+                    [&cands](const std::shared_ptr<spdlog::logger>& logger) {
+                      cands.insert(logger->name());
+                    });
+            cands.insert("_global_");
+            cands.insert("_default_");
+
+            return true;
+          });
 }
 
 void register_trace_manip_command(if_terminal* ref, std::string_view cmd) {

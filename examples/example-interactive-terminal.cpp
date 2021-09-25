@@ -16,7 +16,6 @@ int main(void) {
   for (;;) {
     auto cmd = term->fetch_command(1000ms);
     if (!cmd.has_value() || cmd->empty()) { continue; }
-    spdlog::info("command: {}", *cmd);
 
     if (cmd == "q") { break; }
     if (!term->commands()->invoke_command(*cmd)) {

@@ -255,6 +255,11 @@ bool perfkit::commands::registry::node::rename_subcommand(std::string_view from,
   return true;
 }
 
+void perfkit::commands::registry::node::clear() {
+  _subcommands.clear();
+  _aliases.clear();
+}
+
 void perfkit::commands::tokenize_by_argv_rule(
         std::string* io,
         std::vector<std::string_view>& tokens,

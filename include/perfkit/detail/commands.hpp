@@ -80,6 +80,11 @@ class registry {
     bool erase_subcommand(std::string_view cmd_or_alias);
 
     /**
+     * Erase all subcommands
+     */
+    void clear();
+
+    /**
      * Rename subcommand. If target is alias, alias will be moved.
      *
      * @param cmd_or_alias

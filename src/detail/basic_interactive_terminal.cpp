@@ -96,13 +96,26 @@ void basic_interactive_terminal::_register_autocomplete() {
     commands::tokenize_by_argv_rule(&str, tokens, &offsets);
 
     int target_token = 0;
-    rg->suggest(tokens, suggests, &target_token);
-    for (const auto &suggest : suggests) { linenoiseAddCompletion(lc, suggest.c_str()); }
+    bool has_unique_match;
+    auto matchstr = rg->suggest(tokens, suggests, &target_token, &has_unique_match);
 
     if (!offsets.empty()) {
-      position = offsets.back().position
-               + (target_token >= tokens.size()) * (offsets.back().length);
+      bool is_exact_match = has_unique_match && matchstr == tokens.back();
+
+      if (is_exact_match) {
+        position = strlen(buf);
+        suggests.clear();
+        spdlog::info("ext: position: {}", position);
+      } else if (target_token >= tokens.size()) {
+        position = offsets.back().position + offsets.back().length;
+        spdlog::info("nxt: position: {}", position);
+      } else {
+        position = offsets.back().position;
+        spdlog::info("position: {}", position);
+      }
     }
+
+    for (const auto &suggest : suggests) { linenoiseAddCompletion(lc, suggest.c_str()); }
 
     // glog()->info("target: {}, position: {}", target_token, position);
     return position;
