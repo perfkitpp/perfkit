@@ -23,6 +23,7 @@ perfkit::basic_interactive_terminal::fetch_command(
     _cmd = std::async([this]() -> std::string {
       _register_autocomplete();
       auto c_str = linenoise(_prompt.c_str());
+      linenoiseHistoryAdd(c_str);
       _unregister_autocomplete();
 
       std::string retval;

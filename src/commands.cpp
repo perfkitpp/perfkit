@@ -280,5 +280,5 @@ bool perfkit::commands::registry::invoke_command(std::string command) {
   std::vector<std::string_view> tokens;
   tokenize_by_argv_rule(&command, tokens, nullptr);
 
-  return false;
+  return root()->invoke(tokens);
 }
