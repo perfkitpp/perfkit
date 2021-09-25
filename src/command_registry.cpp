@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <filesystem>
 #include <range/v3/action/push_back.hpp>
 #include <range/v3/algorithm.hpp>
 #include <range/v3/range.hpp>
@@ -16,14 +17,12 @@
 #include "perfkit/perfkit.h"
 #include "spdlog/fmt/bundled/ranges.h"
 
-using namespace ranges;
-
 namespace {
 const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|((?:[^\s\\]|\\.)+)))RG"};
 const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 }  // namespace
 
-perfkit::util::command_registry::node* perfkit::util::command_registry::node::add_subcommand(
+perfkit::commands::command_registry::node* perfkit::commands::command_registry::node::add_subcommand(
         std::string_view cmd,
         handler_fn handler,
         autocomplete_suggest_fn suggest) {
@@ -45,7 +44,7 @@ perfkit::util::command_registry::node* perfkit::util::command_registry::node::ad
   return &subcmd;
 }
 
-bool perfkit::util::command_registry::node::_check_name_exist(std::string_view cmd) const noexcept {
+bool perfkit::commands::command_registry::node::_check_name_exist(std::string_view cmd) const noexcept {
   if (auto it = _subcommands.find(cmd); it != _subcommands.end()) {
     return true;
   }
@@ -56,7 +55,9 @@ bool perfkit::util::command_registry::node::_check_name_exist(std::string_view c
   return false;
 }
 
-perfkit::util::command_registry::node* perfkit::util::command_registry::node::find_subcommand(std::string_view cmd_or_alias) {
+perfkit::commands::command_registry::node* perfkit::commands::command_registry::node::find_subcommand(std::string_view cmd_or_alias) {
+  using namespace ranges;
+
   if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
     return &it->second;
   }
@@ -86,7 +87,7 @@ perfkit::util::command_registry::node* perfkit::util::command_registry::node::fi
 
   return subcmd;
 }
-bool perfkit::util::command_registry::node::erase_subcommand(std::string_view cmd_or_alias) {
+bool perfkit::commands::command_registry::node::erase_subcommand(std::string_view cmd_or_alias) {
   if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
     // erase all bound aliases to given command
     for (auto it_a = _aliases.begin(); it_a != _aliases.end();) {
@@ -109,7 +110,7 @@ bool perfkit::util::command_registry::node::erase_subcommand(std::string_view cm
   return false;
 }
 
-bool perfkit::util::command_registry::node::alias(
+bool perfkit::commands::command_registry::node::alias(
         std::string_view cmd, std::string alias) {
   if (_check_name_exist(alias)) {
     glog()->error("alias name [{}] already exists as command or token.");
@@ -137,10 +138,11 @@ bool check_unique(std::string_view cmp, perfkit::array_view<std::string> candida
 }
 }  // namespace
 
-std::string perfkit::util::command_registry::node::suggest(
+std::string perfkit::commands::command_registry::node::suggest(
         array_view<std::string_view> full_tokens,
         std::vector<std::string>& out_candidates,
         bool* out_has_unique_match) {
+  using namespace ranges;
   std::set<std::string> user_candidates;
 
   if (full_tokens.empty()) {
@@ -204,7 +206,7 @@ std::string perfkit::util::command_registry::node::suggest(
   return {};
 }
 
-bool perfkit::util::command_registry::node::invoke(
+bool perfkit::commands::command_registry::node::invoke(
         perfkit::array_view<std::string_view> full_tokens) {
   if (full_tokens.size() > 0) {
     auto subcmd = find_subcommand(full_tokens[0]);
@@ -219,11 +221,11 @@ bool perfkit::util::command_registry::node::invoke(
   return false;
 }
 
-void perfkit::util::command_registry::node::reset_handler(perfkit::util::handler_fn&& fn) {
+void perfkit::commands::command_registry::node::reset_handler(perfkit::commands::handler_fn&& fn) {
   _invoke = std::move(fn);
 }
 
-void perfkit::util::tokenize_by_argv_rule(
+void perfkit::commands::tokenize_by_argv_rule(
         std::string* io,
         std::vector<std::string_view>& tokens,
         std::vector<std::pair<ptrdiff_t, size_t>>* token_indexes) {
@@ -262,4 +264,62 @@ void perfkit::util::tokenize_by_argv_rule(
     tokens.emplace_back(io->c_str() + io->size(), str.size());
     io->append(str);
   }
+}
+
+using namespace perfkit::commands;
+
+namespace {
+class config_saveload_manager {
+ public:
+  bool load_from(args_view args = {}) {
+    auto path = args.empty() ? _latest : args[0];
+    return perfkit::import_options(path);
+  }
+
+  bool save_to(args_view args = {}) {
+    auto path = args.empty() ? _latest : args[0];
+    if (path.empty()) { return false; }
+    return perfkit::export_options(path);
+  }
+
+  void retrieve_filenames(args_view args, string_set& cands) {
+    namespace fs = std::filesystem;
+
+    fs::path path;
+    if (!args.empty()) { path = args[0]; }
+    if (path.empty()) { path = "./"; }
+
+    if (!is_directory(path)) { path = path.parent_path(); }
+    if (path.empty()) { path = "./"; }
+
+    fs::directory_iterator it{path}, end{};
+    std::transform(it, end, std::inserter(cands, cands.end()),
+                   [](auto&& p) { return p.path().string(); });
+  }
+
+ public:
+  std::string _latest = {};
+};
+}  // namespace
+
+void perfkit::commands::register_config_io_commands(
+        perfkit::commands::command_registry* ref,
+        std::string_view cmd_load,
+        std::string_view cmd_store,
+        std::string_view initial_path) {
+  auto manip     = std::make_shared<config_saveload_manager>();
+  manip->_latest = initial_path;
+
+  auto rootnode  = ref->_get_root();
+  auto node_load = rootnode->add_subcommand(
+          cmd_load,
+          [manip](auto&& tok) { return manip->load_from(tok); },
+          [manip](auto&& tok, auto&& set) { return manip->retrieve_filenames(tok, set); });
+
+  auto node_save = rootnode->add_subcommand(
+          cmd_store,
+          [manip](auto&& tok) { return manip->save_to(tok); },
+          [manip](auto&& tok, auto&& set) { return manip->retrieve_filenames(tok, set); });
+
+  if (!node_load || !node_save) { throw command_already_exist_exception{}; }
 }

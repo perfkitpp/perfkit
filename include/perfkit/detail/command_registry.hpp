@@ -9,9 +9,12 @@
 
 #include "perfkit/detail/array_view.hxx"
 
-namespace perfkit::util {
+namespace perfkit::commands {
 class command_registry;
 using stroffset = std::pair<ptrdiff_t, size_t>;
+
+struct command_exception : std::exception {};
+struct command_already_exist_exception : std::exception {};
 
 /**
  * Tokenize given string with os argc-argv rule.
@@ -33,8 +36,9 @@ void tokenize_by_argv_rule(
  */
 void register_config_io_commands(
         command_registry* ref,
-        std::string_view cmd_load,    // e.g. "ld"
-        std::string_view cmd_store);  // e.g. "w"
+        std::string_view cmd_load,  // e.g. "ld"
+        std::string_view cmd_store,
+        std::string_view initial_path = {});  // e.g. "w"
 
 /**
  * Register option manipulation command
@@ -68,9 +72,20 @@ void register_trace_manip_command(
         command_registry* ref,
         std::string_view cmd = "trace");
 
+/**
+ * Register logging manipulation command
+ *
+ * @param ref
+ * @param cmd
+ *
+ * @details
+ *
+ *      <cmd> get <logger>: returns current loglevel
+ *      <cmd> set [logger]: sets loglevel of given logger. set none, applies to global
+ */
 void register_logging_manip_command(
         command_registry* ref,
-        std::string_view cmd = "trace");
+        std::string_view cmd = "logging");
 
 /**
  * Invocation Handler
@@ -98,7 +113,7 @@ class command_registry {
      * @param suggest Autocomplete suggest handler.
      * @return nullptr if given command is invalid.
      */
-    perfkit::util::command_registry::node* add_subcommand(
+    perfkit::commands::command_registry::node* add_subcommand(
             std::string_view cmd,
             handler_fn handler              = {},
             autocomplete_suggest_fn suggest = {});
@@ -176,4 +191,4 @@ class command_registry {
   std::unique_ptr<node> _root = std::make_unique<node>();
 };
 
-}  // namespace perfkit::util
+}  // namespace perfkit::commands

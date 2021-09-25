@@ -33,15 +33,15 @@ class if_terminal {
    * @param registry reference to registry
    * @return reference to existing command registry.
    */
-  virtual auto reset_command_registery(std::unique_ptr<util::command_registry> registry)
-          -> std::unique_ptr<util::command_registry> = 0;
+  virtual auto reset_command_registery(std::unique_ptr<commands::command_registry> registry)
+          -> std::unique_ptr<commands::command_registry> = 0;
 
   /**
    * Reference to registered command registry.
    *
    * @return reference to registered command registry.
    */
-  virtual util::command_registry* commands() = 0;
+  virtual commands::command_registry* commands() = 0;
 
   /**
    * Consume single command from user command input queue.

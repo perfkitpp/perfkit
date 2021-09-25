@@ -5,7 +5,7 @@
 
 #include "array_view.hxx"
 
-namespace perfkit::util {
+namespace perfkit::trace {
 template <typename Ty_, size_t N_>
 struct vec_ : std::array<Ty_, N_> {
   using std::array<Ty_, N_>::array;
