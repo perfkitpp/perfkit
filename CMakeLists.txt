@@ -3,7 +3,7 @@ project(perfkit)
 
 # Imports --------------------------------------------------------------------------------------------------------------
 if (NOT TARGET range-v3::range-v3)
-    add_subdirectory(range-v3-master EXCLUDE_FROM_ALL)
+    add_subdirectory(third/range-v3-master EXCLUDE_FROM_ALL)
 endif ()
 
 # Module ---------------------------------------------------------------------------------------------------------------
@@ -33,11 +33,15 @@ option(perfkit_BUILD_EXAMPLES "" OFF)
 # JSON Bundling
 if (perfkit_USE_BUNDLED_JSON)
     message("Using bundled json")
-    target_include_directories(${PROJECT_NAME} PUBLIC "extensions/json")
+    target_include_directories(${PROJECT_NAME} PUBLIC "third/json")
 endif ()
 
 # TUI Extension
 if (perfkit_BUILD_FTXUI_EXTENSION)
+    if (NOT TARGET ftxui::dom)
+        add_subdirectory(third/FTXUI)
+    endif ()
+
     message("Configuring FTXUI Extension Library ...")
     add_subdirectory(extensions/ftxui)
 endif ()

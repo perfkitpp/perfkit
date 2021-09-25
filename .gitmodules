@@ -1,0 +1,3 @@
+[submodule "third/FTXUI"]
+	path = third/FTXUI
+	url = git@github.com:kang-sw/FTXUI.git
