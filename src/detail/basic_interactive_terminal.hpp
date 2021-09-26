@@ -17,7 +17,7 @@ class basic_interactive_terminal : public if_terminal {
  public:
   commands::registry* commands() override { return &_registry; }
   std::optional<std::string> fetch_command(milliseconds timeout) override;
-  void puts(std::string_view str) override { ::fwrite(str.data(), str.size(), 1, stdout), ::puts(""); }
+  void output(std::string_view str, color color) override;
   std::shared_ptr<spdlog::sinks::sink> sink() override { return _sink; }
   void push_command(std::string_view command) override;
   bool set(std::string_view key, std::string_view value) override;

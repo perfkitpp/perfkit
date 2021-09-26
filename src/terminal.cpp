@@ -7,6 +7,7 @@
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/detail/configs.hpp>
 #include <perfkit/terminal.h>
+#include <range/v3/algorithm.hpp>
 #include <range/v3/view.hpp>
 #include <range/v3/view/subrange.hpp>
 #include <spdlog/logger.h>
@@ -111,7 +112,7 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
                 return false;
               }
 
-              ref->puts(fmt::format("{}={}", args[0], sv));
+              ref->output(fmt::format("{}={}\n", args[0], sv));
             } else {
               auto lv = spdlog::level::from_str(std::string{args[1]});
 
@@ -149,20 +150,30 @@ void register_trace_manip_command(if_terminal* ref, std::string_view cmd) {
 
 class _config_manip {
  public:
-  _config_manip(config_ptr pt)
+  _config_manip(if_terminal* ref, config_ptr pt)
           : _conf(pt) {}
 
-  bool getter(args_view) {
+  bool get(args_view) {
+    spdlog::info("get");
     return false;
   }
 
-  bool getter_suggest(args_view, string_set& s) const {
-    s.insert("set");
+  bool set(args_view) {
+    spdlog::info("set");
 
-    if (_conf->attribute()["default"].is_boolean()) {
-      s.insert("toggle");
-    }
-    return true;
+    return false;
+  }
+
+  bool info(args_view) {
+    spdlog::info("info");
+
+    return false;
+  }
+
+  bool toggle(args_view) {
+    spdlog::info("toggle");
+
+    return false;
   }
 
  private:
@@ -176,11 +187,11 @@ class _config_category_manip {
   }
 
   bool operator()(args_view) {
+    // list all configurations belong to this category.
+    using namespace ranges;
+    auto it = config_registry::all().lower_bound(_category);
+    
     return false;
-  }
-
-  static bool suggest(args_view, string_set& s) {
-    return true;
   }
 
  private:
@@ -208,28 +219,26 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
 
     size_t category_len = key.size();
     (key.empty() ? key : key.append(".")).append(hierarchy.back());
-    auto category_key = std::string_view{key}.substr(0, category_len);
+    auto category_key = "*"s.append(std::string_view{key}.substr(0, category_len));
 
     // add category command
     if (!category_key.empty() && !node_conf->find_subcommand(category_key)) {
       auto manip    = std::make_shared<_config_category_manip>(std::string{category_key});
       auto node_cat = node_conf->add_subcommand(
-              "*"s.append(category_key),
-              [manip](auto&& tok) { return (*manip)(tok); },
-              &_config_category_manip::suggest);
+              category_key,
+              [=](auto&& tok) { return (*manip)(tok); });
     }
 
-    auto manip = std::make_shared<_config_manip>(config);
+    auto manip = std::make_shared<_config_manip>(ref, config);
     auto node  = node_conf->add_subcommand(
              key,
-             [manip](auto&& s) { return manip->getter(s); });
+             [=](auto&& s) { return manip->get(s); });
 
-    node->add_subcommand("get");
-    node->add_subcommand("set");
-    node->add_subcommand("info");
+    node->add_subcommand("set", [=](auto&& s) { return manip->set(s); });
+    node->add_subcommand("info", [=](auto&& s) { return manip->info(s); });
 
-    if(config->attribute()["default"].is_boolean()) {
-      
+    if (config->attribute()["default"].is_boolean()) {
+      node->add_subcommand("toggle", [=](auto&& s) { return manip->toggle(s); });
     }
   }
 }

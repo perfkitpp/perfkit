@@ -131,3 +131,7 @@ void basic_interactive_terminal::push_command(std::string_view command) {
   std::unique_lock _{_cmd_queue_lock};
   _cmd_queued.emplace_back(command);
 }
+
+void basic_interactive_terminal::output(std::string_view str, color color) {
+  ::fwrite(str.data(), str.size(), 1, stdout);
+}

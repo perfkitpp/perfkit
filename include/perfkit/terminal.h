@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 
+#include <perfkit/detail/color.hxx>
 #include <spdlog/fwd.h>
 
 namespace perfkit {
@@ -53,9 +54,9 @@ class if_terminal {
   virtual void push_command(std::string_view command) = 0;
 
   /**
-   * Put string to terminal
+   * Output string to terminal
    */
-  virtual void puts(std::string_view str) = 0;
+  virtual void output(std::string_view str, color color = {}) = 0;
 
   /**
    *
