@@ -33,7 +33,7 @@ class basic_interactive_terminal : public if_terminal {
   std::shared_ptr<spdlog::sinks::sink> _sink;
 
   std::future<std::string> _cmd;
-  circular_queue<std::string> _cmd_history{256};
+  circular_queue<std::string> _cmd_history{16};
   size_t _cmd_counter = 0;
 
   std::mutex _cmd_queue_lock;

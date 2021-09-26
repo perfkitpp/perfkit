@@ -27,7 +27,6 @@ perfkit::basic_interactive_terminal::fetch_command(
     _cmd = std::async([this]() -> std::string {
       _register_autocomplete();
       auto c_str = linenoise(_prompt.c_str());
-      linenoiseHistoryAdd(c_str);
       _unregister_autocomplete();
 
       std::string retval;
@@ -58,8 +57,8 @@ perfkit::basic_interactive_terminal::fetch_command(
 
     if (!is_history && (_cmd_history.empty() || cmd != _cmd_history.back())) {
       _cmd_history.rotate(cmd);
+      ++_cmd_counter;
     }
-    ++_cmd_counter;
   }
 
   return cmd;
@@ -80,7 +79,7 @@ basic_interactive_terminal::basic_interactive_terminal() {
   _registry.root()->add_subcommand(
           "history",
           [this](auto &&) -> bool {
-            auto pivot = _cmd_counter - _cmd_history.size() + 1;
+            auto pivot = _cmd_counter - _cmd_history.size();
 
             for (const auto &item : _cmd_history) {
               basic_interactive_terminal::write("{:5}  {}\n"_fmt(pivot++, item) / 0, {}, {});
@@ -106,13 +105,15 @@ basic_interactive_terminal::basic_interactive_terminal() {
                             && r_conv.ptr == tok.c_str() + tok.size();
 
               if (is_number) {
-                hidx = hidx - _cmd_counter + _cmd_history.size();
+                hidx = hidx - _cmd_counter + _cmd_history.size() + 1;
                 if (hidx < 0 || hidx >= _cmd_history.size()) { return false; }
 
                 s = _cmd_history.begin()[hidx];
               } else if (!tok.empty()) {
                 auto it = std::find_if(_cmd_history.rbegin(), _cmd_history.rend(),
-                                       [&](auto &&ss) { return ss.find(tok) == 0; });
+                                       [&, tok](auto &&ss) {
+                                         return ss.find(tok) == 0;  // if contains !...
+                                       });
 
                 if (it == _cmd_history.rend()) { return false; }
                 s = *it;
@@ -121,12 +122,13 @@ basic_interactive_terminal::basic_interactive_terminal() {
               }
 
               if (s != _cmd_history.back()) {
-                _cmd_history.rotate("!"s.append(s));
+                _cmd_history.rotate(s);
               }
 
               basic_interactive_terminal::write("!{}\n"_fmt(s) / 0, {}, {});
             }
 
+            linenoiseHistoryAdd(s.c_str());
             return true;
           });
 }
