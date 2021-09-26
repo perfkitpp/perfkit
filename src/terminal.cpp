@@ -185,13 +185,25 @@ class _config_manip {
   bool set(args_view tok) {
     if (tok.empty()) {
       SPDLOG_LOGGER_ERROR(glog(), "");
+      return false;
     }
 
     return false;
   }
 
   bool info(args_view) {
-    return false;
+    std::string buf{};
+    buf.reserve(1024);
+
+    buf.append("\n");
+    buf << "name       > {}\n"_fmt % _conf->display_key();
+    buf << "key        > {}\n"_fmt % _conf->full_key();
+    buf << "description> {}\n"_fmt % _conf->description();
+    buf << "attributes > {}\n"_fmt % _conf->attribute().dump(2);
+    buf << "value      > {}\n"_fmt % _conf->serialize().dump(2);
+
+    _ref->write(buf);
+    return true;
   }
 
   bool toggle(args_view) {

@@ -337,8 +337,34 @@ void perfkit::commands::tokenize_by_argv_rule(
 }
 
 bool perfkit::commands::registry::invoke_command(std::string command) {
+  for (const auto& [_, hook] : _invoke_hooks) {
+    if (!hook(command)) { return false; }
+  }
+
   std::vector<std::string_view> tokens;
   tokenize_by_argv_rule(&command, tokens, nullptr);
 
   return root()->invoke(tokens);
+}
+
+intptr_t perfkit::commands::registry::add_invoke_hook(std::function<bool(std::string&)> hook) {
+  assert(hook);
+
+  static intptr_t _idgen = 0;
+  auto id                = ++_idgen;
+  _invoke_hooks.emplace_back(id, std::move(hook));
+  return id;
+}
+
+bool perfkit::commands::registry::remove_invoke_hook(intptr_t id) {
+  using namespace ranges;
+  auto names = _invoke_hooks | views::keys;
+
+  auto it = find(names, id);
+  if (it == names.end()) { return false; }
+
+  auto index = it - names.begin();
+  _invoke_hooks.erase(_invoke_hooks.begin() + index);
+
+  return true;
 }

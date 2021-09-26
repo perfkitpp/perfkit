@@ -155,18 +155,25 @@ class registry {
   };
 
  public:
+  using hook_fn = std::function<bool(std::string& command)>;
+
+ public:
   bool invoke_command(std::string command);
   node* root() { return _root.get(); }
   node const* root() const { return _root.get(); }
+
+  intptr_t add_invoke_hook(hook_fn hook);
+  bool remove_invoke_hook(intptr_t);
 
  public:
   node* _get_root() { return _root.get(); }
 
  private:
-  /**
-   * To prevent pointer invalidation during move, allocated on heap.
-   */
+  // to prevent pointer invalidation during move, allocated on heap.
   std::unique_ptr<node> _root = std::make_unique<node>();
+
+  // invocation hooks.
+  std::vector<std::pair<intptr_t, hook_fn>> _invoke_hooks;
 };
 
 }  // namespace perfkit::commands
