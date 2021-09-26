@@ -16,7 +16,7 @@ class circular_queue {
   using value_type = Ty_;
 
  public:
-  template <bool Constant_ = true>
+  template <bool Constant_ = true, bool Reverse_ = false>
   class iterator {
    public:
     using owner_type        = std::conditional_t<Constant_, circular_queue const, circular_queue>;
@@ -32,7 +32,14 @@ class circular_queue {
     iterator(const iterator&) noexcept = default;
     iterator& operator=(const iterator&) noexcept = default;
 
-    auto& operator*() const { return _owner->_at(_head); }
+    auto& operator*() const {
+      if constexpr (Reverse_) {
+        return _owner->_r_at(_head);
+      } else {
+        return _owner->_at(_head);
+      }
+    }
+
     auto operator->() const { return &*(*this); }
 
     bool operator==(iterator const& op) const noexcept { return _head == op._head; }
@@ -143,6 +150,13 @@ class circular_queue {
   auto begin() noexcept { return iterator<false>(this, _tail); }
   auto end() noexcept { return iterator<false>(this, _head); }
 
+  auto crbegin() const noexcept { return iterator<true, true>(this, _tail); }
+  auto crend() const noexcept { return iterator<true, true>(this, _head); }
+  auto rbegin() const noexcept { return cbegin(); }
+  auto rend() const noexcept { return cend(); }
+  auto rbegin() noexcept { return iterator<false, true>(this, _tail); }
+  auto rend() noexcept { return iterator<false, true>(this, _head); }
+
   constexpr size_t capacity() const { return _capacity - 1; }
   bool empty() const { return _head == _tail; }
 
@@ -212,6 +226,11 @@ class circular_queue {
   Ty_& _at(size_t i) const {
     assert(!empty());
     return reinterpret_cast<Ty_&>(const_cast<chunk_t&>(_data[i]));
+  }
+
+  Ty_& _r_at(size_t i) const {
+    assert(!empty());
+    return _at(_jmp(_head, -_idx_linear(i + 1)));
   }
 
   Ty_& _back() const {
