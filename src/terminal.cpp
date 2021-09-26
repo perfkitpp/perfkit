@@ -6,6 +6,7 @@
 #include <perfkit/detail/base.hpp>
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/detail/configs.hpp>
+#include <perfkit/detail/format.hxx>
 #include <perfkit/terminal.h>
 #include <range/v3/algorithm.hpp>
 #include <range/v3/view.hpp>
@@ -77,12 +78,12 @@ void register_conffile_io_commands(
 
   auto rootnode  = ref->commands()->root();
   auto node_load = rootnode->add_subcommand(
-          cmd_load,
+          std::string{cmd_load},
           [manip](auto&& tok) { return manip->load_from(tok); },
           [manip](auto&& tok, auto&& set) { return manip->retrieve_filenames(tok, set); });
 
   auto node_save = rootnode->add_subcommand(
-          cmd_store,
+          std::string{cmd_store},
           [manip](auto&& tok) { return manip->save_to(tok); },
           [manip](auto&& tok, auto&& set) { return manip->retrieve_filenames(tok, set); });
 
@@ -91,71 +92,85 @@ void register_conffile_io_commands(
 
 void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
   std::string cmdstr{cmd};
+
+  struct fn_op {
+    if_terminal* ref;
+    std::string logger_name;
+
+    bool operator()(args_view args) {
+      spdlog::logger* logger = {};
+      if (logger_name.empty()) {
+        logger = spdlog::default_logger_raw();
+      } else {
+        logger = spdlog::get(logger_name).get();
+      }
+
+      if (!logger) {
+        SPDLOG_LOGGER_ERROR(glog(), "dead logger '{}'", logger_name);
+        return false;
+      }
+
+      if (args.empty()) {
+        ref->write("{} = {}\n"_fmt
+                   % logger_name
+                   % spdlog::level::to_string_view(logger->level())
+                   / 20);
+      } else if (args.size() == 1) {
+        logger->set_level(spdlog::level::from_str(std::string{args[0]}));
+      } else {
+        return false;
+      }
+      return true;
+    }
+  };
+
+  auto fn_sugg = [](auto&&, string_set& s) {
+    s.insert({"trace", "debug", "info", "warn", "error", "critical"});
+  };
+
   auto logging = ref->commands()->root()->add_subcommand(
-          cmd,
-          [ref, cmdstr](args_view args) -> bool {
-            if (args.empty() || args.size() > 2) {
-              glog()->error("usage: {} <'_global_'|'_default_'|logger> [loglevel]", cmdstr);
-              return false;
-            }
-
-            if (args.size() == 1) {
-              spdlog::string_view_t sv = {};
-              if (args[0] == "_global_") {
-                sv = to_string_view(spdlog::get_level());
-              } else if (args[0] == "_default_") {
-                sv = to_string_view(spdlog::default_logger()->level());
-              } else if (auto logger = spdlog::get(std::string{args[0]})) {
-                sv = to_string_view(logger->level());
-              } else {
-                glog()->error("logger {} not found.", args[0]);
-                return false;
-              }
-
-              ref->output(fmt::format("{}={}\n", args[0], sv));
-            } else {
-              auto lv = spdlog::level::from_str(std::string{args[1]});
-
-              if (args[0] == "_global_") {
-                spdlog::set_level(lv);
-              } else if (args[0] == "_default_") {
-                spdlog::default_logger()->set_level(lv);
-              } else if (auto logger = spdlog::get(std::string{args[0]})) {
-                logger->set_level(lv);
-              } else {
-                glog()->error("logger {} not found.", args[0]);
-                return false;
-              }
-            }
-
-            return true;
-          },
-          [ref, cmdstr](auto&&, auto&& cands) -> bool {
+          cmdstr,
+          {},
+          [ref, cmdstr, fn_sugg](auto&&, auto&& cands) -> bool {
             auto node = ref->commands()->root()->find_subcommand(cmdstr);
             spdlog::details::registry::instance().apply_all(
-                    [&cands](const std::shared_ptr<spdlog::logger>& logger) {
+                    [&](const std::shared_ptr<spdlog::logger>& logger) {
                       if (logger->name().empty()) { return; }
-                      cands.insert(logger->name());
+                      if (node->find_subcommand(logger->name())) { return; }
+                      auto cmd = node->add_subcommand(logger->name(), fn_op{ref, logger->name()}, fn_sugg);
                     });
-            cands.insert("_global_");
-            cands.insert("_default_");
 
             return true;
           },
           true);
+
+  logging->add_subcommand("_default_", fn_op{ref, ""}, fn_sugg);
+  logging->add_subcommand(
+          "_global_",
+          [ref](args_view args) -> bool {
+            if (args.empty()) {
+              std::string buf;
+              spdlog::details::registry::instance().apply_all(
+                      [&](const std::shared_ptr<spdlog::logger>& logger) {
+                        auto name = logger->name();
+                        if (name.empty()) { name = "_default_"; }
+
+                        ref->write(buf < ("{} = {}\n"_fmt
+                                          % name
+                                          % spdlog::level::to_string_view(logger->level())));
+                      });
+            } else if (args.size() == 1) {
+              spdlog::set_level(spdlog::level::from_str(std::string{args[0]}));
+            } else {
+              return false;
+            }
+            return true;
+          },
+          fn_sugg);
 }
 
 void register_trace_manip_command(if_terminal* ref, std::string_view cmd) {
 }
-
-struct _strapnd {
-  std::string* _ref;
-
-  template <typename S_, typename... Args_>
-  void operator()(S_&& fmt, Args_&&... args) {
-    fmt::format_to(back_inserter(*_ref), fmt, std::forward<Args_>(args)...);
-  }
-};
 
 class _config_manip {
  public:
@@ -163,17 +178,15 @@ class _config_manip {
           : _ref(ref), _conf(pt) {}
 
   bool get(args_view) {
-    std::string buf;
-    _strapnd append{&buf};
-
-    _ref->output(fmt::format("{} = {}\n",
-                             _conf->display_key(),
-                             _conf->serialize().dump()));
-
+    _ref->write(("{} = {}\n"_fmt % _conf->display_key() % _conf->serialize().dump()) / 16);
     return true;
   }
 
-  bool set(args_view ak) {
+  bool set(args_view tok) {
+    if (tok.empty()) {
+      SPDLOG_LOGGER_ERROR(glog(), "");
+    }
+
     return false;
   }
 
@@ -205,16 +218,14 @@ class _config_category_manip {
     auto all = &config_registry::all();
 
     std::string buf;
-    auto apndstr = [&buf](auto&& fmt, auto&&... args) {
-      fmt::format_to(back_inserter(buf), fmt, std::forward<decltype(args)>(args)...);
-    };
+    buf.reserve(1024);
 
     // header
     {
       double width = 40;
       _ref->get("output-width", &width);
 
-      apndstr("{:-<{}}\n", _category + " ", (int)width);
+      buf << "{:-<{}}\n"_fmt % (_category + " ") % (int)width;
     }
 
     // during string begins with this category name ...
@@ -224,11 +235,10 @@ class _config_category_manip {
       auto depth = conf->tokenized_display_key().size();
       auto name  = conf->display_key().substr(_category.size());
 
-      apndstr("..|{} = {}\n",
-              name, conf->serialize().dump());
+      buf << "..|{} = {}\n"_fmt % name % conf->serialize().dump();
     }
 
-    _ref->output(buf);
+    _ref->write(buf);
     return true;
   }
 
@@ -242,7 +252,7 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
   using namespace ranges;
 
   auto node_conf = ref->commands()->root()->add_subcommand(
-          cmd,
+          std::string{cmd},
           [cmdstr = std::string{cmd}](auto&&) -> bool {
             glog()->error("usage: {} <config_name> [set [<values...>]|toggle] ");
             return true;

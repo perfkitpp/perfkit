@@ -61,7 +61,7 @@ class registry {
      * @return nullptr if given command is invalid.
      */
     perfkit::commands::registry::node* add_subcommand(
-            std::string_view cmd,
+            std::string cmd,
             handler_fn handler              = {},
             autocomplete_suggest_fn suggest = {},
             bool name_constant              = false);

@@ -22,7 +22,7 @@ const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 }  // namespace
 
 perfkit::commands::registry::node* perfkit::commands::registry::node::add_subcommand(
-        std::string_view cmd,
+        std::string cmd,
         handler_fn handler,
         autocomplete_suggest_fn suggest,
         bool name_constant) {
@@ -32,12 +32,12 @@ perfkit::commands::registry::node* perfkit::commands::registry::node::add_subcom
   }
 
   std::cmatch match;
-  if (!std::regex_match(cmd.data(), cmd.data() + cmd.size(), match, rg_cmd_token)) {
+  if (!std::regex_match(cmd.c_str(), cmd.c_str() + cmd.size(), match, rg_cmd_token)) {
     glog()->error("invalid command name [{}])", cmd);
     throw command_name_invalid_exception{};
   }
 
-  auto& subcmd          = _subcommands[std::string(cmd)];
+  auto& subcmd          = _subcommands[std::move(cmd)];
   subcmd._invoke        = std::move(handler);
   subcmd._suggest       = std::move(suggest);
   subcmd._constant_name = name_constant;

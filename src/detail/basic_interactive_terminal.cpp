@@ -148,7 +148,7 @@ void basic_interactive_terminal::push_command(std::string_view command) {
   _cmd_queued.emplace_back(command);
 }
 
-void basic_interactive_terminal::output(std::string_view str, color color) {
+void basic_interactive_terminal::write(std::string_view str, color color) {
   for (auto ch : str) {
     if (ch == '\n') {
       fputs("\r\n", stdout);
