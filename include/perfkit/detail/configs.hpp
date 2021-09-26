@@ -37,7 +37,8 @@ class config_base {
               std::string full_key,
               std::string description,
               deserializer fn_deserial,
-              serializer fn_serial);
+              serializer fn_serial,
+              nlohmann::json&& attribute);
 
   /**
    * @warning this function is not re-entrant!
@@ -46,6 +47,8 @@ class config_base {
   nlohmann::json serialize();
   void serialize(nlohmann::json&);
   void serialize(std::function<void(nlohmann::json const&)> const&);
+
+  nlohmann::json const& attribute() const noexcept { return _attribute; }
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
 
@@ -83,6 +86,7 @@ class config_base {
   std::atomic_size_t _fence_modification = 0;
   size_t _fence_serialized               = ~size_t{};
   nlohmann::json _cached_serialized;
+  nlohmann::json _attribute;
 
   std::vector<std::string_view> _categories;
 
@@ -212,6 +216,30 @@ class config {
           : _owner(&dispatcher), _value(std::forward<Ty_>(default_value)) {
     auto description = std::move(attribute.description);
 
+    // define serializer
+    detail::config_base::serializer fn_d = [this](nlohmann::json& out, const void* in) {
+      out = *(Ty_*)in;
+    };
+
+    // set reference attribute
+    nlohmann::json js_attrib;
+    js_attrib["default"] = default_value;
+
+    if constexpr (Attr_::flag & _attr_flag::has_min) {
+      js_attrib["min"] = *attribute.min;
+    }
+    if constexpr (Attr_::flag & _attr_flag::has_max) {
+      js_attrib["max"] = *attribute.max;
+    }
+    if constexpr (Attr_::flag & _attr_flag::has_one_of) {
+      js_attrib["oneof"] = *attribute.oneof;
+    }
+    if constexpr (Attr_::flag & _attr_flag::has_validate) {
+      js_attrib["has_custom_validator"] = true;
+    } else {
+      js_attrib["has_custom_validator"] = false;
+    }
+
     // setup marshaller / de-marshaller with given rule of attribute
     detail::config_base::deserializer fn_m = [attrib = std::move(attribute)]  //
             (const nlohmann::json& in, void* out) {
@@ -222,10 +250,10 @@ class config {
                 nlohmann::from_json(in, parsed);
 
                 if constexpr (Attr_::flag & _attr_flag::has_min) {
-                  parsed = std::min<Ty_>(*attr.min, parsed);
+                  parsed = std::max<Ty_>(*attr.min, parsed);
                 }
                 if constexpr (Attr_::flag & _attr_flag::has_max) {
-                  parsed = std::max<Ty_>(*attr.min, parsed);
+                  parsed = std::min<Ty_>(*attr.max, parsed);
                 }
                 if constexpr (Attr_::flag & _attr_flag::has_one_of) {
                   auto oneof = attr->oneof;
@@ -242,10 +270,6 @@ class config {
               }
             };
 
-    detail::config_base::serializer fn_d = [this](nlohmann::json& out, const void* in) {
-      out = *(Ty_*)in;
-    };
-
     // instantiate config instance
     _opt = std::make_shared<detail::config_base>(
             _owner,
@@ -253,7 +277,9 @@ class config {
             std::move(full_key),
             std::move(description),
             std::move(fn_m),
-            std::move(fn_d));
+            std::move(fn_d),
+            std::move(js_attrib));
+
     // put instance to global queue
     dispatcher._put(_opt);
   }

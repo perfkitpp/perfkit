@@ -34,7 +34,7 @@ bool perfkit::config_registry::apply_update_and_check_if_dirty() {
 
       if (!r_desrl) {
         glog()->error("parse failed: '{}' <- {}", ptr->display_key(), ptr->_cached_serialized.dump());
-        ptr->_serialize(ptr->_cached_serialized, ptr->_raw); // roll back
+        ptr->_serialize(ptr->_cached_serialized, ptr->_raw);  // roll back
       }
     }
 
@@ -105,11 +105,13 @@ perfkit::detail::config_base::config_base(
         void* raw, std::string full_key,
         std::string description,
         perfkit::detail::config_base::deserializer fn_deserial,
-        perfkit::detail::config_base::serializer fn_serial)
+        perfkit::detail::config_base::serializer fn_serial,
+        nlohmann::json&& attribute)
         : _owner(owner)
         , _full_key(std::move(full_key))
         , _description(std::move(description))
         , _raw(raw)
+        , _attribute(std::move(attribute))
         , _deserialize(std::move(fn_deserial))
         , _serialize(std::move(fn_serial)) {
   static std::regex rg_trim_whitespace{R"((?:^|\|?)\s*(\S?[^|]*\S)\s*(?:\||$))"};
