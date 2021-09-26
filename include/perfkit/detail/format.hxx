@@ -29,11 +29,6 @@ class format_context {
               _base, _concat_tuple(std::forward<Ty_>(arg), indices_t{})};
     }
 
-    template <typename... Args2_>
-    std::string operator()(Args2_&&... args) {
-      return fmt::format(_base->_fmt, std::forward<Args2_>(args)...);
-    }
-
     auto& operator>>(std::string& arg) noexcept {
       std::apply(
               [&](auto&&... args) {
@@ -63,14 +58,14 @@ class format_context {
       return std::move((*this) > (reinterpret_cast<std::string&>(arg)));
     }
 
-    auto&& operator/(size_t init_cap) noexcept {
+    auto operator/(size_t init_cap) noexcept {
       std::string str;
       str.reserve(init_cap);
-      return (*this) >> str;
+      return (*this) > str;
     }
 
-    template <typename Str_, typename... Args2_>
-    std::string operator()(Str_&& str, Args2_&&... args) {
+    template <typename... Args2_>
+    std::string operator()(Args2_&&... args) {
       return fmt::format(_base->_fmt, std::forward<Args2_>(args)...);
     }
 
@@ -86,6 +81,11 @@ class format_context {
   template <typename Ty_>
   auto operator%(Ty_&& arg) noexcept {
     return _proxy<decltype(arg)>{this, std::forward_as_tuple(std::forward<Ty_>(arg))};
+  }
+
+  template <typename... Args_>
+  auto operator()(Args_&&... args) noexcept {
+    return _proxy<decltype(args)...>{this, std::forward_as_tuple(std::forward<Args_>(args)...)};
   }
 
  public:
@@ -105,7 +105,7 @@ auto&& operator<<(Str_&& str, format_context::_proxy<Args_...>&& prx) {
 }  // namespace util
 
 inline namespace literals {
-util::format_context operator""_fmt(char const* ch, size_t) {
+inline util::format_context operator""_fmt(char const* ch, size_t) {
   return {ch};
 }
 }  // namespace literals
