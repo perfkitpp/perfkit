@@ -126,13 +126,10 @@ class circular_queue {
   void push(Ty_ const& s) { new (_data[_reserve()].data()) Ty_(s); }
   void push(Ty_&& s) { new (_data[_reserve()].data()) Ty_(std::move(s)); }
   void pop() { _release(); }
-  void push_back(Ty_ const& s) { this->push_rotate(s); }
-  void push_back(Ty_&& s) { this->push_rotate(std::move(s)); }
+  void push_back(Ty_ const& s) { this->rotate(s); }
+  void push_back(Ty_&& s) { this->rotate(std::move(s)); }
 
-  void push_rotate(Ty_ const& s) {
-    if (is_full()) { pop(); }
-    this->push(s);
-  }
+  void rotate(Ty_ const& s) { is_full() && (pop(), 0) || (this->push(s), 1); }
 
   void push_rotate(Ty_&& s) {
     if (is_full()) { pop(); }

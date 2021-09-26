@@ -4,17 +4,21 @@
 
 #include "basic_interactive_terminal.hpp"
 
+#include <charconv>
 #include <set>
 #include <vector>
 
 #include <linenoise.h>
 #include <perfkit/detail/base.hpp>
+#include <perfkit/detail/format.hxx>
 #include <spdlog/logger.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 using namespace perfkit;
+using namespace perfkit::literals;
 using namespace std::literals;
+using namespace fmt::literals;
 
 std::optional<std::string>
 perfkit::basic_interactive_terminal::fetch_command(
@@ -44,9 +48,16 @@ perfkit::basic_interactive_terminal::fetch_command(
   }
 
   auto cmd = _cmd.get();
-  if (cmd.empty()) { return _cmd_latest; }
+  if (cmd.empty() && !_cmd_history.empty()) {
+    write("{:5}  {}\n"_fmt(_cmd_counter, _cmd_history.back()) / 0, {}, {});
+    cmd = _cmd_history.back();
+  } else if (cmd.empty()) {
+    return {};
+  } else {
+    if (cmd != _cmd_history.back()) { _cmd_history.rotate(cmd); }
+    ++_cmd_counter;
+  }
 
-  _cmd_latest = cmd;
   return cmd;
 }
 
@@ -61,6 +72,59 @@ basic_interactive_terminal::basic_interactive_terminal() {
   } else {
     glog()->info("$TERM={}", env_term);
   }
+
+  _registry.root()->add_subcommand(
+          "history",
+          [this](auto &&) -> bool {
+            auto pivot = _cmd_counter - _cmd_history.size() + 1;
+
+            for (const auto &item : _cmd_history) {
+              basic_interactive_terminal::write("{:5}  {}\n"_fmt(pivot++, item) / 0, {}, {});
+            }
+
+            return true;
+          });
+
+  _registry.add_invoke_hook(
+          [this](std::string &s) {
+            if (s.empty()) { return false; }
+            if (s[0] == '!') {
+              if (_cmd_history.empty()) { return false; }
+
+              std::string tok = s;
+              std::vector<std::string_view> tokens;
+              commands::tokenize_by_argv_rule(&tok, tokens);
+
+              tok.assign(tokens[0].begin() + 1, tokens[0].end());
+              int hidx       = 0;
+              auto r_conv    = std::from_chars(tok.c_str(), tok.c_str() + tok.size(), hidx);
+              bool is_number = r_conv.ec != std::errc::invalid_argument
+                            && r_conv.ptr == tok.c_str() + tok.size();
+
+              if (is_number) {
+                hidx = hidx - _cmd_counter + _cmd_history.size();
+                if (hidx < 0 || hidx >= _cmd_history.size()) { return false; }
+
+                s = _cmd_history.begin()[hidx];
+              } else if (!tok.empty()) {
+                auto it = std::find_if(_cmd_history.rbegin(), _cmd_history.rend(),
+                                       [&](auto &&ss) { return ss.find(tok) == 0; });
+
+                if (it == _cmd_history.rend()) { return false; }
+                s = *it;
+              } else {
+                return false;
+              }
+
+              if (s != _cmd_history.back()) {
+                _cmd_history.rotate(s);
+              }
+
+              basic_interactive_terminal::write("!{}\n"_fmt(s) / 0, {}, {});
+            }
+
+            return true;
+          });
 }
 
 bool basic_interactive_terminal::set(std::string_view key, std::string_view value) {
@@ -148,15 +212,19 @@ void basic_interactive_terminal::push_command(std::string_view command) {
   _cmd_queued.emplace_back(command);
 }
 
-void basic_interactive_terminal::write(std::string_view str, color color) {
+void basic_interactive_terminal::write(std::string_view str, color fg, color bg) {
+  bool has_cr_lf = false;
   for (auto ch : str) {
     if (ch == '\n') {
+      has_cr_lf |= 1;
       fputs("\r\n", stdout);
     } else {
+      has_cr_lf |= ch == '\r';
       fputc(ch, stdout);
     }
   }
-  fflush(stdout);
+
+  if (has_cr_lf) { fflush(stdout); }
 }
 
 bool basic_interactive_terminal::get(std::string_view key, double *out) {
