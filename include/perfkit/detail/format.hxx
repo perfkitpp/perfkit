@@ -10,13 +10,8 @@ class format_context {
   struct _proxy {
     using tuple_type = std::tuple<Args_...>;
 
-    char const* _fmt;
+    format_context* _base;
     tuple_type _tup;
-
-    template <typename... Args2_>
-    std::string operator()(Args2_&&... args) const {
-      return fmt::format(_fmt, std::forward<Args2_>(args)...);
-    }
 
    private:
     template <typename Ty_, size_t... Idx_>
@@ -31,24 +26,70 @@ class format_context {
               = std::make_index_sequence<std::tuple_size_v<tuple_type>>;
 
       return _proxy<Args_..., decltype(arg)>{
-              _fmt, _concat_tuple(std::forward<Ty_>(arg), indices_t{})};
+              _base, _concat_tuple(std::forward<Ty_>(arg), indices_t{})};
     }
 
-    operator std::string() const {
-      return str();
+    template <typename... Args2_>
+    std::string operator()(Args2_&&... args) {
+      return fmt::format(_base->_fmt, std::forward<Args2_>(args)...);
     }
 
-    std::string str() const { return std::apply(*this, _tup); }
+    auto& operator>>(std::string& arg) noexcept {
+      std::apply(
+              [&](auto&&... args) {
+                fmt::format_to(std::back_inserter(arg), _base->_fmt,
+                               std::forward<decltype(args)>(args)...);
+              },
+              std::move(_tup));
+      return arg;
+    }
+
+    auto&& operator>>(std::string&& arg) noexcept {
+      return std::move((*this) >> (reinterpret_cast<std::string&>(arg)));
+    }
+
+    auto& operator>(std::string& arg) noexcept {
+      arg.clear();
+      std::apply(
+              [&](auto&&... args) {
+                fmt::format_to(std::back_inserter(arg), _base->_fmt,
+                               std::forward<decltype(args)>(args)...);
+              },
+              std::move(_tup));
+      return arg;
+    }
+
+    auto&& operator>(std::string&& arg) noexcept {
+      return std::move((*this) > (reinterpret_cast<std::string&>(arg)));
+    }
+
+    auto&& operator/(size_t init_cap) noexcept {
+      std::string str;
+      str.reserve(init_cap);
+      return (*this) >> str;
+    }
+
+    template <typename Str_, typename... Args2_>
+    std::string operator()(Str_&& str, Args2_&&... args) {
+      return fmt::format(_base->_fmt, std::forward<Args2_>(args)...);
+    }
+
+    operator std::string() {
+      return std::apply(*this, std::move(_tup));
+    }
+
+    std::string string() const { return (std::string)(*this); }
   };
 
  public:
   // format with arbitrary types
   template <typename Ty_>
-  auto operator%(Ty_&& arg) const noexcept {
-    return _proxy<decltype(arg)>{_fmt, std::forward_as_tuple(std::forward<Ty_>(arg))};
+  auto operator%(Ty_&& arg) noexcept {
+    return _proxy<decltype(arg)>{this, std::forward_as_tuple(std::forward<Ty_>(arg))};
   }
 
-  char const* const _fmt;
+ public:
+  char const* const _fmt = {};
 };
 
 }  // namespace util
