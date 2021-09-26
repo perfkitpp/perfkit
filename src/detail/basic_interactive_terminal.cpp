@@ -105,13 +105,10 @@ void basic_interactive_terminal::_register_autocomplete() {
       if (is_exact_match) {
         position = strlen(buf);
         suggests.clear();
-        spdlog::info("ext: position: {}", position);
       } else if (target_token >= tokens.size()) {
         position = offsets.back().position + offsets.back().length;
-        spdlog::info("nxt: position: {}", position);
       } else {
         position = offsets.back().position;
-        spdlog::info("position: {}", position);
       }
     }
 

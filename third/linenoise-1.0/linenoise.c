@@ -441,7 +441,7 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
           column += len;
           while (column < ls->cols && ++column % alignment != 0) { write(fd, " ", 1); }
         }
-        write(fd, "\r\n", 2);
+        write(fd, "\r\n\n", 3);
       }
     }
 

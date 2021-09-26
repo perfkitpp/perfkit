@@ -129,6 +129,7 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
             auto node = ref->commands()->root()->find_subcommand(cmdstr);
             spdlog::details::registry::instance().apply_all(
                     [&cands](const std::shared_ptr<spdlog::logger>& logger) {
+                      if (logger->name().empty()) { return; }
                       cands.insert(logger->name());
                     });
             cands.insert("_global_");
