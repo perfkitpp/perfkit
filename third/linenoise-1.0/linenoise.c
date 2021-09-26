@@ -369,6 +369,94 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
   char c = 0;
 
   int word_pos = completionCallback(ls->buf, &lc);
+
+  if (lc.len == 0) {
+    linenoiseBeep();
+    printf("no candidate. beep.\r\n");
+  } else {
+    int fd = ls->ofd;
+
+    // if there's any other output interrupted prompt ...
+    ls->prompt = prompt;
+    refreshLine(ls);
+
+    // dump all candidates
+    int nmaxcandlen = 0;
+
+    // find maximum length of given entities
+    for (int i = 0; i < lc.len; ++i) {
+      int len = strlen(lc.cvec[i]);
+      nmaxcandlen < len && (nmaxcandlen = len);
+    }
+
+    // find minimal common portion of all candidates
+    int ncommon = ~(1 << 31);  // INTMAX
+
+    if (lc.len > 1) {
+      // find minimal common portion of all candidates
+      for (int i = 0; i < lc.len - 1; ++i) {
+        int len = 0;
+        char *a = lc.cvec[i], *b = lc.cvec[i + 1];
+
+        while (*a && *b && *(a++) == *(b++)) { ++len; }
+        len < ncommon && (ncommon = len);
+      }
+    } else {
+      // if entity is unique, maximum is common value.
+      ncommon = strlen(lc.cvec[0]);
+    }
+
+    // trin trailing spaces
+    while (ls->len > 0 && ls->buf[ls->len - 1] == ' ') { ls->buf[--ls->len] = 0; }
+
+    // if there was no change in string, it means just tab was pressed twice.
+    // dump active candidates.
+    printf("beep: word_pos = %d, len = %lu ncommon = %d\r\n", word_pos, ls->len, ncommon);
+
+    if (word_pos > ls->len || ls->len - word_pos == ncommon) {
+      // pretty draw
+      int column    = 0;
+      int alignment = nmaxcandlen + 6;
+      alignment < 20 && (alignment = 20);
+
+      write(fd, "\r\n", 2);
+      for (int i = 0; i < lc.len; ++i) {
+        int len = strlen(lc.cvec[i]);
+        if (column > 0 && column + len >= ls->cols) { write(fd, "\r\n", 2), column = 0; }
+
+        write(fd, lc.cvec[i], len);
+        column += len;
+        while (column < ls->cols && ++column % alignment != 0) { write(fd, " ", 1); }
+      }
+      write(fd, "\r\n\n", 3);
+    }
+
+    if (word_pos + ncommon > ls->buflen || (ncommon == 0 && ls->pos == 0)) {
+      linenoiseBeep();
+      printf("beep: word_pos = %d, pos = %lu ncommon = %d\r\n", word_pos, ls->pos, ncommon);
+    } else if (ncommon == 0) {
+      ls->buf[ls->len]             = ' ';
+      ls->buf[ls->pos = ++ls->len] = 0;
+    } else {
+      if (word_pos > 0 && ls->buf[word_pos - 1] == '\0') { ls->buf[word_pos - 1] = ' '; }
+
+      ls->pos = ls->len = word_pos;
+      ls->pos           = (ls->len += ncommon);
+
+      strncpy(ls->buf + word_pos, lc.cvec[0], ncommon);
+      ls->buf[ls->pos] = 0;
+
+      printf("word_pos = %d, pos = %lu ncommon = %d\r\n", word_pos, ls->pos, ncommon);
+    }
+
+    refreshLine(ls);
+  }
+
+  freeCompletions(&lc);
+  return c;
+
+#if 0
+  int word_pos = completionCallback(ls->buf, &lc);
   if (lc.len == 0 || word_pos < 0 || word_pos > ls->len) {
     linenoiseBeep();
   } else if (1) {
@@ -451,6 +539,7 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
 
   freeCompletions(&lc);
   return c; /* Return last read character */
+#endif
 }
 
 /* Register a callback function to be called for tab-completion. */

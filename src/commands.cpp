@@ -133,7 +133,8 @@ bool perfkit::commands::registry::node::alias(
 }
 
 namespace {
-bool check_unique(std::string_view cmp, perfkit::array_view<std::string> candidates) {
+template <typename Rng_>
+bool check_unique_prefix(std::string_view cmp, Rng_&& candidates) {
   for (const auto& candidate : candidates) {
     if (cmp.size() > candidate.size()) { continue; }   // not consider.
     if (candidate.size() == cmp.size()) { continue; }  // maybe same, or not considerable.
@@ -167,15 +168,21 @@ std::string perfkit::commands::registry::node::suggest(
   }
 
   auto exec          = full_tokens[0];
-  node const* subcmd = {};
-  if ((subcmd = find_subcommand(exec)) && _check_name_exist(exec)) {
-    // Only when full name is configured ...
-    out_has_unique_match && (*out_has_unique_match = check_unique(exec, out_candidates));
-    target_token_index && ++*target_token_index;
-    return subcmd->suggest(full_tokens.subspan(1),
-                           out_candidates,
-                           target_token_index,
-                           out_has_unique_match);
+  bool is_last_token = full_tokens.size() == 1;
+
+  if (node const* subcmd = {}; !is_last_token) {
+    subcmd = find_subcommand(exec);
+
+    if (subcmd) {
+      // evaluate as next command, only when unique subcommand is found.
+
+      out_has_unique_match && (*out_has_unique_match = check_unique_prefix(exec, out_candidates));
+      target_token_index && ++*target_token_index;
+      return subcmd->suggest(full_tokens.subspan(1),
+                             out_candidates,
+                             target_token_index,
+                             out_has_unique_match);
+    }
   }
 
   // find default suggestion list by rule.
@@ -214,7 +221,18 @@ std::string perfkit::commands::registry::node::suggest(
       if (sharing.empty()) { break; }
     }
 
-    out_has_unique_match && (*out_has_unique_match = check_unique(sharing, out_candidates));
+    bool is_unique_match = check_unique_prefix(sharing, out_candidates);
+    out_has_unique_match && (*out_has_unique_match = is_unique_match);
+
+    if (node const* subcmd = {}; is_unique_match
+                                 && (subcmd = find_subcommand(sharing))) {
+      target_token_index && ++*target_token_index;
+      return subcmd->suggest(full_tokens.subspan(1),
+                             out_candidates,
+                             target_token_index,
+                             out_has_unique_match);
+    }
+
     return std::string{sharing};
   }
 
@@ -283,11 +301,14 @@ void perfkit::commands::tokenize_by_argv_rule(
     auto& match = *iter;
     if (!match.ready()) { continue; }
 
-    size_t n = 0, position, length;
+    size_t n                = 0, position, length;
+    bool wrapped_with_quote = false;
     if (match[1].matched) {
-      n = 1;
+      n                  = 1;
+      wrapped_with_quote = true;
     } else if (match[2].matched) {
-      n = 2;
+      n                  = 2;
+      wrapped_with_quote = false;
     } else {
       throw;
     }
@@ -295,7 +316,7 @@ void perfkit::commands::tokenize_by_argv_rule(
     position = match.position(n), length = match.length(n);
 
     if (token_indexes) {
-      token_indexes->push_back({position, length});
+      token_indexes->push_back({position, length, wrapped_with_quote});
     }
 
     // correct escapes

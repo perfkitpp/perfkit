@@ -16,6 +16,12 @@ int main(void) {
   spdlog::info("create");
   spdlog::set_level(spdlog::level::trace);
 
+  term->commands()
+          ->root()
+          ->add_subcommand("test space command")
+          ->add_subcommand("test command 2")
+          ->add_subcommand("test command 3");
+
   for (;;) {
     auto cmd = term->fetch_command(1000ms);
     if (!cmd.has_value() || cmd->empty()) { continue; }

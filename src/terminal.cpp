@@ -148,18 +148,32 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
 void register_trace_manip_command(if_terminal* ref, std::string_view cmd) {
 }
 
+struct _strapnd {
+  std::string* _ref;
+
+  template <typename S_, typename... Args_>
+  void operator()(S_&& fmt, Args_&&... args) {
+    fmt::format_to(back_inserter(*_ref), fmt, std::forward<Args_>(args)...);
+  }
+};
+
 class _config_manip {
  public:
   _config_manip(if_terminal* ref, config_ptr pt)
           : _ref(ref), _conf(pt) {}
 
   bool get(args_view) {
+    std::string buf;
+    _strapnd append{&buf};
 
+    _ref->output(fmt::format("{} = {}\n",
+                             _conf->display_key(),
+                             _conf->serialize().dump()));
 
-    return false;
+    return true;
   }
 
-  bool set(args_view) {
+  bool set(args_view ak) {
     return false;
   }
 
@@ -200,7 +214,7 @@ class _config_category_manip {
       double width = 40;
       _ref->get("output-width", &width);
 
-      apndstr("{:-<{}}\n", "   "s.append(_category).append(" "), (int)width - 3);
+      apndstr("{:-<{}}\n", _category + " ", (int)width);
     }
 
     // during string begins with this category name ...
@@ -210,8 +224,8 @@ class _config_category_manip {
       auto depth = conf->tokenized_display_key().size();
       auto name  = conf->display_key().substr(_category.size());
 
-      apndstr("   - {0:{1}}{2} = {3}\n",
-              ' ', (depth - _depth) * 0, name, conf->serialize().dump());
+      apndstr("..|{} = {}\n",
+              name, conf->serialize().dump());
     }
 
     _ref->output(buf);

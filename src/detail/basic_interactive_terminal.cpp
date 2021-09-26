@@ -93,6 +93,7 @@ void basic_interactive_terminal::_register_autocomplete() {
     auto rg = locked_command_registry.load()->root();
 
     std::string str = buf;
+    auto srclen     = strlen(buf);
     std::vector<std::string_view> tokens;
     std::vector<commands::stroffset> offsets;
     std::vector<std::string> suggests;
@@ -101,22 +102,31 @@ void basic_interactive_terminal::_register_autocomplete() {
 
     int target_token = 0;
     bool has_unique_match;
-    auto matchstr = rg->suggest(tokens, suggests, &target_token, &has_unique_match);
+    rg->suggest(tokens, suggests, &target_token, &has_unique_match);
 
-    if (!offsets.empty()) {
-      bool is_exact_match = has_unique_match && matchstr == tokens.back();
+    if (tokens.empty() == false) {
+      if (target_token < tokens.size()) {
+        // means matching was performed on existing token
+        auto const &tokofst = offsets[target_token];
 
-      if (is_exact_match) {
-        position = strlen(buf);
-        suggests.clear();
-      } else if (target_token >= tokens.size()) {
-        position = offsets.back().position + offsets.back().length;
+        position = tokofst.position;
+        if (position > 0 && buf[position - 1] == '"') { position -= 1; }
       } else {
-        position = offsets.back().position;
+        // matched all existing tokens, thus returned suggests are for next word.
+        // return last position of string for next completion.
+        position = offsets.back().position + offsets.back().length + 1;
+
+        if (buf[position - 1] == '"') { position += 1; }
       }
     }
 
-    for (const auto &suggest : suggests) { linenoiseAddCompletion(lc, suggest.c_str()); }
+    for (const auto &suggest : suggests) {
+      if (suggest.find(' ') != ~size_t{}) {  // check
+        linenoiseAddCompletion(lc, "\""s.append(suggest).append("\"").c_str());
+      } else {
+        linenoiseAddCompletion(lc, suggest.c_str());
+      }
+    }
 
     // glog()->info("target: {}, position: {}", target_token, position);
     return position;

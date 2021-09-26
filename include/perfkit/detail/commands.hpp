@@ -14,6 +14,8 @@ class registry;
 struct stroffset {
   size_t position = {};
   size_t length   = {};
+
+  bool should_wrap = {};
 };
 
 struct command_exception : std::exception {};
