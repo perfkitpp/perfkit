@@ -102,9 +102,9 @@ void register_conffile_io_commands(
  *
  * @details
  *
- *      <cmd> get <config>
- *      <cmd> set <config> [values...]
- *      <cmd> toggle <config:bool>
+ *      <cmd> <config>
+ *      <cmd> <config> set [values...]
+ *      <cmd> <config:bool> toggle
  *
  */
 void register_config_manip_command(

@@ -5,11 +5,15 @@
 
 #include <perfkit/detail/base.hpp>
 #include <perfkit/detail/commands.hpp>
+#include <perfkit/detail/configs.hpp>
 #include <perfkit/terminal.h>
+#include <range/v3/view.hpp>
+#include <range/v3/view/subrange.hpp>
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
 #include "detail/basic_interactive_terminal.hpp"
+using namespace std::literals;
 
 namespace perfkit {
 auto create_basic_interactive_terminal() -> std::shared_ptr<if_terminal> {
@@ -136,13 +140,98 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
             cands.insert("_default_");
 
             return true;
-          });
+          },
+          true);
 }
 
 void register_trace_manip_command(if_terminal* ref, std::string_view cmd) {
 }
 
+class _config_manip {
+ public:
+  _config_manip(config_ptr pt)
+          : _conf(pt) {}
+
+  bool getter(args_view) {
+    return false;
+  }
+
+  bool getter_suggest(args_view, string_set& s) const {
+    s.insert("set");
+
+    if (_conf->attribute()["default"].is_boolean()) {
+      s.insert("toggle");
+    }
+    return true;
+  }
+
+ private:
+  config_ptr _conf;
+};
+
+class _config_category_manip {
+ public:
+  explicit _config_category_manip(std::string s)
+          : _category(std::move(s)) {
+  }
+
+  bool operator()(args_view) {
+    return false;
+  }
+
+  static bool suggest(args_view, string_set& s) {
+    return true;
+  }
+
+ private:
+  std::string _category;
+};
+
 void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
+  using namespace ranges;
+
+  auto node_conf = ref->commands()->root()->add_subcommand(
+          cmd,
+          [cmdstr = std::string{cmd}](auto&&) -> bool {
+            glog()->error("usage: {} <config_name> [set [<values...>]|toggle] ");
+            return true;
+          },
+          {});
+
+  for (const auto& [_, config] : config_registry::all()) {
+    auto hierarchy = config->tokenized_display_key();
+
+    // change display key expression into <a>.<b>.<c>
+    auto key = subrange(hierarchy.begin(), hierarchy.end() - 1)
+             | views::join('.')
+             | to<std::string>();
+
+    size_t category_len = key.size();
+    (key.empty() ? key : key.append(".")).append(hierarchy.back());
+    auto category_key = std::string_view{key}.substr(0, category_len);
+
+    // add category command
+    if (!category_key.empty() && !node_conf->find_subcommand(category_key)) {
+      auto manip    = std::make_shared<_config_category_manip>(std::string{category_key});
+      auto node_cat = node_conf->add_subcommand(
+              "*"s.append(category_key),
+              [manip](auto&& tok) { return (*manip)(tok); },
+              &_config_category_manip::suggest);
+    }
+
+    auto manip = std::make_shared<_config_manip>(config);
+    auto node  = node_conf->add_subcommand(
+             key,
+             [manip](auto&& s) { return manip->getter(s); });
+
+    node->add_subcommand("get");
+    node->add_subcommand("set");
+    node->add_subcommand("info");
+
+    if(config->attribute()["default"].is_boolean()) {
+      
+    }
+  }
 }
 
 void initialize_with_basic_commands(if_terminal* ref) {

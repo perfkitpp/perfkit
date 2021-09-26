@@ -134,10 +134,10 @@ class config_registry {
 
 namespace _attr_flag {
 enum ty : uint64_t {
-  has_min      = 0x01,
-  has_max      = 0x02,
-  has_validate = 0x04,
-  has_one_of   = 0x08,
+  has_min      = 0x01 << 0,
+  has_max      = 0x01 << 1,
+  has_validate = 0x01 << 2,
+  has_one_of   = 0x01 << 3,
 };
 
 }
