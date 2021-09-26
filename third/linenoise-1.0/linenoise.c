@@ -131,6 +131,7 @@ static char *supported_term[]   = {
 
 static linenoiseCompletionCallback *completionCallback = NULL;
 
+int linenoiseNumTermCols = 80;
 static struct termios orig_termios; /* In order to restore at exit.*/
 static int rawmode           = 0;   /* For atexit() function to check if restore is needed*/
 static int mlmode            = 0;   /* Multi line mode. Default is single line. */
@@ -779,11 +780,12 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
   l.buflen = buflen;
   l.prompt = prompt;
   l.plen   = strlen(prompt);
-  l.oldpos = l.pos = 0;
-  l.len            = 0;
-  l.cols           = getColumns(stdin_fd, stdout_fd);
-  l.maxrows        = 0;
-  l.history_index  = 0;
+  l.oldpos = l.pos     = 0;
+  l.len                = 0;
+  l.cols               = getColumns(stdin_fd, stdout_fd);
+  linenoiseNumTermCols = l.cols;
+  l.maxrows            = 0;
+  l.history_index      = 0;
 
   /* Buffer starts empty. */
   l.buf[0] = '\0';

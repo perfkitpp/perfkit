@@ -45,6 +45,8 @@ extern "C" {
 
 #include <stddef.h>
 
+extern int linenoiseNumTermCols;
+
 typedef struct linenoiseCompletions {
   size_t len;
   char **cvec;

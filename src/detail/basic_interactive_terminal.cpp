@@ -135,3 +135,13 @@ void basic_interactive_terminal::push_command(std::string_view command) {
 void basic_interactive_terminal::output(std::string_view str, color color) {
   ::fwrite(str.data(), str.size(), 1, stdout);
 }
+
+bool basic_interactive_terminal::get(std::string_view key, double *out) {
+  if (key == "output-width") {
+    *out = linenoiseNumTermCols + 1e-4;
+  } else {
+    return if_terminal::get(key, out);
+  }
+
+  return true;
+}
