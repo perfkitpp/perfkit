@@ -49,12 +49,16 @@ perfkit::basic_interactive_terminal::fetch_command(
 
   auto cmd = _cmd.get();
   if (cmd.empty() && !_cmd_history.empty()) {
-    write("{:5}  {}\n"_fmt(_cmd_counter, _cmd_history.back()) / 0, {}, {});
+    write("{:5}  !{}\n"_fmt(_cmd_counter, _cmd_history.back()) / 0, {}, {});
     cmd = _cmd_history.back();
   } else if (cmd.empty()) {
     return {};
   } else {
-    if (cmd != _cmd_history.back()) { _cmd_history.rotate(cmd); }
+    bool is_history = cmd.front() == '!';
+
+    if (!is_history && (_cmd_history.empty() || cmd != _cmd_history.back())) {
+      _cmd_history.rotate(cmd);
+    }
     ++_cmd_counter;
   }
 
@@ -117,7 +121,7 @@ basic_interactive_terminal::basic_interactive_terminal() {
               }
 
               if (s != _cmd_history.back()) {
-                _cmd_history.rotate(s);
+                _cmd_history.rotate("!"s.append(s));
               }
 
               basic_interactive_terminal::write("!{}\n"_fmt(s) / 0, {}, {});
