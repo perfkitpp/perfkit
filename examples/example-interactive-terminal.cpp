@@ -8,10 +8,13 @@
 using namespace std::literals;
 
 int main(void) {
+  perfkit::glog()->set_level(spdlog::level::trace);
+
   auto term = perfkit::create_basic_interactive_terminal();
   perfkit::terminal::initialize_with_basic_commands(term.get());
 
   spdlog::info("create");
+  spdlog::set_level(spdlog::level::trace);
 
   for (;;) {
     auto cmd = term->fetch_command(1000ms);

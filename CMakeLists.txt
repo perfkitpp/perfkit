@@ -96,6 +96,17 @@ target_link_libraries(
         range-v3::range-v3
 )
 
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    message("enabling debugging log statements ...")
+    target_compile_definitions(
+            ${PROJECT_NAME}
+
+            PUBLIC
+            -DSPDLOG_ACTIVE_LEVEL=0
+    )
+endif ()
+
+
 if (UNIX)
     target_link_libraries(
             ${PROJECT_NAME}

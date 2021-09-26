@@ -133,7 +133,14 @@ void basic_interactive_terminal::push_command(std::string_view command) {
 }
 
 void basic_interactive_terminal::output(std::string_view str, color color) {
-  ::fwrite(str.data(), str.size(), 1, stdout);
+  for (auto ch : str) {
+    if (ch == '\n') {
+      fputs("\r\n", stdout);
+    } else {
+      fputc(ch, stdout);
+    }
+  }
+  fflush(stdout);
 }
 
 bool basic_interactive_terminal::get(std::string_view key, double *out) {

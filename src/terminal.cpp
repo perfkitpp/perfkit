@@ -151,51 +151,77 @@ void register_trace_manip_command(if_terminal* ref, std::string_view cmd) {
 class _config_manip {
  public:
   _config_manip(if_terminal* ref, config_ptr pt)
-          : _conf(pt) {}
+          : _ref(ref), _conf(pt) {}
 
   bool get(args_view) {
-    spdlog::info("get");
+
+
     return false;
   }
 
   bool set(args_view) {
-    spdlog::info("set");
-
     return false;
   }
 
   bool info(args_view) {
-    spdlog::info("info");
-
     return false;
   }
 
   bool toggle(args_view) {
-    spdlog::info("toggle");
-
     return false;
   }
 
  private:
+  if_terminal* _ref;
   config_ptr _conf;
 };
 
 class _config_category_manip {
  public:
-  explicit _config_category_manip(std::string s)
-          : _category(std::move(s)) {
+  explicit _config_category_manip(if_terminal* ref, std::string display, int depth)
+          : _ref{ref}
+          , _category{std::move(display).substr(1).append("|")}
+          , _depth{depth} {
+    ranges::replace(_category, '.', '|');
   }
 
   bool operator()(args_view) {
     // list all configurations belong to this category.
     using namespace ranges;
-    auto it = config_registry::all().lower_bound(_category);
-    
-    return false;
+    auto all = &config_registry::all();
+
+    std::string buf;
+    auto apndstr = [&buf](auto&& fmt, auto&&... args) {
+      fmt::format_to(back_inserter(buf), fmt, std::forward<decltype(args)>(args)...);
+    };
+
+    // header
+    {
+      double width = 40;
+      _ref->get("output-width", &width);
+
+      apndstr("{:-<{}}\n", "   "s.append(_category).append(" "), (int)width - 3);
+    }
+
+    // during string begins with this category name ...
+    for (const auto& [_, conf] : *all) {
+      if (conf->display_key().find(_category) != 0) { continue; }
+
+      auto depth = conf->tokenized_display_key().size();
+      auto name  = conf->display_key().substr(_category.size());
+
+      apndstr("   - {0:{1}}{2} = {3}\n",
+              ' ', (depth - _depth) * 0, name, conf->serialize().dump());
+    }
+
+    _ref->output(buf);
+    return true;
   }
 
  private:
+  if_terminal* _ref;
   std::string _category;
+  int _depth;
 };
 
 void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
@@ -219,23 +245,30 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
 
     size_t category_len = key.size();
     (key.empty() ? key : key.append(".")).append(hierarchy.back());
-    auto category_key = "*"s.append(std::string_view{key}.substr(0, category_len));
+    auto category_match = "*"s.append(std::string_view{key}.substr(0, category_len));
 
     // add category command
-    if (!category_key.empty() && !node_conf->find_subcommand(category_key)) {
-      auto manip    = std::make_shared<_config_category_manip>(std::string{category_key});
+    if (!category_match.empty() && !node_conf->find_subcommand(category_match)) {
+      auto category_name = hierarchy.end()[-2];
+
+      auto manip = std::make_shared<_config_category_manip>(
+              ref,
+              std::string{category_match},
+              hierarchy.size() - 1);
+
       auto node_cat = node_conf->add_subcommand(
-              category_key,
+              category_match,
               [=](auto&& tok) { return (*manip)(tok); });
     }
 
+    // add manipulation commands
     auto manip = std::make_shared<_config_manip>(ref, config);
     auto node  = node_conf->add_subcommand(
              key,
              [=](auto&& s) { return manip->get(s); });
 
     node->add_subcommand("set", [=](auto&& s) { return manip->set(s); });
-    node->add_subcommand("info", [=](auto&& s) { return manip->info(s); });
+    node->add_subcommand("detail", [=](auto&& s) { return manip->info(s); });
 
     if (config->attribute()["default"].is_boolean()) {
       node->add_subcommand("toggle", [=](auto&& s) { return manip->toggle(s); });

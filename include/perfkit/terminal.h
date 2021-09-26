@@ -106,6 +106,8 @@ void register_conffile_io_commands(
  *      <cmd> <config>
  *      <cmd> <config> set [values...]
  *      <cmd> <config:bool> toggle
+ *      <cmd> <config:bool> detail
+ *      <cmd> *<category-name>
  *
  */
 void register_config_manip_command(
@@ -120,8 +122,8 @@ void register_config_manip_command(
  *
  * @details
  *
- *      <cmd> get <trace root>
- *      <cmd> subscribe <trace>
+ *      <cmd> <trace root> get
+ *      <cmd> <trace> subscribe
  */
 void register_trace_manip_command(
         if_terminal* ref,
