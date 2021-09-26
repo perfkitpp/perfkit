@@ -55,12 +55,14 @@ class registry {
      * @param cmd A command token, which must not contain any space character.
      * @param handler Command invocation handler
      * @param suggest Autocomplete suggest handler.
+     * @param name_constant Disable renaming of this command.
      * @return nullptr if given command is invalid.
      */
     perfkit::commands::registry::node* add_subcommand(
             std::string_view cmd,
             handler_fn handler              = {},
-            autocomplete_suggest_fn suggest = {});
+            autocomplete_suggest_fn suggest = {},
+            bool name_constant              = false);
 
     /**
      * Find subcommand of current node.
@@ -129,6 +131,11 @@ class registry {
      */
     bool invoke(array_view<std::string_view> full_tokens);
 
+    /**
+     * @return Parent node handle.
+     */
+    node* parent() const { return _parent; }
+
    private:
     bool _check_name_exist(std::string_view) const noexcept;
     bool _is_interface() const noexcept { return !_invoke; }
@@ -137,8 +144,11 @@ class registry {
     std::map<std::string const, node, std::less<>> _subcommands;
     std::map<std::string const, std::string const, std::less<>> _aliases;
 
+    node* _parent;
+
     handler_fn _invoke;
     autocomplete_suggest_fn _suggest;
+    bool _constant_name = {};
   };
 
  public:

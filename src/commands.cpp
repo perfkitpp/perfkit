@@ -24,7 +24,8 @@ const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 perfkit::commands::registry::node* perfkit::commands::registry::node::add_subcommand(
         std::string_view cmd,
         handler_fn handler,
-        autocomplete_suggest_fn suggest) {
+        autocomplete_suggest_fn suggest,
+        bool name_constant) {
   if (_check_name_exist(cmd)) {
     glog()->error("command name [{}] already exists as command or token.", cmd);
     throw command_already_exist_exception{};
@@ -36,9 +37,11 @@ perfkit::commands::registry::node* perfkit::commands::registry::node::add_subcom
     throw command_name_invalid_exception{};
   }
 
-  auto& subcmd    = _subcommands[std::string(cmd)];
-  subcmd._invoke  = std::move(handler);
-  subcmd._suggest = std::move(suggest);
+  auto& subcmd          = _subcommands[std::string(cmd)];
+  subcmd._invoke        = std::move(handler);
+  subcmd._suggest       = std::move(suggest);
+  subcmd._constant_name = name_constant;
+  subcmd._parent        = this;
 
   return &subcmd;
 }
@@ -242,6 +245,10 @@ bool perfkit::commands::registry::node::rename_subcommand(std::string_view from,
   }
 
   if (auto it1 = _subcommands.find(from); it1 != _subcommands.end()) {
+    if (it1->second._constant_name) {
+      glog()->error("subcommand rename failed; node name '{}' is protected.");
+      return false;
+    }
     _subcommands.try_emplace(std::string{to}, std::move(it1->second));
     _subcommands.erase(it1);
   } else if (auto it2 = _aliases.find(from); it2 != _aliases.end()) {
