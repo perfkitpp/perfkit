@@ -32,6 +32,7 @@ class basic_interactive_terminal : public if_terminal {
   std::shared_ptr<spdlog::sinks::sink> _sink;
 
   std::future<std::string> _cmd;
+  std::string _cmd_latest;
 
   std::mutex _cmd_queue_lock;
   std::list<std::string> _cmd_queued;

@@ -43,7 +43,11 @@ perfkit::basic_interactive_terminal::fetch_command(
     return {};
   }
 
-  return _cmd.get();
+  auto cmd = _cmd.get();
+  if (cmd.empty()) { return _cmd_latest; }
+
+  _cmd_latest = cmd;
+  return cmd;
 }
 
 basic_interactive_terminal::basic_interactive_terminal() {
