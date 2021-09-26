@@ -71,19 +71,17 @@ perfkit::commands::registry::node const* perfkit::commands::registry::node::find
   // find initial and unique match ...
   node const* subcmd = {};
   {
-    auto _keys = _subcommands | views::keys;
-    auto it    = lower_bound(_keys, cmd_or_alias);
-    for (; it != _keys.end() && it->find(cmd_or_alias) == 0; ++it) {
+    auto it = _subcommands.lower_bound(cmd_or_alias);
+    for (; it != _subcommands.end() && it->first.find(cmd_or_alias) == 0; ++it) {
       if (subcmd) { return nullptr; }
-      subcmd = find_subcommand(*it);
+      subcmd = find_subcommand(it->first);
     }
   }
   {
-    auto _keys = _aliases | views::keys;
-    auto it    = lower_bound(_keys, cmd_or_alias);
-    for (; it != _keys.end() && it->find(cmd_or_alias) == 0; ++it) {
+    auto it = _aliases.lower_bound(cmd_or_alias);
+    for (; it != _aliases.end() && it->first.find(cmd_or_alias) == 0; ++it) {
       if (subcmd) { return nullptr; }
-      subcmd = find_subcommand(*it);
+      subcmd = find_subcommand(it->first);
     }
   }
 
@@ -152,7 +150,7 @@ std::string perfkit::commands::registry::node::suggest(
         int* target_token_index,
         bool* out_has_unique_match) const {
   using namespace ranges;
-  std::set<std::string> user_candidates;
+  string_set user_candidates;
 
   if (full_tokens.empty()) {
     out_candidates |= actions::push_back(_subcommands | views::keys);
@@ -184,20 +182,24 @@ std::string perfkit::commands::registry::node::suggest(
   //
   // note: maps are already sorted, thus one don't need to iterate all elements, but
   // simply find lower bound then iterate until meet one doesn't start with compared.
-  auto filter_starts_with = [&](auto&& keys, auto& compare, bool do_move = false) {
-    for (auto it = lower_bound(keys, compare);
-         it != keys.end() && it->find(compare) == 0;
+  auto filter_starts_with = [&](auto&& map, auto& compare) {
+    for (auto it = map.lower_bound(compare);
+         it != map.end() && it->first.find(compare) == 0;
          ++it) {
-      do_move ? (out_candidates.push_back(*it), 0) : (out_candidates.push_back(std::move(*it)), 0);
+      out_candidates.push_back(it->first);
     }
   };
 
-  filter_starts_with(_subcommands | views::keys, exec);
-  filter_starts_with(_aliases | views::keys, exec);
+  filter_starts_with(_subcommands, exec);
+  filter_starts_with(_aliases, exec);
 
   if (_suggest) {
     _suggest(full_tokens, user_candidates);
-    filter_starts_with(user_candidates, exec, true);
+    for (auto it = user_candidates.lower_bound(exec);
+         it != user_candidates.end() && it->find(exec) == 0;
+         ++it) {
+      out_candidates.push_back(std::move(*it));
+    }
   }
 
   if (out_candidates.empty() == false) {

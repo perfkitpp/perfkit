@@ -41,7 +41,7 @@ using handler_fn = std::function<bool(args_view full_tokens)>;
  * When this handler is called, out_candidates parameter will hold initial
  * autocomplete list consist of available commands and aliases.
  */
-using string_set              = std::set<std::string>;
+using string_set              = std::set<std::string, std::less<>>;
 using autocomplete_suggest_fn = std::function<void(args_view hint, string_set& candidates)>;
 
 class registry {
