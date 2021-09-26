@@ -93,7 +93,7 @@ void basic_interactive_terminal::_register_autocomplete() {
     auto rg = locked_command_registry.load()->root();
 
     std::string str = buf;
-    auto srclen     = strlen(buf);
+    auto srclen     = str.size();
     std::vector<std::string_view> tokens;
     std::vector<commands::stroffset> offsets;
     std::vector<std::string> suggests;
@@ -102,7 +102,9 @@ void basic_interactive_terminal::_register_autocomplete() {
 
     int target_token = 0;
     bool has_unique_match;
-    rg->suggest(tokens, suggests, &target_token, &has_unique_match);
+    rg->suggest(tokens, suggests,
+                srclen > 0 && buf[srclen - 1] == ' ',
+                &target_token, &has_unique_match);
 
     if (tokens.empty() == false) {
       if (target_token < tokens.size()) {

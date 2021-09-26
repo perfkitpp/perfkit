@@ -146,8 +146,9 @@ bool check_unique_prefix(std::string_view cmp, Rng_&& candidates) {
 }  // namespace
 
 std::string perfkit::commands::registry::node::suggest(
-        array_view<std::string_view> full_tokens,
+        perfkit::array_view<std::string_view> full_tokens,
         std::vector<std::string>& out_candidates,
+        bool space_after_last_token,
         int* target_token_index,
         bool* out_has_unique_match) const {
   using namespace ranges;
@@ -180,6 +181,7 @@ std::string perfkit::commands::registry::node::suggest(
       target_token_index && ++*target_token_index;
       return subcmd->suggest(full_tokens.subspan(1),
                              out_candidates,
+                             space_after_last_token,
                              target_token_index,
                              out_has_unique_match);
     }
@@ -224,11 +226,14 @@ std::string perfkit::commands::registry::node::suggest(
     bool is_unique_match = check_unique_prefix(sharing, out_candidates);
     out_has_unique_match && (*out_has_unique_match = is_unique_match);
 
-    if (node const* subcmd = {}; is_unique_match
-                                 && (subcmd = find_subcommand(sharing))) {
+    if (node const* subcmd = {}; (space_after_last_token || is_unique_match)
+                                 && (subcmd = find_subcommand(sharing))
+                                 && _check_name_exist(exec)) {
+      out_candidates.clear();
       target_token_index && ++*target_token_index;
       return subcmd->suggest(full_tokens.subspan(1),
                              out_candidates,
+                             space_after_last_token,
                              target_token_index,
                              out_has_unique_match);
     }

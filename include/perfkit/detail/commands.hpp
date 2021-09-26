@@ -121,8 +121,9 @@ class registry {
      * @return Common parts of given suggestions, which is used to smart autocomplete
      */
     std::string suggest(
-            array_view<std::string_view> full_tokens,
+            perfkit::array_view<std::string_view> full_tokens,
             std::vector<std::string>& out_candidates,
+            bool space_after_last_token,
             int* target_token_index    = nullptr,
             bool* out_has_unique_match = nullptr) const;
 

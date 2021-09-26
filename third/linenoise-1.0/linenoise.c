@@ -372,7 +372,6 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
 
   if (lc.len == 0) {
     linenoiseBeep();
-    printf("no candidate. beep.\r\n");
   } else {
     int fd = ls->ofd;
 
@@ -411,7 +410,6 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
 
     // if there was no change in string, it means just tab was pressed twice.
     // dump active candidates.
-    printf("beep: word_pos = %d, len = %lu ncommon = %d\r\n", word_pos, ls->len, ncommon);
 
     if (word_pos > ls->len || ls->len - word_pos == ncommon) {
       // pretty draw
@@ -433,7 +431,6 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
 
     if (word_pos + ncommon > ls->buflen || (ncommon == 0 && ls->pos == 0)) {
       linenoiseBeep();
-      printf("beep: word_pos = %d, pos = %lu ncommon = %d\r\n", word_pos, ls->pos, ncommon);
     } else if (ncommon == 0) {
       ls->buf[ls->len]             = ' ';
       ls->buf[ls->pos = ++ls->len] = 0;
@@ -445,8 +442,6 @@ static int completeLine(struct linenoiseState *ls, char const *prompt) {
 
       strncpy(ls->buf + word_pos, lc.cvec[0], ncommon);
       ls->buf[ls->pos] = 0;
-
-      printf("word_pos = %d, pos = %lu ncommon = %d\r\n", word_pos, ls->pos, ncommon);
     }
 
     refreshLine(ls);
