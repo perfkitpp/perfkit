@@ -92,6 +92,16 @@ class format_context {
   char const* const _fmt = {};
 };
 
+template <typename Str_, typename... Args_>
+auto&& operator<(Str_&& str, format_context::_proxy<Args_...>&& prx) {
+  return prx.operator>(std::forward<Str_>(str));
+}
+
+template <typename Str_, typename... Args_>
+auto&& operator<<(Str_&& str, format_context::_proxy<Args_...>&& prx) {
+  return prx.operator>>(std::forward<Str_>(str));
+}
+
 }  // namespace util
 
 inline namespace literals {
