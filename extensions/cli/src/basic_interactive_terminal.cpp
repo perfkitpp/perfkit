@@ -192,7 +192,15 @@ void basic_interactive_terminal::_register_autocomplete() {
       }
     }
 
-    for (const auto &suggest : suggests) {
+    std::string suggest;
+    for (const auto &suggest_src : suggests) {
+      suggest = suggest_src;
+
+      // escape all '"'s
+      for (auto it = suggest.begin(); it != suggest.end(); ++it) {
+        if (*it == '"') { it = suggest.insert(it, '\\'), ++it; }
+      }
+
       if (suggest.find(' ') != ~size_t{}) {  // check
         linenoiseAddCompletion(lc, "\""s.append(suggest).append("\"").c_str());
       } else {

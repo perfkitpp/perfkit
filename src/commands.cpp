@@ -326,7 +326,7 @@ void perfkit::commands::tokenize_by_argv_rule(
 
     // correct escapes
     std::string str = src.substr(position, length);
-    const static std::regex rg_escape{R"(\\([ \\]))"};
+    const static std::regex rg_escape{R"(\\([ \\"']))"};
 
     auto end = std::regex_replace(str.begin(), str.begin(), str.end(), rg_escape, "$1");
     str.resize(end - str.begin());
@@ -343,6 +343,7 @@ bool perfkit::commands::registry::invoke_command(std::string command) {
 
   std::vector<std::string_view> tokens;
   tokenize_by_argv_rule(&command, tokens, nullptr);
+  glog()->trace("invoking as tokens: {}", tokens);
 
   return root()->invoke(tokens);
 }

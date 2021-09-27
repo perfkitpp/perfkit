@@ -181,7 +181,17 @@ class _config_manip {
       return false;
     }
 
-    return false;
+    try {
+      _conf->request_modify(nlohmann::json::parse(tok[0].begin(), tok[0].end()));
+    } catch (nlohmann::json::parse_error& e) {
+      SPDLOG_LOGGER_ERROR(glog(), "parse error: {}", e.what());
+      return false;
+    }
+    return true;
+  }
+
+  void set_suggest(string_set& s) {
+    s.insert(_conf->serialize().dump());
   }
 
   bool info(args_view) {
@@ -189,11 +199,11 @@ class _config_manip {
     buf.reserve(1024);
 
     buf.append("\n");
-    buf << "name       > {}\n"_fmt % _conf->display_key();
-    buf << "key        > {}\n"_fmt % _conf->full_key();
-    buf << "description> {}\n"_fmt % _conf->description();
-    buf << "attributes > {}\n"_fmt % _conf->attribute().dump(2);
-    buf << "value      > {}\n"_fmt % _conf->serialize().dump(2);
+    buf << "<name        > {}\n"_fmt % _conf->display_key();
+    buf << "<key         > {}\n"_fmt % _conf->full_key();
+    buf << "<description > {}\n"_fmt % _conf->description();
+    buf << "<attributes  > {}\n"_fmt % _conf->attribute().dump(2);
+    buf << "<value       > {}\n"_fmt % _conf->serialize().dump(2);
 
     _ref->write(buf);
     return true;
@@ -296,8 +306,13 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
              key,
              [=](auto&& s) { return manip->get(s); });
 
-    node->add_subcommand("set", [=](auto&& s) { return manip->set(s); });
-    node->add_subcommand("detail", [=](auto&& s) { return manip->info(s); });
+    node->add_subcommand(
+            "set",
+            [=](auto&& s) { return manip->set(s); },
+            [=](auto&&, auto&& s) { manip->set_suggest(s); });
+    node->add_subcommand(
+            "detail",
+            [=](auto&& s) { return manip->info(s); });
 
     if (config->attribute()["default"].is_boolean()) {
       node->add_subcommand("toggle", [=](auto&& s) { return manip->toggle(s); });
