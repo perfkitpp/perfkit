@@ -44,12 +44,12 @@ class tracer_instance_browser : public ComponentBase {
     if (_is_fetching) {
       return vbox(
               separator(sep),
-              hbox(title | color(Color::DarkGreen),
+              hbox(title | ftxui::color(Color::DarkGreen),
                    filler(),
-                   text(std::to_string(_latest_fence)) | color(Color::GrayDark)),
+                   text(std::to_string(_latest_fence)) | ftxui::color(Color::GrayDark)),
               (_outer->Render() | flex));
     } else {
-      return vbox(separator(sep), title | color(Color::GrayDark));
+      return vbox(separator(sep), title | ftxui::color(Color::GrayDark));
     }
   }
 
@@ -67,7 +67,7 @@ class tracer_instance_browser : public ComponentBase {
       }
 
       if (!_async_result.valid() && _is_fetching) {
-        _async_result = _target->async_fetch_request();
+        _target->async_fetch_request(&_async_result);
       }
 
       // Increase poll index. This is used to visualize spinner
@@ -107,29 +107,29 @@ class tracer_instance_browser : public ComponentBase {
       auto value = text(_c_value);
 
       if (_data.fence < _owner->_latest_fence) {
-        name = name | color(Color::GrayDark);
+        name = name | ftxui::color(Color::GrayDark);
       } else if (_data.data.index() == 0) {
-        name = name | color(Color::Cyan) | bold;
+        name = name | ftxui::color(Color::Cyan) | bold;
       } else {
         //        name = name ;
       }
 
       switch (_data.data.index()) {
         case 0:  //<clock_type::duration,
-          value = hbox(value | color(Color::Violet), text(" [ms]") | dim);
+          value = hbox(value | ftxui::color(Color::Violet), text(" [ms]") | dim);
           break;
 
         case 1:  // int64_t,
         case 2:  // double,
-          value = value | color(Color::GreenLight);
+          value = value | ftxui::color(Color::GreenLight);
           break;
 
         case 4:  // bool,
-          value = value | color(Color::BlueLight);
+          value = value | ftxui::color(Color::BlueLight);
           break;
 
         case 3:  // std::string,
-          value = value | color(Color::Yellow);
+          value = value | ftxui::color(Color::Yellow);
           break;
 
         case 5:  // std::any;
@@ -145,7 +145,7 @@ class tracer_instance_browser : public ComponentBase {
       auto ret = hbox(text(std::string{}.append(_data.hierarchy.size() * 2, ' ')),
                       _control_toggle->Render(),
                       text(" "), (_data.subscribing() ? hrange | inverted : hrange) | flex)
-                 | flex;
+               | flex;
       return ret;
     }
 

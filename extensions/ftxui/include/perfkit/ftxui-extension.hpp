@@ -4,40 +4,20 @@
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
-#include <perfkit/detail/fwd.hpp>
-
 #include <perfkit/detail/array_view.hxx>
 #include <perfkit/detail/circular_queue.hxx>
+#include <perfkit/detail/fwd.hpp>
+#include <perfkit/terminal.h>
 
 namespace ftxui {
 class ScreenInteractive;
 };
 
 namespace perfkit_ftxui {
+using perfkit::if_subscriber;
 
 using namespace std::literals;
 static inline const auto EVENT_POLL = ftxui::Event::Special("POLL");
-
-class if_subscriber {
- public:
-  struct update_param_type {
-    std::string_view block_name;
-
-    uint64_t hash = {};
-    perfkit::array_view<std::string_view> hierarchy;
-    std::string_view name;
-  };
-
- public:
-  virtual ~if_subscriber() = default;
-
-  virtual bool on_update(
-          update_param_type const& param_type,
-          perfkit::trace_variant_type const& value)
-          = 0;
-
-  virtual void on_end(update_param_type const& param_type) = 0;
-};
 
 ftxui::Component config_browser();
 ftxui::Component trace_browser(std::shared_ptr<if_subscriber> m);

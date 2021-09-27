@@ -69,29 +69,29 @@ class config_node_builder {
 
         switch (js.type()) {
           case nlohmann::detail::value_t::null:
-            return color(Color::Red, text("NULL"));
+            return ftxui::color(Color::Red, text("NULL"));
           case nlohmann::detail::value_t::discarded:
-            return color(Color::Red, text("--INVALID--"));
+            return ftxui::color(Color::Red, text("--INVALID--"));
           case nlohmann::detail::value_t::object:
-            return color(Color::Gold1, text(js.dump()));
+            return ftxui::color(Color::Gold1, text(js.dump()));
           case nlohmann::detail::value_t::array:
-            return color(Color::DarkViolet, text(js.dump()));
+            return ftxui::color(Color::DarkViolet, text(js.dump()));
           case nlohmann::detail::value_t::string:
-            return color(Color::SandyBrown, text(js.dump()));
+            return ftxui::color(Color::SandyBrown, text(js.dump()));
           case nlohmann::detail::value_t::boolean:
-            return color(Color::LightSteelBlue, text(js.dump()));
+            return ftxui::color(Color::LightSteelBlue, text(js.dump()));
           case nlohmann::detail::value_t::number_integer:
           case nlohmann::detail::value_t::number_float:
           case nlohmann::detail::value_t::number_unsigned:
           case nlohmann::detail::value_t::binary:
-            return color(Color::LightGreen, text(js.dump()));
+            return ftxui::color(Color::LightGreen, text(js.dump()));
         }
 
         return text("content");
       };
     } else {
       auto cnt = count();
-      return [cnt] { return color(Color::GrayDark,
+      return [cnt] { return ftxui::color(Color::GrayDark,
                                   text(fmt::format("{} item{}", cnt, cnt > 1 ? "s" : ""))); };
     }
   }
@@ -175,7 +175,7 @@ class config_node_builder {
         label_cont->Add(Renderer(label, [label, deco = snode->second.decorator(),
                                          is_content = snode->second.is_content()] {
           auto label_render = label->Render();
-          if (is_content) { label_render = color(Color::Cyan, label_render); }
+          if (is_content) { label_render = ftxui::color(Color::Cyan, label_render); }
           return hbox(label_render | flex_grow, filler(), text(" "), deco() | flex_shrink);
         }));
 
@@ -216,7 +216,7 @@ class config_node_builder {
                                    key = text(fmt::format("\"{}\":", it.key())),
                                    inner_value] {
                                     return hbox(
-                                                   color(Color::Yellow, key),
+                                                   ftxui::color(Color::Yellow, key),
                                                    text(" {"), inner_value->Render(), text("}"))
                                            | flex;
                                   });
@@ -238,7 +238,7 @@ class config_node_builder {
                                    key = text(fmt::format("[{}]:", i)),
                                    inner_value] {
                                     return hbox(
-                                            color(Color::Violet, key),
+                                            ftxui::color(Color::Violet, key),
                                             text(" {"), inner_value->Render(), text("}"));
                                   });
             outer->Add(inner);
@@ -322,7 +322,7 @@ class config_node_builder {
     inner = Renderer(inner, [inner] { return inner->Render() | flex; });
 
     return Renderer(inner, [inner] {
-      return vbox(hbox(text(" "), inner->Render()), color(Color::Cyan, separator())) | flex;
+      return vbox(hbox(text(" "), inner->Render()), ftxui::color(Color::Cyan, separator())) | flex;
     });
   }
 

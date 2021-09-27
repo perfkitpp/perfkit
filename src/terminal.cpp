@@ -166,13 +166,16 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
 class _trace_manip {
  public:
   _trace_manip(if_terminal* ref, commands::registry::node* root) {
+    root->reset_suggest_handler(
+            [this](auto&&, auto&& s) { suggest(s); });
   }
 
   void help() const {
-    _ref->write("usage: <cmd> <trace repo> [<regex filter> [true|false]]\n");
+    _ref->write("usage: <cmd> <tracer> [<regex filter> [true|false]]\n");
   }
 
   void suggest(string_set& repos) {
+    // list of tracers
   }
 
   void dump_trace(std::string_view repo, std::string_view rgx_filter) {

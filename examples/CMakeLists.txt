@@ -32,20 +32,6 @@ target_link_libraries(
 
 # ======================================================================================================================
 if (perfkit_BUILD_FTXUI_EXTENSION)
-    # example-tui
-    add_executable(
-            example-tui
-
-            example-tui.cpp
-    )
-
-    target_link_libraries(
-            example-tui
-
-            PRIVATE
-            perfkit::ftxui
-            range-v3::range-v3
-    )
 
     # ex-ftxui-extension
     add_executable(
