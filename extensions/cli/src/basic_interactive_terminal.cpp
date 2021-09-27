@@ -186,7 +186,7 @@ void basic_interactive_terminal::_register_autocomplete() {
       } else {
         // matched all existing tokens, thus returned suggests are for next word.
         // return last position of string for next completion.
-        position = offsets.back().position + offsets.back().length;
+        position = offsets.back().position + offsets.back().length + has_unique_match;
 
         if (buf[position - 1] == '"') { position += 1; }
       }
