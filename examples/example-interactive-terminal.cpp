@@ -1,5 +1,6 @@
 #include <chrono>
 
+#include <perfkit/extension/cli.hpp>
 #include <perfkit/perfkit.h>
 #include <spdlog/spdlog.h>
 
@@ -10,7 +11,7 @@ using namespace std::literals;
 int main(void) {
   perfkit::glog()->set_level(spdlog::level::trace);
 
-  auto term = perfkit::create_basic_interactive_terminal();
+  auto term = perfkit::terminal::create_cli();
   perfkit::terminal::initialize_with_basic_commands(term.get());
 
   spdlog::info("create");

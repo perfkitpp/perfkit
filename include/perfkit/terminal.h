@@ -17,15 +17,6 @@ using std::chrono::milliseconds;
 /** An exception that is thrown when user requests program termination */
 struct termination : std::exception {};
 
-/** Basic commandline terminal */
-auto create_basic_interactive_terminal() -> std::shared_ptr<if_terminal>;
-
-/** Net provider terminal */
-auto create_net_provider_terminal(
-        std::string_view server_ip,
-        uint16_t server_port)
-        -> std::shared_ptr<if_terminal>;
-
 /**
  * Provides common user interface functionality for control purpose
  */

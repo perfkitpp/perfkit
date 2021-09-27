@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.16)
 project(perfkit-ftxui)
 
 option(perfkit_USE_BUNDLED_FTXUI "" ON)

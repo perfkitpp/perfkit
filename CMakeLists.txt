@@ -17,10 +17,6 @@ set(
         src/tracer.cpp
         src/terminal.cpp
         include/perfkit/detail/trace_future.hpp
-        src/detail/basic_interactive_terminal.cpp
-        src/detail/basic_interactive_terminal.hpp
-
-        third/linenoise-1.0/linenoise.c
 )
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
@@ -29,6 +25,7 @@ add_library(perfkit::core ALIAS ${PROJECT_NAME})
 # Configurations -------------------------------------------------------------------------------------------------------
 option(perfkit_BUILD_FTXUI_EXTENSION "" OFF)
 option(perfkit_BUILD_NET_CLIENT "" ON)
+option(perfkit_BUILD_CLI "" ON)
 option(perfkit_USE_BUNDLED_JSON "" ON)
 option(perfkit_BUILD_EXAMPLES "" OFF)
 
@@ -52,6 +49,26 @@ endif ()
 if (perfkit_BUILD_NET_CLIENT)
     message("Configuring NET CLIENT extension ...")
     add_subdirectory(extensions/net-provider/)
+endif ()
+
+if (perfkit_BUILD_CLI)
+    message("Configuring CLI extension ...")
+    add_subdirectory(extensions/cli/)
+
+    target_sources(
+            perfkit-cli
+
+            PRIVATE
+            third/linenoise-1.0/linenoise.c
+            third/linenoise-1.0/linenoise.h
+    )
+
+    target_include_directories(
+            perfkit-cli
+
+            PRIVATE
+            third/linenoise-1.0
+    )
 endif ()
 
 # Properties -----------------------------------------------------------------------------------------------------------

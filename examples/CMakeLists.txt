@@ -1,4 +1,6 @@
 set(TARGET_CONTEXT_NAME)
+
+# ======================================================================================================================
 add_executable(
         perfkit-automated-test
 
@@ -14,6 +16,7 @@ target_link_libraries(
         range-v3::range-v3
 )
 
+# ======================================================================================================================
 add_executable(
         example-interactive-terminal
 
@@ -24,9 +27,10 @@ target_link_libraries(
         example-interactive-terminal
 
         PRIVATE
-        perfkit::core
+        perfkit::cli
 )
 
+# ======================================================================================================================
 if (perfkit_BUILD_FTXUI_EXTENSION)
     # example-tui
     add_executable(

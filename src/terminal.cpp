@@ -14,14 +14,7 @@
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
-#include "detail/basic_interactive_terminal.hpp"
 using namespace std::literals;
-
-namespace perfkit {
-auto create_basic_interactive_terminal() -> std::shared_ptr<if_terminal> {
-  return std::make_shared<basic_interactive_terminal>();
-}
-}  // namespace perfkit
 
 namespace perfkit::terminal {
 using commands::args_view;
