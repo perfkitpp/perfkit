@@ -23,7 +23,7 @@ const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 
 perfkit::commands::registry::node* perfkit::commands::registry::node::add_subcommand(
         std::string cmd,
-        handler_fn handler,
+        invoke_fn handler,
         autocomplete_suggest_fn suggest,
         bool name_constant) {
   if (_check_name_exist(cmd)) {
@@ -259,7 +259,7 @@ bool perfkit::commands::registry::node::invoke(
   return false;
 }
 
-void perfkit::commands::registry::node::reset_handler(perfkit::commands::handler_fn&& fn) {
+void perfkit::commands::registry::node::reset_invoke_handler(perfkit::commands::invoke_fn&& fn) {
   _invoke = std::move(fn);
 }
 
@@ -290,6 +290,11 @@ bool perfkit::commands::registry::node::rename_subcommand(std::string_view from,
 void perfkit::commands::registry::node::clear() {
   _subcommands.clear();
   _aliases.clear();
+}
+
+void perfkit::commands::registry::node::reset_suggest_handler(
+        perfkit::commands::autocomplete_suggest_fn&& fn) {
+  _suggest = std::move(fn);
 }
 
 void perfkit::commands::tokenize_by_argv_rule(

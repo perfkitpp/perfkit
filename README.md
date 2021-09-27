@@ -1,7 +1,7 @@
 # C++17 PERFORMANCE BENCHMARK & CONFIGURATION KIT
 
-This library introduces comportable way to manage program config / real time performance analysis
-for any kind of c++ applications.
+This library introduces comportable way to manage program config / real time performance analysis for any kind of c++
+applications.
 
 # Usage
 
@@ -63,3 +63,8 @@ int main(void) {
 
 void some_function(double, int, std::string const&) {}
 ```
+
+# TODOs
+
+- [ ] Parse options from command line arguments
+    - `perfkit::config_registry::parse_args(std::list<std::string_view>*, bool consume_parsed, bool strict)`

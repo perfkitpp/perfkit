@@ -44,6 +44,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <stdint.h>
 
 extern int linenoiseNumTermCols;
 

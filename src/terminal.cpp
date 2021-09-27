@@ -7,6 +7,7 @@
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/detail/configs.hpp>
 #include <perfkit/detail/format.hxx>
+#include <perfkit/detail/tracer.hpp>
 #include <perfkit/terminal.h>
 #include <range/v3/algorithm.hpp>
 #include <range/v3/view.hpp>
@@ -162,7 +163,32 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
           fn_sugg);
 }
 
+class _trace_manip {
+ public:
+  _trace_manip(if_terminal* ref, commands::registry::node* root) {
+  }
+
+  void help() const {
+    _ref->write("usage: <cmd> <trace repo> [<regex filter> [true|false]]\n");
+  }
+
+  void suggest(string_set& repos) {
+  }
+
+  void dump_trace(std::string_view repo, std::string_view rgx_filter) {
+  }
+
+ private:
+  if_terminal* _ref;
+};
+
 void register_trace_manip_command(if_terminal* ref, std::string_view cmd) {
+  auto node = ref->commands()->root()->add_subcommand(std::string{cmd});
+  node->reset_invoke_handler(
+          [ptr = std::make_shared<_trace_manip>(ref, node)]  //
+          (auto&&) {
+            return ptr->help(), true;
+          });
 }
 
 class _config_manip {

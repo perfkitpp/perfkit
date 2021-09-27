@@ -17,8 +17,8 @@ auto has_value   = perfkit::configure(g_opts, "Has Value", 100).confirm();
 auto name_test_1 = perfkit::configure(g_opts, "-|   AA  | BB   |  +641    | CC", 100).confirm();
 auto name_test_2 = perfkit::configure(g_opts, "+561|-|    A A   | + 31411 |   B    B |  +641   |  C C", 100).confirm();
 
-PERFKIT_MESSAGE_BLOCK my_block{0, "hell, world"};
-PERFKIT_MESSAGE_BLOCK another_block{0, "hell, world2"};
+perfkit::tracer my_block{0, "hell, world"};
+perfkit::tracer another_block{0, "hell, world2"};
 
 TEST_SUITE_BEGIN("Basic Compilation Test");
 TEST_CASE("Create Options") {
