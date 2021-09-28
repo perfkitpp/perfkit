@@ -43,10 +43,10 @@ class _config_saveload_manager {
     namespace fs = std::filesystem;
 
     fs::path path;
-    if (!args.empty()) { path = args[0]; }
+    if (not args.empty()) { path = args[0]; }
     if (path.empty()) { path = "./"; }
 
-    if (!is_directory(path)) { path = path.parent_path(); }
+    if (not is_directory(path)) { path = path.parent_path(); }
     if (path.empty()) { path = "./"; }
 
     fs::directory_iterator it{path}, end{};
@@ -168,6 +168,8 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
 class _trace_manip {
  public:
   _trace_manip(if_terminal* ref, commands::registry::node* root) {
+    _ref = ref;
+    SPDLOG_LOGGER_TRACE(glog(), "REF PTR: {}", (void*)ref);
     root->reset_suggest_handler(
             [this](auto&&, auto&& s) { suggest(s); });
   }
@@ -238,17 +240,41 @@ class _trace_manip {
     fut.get().copy_sorted(result);
 
     using namespace ranges;
+    std::regex match{pattern};
     std::string output;
-    output << ""_fmt.s();
+    output << "\n"_fmt.s();
 
-    array_view<std::string_view> current_hierarchy;
-    std::string hierarchy_key;
-    for (const auto& item : result) {
-      if (item.hierarchy != current_hierarchy) {
-        current_hierarchy = item.hierarchy;
-        hierarchy_key     = item.hierarchy | views::join(".") | to<std::string>();
+    array_view<std::string_view> current_hierarchy = {} ;
+    std::string hierarchy_key, data_str, full_key;
+    for (auto& item : result) {
+      auto hierarchy = item.hierarchy.subspan(0, item.hierarchy.size() - 1);
+
+      full_key.clear();
+      for (auto c : item.hierarchy | views::join(".")) { full_key += c; }
+
+      if (not std::regex_match(full_key, match)) { continue; }
+      if (setter) { item.subscribe(*setter); }
+
+      bool hierarchy_changed = hierarchy != current_hierarchy;
+      if (hierarchy_changed) {
+        current_hierarchy = hierarchy;
+        hierarchy_key.clear();
+        for (auto c : hierarchy | views::join(".")) { hierarchy_key += c; }
+        if (not hierarchy_key.empty()) { hierarchy_key += '.'; }
       }
+
+      // append string
+      if (hierarchy_changed) {
+        output << "{}{}"_fmt % hierarchy_key % item.key;
+      } else {
+        output << "{:{}}{}"_fmt % "" % hierarchy_key.size() % item.key;
+      }
+
+      item.dump_data(data_str);
+      output << "{}= {}\n"_fmt % (item.subscribing() ? "(+) " : " ") % data_str;
     }
+
+    _ref->write(output);
   }
 
  private:
@@ -387,7 +413,7 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
     auto category_match = "*"s.append(std::string_view{key}.substr(0, category_len));
 
     // add category command
-    if (!category_match.empty() && !node_conf->find_subcommand(category_match)) {
+    if (not category_match.empty() && nullptr == node_conf->find_subcommand(category_match)) {
       auto category_name = hierarchy.end()[-2];
 
       auto manip = std::make_shared<_config_category_manip>(

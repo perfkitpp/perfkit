@@ -1,5 +1,6 @@
 #pragma once
 #include <perfkit/configs.h>
+#include <perfkit/traces.h>
 
 using namespace std::literals;
 
@@ -124,3 +125,29 @@ PERFKIT_CATEGORY(vlao22) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 PERFKIT_CATEGORY(vlao33) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 PERFKIT_CATEGORY(vlao44) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 PERFKIT_CATEGORY(vlao55) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
+
+perfkit::tracer trace_a{0, ".. Trace A"};
+perfkit::tracer trace_b{1, ".  Trace B"};
+
+void do_trace(size_t ic, std::string cmd) {
+  auto trc_root        = trace_a.fork("a,  b ,   c ,   d");
+  auto trc_b           = trace_b.fork("a,  b ,   c ,   d, e e    f,    g");
+  trc_b["placeholder"] = "vlvlvl";
+  trc_b["command"]     = "cmd";
+
+  auto timer                         = trc_root.timer("Some Timer");
+  trc_root["Value 0"]                = 3;
+  trc_root["Value 1"]                = *cfg::labels::foo;
+  trc_root["Value 2"]                = fmt::format("Hell, world! {}", *cfg::labels::foo);
+  trc_root["Value 3"]                = false;
+  trc_root["Value 3"]["Subvalue 0"]  = ic;
+  trc_root["Value 3"]["Subvalue GR"] = std::vector<int>{3, 4, 5};
+  trc_root["Value 3"]["Subvalue 1"]  = double(ic);
+  trc_root["Value 3"]["Subvalue 2"]  = !!(ic & 1);
+  trc_root["Value 4"]["Subvalue 3"]  = fmt::format("Hell, world! {}", ic);
+
+  auto r                            = trc_root["Value 5"];
+  trc_root["Value 5"]["Subvalue 0"] = ic;
+  if (r) { trc_root["Value 5"]["Subvalue 1 Cond"] = double(ic); }
+  trc_root["Value 5"]["Subvalue 2"] = !!(ic & 1);
+}
