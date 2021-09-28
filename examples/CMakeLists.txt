@@ -6,6 +6,7 @@ add_executable(
 
         automation.cpp
         automation-perfkit.cpp
+        automation-argparse.cpp
 )
 
 target_link_libraries(

@@ -54,6 +54,7 @@ class config_base {
   void serialize(std::function<void(nlohmann::json const&)> const&);
 
   nlohmann::json const& attribute() const noexcept { return _attribute; }
+  nlohmann::json const& default_value() const { return _attribute["default"]; }
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
 
@@ -106,6 +107,7 @@ class config_base {
 namespace configs {
 // clang-format off
 struct duplicated_flag_binding : std::logic_error { using std::logic_error::logic_error; };
+struct invalid_flag_name : std::logic_error { using std::logic_error::logic_error; };
 struct parse_error : std::runtime_error { using std::runtime_error::runtime_error; };
 struct parse_help : std::runtime_error { using std::runtime_error::runtime_error; };
 // clang-format on

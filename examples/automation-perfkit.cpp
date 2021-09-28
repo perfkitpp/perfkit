@@ -86,5 +86,3 @@ TEST_CASE("Command Name Verify") {
   CHECK(rt->add_subcommand("aewa ", [&](auto) -> bool { return true; }) == nullptr);
   CHECK(rt->add_subcommand(" aewa vcalf aerkl", [&](auto) -> bool { return true; }) == nullptr);
 }
-
-TEST_SUITE_END();

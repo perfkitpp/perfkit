@@ -255,9 +255,131 @@ void perfkit::configs::parse_args(int* argc, char*** argv, bool consume, bool ig
        *argv);
 }
 
+namespace perfkit::configs::_parsing {
+class if_state;
+using state_ptr = std::unique_ptr<if_state>;
+
+class if_state {
+ public:
+  virtual ~if_state()                                        = default;
+  virtual bool invoke(std::string_view tok, if_state** next) = 0;
+
+  template <typename Ty_, typename... Args_>
+  if_state* fork(if_state* return_state, Args_&&... args) {
+    auto ptr              = state_ptr{new Ty_{std::forward<Args_>(args)...}};
+    ptr->ignore_undefined = ignore_undefined;
+    ptr->_return          = return_state;
+    _child                = std::move(ptr);
+    return _child.get();
+  }
+
+ public:
+  bool ignore_undefined = false;
+
+ protected:
+  if_state* _return;
+  state_ptr _child;
+};
+
+config_ptr _retrieve(std::string_view name, bool ignore_undefined) {
+  auto it = _flags().find(name);
+  if (it != _flags().end()) { return it->second; }
+  if (!ignore_undefined) { throw invalid_flag_name{"flag not exist: {}"_fmt % name}; }
+  return {};
+}
+
+config_ptr _find_conf(char name, bool ignore_undefined) {
+  return _retrieve(std::string_view{&name, 1}, ignore_undefined);
+}
+
+class value_parse : public if_state {
+ public:
+  bool invoke(std::string_view tok, if_state** next) override {
+    return true;
+  }
+};
+
+class single_dash_parse : public if_state {
+ public:
+  bool invoke(std::string_view tok, if_state** next) override {
+    auto ch_first = tok[1];
+    if (config_ptr conf; ch_first != 'N'
+                         && tok.size() > 2
+                         && (conf = _find_conf(ch_first, ignore_undefined))
+                         && not conf->default_value().is_boolean()) {
+      return fork<value_parse>(_return)->invoke(tok.substr(1), next);
+    }
+
+    bool value = ch_first != 'N';
+    auto token = ch_first == 'N' ? tok.substr(2) : tok.substr(1);
+
+    if (token.empty()) { throw parse_error("invalid flag: {}"_fmt % tok); }
+
+    for (char ch : token) {
+      auto conf = _find_conf(ch, ignore_undefined);
+
+      if (conf == nullptr) { continue; }
+      if (not conf->default_value().is_boolean()) {
+        throw parse_error("flag {} is not boolean"_fmt % ch);
+      }
+
+      conf->request_modify(value);
+    }
+
+    *next = _return;
+    return true;
+  }
+};
+
+class double_dash_parse : public if_state {
+ public:
+  bool invoke(std::string_view tok, if_state** next) override {
+    return true;
+  }
+};
+
+class initial_state : public if_state {
+ public:
+  bool invoke(std::string_view tok, if_state** next) override {
+    if (tok.length() < 2) { return false; }
+    if (tok[0] != '-') { return false; }
+
+    if (tok[1] == '-') {
+      return fork<double_dash_parse>(this)->invoke(tok, next);
+    } else {
+      return fork<single_dash_parse>(this)->invoke(tok, next);
+    }
+  }
+};
+
+}  // namespace perfkit::configs::_parsing
+
 void perfkit::configs::parse_args(
         std::vector<std::string_view>* args, bool consume, bool ignore_undefined) {
-  
+  using namespace _parsing;
+
+  // Parsing Rule:
+  // --key=<value> --key <value> -k[value] -k=<value> positionals...
+  // --flag --no-flag -abcd -Nabcd
+  // 단일 '-' 플래그에서 아래 경우만 valid
+  // - 모든 문자가 boolean flag = true 값 포워드
+  // - 첫 문자가 N, 이후 문자가 모두 boolean flag = false 값 포워드
+  // - 첫 문자가 non-boolean 플래그 -> 이후 문자는 값으로 파싱
+  // - 첫 문자 boolean 플래그, 이후 문자 non-boolean 플래그면 에러
+  // 쌍 '--' 플래그에서
+  // -
+  // "--" 이후 토큰은 호출자에게 넘김 ...
+
+  state_ptr initial_state{new class initial_state};
+  initial_state->ignore_undefined = ignore_undefined;
+  if_state* state                 = initial_state.get();
+
+  for (auto it = (*args).begin(), end = (*args).end(); it != end; ++it) {
+    auto tok = *it;
+
+    if (state == initial_state.get() && tok == "--") { break; }
+    if (state->invoke(tok, &state) && consume) { args->erase(it--); }
+  }
 }
 
 perfkit::configs::flag_binding_table& perfkit::configs::_flags() noexcept {
