@@ -3,7 +3,7 @@
 #include <memory>
 #include <optional>
 
-#include <perfkit/detail/array_view.hxx>
+#include <perfkit/common/array_view.hxx>
 #include <perfkit/detail/color.hxx>
 #include <spdlog/fwd.h>
 

@@ -7,7 +7,7 @@
 #include <memory>
 #include <set>
 
-#include "perfkit/detail/array_view.hxx"
+#include "perfkit/common/array_view.hxx"
 
 namespace perfkit::commands {
 class registry;

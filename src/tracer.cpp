@@ -81,9 +81,9 @@ tracer::proxy tracer::fork(const std::string& n) {
                      _local_reused_memory.begin(),
                      [](std::pair<const uint64_t, _entity_ty> const& g) { return g.second.body; });
 
-      async_trace_result rs;
-      rs._mtx_access = &_sort_merge_lock;
-      rs._data       = &_local_reused_memory;
+      async_trace_result rs = {};
+      rs._mtx_access        = &_sort_merge_lock;
+      rs._data              = &_local_reused_memory;
       promise.set_value(rs);
 
       self->msg_future  = {};
@@ -194,8 +194,8 @@ auto compare_hierarchy(array_view<std::string_view> a, array_view<std::string_vi
 
   if (a.size() == b.size()) {
     return num_equals == a.size()
-                   ? hierarchy_compare_result::equal
-                   : hierarchy_compare_result::irrelevant;
+                 ? hierarchy_compare_result::equal
+                 : hierarchy_compare_result::irrelevant;
   }
   if (num_equals != a.size() && num_equals != b.size()) {
     return hierarchy_compare_result::irrelevant;
@@ -217,8 +217,8 @@ void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept {
             auto r_hcmp = compare_hierarchy(a.hierarchy, b.hierarchy);
             if (r_hcmp == hierarchy_compare_result::equal) {
               return a.fence == b.fence
-                             ? a.order < b.order
-                             : a.fence < b.fence;
+                           ? a.order < b.order
+                           : a.fence < b.fence;
             }
             if (r_hcmp == hierarchy_compare_result::irrelevant) {
               return a.order < b.order;

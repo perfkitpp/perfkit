@@ -2,11 +2,13 @@
 // Created by Seungwoo on 2021-09-25.
 //
 #include <filesystem>
+#include <regex>
 
+#include <perfkit/common/format.hxx>
 #include <perfkit/detail/base.hpp>
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/detail/configs.hpp>
-#include <perfkit/detail/format.hxx>
+#include <perfkit/detail/trace_future.hpp>
 #include <perfkit/detail/tracer.hpp>
 #include <perfkit/terminal.h>
 #include <range/v3/algorithm.hpp>
@@ -176,21 +178,90 @@ class _trace_manip {
 
   void suggest(string_set& repos) {
     // list of tracers
+    for (const auto& tracer : tracer::all()) { repos.insert(tracer->name()); }
   }
 
-  void dump_trace(std::string_view repo, std::string_view rgx_filter) {
+  bool invoke(args_view args) {
+    if (args.empty() || args.size() > 3) { return help(), false; }
+
+    if (_async.valid()) {
+      auto r_wait = _async.wait_for(200ms);
+
+      if (r_wait == std::future_status::timeout) {
+        SPDLOG_LOGGER_WARN(glog(), "previous trace lookup request is under progress ...");
+        return false;
+      } else if (r_wait == std::future_status::ready) {
+        _async.get();
+      } else {
+        throw std::logic_error("async operation must not be deffered.");
+      }
+    }
+
+    std::string pattern{".*"};
+    std::optional<bool> setter;
+
+    if (args.size() > 1) { pattern.assign(args[1].begin(), args[1].end()); }
+    if (args.size() > 2) {
+      args[2] == "true" && (setter = true) || args[2] == "false" && (setter = false);
+    }
+
+    using namespace ranges;
+    auto it = std::find_if(tracer::all().begin(),
+                           tracer::all().end(),
+                           [&](auto& p) { return p->name() == args[0]; });
+
+    if (it == tracer::all().end()) {
+      SPDLOG_LOGGER_ERROR(glog(), "name '{}' is not valid tracer name", args[0]);
+      return false;
+    }
+
+    _async = std::async(std::launch::async, [=] { _async_request(*it, pattern, setter); });
+    return true;
+  }
+
+ private:
+  void _async_request(tracer* ref, std::string pattern, std::optional<bool> setter) {
+    tracer::future_result fut;
+    ref->async_fetch_request(&fut);
+
+    if (fut.valid() == false) {
+      SPDLOG_LOGGER_ERROR(glog(), "tracer '{}' returned invalid fetch request result.", ref->name());
+      return;
+    }
+
+    if (fut.wait_for(10s) == std::future_status::timeout) {
+      SPDLOG_LOGGER_ERROR(glog(), "tracer '{}' update timeout", ref->name());
+      return;
+    }
+
+    tracer::fetched_traces result;
+    fut.get().copy_sorted(result);
+
+    using namespace ranges;
+    std::string output;
+    output << ""_fmt.s();
+
+    array_view<std::string_view> current_hierarchy;
+    std::string hierarchy_key;
+    for (const auto& item : result) {
+      if (item.hierarchy != current_hierarchy) {
+        current_hierarchy = item.hierarchy;
+        hierarchy_key     = item.hierarchy | views::join(".") | to<std::string>();
+      }
+    }
   }
 
  private:
   if_terminal* _ref;
+  std::future<void> _async;
 };
 
 void register_trace_manip_command(if_terminal* ref, std::string_view cmd) {
   auto node = ref->commands()->root()->add_subcommand(std::string{cmd});
   node->reset_invoke_handler(
           [ptr = std::make_shared<_trace_manip>(ref, node)]  //
-          (auto&&) {
-            return ptr->help(), true;
+          (auto&& args) {
+            return ptr->invoke(args);
           });
 }
 

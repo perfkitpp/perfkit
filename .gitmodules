@@ -1,3 +1,6 @@
 [submodule "third/FTXUI"]
 	path = third/FTXUI
 	url = git@github.com:kang-sw/FTXUI.git
+[submodule "include/perfkit/common"]
+	path = include/perfkit/common
+	url = git@github.com:kang-sw/cppheaders.git

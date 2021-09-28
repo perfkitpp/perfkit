@@ -14,7 +14,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "array_view.hxx"
+#include "perfkit/common/array_view.hxx"
 
 namespace perfkit {
 class config_registry;

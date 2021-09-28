@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include "array_view.hxx"
+#include "perfkit/common/array_view.hxx"
 
 namespace perfkit::trace {
 template <typename Ty_, size_t N_>

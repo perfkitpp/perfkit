@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <linenoise.h>
+#include <perfkit/common/format.hxx>
 #include <perfkit/detail/base.hpp>
-#include <perfkit/detail/format.hxx>
 #include <spdlog/logger.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>

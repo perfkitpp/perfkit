@@ -16,9 +16,9 @@
 
 #include <spdlog/fmt/fmt.h>
 
-#include "array_view.hxx"
 #include "interactive_image.hpp"
-#include "spinlock.hxx"
+#include "perfkit/common/array_view.hxx"
+#include "perfkit/common/spinlock.hxx"
 
 namespace perfkit {
 class tracer_future_result;

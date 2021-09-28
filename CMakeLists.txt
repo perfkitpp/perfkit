@@ -99,7 +99,7 @@ target_compile_definitions(
         ${PROJECT_NAME}
 
         PUBLIC
-        -DKANGSW_ARRAY_VIEW_NAMESPACE=perfkit
+        -DKANGSW_TEMPLATE_NAMESPACE=perfkit
         -DSPDLOG_COMPILED_LIB=1
 )
 

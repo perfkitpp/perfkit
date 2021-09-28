@@ -6,7 +6,7 @@
 #include <future>
 #include <list>
 
-#include <perfkit/detail/circular_queue.hxx>
+#include <perfkit/common/circular_queue.hxx>
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/terminal.h>
 
