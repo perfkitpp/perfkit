@@ -29,7 +29,9 @@ static std::vector<std::string> argset0{
         "pos3",
         "-P polu polu aa",
         "--polo=movdla kkwq nkkso",
-        "--vRuka", "alexeeeee"};
+        "--vRuka",
+        "alexeeeee",
+};
 
 static std::vector<char*> to_charpp(std::vector<std::string>& s) {
   using namespace ranges;

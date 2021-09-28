@@ -11,6 +11,7 @@
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/iota.hpp>
+#include <range/v3/view/map.hpp>
 #include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
 
@@ -87,7 +88,9 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
 
     for (auto& binding : bindings) {
       static std::regex match{R"RG(^(((?!no-)[^N-][\w-]*)|N[\w-]+))RG"};
-      if (!std::regex_match(binding, match) || binding.find_first_of(' ') != ~size_t{}) {
+      if (!std::regex_match(binding, match)
+          || binding.find_first_of(' ') != ~size_t{}
+          || binding == "help" || binding == "h") {
         throw configs::invalid_flag_name(
                 fmt::format("invalid flag name: {}", binding));
       }
@@ -398,11 +401,45 @@ class initial_state : public if_state {
     if (tok.length() < 2) { return false; }
     if (tok[0] != '-') { return false; }
 
+    if (tok == "-h" || tok == "--help") { _build_help(); }
+
     if (tok[1] == '-') {
       return fork<double_dash_parse>(this)->invoke(tok.substr(2), next);
     } else {
       return fork<single_dash_parse>(this)->invoke(tok.substr(1), next);
     }
+  }
+
+ private:
+  void _build_help() {
+    std::map<detail::config_base*, std::list<std::string_view>>
+            flag_mappings;
+
+    std::string str;
+
+    using namespace ranges;
+    str += "usage: <program> ";
+    for (const auto& [key, conf] : _flags()) {
+      flag_mappings[conf.get()].push_back(key);
+      str << "[{}{}{}] "_fmt
+                      % (key.size() == 1 ? "-" : "--")
+                      % key
+                      % (conf->default_value().is_boolean() ? ""
+                         : key.size() == 1                  ? "<value>"
+                                                            : "=<value>");
+    }
+
+    str += "args...";
+
+    str += "\n\n"_fmt.s();
+    for (const auto& [conf, keys] : flag_mappings) {
+      str << "---- {:-<40}\n"_fmt % ("{} "_fmt % conf->display_key()).string();
+      str += "  ";
+      for (auto& key : keys) { str << "{}{} "_fmt % (key.size() == 1 ? "-" : "--") % key; }
+      str << "\n    {}\n\n"_fmt % (conf->description().empty() ? "<no description>" : conf->description());
+    }
+
+    throw parse_help(std::move(str));
   }
 };
 
