@@ -18,13 +18,13 @@ target_link_libraries(
 
 # ======================================================================================================================
 add_executable(
-        example-interactive-terminal
+        example-cli
 
-        example-interactive-terminal.cpp
+        example-cli.cpp
 )
 
 target_link_libraries(
-        example-interactive-terminal
+        example-cli
 
         PRIVATE
         perfkit::cli

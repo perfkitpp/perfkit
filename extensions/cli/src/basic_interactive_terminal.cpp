@@ -48,7 +48,7 @@ perfkit::basic_interactive_terminal::fetch_command(
 
   auto cmd = _cmd.get();
   if (cmd.empty() && !_cmd_history.empty()) {
-    write("{:5}  !{}\n"_fmt(_cmd_counter, _cmd_history.back()) / 0, {}, {});
+    write("!{}\n"_fmt % _cmd_history.back() / 0, {}, {});
     cmd = _cmd_history.back();
   } else if (cmd.empty()) {
     return {};
