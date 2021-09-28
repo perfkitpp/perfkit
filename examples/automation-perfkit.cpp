@@ -64,7 +64,7 @@ TEST_CASE("Tokenize") {
 
   std::vector<std::string> compared(
           {"umai bong daesu",
-           "a", "alpha", "veta", "and there will \\\"be\\\' light", "mo\\'ve space over"});
+           "a", "alpha", "veta", "and there will \"be\' light", "mo've space over"});
 
   for (auto it : zip(tokens, compared)) {
     auto& gen = it.first;

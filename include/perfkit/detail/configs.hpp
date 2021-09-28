@@ -177,9 +177,7 @@ struct _config_attrib_data {
   std::optional<Ty_> max;
   std::optional<std::set<Ty_>> one_of;
 
-  std::optional<
-          std::pair<_config_flag_type,
-                    std::vector<std::string>>>
+  std::optional<std::pair<_config_flag_type, std::vector<std::string>>>
           flag_binding;
 };
 
