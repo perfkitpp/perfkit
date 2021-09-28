@@ -47,6 +47,21 @@ class array_view {
     return array_view{_ptr + offset, std::min(n, _size - offset)};
   }
 
+  template <typename RTy_>
+  constexpr bool operator==(RTy_&& op) const noexcept {
+    return std::equal(begin(), end(), std::begin(op), std::end(op));
+  }
+
+  template <typename RTy_>
+  constexpr bool operator!=(RTy_&& op) const noexcept {
+    return !(*this == std::forward<RTy_>(op));
+  }
+
+  template <typename RTy_>
+  constexpr bool operator<(RTy_&& op) const noexcept {
+    return std::lexicographical_compare(begin(), end(), std::begin(op), std::end(op));
+  }
+
   constexpr auto& operator[](size_t idx) {
 #ifndef NDEBUG
     _verify_idx(idx);
@@ -79,3 +94,13 @@ constexpr auto make_view(Range_&& array) {
   return array_view{array.data(), array.size()};
 }
 }  // namespace KANGSW_ARRAY_VIEW_NAMESPACE
+
+#if __has_include(<range/v3/range/concepts.hpp>)
+#include <range/v3/range/concepts.hpp>
+
+namespace ranges {
+template <typename Ty_>
+RANGES_INLINE_VAR constexpr bool
+        enable_borrowed_range<KANGSW_ARRAY_VIEW_NAMESPACE::array_view<Ty_>> = true;
+}
+#endif
