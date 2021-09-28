@@ -29,7 +29,17 @@ bool perfkit::import_options(std::string_view srcpath_s) {
     glog()->info("loaded config file [{}] successfully.", srcpath.string());
     glog()->debug("\"___OPTIONS___\": {}", opts.dump(4));
 
+    size_t total = 0, loaded = 0, skipped = 0;
+
     for (auto& [name, ptr] : config_registry::all()) {
+      ++total;
+
+      if (ptr->attribute().contains("transient")) {
+        glog()->debug("skipping transient config '{}'", ptr->display_key());
+        ++skipped;
+        continue;
+      }
+
       auto strname = ptr->display_key();
       auto it      = opts.find(strname);
       if (it == opts.end()) {
@@ -43,9 +53,13 @@ bool perfkit::import_options(std::string_view srcpath_s) {
         std::terminate();
       }
 
+      ++loaded;
       glog()->debug("IMPORTING: {} << {}", name, *it);
     }
 
+    glog()->info(
+            "from {} configs ... {} loaded. {} skipped(transient). {} not listed in file",
+            total, loaded, skipped, total - loaded - skipped);
     return true;
 
   } catch (nlohmann::json::parse_error& e) {
@@ -68,6 +82,10 @@ bool perfkit::export_options(std::string_view dstpath_s) {
   auto& obj = exported["___OPTIONS___"];
 
   for (auto const& [name, ptr] : config_registry::all()) {
+    if (ptr->attribute().contains("transient")) {
+      continue;
+    }
+
     obj[std::string(ptr->display_key())] = ptr->serialize();
     glog()->debug("EXPORTING: {} >>> {}", name, ptr->serialize().dump());
   }

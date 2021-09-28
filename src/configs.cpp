@@ -6,8 +6,12 @@
 #include <cassert>
 #include <regex>
 
-#include "perfkit/perfkit.h"
-#include "spdlog/spdlog.h"
+#include <perfkit/perfkit.h>
+#include <range/v3/algorithm/copy.hpp>
+#include <range/v3/range/conversion.hpp>
+#include <range/v3/view/iota.hpp>
+#include <range/v3/view/transform.hpp>
+#include <spdlog/spdlog.h>
 
 perfkit::config_registry& perfkit::config_registry::create() noexcept {
   static container _all;
@@ -50,8 +54,9 @@ static auto& key_mapping() {
 }
 
 void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
-  auto it = all().find(o->full_key());
-  if (it != all().end()) { throw std::invalid_argument("Argument MUST be unique!!!"); }
+  if (auto it = all().find(o->full_key()); it != all().end()) {
+    throw std::invalid_argument("Argument MUST be unique!!!");
+  }
 
   if (!find_key(o->display_key()).empty()) {
     throw std::invalid_argument(fmt::format(
@@ -66,6 +71,24 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
 
   glog()->debug("({:04}) declaring new config ... [{}] -> [{}]",
                 all().size(), o->display_key(), o->full_key());
+
+  if (auto attr = &o->attribute(); attr->contains("is_flag")) {
+    std::string binding;
+    if (auto it = attr->find("flag_binding"); it != attr->end()) {
+      binding = it->get<std::string>();
+    } else {
+      using namespace ranges;
+      binding = o->display_key()
+              | views::transform([](auto c) { return c == '|' ? '.' : c; })
+              | to<std::string>();
+    }
+
+    auto [_, is_new] = configs::_flags().try_emplace(std::move(binding), o);
+    if (!is_new) {
+      throw configs::duplicated_flag_binding{
+              fmt::format("Binding name duplicated: {}", binding)};
+    }
+  }
 }
 
 std::string_view perfkit::config_registry::find_key(std::string_view display_key) {
@@ -207,4 +230,30 @@ void perfkit::detail::config_base::_split_categories(std::string_view view, std:
   }
 
   out.push_back(view);  // last segment.
+}
+
+void perfkit::configs::parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined) {
+  using namespace ranges;
+  auto args = views::iota(0, *argc)
+            | views::transform([&](auto i) -> std::string_view { return (*argv)[i]; })
+            | to<std::vector<std::string_view>>();
+
+  parse_args(&args, consume, ignore_undefined);
+  assert(args.size() < *argc);
+
+  *argc = static_cast<int>(args.size());
+  copy(args | views::transform([](std::string_view s) {
+         return const_cast<char*>(s.data());
+       }),
+       *argv);
+}
+
+void perfkit::configs::parse_args(
+        std::vector<std::string_view>* args, bool consume, bool ignore_undefined) {
+  
+}
+
+perfkit::configs::flag_binding_table& perfkit::configs::_flags() noexcept {
+  static flag_binding_table _inst;
+  return _inst;
 }

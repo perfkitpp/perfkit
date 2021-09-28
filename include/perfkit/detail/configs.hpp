@@ -17,7 +17,12 @@
 #include "perfkit/common/array_view.hxx"
 
 namespace perfkit {
+namespace detail {
+class config_base;
+}
+
 class config_registry;
+using config_ptr = std::shared_ptr<detail::config_base>;
 
 namespace detail {
 
@@ -98,6 +103,23 @@ class config_base {
 /**
  *
  */
+namespace configs {
+// clang-format off
+struct duplicated_flag_binding : std::logic_error { using std::logic_error::logic_error; };
+struct parse_error : std::runtime_error { using std::runtime_error::runtime_error; };
+struct parse_help : std::runtime_error { using std::runtime_error::runtime_error; };
+// clang-format on
+
+using flag_binding_table = std::map<std::string, config_ptr, std::less<>>;
+flag_binding_table& _flags() noexcept;
+
+void parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
+void parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
+}  // namespace configs
+
+/**
+ *
+ */
 class config_registry {
  public:
   using json_table   = std::map<std::string_view, nlohmann::json>;
@@ -106,15 +128,11 @@ class config_registry {
 
  public:
   bool apply_update_and_check_if_dirty();
-
-  void queue_update_value(std::string_view full_key, nlohmann::json const& value);
-
   static bool request_update_value(std::string_view full_key, nlohmann::json const& value);
 
+  void queue_update_value(std::string_view full_key, nlohmann::json const& value);
   static std::string_view find_key(std::string_view display_key);
-
   static bool check_dirty_and_consume_global();
-
   static config_registry& create() noexcept;
   static config_table& all() noexcept;
 
@@ -129,7 +147,7 @@ class config_registry {
   std::set<detail::config_base*> _pending_updates;
   std::mutex _update_lock;
 
-  static inline std::atomic_bool _global_dirty;
+  alignas(128) static inline std::atomic_bool _global_dirty;
 };
 
 namespace _attr_flag {
@@ -139,8 +157,12 @@ enum ty : uint64_t {
   has_validate = 0x01 << 2,
   has_one_of   = 0x01 << 3,
 };
-
 }
+
+enum class _config_flag_type {
+  persistent,
+  transient
+};
 
 template <typename Ty_>
 class config;
@@ -152,6 +174,8 @@ struct _config_attrib_data {
   std::optional<Ty_> min;
   std::optional<Ty_> max;
   std::optional<std::set<Ty_>> one_of;
+
+  std::optional<std::pair<_config_flag_type, std::string>> flag_binding;
 };
 
 template <typename Ty_, uint64_t Flags_ = 0>
@@ -175,6 +199,14 @@ class _config_factory {
   auto& validate(std::function<bool(nlohmann::json&)>&& v) {
     _data.validate = std::move(v);
     return _added<_attr_flag::has_validate>();
+  }
+  auto& as_flag(bool save_to_config, std::string binding = "") {
+    _data.flag_binding.emplace(
+            std::make_pair(not save_to_config
+                                   ? _config_flag_type::transient
+                                   : _config_flag_type::persistent,
+                           std::move(binding)));
+    return *this;
   }
 
   auto confirm() noexcept {
@@ -200,8 +232,6 @@ class _config_factory {
 
   std::shared_ptr<_init_info> _pinfo;
 };
-
-using config_ptr = std::shared_ptr<detail::config_base>;
 
 template <typename Ty_>
 class config {
@@ -238,6 +268,17 @@ class config {
       js_attrib["has_custom_validator"] = true;
     } else {
       js_attrib["has_custom_validator"] = false;
+    }
+
+    if (attribute.flag_binding) {
+      std::string& binding = attribute.flag_binding->second;
+      js_attrib["is_flag"] = true;
+      if (attribute.flag_binding->first == _config_flag_type::transient) {
+        js_attrib["transient"] = true;
+      }
+      if (not binding.empty()) {
+        js_attrib["flag_binding"] = std::move(binding);
+      }
     }
 
     // setup marshaller / de-marshaller with given rule of attribute
