@@ -14,7 +14,31 @@ class ScreenInteractive;
 };
 
 namespace perfkit_ftxui {
-using perfkit::if_subscriber;
+
+
+/**
+ * Custom subscription event handler
+ */
+class if_subscriber {
+ public:
+  struct update_param_type {
+    std::string_view block_name;
+
+    uint64_t hash = {};
+    perfkit::array_view<std::string_view> hierarchy;
+    std::string_view name;
+  };
+
+ public:
+  virtual ~if_subscriber() = default;
+
+  virtual bool on_update(
+          update_param_type const& param_type,
+          perfkit::trace_variant_type const& value)
+          = 0;
+
+  virtual void on_end(update_param_type const& param_type) = 0;
+};
 
 using namespace std::literals;
 static inline const auto EVENT_POLL = ftxui::Event::Special("POLL");

@@ -13,36 +13,11 @@ class registry;
 }
 
 class if_terminal;
-struct trace_variant_type;
 using terminal_ptr = std::shared_ptr<if_terminal>;
 using std::chrono::milliseconds;
 
 /** An exception that is thrown when user requests program termination */
 struct termination : std::exception {};
-
-/**
- * Custom subscription event handler
- */
-class if_subscriber {
- public:
-  struct update_param_type {
-    std::string_view block_name;
-
-    uint64_t hash = {};
-    perfkit::array_view<std::string_view> hierarchy;
-    std::string_view name;
-  };
-
- public:
-  virtual ~if_subscriber() = default;
-
-  virtual bool on_update(
-          update_param_type const& param_type,
-          perfkit::trace_variant_type const& value)
-          = 0;
-
-  virtual void on_end(update_param_type const& param_type) = 0;
-};
 
 /**
  * Provides common user interface functionality for control purpose
