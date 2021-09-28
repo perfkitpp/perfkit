@@ -6,6 +6,7 @@
 #include <cassert>
 #include <regex>
 
+#include <perfkit/common/format.hxx>
 #include <perfkit/perfkit.h>
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/range/conversion.hpp>
@@ -81,6 +82,12 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
       binding = o->display_key()
               | views::transform([](auto c) { return c == '|' ? '.' : c; })
               | to<std::string>();
+    }
+
+    static std::regex match{R"RG(^(((?!no-)[^N-][\w-]*)|N[\w-]+))RG"};
+    if (!std::regex_match(binding, match) || binding.find_first_of(' ') != ~size_t{}) {
+      throw configs::invalid_flag_name(
+              fmt::format("invalid flag name: {}", binding));
     }
 
     auto [_, is_new] = configs::_flags().try_emplace(std::move(binding), o);
