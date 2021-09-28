@@ -8,7 +8,8 @@
 
 using namespace std::literals;
 
-int main(void) {
+int main(int argc, char** argv) {
+  perfkit::configs::parse_args(&argc, &argv, true);
   perfkit::glog()->set_level(spdlog::level::trace);
 
   auto term = perfkit::terminal::create_cli();
@@ -25,6 +26,7 @@ int main(void) {
 
   std::string latest_cmd;
   for (size_t ic = 0;;) {
+    cfg::registry().apply_update_and_check_if_dirty();
     do_trace(++ic, latest_cmd);
 
     auto cmd = term->fetch_command(1000ms);

@@ -87,7 +87,7 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
     }
 
     for (auto& binding : bindings) {
-      static std::regex match{R"RG(^(((?!no-)[^N-][\w-]*)|N[\w-]+))RG"};
+      static std::regex match{R"RG(^(((?!no-)[^N-][\w-\.]*)|N[\w-\.]+))RG"};
       if (!std::regex_match(binding, match)
           || binding.find_first_of(' ') != ~size_t{}
           || binding == "help" || binding == "h") {
@@ -328,8 +328,10 @@ class value_parse : public if_state {
         _conf->request_modify(nlohmann::json::parse(tok.begin(), tok.end()));
       }
     } catch (nlohmann::json::parse_error& e) {
-      throw parse_error("failed to parse value ... {} << {}\n error: {}"_fmt
-                        % _conf->display_key() % tok
+      throw parse_error("failed to parse value ... {}:{} << {}\n error: {}"_fmt
+                        % _conf->display_key()
+                        % _conf->default_value().type_name()
+                        % tok
                         % e.what());
     }
 
@@ -433,10 +435,14 @@ class initial_state : public if_state {
 
     str += "\n\n"_fmt.s();
     for (const auto& [conf, keys] : flag_mappings) {
-      str << "---- {:-<40}\n"_fmt % ("{} "_fmt % conf->display_key()).string();
-      str += "  ";
+      str << "  {:.<60}\n"_fmt
+                      % to_string("{{ \"{}\" :{} }}"_fmt
+                                  % conf->display_key()
+                                  % conf->default_value().type_name());
+      str += "    <flags> ";
       for (auto& key : keys) { str << "{}{} "_fmt % (key.size() == 1 ? "-" : "--") % key; }
-      str << "\n    {}\n\n"_fmt % (conf->description().empty() ? "<no description>" : conf->description());
+      str << "\n    <default> {}\n"_fmt % conf->default_value().dump();
+      str << "    <description> {}\n\n"_fmt % (conf->description().empty() ? "<no description>" : conf->description());
     }
 
     throw parse_help(std::move(str));
