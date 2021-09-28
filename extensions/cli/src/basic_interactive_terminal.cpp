@@ -8,7 +8,6 @@
 #include <set>
 #include <vector>
 
-#include <linenoise.h>
 #include <perfkit/common/format.hxx>
 #include <perfkit/detail/base.hpp>
 #include <spdlog/logger.h>
@@ -20,6 +19,62 @@ using namespace perfkit::literals;
 using namespace std::literals;
 using namespace fmt::literals;
 
+#if _WIN32
+#include <conio.h>
+#elif __unix__ or __linux__
+#include <linenoise.h>
+#endif
+
+#if _WIN32
+using std::chrono::steady_clock;
+
+basic_interactive_terminal::basic_interactive_terminal()
+        : _sink{std::make_shared<spdlog::sinks::stdout_color_sink_mt>()} {
+}
+
+std::optional<std::string> basic_interactive_terminal::fetch_command(milliseconds timeout) {
+  auto until = steady_clock::now() + timeout;
+  std::optional<std::string> entered;
+
+  if (std::unique_lock _{_cmd_queue_lock}; not _cmd_queued.empty()) {
+    auto str = std::move(_cmd_queued.front());
+    _cmd_queued.pop_front();
+    return std::move(str);
+  }
+
+  do {
+    if (_kbhit()) {
+      char buf[4096];
+      fgets(buf, sizeof buf, stdin);
+      entered = buf;
+      entered->pop_back();
+      break;
+    } else {
+      std::this_thread::sleep_for(10ms);
+    }
+  } while (steady_clock::now() < until);
+
+  return entered;
+}
+
+void basic_interactive_terminal::write(std::string_view str, color fg, color bg) {
+  fwrite(str.data(), str.size(), 1, stdout);
+}
+
+void basic_interactive_terminal::push_command(std::string_view command) {
+  std::unique_lock _{_cmd_queue_lock};
+  _cmd_queued.emplace_back(command);
+}
+
+bool basic_interactive_terminal::set(std::string_view key, std::string_view value) {
+  return if_terminal::set(key, value);
+}
+
+bool basic_interactive_terminal::get(std::string_view key, double *out) {
+  return if_terminal::get(key, out);
+}
+
+#elif __unix__ or __linux__
 std::optional<std::string>
 perfkit::basic_interactive_terminal::fetch_command(
         std::chrono::milliseconds timeout) {
@@ -250,3 +305,4 @@ bool basic_interactive_terminal::get(std::string_view key, double *out) {
 
   return true;
 }
+#endif

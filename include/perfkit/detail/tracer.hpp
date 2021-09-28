@@ -155,7 +155,7 @@ class tracer {
     }
 
     operator bool() const noexcept {
-      return _ref->is_subscribed.load(std::memory_order_acq_rel);
+      return _ref->is_subscribed.load(std::memory_order_consume);
     }
 
     bool is_valid() const noexcept { return !!_owner && !!_ref; }

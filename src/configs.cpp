@@ -252,7 +252,7 @@ void perfkit::configs::parse_args(int* argc, char*** argv, bool consume, bool ig
             | to<std::vector<std::string_view>>();
 
   parse_args(&args, consume, ignore_undefined);
-  assert(args.size() < *argc);
+  assert(args.size() <= *argc);
 
   *argc = static_cast<int>(args.size());
   copy(args | views::transform([](std::string_view s) {

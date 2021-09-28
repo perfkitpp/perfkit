@@ -244,7 +244,7 @@ class _trace_manip {
     std::string output;
     output << "\n"_fmt.s();
 
-    array_view<std::string_view> current_hierarchy = {} ;
+    array_view<std::string_view> current_hierarchy = {};
     std::string hierarchy_key, data_str, full_key;
     for (auto& item : result) {
       auto hierarchy = item.hierarchy.subspan(0, item.hierarchy.size() - 1);
@@ -419,7 +419,7 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
       auto manip = std::make_shared<_config_category_manip>(
               ref,
               std::string{category_match},
-              hierarchy.size() - 1);
+              (int)hierarchy.size() - 1);
 
       auto node_cat = node_conf->add_subcommand(
               category_match,

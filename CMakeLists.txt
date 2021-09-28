@@ -55,13 +55,15 @@ if (perfkit_BUILD_CLI)
     message("Configuring CLI extension ...")
     add_subdirectory(extensions/cli/)
 
-    target_sources(
-            perfkit-cli
+    if(UNIX)
+        target_sources(
+                perfkit-cli
 
-            PRIVATE
-            third/linenoise-1.0/linenoise.c
-            third/linenoise-1.0/linenoise.h
-    )
+                PRIVATE
+                third/linenoise-1.0/linenoise.c
+                third/linenoise-1.0/linenoise.h
+        )
+    endif()
 
     target_include_directories(
             perfkit-cli
@@ -75,7 +77,7 @@ endif ()
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 
 if (NOT TARGET spdlog)
-    find_package(spdlog REQUIRED)
+    find_package(spdlog CONFIG REQUIRED)
 endif ()
 
 target_include_directories(
@@ -138,3 +140,11 @@ if (perfkit_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif ()
 
+if (MSVC)
+    target_compile_options(
+            ${PROJECT_NAME}
+
+            PUBLIC
+            /utf-8 /FIciso646
+    )
+endif ()
