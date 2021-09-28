@@ -177,7 +177,10 @@ struct _config_attrib_data {
   std::optional<Ty_> max;
   std::optional<std::set<Ty_>> one_of;
 
-  std::optional<std::pair<_config_flag_type, std::string>> flag_binding;
+  std::optional<
+          std::pair<_config_flag_type,
+                    std::vector<std::string>>>
+          flag_binding;
 };
 
 template <typename Ty_, uint64_t Flags_ = 0>
@@ -202,12 +205,17 @@ class _config_factory {
     _data.validate = std::move(v);
     return _added<_attr_flag::has_validate>();
   }
-  auto& as_flag(bool save_to_config, std::string binding = "") {
+
+  template <typename... Str_>
+  auto& make_flag(bool save_to_config, Str_&&... args) {
+    std::vector<std::string> flags;
+    (flags.emplace_back(std::forward<Str_>(args)), ...);
+
     _data.flag_binding.emplace(
             std::make_pair(not save_to_config
                                    ? _config_flag_type::transient
                                    : _config_flag_type::persistent,
-                           std::move(binding)));
+                           std::move(flags)));
     return *this;
   }
 
@@ -273,8 +281,8 @@ class config {
     }
 
     if (attribute.flag_binding) {
-      std::string& binding = attribute.flag_binding->second;
-      js_attrib["is_flag"] = true;
+      std::vector<std::string>& binding = attribute.flag_binding->second;
+      js_attrib["is_flag"]              = true;
       if (attribute.flag_binding->first == _config_flag_type::transient) {
         js_attrib["transient"] = true;
       }

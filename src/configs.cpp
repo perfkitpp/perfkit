@@ -74,26 +74,29 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
                 all().size(), o->display_key(), o->full_key());
 
   if (auto attr = &o->attribute(); attr->contains("is_flag")) {
-    std::string binding;
+    std::vector<std::string> bindings;
     if (auto it = attr->find("flag_binding"); it != attr->end()) {
-      binding = it->get<std::string>();
+      bindings = it->get<std::vector<std::string>>();
     } else {
       using namespace ranges;
-      binding = o->display_key()
+      bindings.emplace_back(
+              o->display_key()
               | views::transform([](auto c) { return c == '|' ? '.' : c; })
-              | to<std::string>();
+              | to<std::string>());
     }
 
-    static std::regex match{R"RG(^(((?!no-)[^N-][\w-]*)|N[\w-]+))RG"};
-    if (!std::regex_match(binding, match) || binding.find_first_of(' ') != ~size_t{}) {
-      throw configs::invalid_flag_name(
-              fmt::format("invalid flag name: {}", binding));
-    }
+    for (auto& binding : bindings) {
+      static std::regex match{R"RG(^(((?!no-)[^N-][\w-]*)|N[\w-]+))RG"};
+      if (!std::regex_match(binding, match) || binding.find_first_of(' ') != ~size_t{}) {
+        throw configs::invalid_flag_name(
+                fmt::format("invalid flag name: {}", binding));
+      }
 
-    auto [_, is_new] = configs::_flags().try_emplace(std::move(binding), o);
-    if (!is_new) {
-      throw configs::duplicated_flag_binding{
-              fmt::format("Binding name duplicated: {}", binding)};
+      auto [_, is_new] = configs::_flags().try_emplace(std::move(binding), o);
+      if (!is_new) {
+        throw configs::duplicated_flag_binding{
+                fmt::format("Binding name duplicated: {}", binding)};
+      }
     }
   }
 }

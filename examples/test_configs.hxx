@@ -13,19 +13,19 @@ PERFKIT_CATEGORY(cfg) {
   PERFKIT_CONFIGURE(active_async, true).confirm();
   PERFKIT_SUBCATEGORY(labels) {
     PERFKIT_CONFIGURE(foo, 1)
-            .as_flag(false)
+            .make_flag(false)
             .confirm();
     PERFKIT_CONFIGURE(bar, false)
-            .as_flag(true)
+            .make_flag(true)
             .confirm();
     PERFKIT_CONFIGURE(ce, "ola ollalala")
-            .as_flag(true)
+            .make_flag(true)
             .confirm();
     PERFKIT_CONFIGURE(cppr, "ola ollalala")
-            .as_flag(false)
+            .make_flag(false)
             .confirm();
     PERFKIT_CONFIGURE(ccp, "ola ollalala")
-            .as_flag(true)
+            .make_flag(true)
             .confirm();
     PERFKIT_CONFIGURE(ced, std::vector({1, 2, 3, 4, 5, 6})).confirm();
     PERFKIT_CONFIGURE(cedr, (std::map<std::string, int>{{"fdf", 2}, {"erwe", 4}})).confirm();
