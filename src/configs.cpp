@@ -6,8 +6,8 @@
 #include <cassert>
 #include <regex>
 
-#include <perfkit/common/format.hxx>
-#include <perfkit/perfkit.h>
+#include "perfkit/common/format.hxx"
+#include "perfkit/perfkit.h"
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/iota.hpp>

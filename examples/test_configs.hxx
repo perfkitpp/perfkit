@@ -1,6 +1,6 @@
 #pragma once
-#include <perfkit/configs.h>
-#include <perfkit/traces.h>
+#include "perfkit/configs.h"
+#include "perfkit/traces.h"
 
 using namespace std::literals;
 

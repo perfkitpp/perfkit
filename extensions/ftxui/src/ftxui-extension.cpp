@@ -1,7 +1,7 @@
 #include <ftxui/component/screen_interactive.hpp>
-#include <perfkit/detail/configs.hpp>
-#include <perfkit/detail/trace_future.hpp>
-#include <perfkit/ftxui-extension.hpp>
+#include "perfkit/detail/configs.hpp"
+#include "perfkit/detail/trace_future.hpp"
+#include "perfkit/ftxui-extension.hpp"
 
 #include "./config_browser.hpp"
 #include "./trace_browser.hpp"

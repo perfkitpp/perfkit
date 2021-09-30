@@ -1,5 +1,5 @@
 #pragma once
-#include <perfkit/terminal.h>
+#include "perfkit/terminal.h"
 
 namespace perfkit::terminal {
 
