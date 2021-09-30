@@ -21,6 +21,8 @@ target_link_libraries(
 
         PUBLIC
         perfkit::core
+
+        PRIVATE
         perfkit::_internal::net-provider-protocols
 )
 
