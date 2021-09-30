@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 project(perfkit)
 
 # Imports --------------------------------------------------------------------------------------------------------------
+add_subdirectory(third)
+
 if (NOT TARGET range-v3::range-v3)
     add_subdirectory(third/range-v3-master EXCLUDE_FROM_ALL)
 endif ()
