@@ -6,14 +6,15 @@
 #include <cassert>
 #include <regex>
 
-#include "perfkit/common/format.hxx"
-#include "perfkit/perfkit.h"
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/map.hpp>
 #include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
+
+#include "perfkit/common/format.hxx"
+#include "perfkit/perfkit.h"
 
 perfkit::config_registry& perfkit::config_registry::create() noexcept {
   static container _all;

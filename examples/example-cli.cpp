@@ -1,9 +1,9 @@
 #include <chrono>
 
-#include "perfkit/extension/cli.hpp"
-#include "perfkit/perfkit.h"
 #include <spdlog/spdlog.h>
 
+#include "perfkit/extension/cli.hpp"
+#include "perfkit/perfkit.h"
 #include "test_configs.hxx"
 
 using namespace std::literals;

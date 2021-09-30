@@ -92,7 +92,7 @@ class config_node_builder {
     } else {
       auto cnt = count();
       return [cnt] { return ftxui::color(Color::GrayDark,
-                                  text(fmt::format("{} item{}", cnt, cnt > 1 ? "s" : ""))); };
+                                         text(fmt::format("{} item{}", cnt, cnt > 1 ? "s" : ""))); };
     }
   }
 
@@ -105,8 +105,8 @@ class config_node_builder {
 
     } else if (!_subnodes.empty()) {
       auto subnode_ptr = _subnodes
-                         | views::transform([](auto&& c) { return &c; })
-                         | ranges::to_vector;
+                       | views::transform([](auto&& c) { return &c; })
+                       | ranges::to_vector;
 
       // for same category hierarchy, compare with full key string.
       ranges::sort(subnode_ptr,
@@ -218,7 +218,7 @@ class config_node_builder {
                                     return hbox(
                                                    ftxui::color(Color::Yellow, key),
                                                    text(" {"), inner_value->Render(), text("}"))
-                                           | flex;
+                                         | flex;
                                   });
 
             outer->Add(inner);

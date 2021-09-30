@@ -1,11 +1,11 @@
 #define DOCTEST_CONFIG_NO_EXCEPTIONS
 
-#include "perfkit/detail/commands.hpp"
-#include "perfkit/detail/trace_future.hpp"
-#include "perfkit/perfkit.h"
 #include <range/v3/view.hpp>
 
 #include "doctest.h"
+#include "perfkit/detail/commands.hpp"
+#include "perfkit/detail/trace_future.hpp"
+#include "perfkit/perfkit.h"
 
 using namespace std::literals;
 using namespace ranges;
