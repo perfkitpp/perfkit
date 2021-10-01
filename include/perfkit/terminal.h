@@ -3,9 +3,10 @@
 #include <memory>
 #include <optional>
 
-#include <perfkit/common/array_view.hxx>
-#include <perfkit/detail/color.hxx>
 #include <spdlog/fwd.h>
+
+#include "perfkit/common/array_view.hxx"
+#include "perfkit/detail/color.hxx"
 
 namespace perfkit {
 namespace commands {

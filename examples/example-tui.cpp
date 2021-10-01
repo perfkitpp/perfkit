@@ -36,7 +36,7 @@ int main(int argc, const char* argv[]) {
                           component,
                           [&] {
                             return window(text("< configs >"), component->Render())
-                                   | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
+                                 | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
                           }),
                   [p = &screen](Event evt) -> bool {
                     if (evt == perfkit_ftxui::EVENT_POLL) {

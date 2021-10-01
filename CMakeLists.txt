@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 project(perfkit)
 
 # Imports --------------------------------------------------------------------------------------------------------------
+add_subdirectory(third)
+
 if (NOT TARGET range-v3::range-v3)
     add_subdirectory(third/range-v3-master EXCLUDE_FROM_ALL)
 endif ()
@@ -16,7 +18,7 @@ set(
         src/perfkit.cpp
         src/tracer.cpp
         src/terminal.cpp
-        include/perfkit/detail/trace_future.hpp
+        src/config-flags.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
@@ -55,7 +57,7 @@ if (perfkit_BUILD_CLI)
     message("Configuring CLI extension ...")
     add_subdirectory(extensions/cli/)
 
-    if(UNIX)
+    if (UNIX)
         target_sources(
                 perfkit-cli
 
@@ -63,7 +65,7 @@ if (perfkit_BUILD_CLI)
                 third/linenoise-1.0/linenoise.c
                 third/linenoise-1.0/linenoise.h
         )
-    endif()
+    endif ()
 
     target_include_directories(
             perfkit-cli

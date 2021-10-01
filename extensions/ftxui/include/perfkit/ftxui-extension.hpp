@@ -4,17 +4,17 @@
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
-#include <perfkit/common/array_view.hxx>
-#include <perfkit/common/circular_queue.hxx>
-#include <perfkit/detail/fwd.hpp>
-#include <perfkit/terminal.h>
+
+#include "perfkit/common/array_view.hxx"
+#include "perfkit/common/circular_queue.hxx"
+#include "perfkit/detail/fwd.hpp"
+#include "perfkit/terminal.h"
 
 namespace ftxui {
 class ScreenInteractive;
 };
 
 namespace perfkit_ftxui {
-
 
 /**
  * Custom subscription event handler

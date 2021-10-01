@@ -36,8 +36,8 @@ void tokenize_by_argv_rule(
 /**
  * Invocation Handler
  */
-using args_view  = array_view<std::string_view>;
-using invoke_fn  = std::function<bool(args_view full_tokens)>;
+using args_view = array_view<std::string_view>;
+using invoke_fn = std::function<bool(args_view full_tokens)>;
 
 /**
  * When this handler is called, out_candidates parameter will hold initial
@@ -62,7 +62,7 @@ class registry {
      */
     perfkit::commands::registry::node* add_subcommand(
             std::string cmd,
-            invoke_fn handler              = {},
+            invoke_fn handler               = {},
             autocomplete_suggest_fn suggest = {},
             bool name_constant              = false);
 

@@ -17,6 +17,8 @@
 #include "perfkit/common/array_view.hxx"
 
 namespace perfkit {
+using json = nlohmann::json;
+
 namespace detail {
 class config_base;
 }
