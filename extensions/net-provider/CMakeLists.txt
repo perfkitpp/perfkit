@@ -8,9 +8,12 @@ add_library(
         ${PROJECT_NAME}
         STATIC
 
-        "src/net-provider.cpp"
-        "include/perfkit/extension/net-provider.hpp"
-        src/net_terminal.cpp src/net_terminal.hpp)
+        src/net-provider.cpp
+        src/net_terminal.cpp
+        src/net_terminal.hpp
+        src/net_session.cpp
+        src/net_session.hpp
+)
 
 add_library(
         perfkit::net-provider ALIAS ${PROJECT_NAME}

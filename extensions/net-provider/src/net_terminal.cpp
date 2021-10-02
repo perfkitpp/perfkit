@@ -4,7 +4,10 @@
 
 #include "net_terminal.hpp"
 
-#include <perfkit/_internal/net-proto.hpp>
+#include "net_session.hpp"
+#include "perfkit/_net/net-proto.hpp"
+
+namespace perfkit::net {
 
 perfkit::commands::registry* net_terminal::commands() {
   return nullptr;
@@ -26,5 +29,10 @@ std::shared_ptr<spdlog::sinks::sink> net_terminal::sink() {
   return std::shared_ptr<spdlog::sinks::sink>();
 }
 
-net_terminal::net_terminal() {
+net_terminal::net_terminal(const terminal::net_provider::init_info& info)
+        : _init_cached(info) {
 }
+
+net_terminal::~net_terminal() = default;
+
+}  // namespace perfkit::net

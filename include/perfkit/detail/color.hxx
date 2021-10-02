@@ -176,14 +176,6 @@ enum class colors {
   white_smoke     = 0xf5f5f5,
   yellow          = 0xFFFF00,
   yellow_green    = 0x9acd32,
-
-  // temporary definitions, these will be replaced by color schema
-  button_face_shadow_start = 0xF5F4F2,
-  button_face_shadow_end   = 0xD5D2CA,
-  button_face              = 0xD4D0C8,  //,light_cyan
-  dark_border              = 0x404040,
-  gray_border              = 0x808080,
-  highlight                = 0x1CC4F7
 };
 
 }  // namespace perfkit
