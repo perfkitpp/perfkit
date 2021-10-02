@@ -1,7 +1,10 @@
 project(perfkit-provider-protocols)
 
 add_library(
-        ${PROJECT_NAME} INTERFACE
+        ${PROJECT_NAME}
+        STATIC
+
+        src/net-proto.cpp
 )
 
 add_library(
@@ -11,6 +14,13 @@ add_library(
 target_include_directories(
         ${PROJECT_NAME}
 
-        INTERFACE
-        .
+        PUBLIC
+        include/
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}
+
+        PUBLIC
+        perfkit::core
 )
