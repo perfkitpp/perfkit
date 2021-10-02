@@ -307,7 +307,7 @@ class config {
                   parsed = std::min<Ty_>(*attr.max, parsed);
                 }
                 if constexpr (Attr_::flag & _attr_flag::has_one_of) {
-                  auto oneof = attr->oneof;
+                  auto& oneof = attr->oneof;
                   if (oneof.find(parsed) == oneof.end()) { return false; }
                 }
                 if constexpr (Attr_::flag & _attr_flag::has_validate) {
