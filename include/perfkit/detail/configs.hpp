@@ -345,6 +345,8 @@ class config {
    * @return
    */
   Ty_ const& get() const noexcept { return _value; }
+  Ty_ const& value() const noexcept { return _value; }
+
   Ty_ const& operator*() const noexcept { return get(); }
   Ty_ const* operator->() const noexcept { return &get(); }
   explicit operator const Ty_&() const noexcept { return get(); }
