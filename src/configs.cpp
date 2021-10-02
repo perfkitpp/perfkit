@@ -182,7 +182,7 @@ perfkit::detail::config_base::config_base(
 
 bool perfkit::detail::config_base::_try_deserialize(const nlohmann::json& value) {
   if (_deserialize(value, _raw)) {
-    _fence_modification.fetch_add(1, std::memory_order_relaxed);
+    _fence_modified.fetch_add(1, std::memory_order_relaxed);
     _dirty = true;
 
     _latest_marshal_failed.store(false, std::memory_order_relaxed);

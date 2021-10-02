@@ -9,22 +9,11 @@
 
 #include <nlohmann/detail/conversions/from_json.hpp>
 
+#include "perfkit/common/hasher.hxx"
 #include "perfkit/detail/trace_future.hpp"
 #include "spdlog/fmt/fmt.h"
 
 using namespace std::literals;
-
-namespace {
-struct hasher {
-  constexpr static uint64_t FNV_PRIME        = 0x100000001b3ull;
-  constexpr static uint64_t FNV_OFFSET_BASIS = 0xcbf29ce484222325ull;
-
-  /// hash a single byte
-  static inline uint64_t fnv1a_byte(unsigned char byte, uint64_t hash) {
-    return (hash ^ byte) * FNV_PRIME;
-  }
-};
-}  // namespace
 
 using namespace perfkit;
 
@@ -61,7 +50,7 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top) {
   // --> 계층은 전역으로 관리되면 안 됨 ... 각각의 프록시가 관리해야함!!
   // Hierarchy 각각의 데이터 엔티티 기반으로 관리되게 ... _hierarchy_hash 관련 기능 싹 갈아엎기
 
-  auto hash = hasher::FNV_OFFSET_BASIS;
+  auto hash = hasher::FNV_OFFSET_BASE;
   if (parent) {
     hash = parent->body.hash;
   }

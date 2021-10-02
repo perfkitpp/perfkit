@@ -66,7 +66,8 @@ class config_base {
   auto tokenized_display_key() const { return make_view(_categories); }
   void request_modify(nlohmann::json const& js);
 
-  size_t num_modified() const { return _fence_modification.load(std::memory_order_relaxed); };
+  size_t num_modified() const { return _fence_modified.load(std::memory_order_relaxed); };
+  bool is_transient() const noexcept { return attribute().contains("transient"); }
 
   /**
    * Check if latest marshalling result was invalid
@@ -91,8 +92,8 @@ class config_base {
   bool _dirty                             = true;  // default true to trigger initialization
   std::atomic_bool _latest_marshal_failed = false;
 
-  std::atomic_size_t _fence_modification = 0;
-  size_t _fence_serialized               = ~size_t{};
+  std::atomic_size_t _fence_modified = 0;
+  size_t _fence_serialized           = ~size_t{};
   nlohmann::json _cached_serialized;
   nlohmann::json _attribute;
 
