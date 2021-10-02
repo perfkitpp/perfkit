@@ -30,9 +30,10 @@ std::shared_ptr<spdlog::sinks::sink> net_terminal::sink() {
 }
 
 net_terminal::net_terminal(const terminal::net_provider::init_info& info)
-        : _init_cached(info) {
+        : _init_cached{info} {
 }
 
-net_terminal::~net_terminal() = default;
+net_terminal::~net_terminal()
+        = default;
 
 }  // namespace perfkit::net

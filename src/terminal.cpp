@@ -349,9 +349,7 @@ class _config_manip {
 class _config_category_manip {
  public:
   explicit _config_category_manip(if_terminal* ref, std::string display, int depth)
-          : _ref{ref}
-          , _category{std::move(display).substr(1).append("|")}
-          , _depth{depth} {
+          : _ref{ref}, _category{std::move(display).substr(1).append("|")}, _depth{depth} {
     ranges::replace(_category, '.', '|');
   }
 

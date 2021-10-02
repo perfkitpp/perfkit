@@ -141,13 +141,13 @@ perfkit::detail::config_base::config_base(
         perfkit::detail::config_base::deserializer fn_deserial,
         perfkit::detail::config_base::serializer fn_serial,
         nlohmann::json&& attribute)
-        : _owner(owner)
-        , _full_key(std::move(full_key))
-        , _description(std::move(description))
-        , _raw(raw)
-        , _attribute(std::move(attribute))
-        , _deserialize(std::move(fn_deserial))
-        , _serialize(std::move(fn_serial)) {
+        : _owner(owner),
+          _full_key(std::move(full_key)),
+          _description(std::move(description)),
+          _raw(raw),
+          _attribute(std::move(attribute)),
+          _deserialize(std::move(fn_deserial)),
+          _serialize(std::move(fn_serial)) {
   static std::regex rg_trim_whitespace{R"((?:^|\|?)\s*(\S?[^|]*\S)\s*(?:\||$))"};
   static std::regex rg_remove_order_marker{R"(\+[^|]+\|)"};
 
