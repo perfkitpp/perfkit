@@ -39,7 +39,8 @@ enum class provider_message : uint8_t {
   register_session = 0x01,
   config_all       = 0x02,
   config_update    = 0x03,
-  trace_all        = 0x04,
+  trace_groups     = 0x04,
+  trace_update     = 0x04,
   trace_image      = 0x05,
   shell_flush      = 0x06,
   shell_suggest    = 0x07,
@@ -47,12 +48,13 @@ enum class provider_message : uint8_t {
 };
 
 enum class server_message : uint8_t {
-  invalid      = 0,
-  trace_fetch  = 0x81,
-  config_fetch = 0x82,  // fetches accumulated updates
-  shell_input  = 0x83,
-  shell_fetch  = 0x84,
-  heartbeat    = 0x8F,
+  invalid                = 0,
+  trace_fetch            = 0x81,
+  trace_group_open_close = 0x85,  //
+  config_fetch           = 0x82,  // fetches accumulated updates
+  shell_input            = 0x83,
+  shell_fetch            = 0x84,
+  heartbeat              = 0x8F,
 };
 
 #pragma pack(push, 1)
@@ -126,6 +128,19 @@ struct shell_suggest_line {
   static constexpr auto MESSAGE = provider_message::shell_suggest;
   std::string content;
 };
+
+// -- Manipulating Traces --
+// 1. Provider -> Server로 Group List 송신
+// 2. Client -> Server로 Group Fetch 호출
+//    서버는 일단 None 반환 (항상 즉시 반환)
+// 3. Server -> Provider로 Group Open 요청
+// 4. Provider -> Server 틱마다 Trace 업로드
+
+// Image Handling
+// 1. Client -> Server로 Image Load 요청
+// 2. Server -> Provider에 이미지 요청
+// 3. Provider -> Server에 최신 이미지 Jpeg + 시퀀스 인덱스 인코딩해 전달(시퀀스 최신이면 즉시응답)
+// 4. Server -> Client에 해당 이미지 포워드 및, 서버는 해당 이미지 캐싱
 
 // -- Manipulating Configs --
 // config_all: 모든 컨피겨레이션 서술자를 내보냅니다.

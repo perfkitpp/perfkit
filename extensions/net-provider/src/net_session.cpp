@@ -4,9 +4,12 @@
 
 #include "net_session.hpp"
 
+#include <thread>
+
 #include <spdlog/spdlog.h>
 
 #include "perfkit/detail/base.hpp"
+
 #if __linux__ || __unix__
 #include <arpa/inet.h>
 #include <sys/poll.h>
@@ -21,11 +24,12 @@ using pollfd_ty = pollfd;
 
 #endif
 
+using namespace std::literals;
 perfkit::net::net_session::~net_session() {
   _connected = false;
 
   if (_sock) {
-    SPDLOG_LOGGER_INFO(glog(), "[{}] closing socket connection ...", (void*)this);
+    SPDLOG_LOGGER_INFO(glog(), "[{}] closing socket {} ...", (void*)this, _sock);
     ::close(_sock);
   }
 }
@@ -47,7 +51,8 @@ perfkit::net::net_session::net_session(
   ep_host.sin_port        = htons(init->host_port);
 
   if (0 != ::connect(_sock, (sockaddr*)&ep_host, sizeof ep_host)) {
-    SPDLOG_LOGGER_ERROR(glog(), "bind() failed. ({}) {}", errno, strerror(errno));
+    SPDLOG_LOGGER_ERROR(glog(), "connect() failed. ({}) {}", errno, strerror(errno));
+    std::this_thread::sleep_for(1s);
     return;
   }
 
