@@ -43,14 +43,16 @@ enum class provider_message : uint8_t {
   trace_image      = 0x05,
   shell_flush      = 0x06,
   shell_suggest    = 0x07,
+  heartbeat        = 0x0F,
 };
 
 enum class server_message : uint8_t {
   invalid      = 0,
-  heartbeat    = 0x81,
+  trace_fetch  = 0x81,
   config_fetch = 0x82,  // fetches accumulated updates
   shell_input  = 0x83,
   shell_fetch  = 0x84,
+  heartbeat    = 0x8F,
 };
 
 #pragma pack(push, 1)

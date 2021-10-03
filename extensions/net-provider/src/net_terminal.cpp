@@ -45,6 +45,7 @@ void net_terminal::write(std::string_view str, perfkit::termcolor fg, perfkit::t
     if (bg != _prev_bg) { bg.append_xterm_256(oit, false); }
     std::copy(str.begin(), str.end(), oit);
   } else {
+    // else, put incoming text into session directly.
     char buf[16];
     if (fg != _prev_fg) { fg.append_xterm_256(buf, true), _session->write(buf); }
     if (bg != _prev_bg) { bg.append_xterm_256(buf, false), _session->write(buf); }
@@ -114,12 +115,13 @@ void net_terminal::_async_worker() {
   size_t n_conn_err_retry = 0;
   net_session::arg_poll pollargs;
   pollargs.command_registry = commands();
-  pollargs.enqueue_command
-          = [&](auto&& sv) {
-              (std::unique_lock{_cmd_queue_lock}, _cmd_queue.enqueue(sv));
-              _cmd_queue_notify.notify_one();
-            };
+  pollargs.enqueue_command =
+          [&](auto&& sv) {  // this puts incoming message to command queue
+            (std::unique_lock{_cmd_queue_lock}, _cmd_queue.enqueue(sv));
+            _cmd_queue_notify.notify_one();
+          };
 
+  // primary loop which manages lifecycles of each session, and listens to incoming messages
   while (_active.test_and_set(std::memory_order_relaxed)) {
     if (_session == nullptr || not _session->is_connected()) {
       // if session is not initialized or died, reinitialize.
@@ -135,6 +137,7 @@ void net_terminal::_async_worker() {
         _text_buffer.flat([&](char* begin, char* end) {
           _session->write({begin, size_t(end - begin)});
         });
+        _text_buffer.clear();
       }
     }
 

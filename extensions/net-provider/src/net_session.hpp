@@ -6,6 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <optional>
 
 #include "perfkit/_net/net-proto.hpp"
@@ -46,14 +47,25 @@ class net_session {
  private:
   void _send_all_config() {}
 
+  void _send_heartbeat();
+  void _handle_config_fetch(array_view<char> payload) {}
+  void _handle_trace_fetch(array_view<char> payload) {}
+  void _handle_shell_fetch(array_view<char> payload) {}
+  void _handle_shell_input(array_view<char> payload) {}
+
+  void _send(std::string_view payload);
+
  public:
   socket_ty _sock = {};
+  std::mutex _sock_send_lock;
+
   terminal::net_provider::init_info const* _pinit{};
   _net::message_builder _msg_gen{};
 
   std::atomic_bool _connected;
   std::string _bufmem;
 
-  clock_ty::time_point _last_recv;
+  size_t _char_sequence;
+  circular_queue<char> _chars_pending{512 * 1024 - 1};
 };
 }  // namespace perfkit::net

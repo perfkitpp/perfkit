@@ -62,8 +62,7 @@ perfkit::net::net_session::net_session(
   session.epoch        = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
-  auto data = _msg_gen(session);
-  ::send(_sock, data.data(), data.size(), 0);
+  _send(_msg_gen(session));
 
   // Send all configs
   _send_all_config();
@@ -76,11 +75,11 @@ namespace perfkit::net {
 struct connection_error : std::exception {};
 struct invalid_header_error : std::exception {};
 
-char* try_recv(socket_ty sock, std::string& to, size_t size_to_recv, int timeout) {
+array_view<char> try_recv(socket_ty sock, std::string* to, size_t size_to_recv, int timeout) {
   size_t received = 0;
-  auto offset     = to.size();
+  auto offset     = to->size();
   auto org_offset = offset;
-  to.resize(to.size() + size_to_recv);
+  to->resize(to->size() + size_to_recv);
 
   while (received < size_to_recv) {
     pollfd_ty pollee{sock, POLLIN, 0};
@@ -89,14 +88,14 @@ char* try_recv(socket_ty sock, std::string& to, size_t size_to_recv, int timeout
     }
 
     if (not(pollee.revents & POLLIN)) {
-      SPDLOG_LOGGER_CRITICAL(glog(), "failed on polling, something gone wrong!");
+      SPDLOG_LOGGER_CRITICAL(glog(), "failed to poll, something gone wrong!");
       throw connection_error{};
     }
 
     auto to_recv = size_to_recv - received;
     auto n_read  = ::recv(sock, &to[offset], to_recv, 0);
     if (n_read < 0) {
-      SPDLOG_LOGGER_CRITICAL(glog(), "failed on receiving, something gone wrong!");
+      SPDLOG_LOGGER_CRITICAL(glog(), "failed to receive, something gone wrong!");
       throw connection_error{};
     }
 
@@ -104,12 +103,12 @@ char* try_recv(socket_ty sock, std::string& to, size_t size_to_recv, int timeout
     offset += n_read;  // move pointer ahead
   }
 
-  return &to[org_offset];
+  return {to->data() + org_offset, received};
 }
 
 template <typename Ty_>
-Ty_* try_recv_as(socket_ty sock, std::string& to, int timeout) {
-  return reinterpret_cast<Ty_*>(sock, to, sizeof(Ty_), timeout);
+Ty_* try_recv_as(socket_ty sock, std::string* to, int timeout) {
+  return reinterpret_cast<Ty_*>(try_recv(sock, to, sizeof(Ty_), timeout).data());
 }
 
 }  // namespace perfkit::net
@@ -120,7 +119,7 @@ void perfkit::net::net_session::poll(arg_poll const& arg) {
   try {
     _bufmem.clear();
 
-    auto head = try_recv_as<_net::message_header>(_sock, _bufmem, ms_to_wait);
+    auto head = try_recv_as<_net::message_header>(_sock, &_bufmem, ms_to_wait);
     if (0 != ::memcmp(head->header, _net::HEADER.data(), _net::HEADER.size())) {
       SPDLOG_LOGGER_CRITICAL(glog(), "invalid packet header received ... content: {}",
                              std::string_view{head->header, sizeof head->header});
@@ -128,34 +127,38 @@ void perfkit::net::net_session::poll(arg_poll const& arg) {
       return;
     }
 
-    auto body = try_recv(_sock, _bufmem, head->payload_size, ms_to_wait);
-    std::string_view payload{body, size_t(head->payload_size)};
+    auto payload = try_recv(_sock, &_bufmem, head->payload_size, ms_to_wait);
 
     switch (head->type.server) {
-      case _net::server_message::heartbeat:
-        // TODO
-        break;
-      case _net::server_message::config_fetch:
-        break;
-      case _net::server_message::shell_input:
-        break;
-      case _net::server_message::shell_fetch:
-        break;
+      case _net::server_message::heartbeat: _send_heartbeat(); break;
+      case _net::server_message::config_fetch: _handle_config_fetch(payload); break;
+      case _net::server_message::shell_input: _handle_shell_input(payload); break;
+      case _net::server_message::shell_fetch: _handle_shell_fetch(payload); break;
+      case _net::server_message::trace_fetch: _handle_trace_fetch(payload); break;
 
       default:
-        SPDLOG_LOGGER_CRITICAL(glog(), "invalid packet header received ... type: 0x{:08x}",
-                               head->type.server);
+      case _net::server_message::invalid:
         _connected = false;
+        SPDLOG_LOGGER_CRITICAL(
+                glog(), "invalid packet header received ... type: 0x{:08x}", head->type.server);
         return;
     }
-
-    _last_recv = clock_ty::now();
   } catch (connection_error&) {
     _connected = false;
     SPDLOG_LOGGER_ERROR(
-            glog(), "[{}:{}] error on polling ... ({}) {}", (void*)this, _sock, errno, strerror(errno));
+            glog(), "[{}:{}] connection error ... ({}) {}",
+            (void*)this, _sock, errno, strerror(errno));
   }
 }
 
 void perfkit::net::net_session::write(std::string_view str) {
+}
+
+void perfkit::net::net_session::_send_heartbeat() {
+  _send(_msg_gen(_net::provider_message::heartbeat, {}));
+}
+
+void perfkit::net::net_session::_send(std::string_view payload) {
+  std::lock_guard _{_sock_send_lock};
+  ::send(_sock, payload.data(), payload.size(), 0);
 }
