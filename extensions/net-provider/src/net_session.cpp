@@ -32,10 +32,9 @@ std::optional<std::string> perfkit::net::net_session::fetch_command(std::chrono:
 void perfkit::net::net_session::push_command(std::string_view command) {
 }
 
-void perfkit::net::net_session::write(std::string_view str, perfkit::termcolor fg, perfkit::termcolor bg) {
-}
-
 perfkit::net::net_session::~net_session() {
+  _connected = false;
+
   if (_sock) {
     SPDLOG_LOGGER_INFO(glog(), "[{}] closing socket connection ...", (void*)this);
     ::close(_sock);
@@ -166,4 +165,8 @@ void perfkit::net::net_session::poll() {
     SPDLOG_LOGGER_ERROR(
             glog(), "[{}:{}] error on polling ... ({}) {}", (void*)this, _sock, errno, strerror(errno));
   }
+}
+
+void perfkit::net::net_session::write(std::string_view str) {
+
 }

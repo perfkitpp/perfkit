@@ -50,7 +50,7 @@ class if_terminal {
   /**
    * Output string to terminal
    */
-  virtual void write(std::string_view str, termcolor fg = {}, termcolor bg = {}) = 0;
+  virtual void write(std::string_view str, termcolor fg = termcolor{0}, termcolor bg = termcolors::black) = 0;
 
   /**
    *

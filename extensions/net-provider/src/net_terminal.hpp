@@ -6,6 +6,7 @@
 #include <mutex>
 #include <thread>
 
+#include "perfkit/common/circular_queue.hxx"
 #include "perfkit/extension/net-provider.hpp"
 #include "perfkit/terminal.h"
 
@@ -35,6 +36,10 @@ class net_terminal : public perfkit::if_terminal {
   std::thread _async_loop;
   std::atomic_flag _active{true};
 
-  std::string _write_buffer;
+  circular_queue<char> _text_buffer{512 * 1024 - 1};
+  termcolor _prev_bg, _prev_fg;
+
+  circular_queue<std::string> _cmd_queue{64};
+  std::mutex _cmd_queue_lock;
 };
 }  // namespace perfkit::net

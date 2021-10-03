@@ -26,10 +26,27 @@ std::optional<std::string> net_terminal::fetch_command(std::chrono::milliseconds
 }
 
 void net_terminal::push_command(std::string_view command) {
+  std::lock_guard _{_cmd_queue_lock};
+  _cmd_queue.emplace_rotate(command);
 }
 
 void net_terminal::write(std::string_view str, perfkit::termcolor fg, perfkit::termcolor bg) {
+  std::lock_guard _{_session_lock};
+  if (_session == nullptr || not _session->is_connected()) {
+    // if session is disconnected, put texts into buffer.
+    auto oit = std::back_inserter(_text_buffer);
+    if (fg != _prev_fg) { fg.append_xterm_256(oit, true); }
+    if (bg != _prev_bg) { bg.append_xterm_256(oit, false); }
+    std::copy(str.begin(), str.end(), oit);
+  } else {
+    char buf[16];
+    if (fg != _prev_fg) { fg.append_xterm_256(buf, true), _session->write(buf); }
+    if (bg != _prev_bg) { bg.append_xterm_256(buf, false), _session->write(buf); }
+    _session->write(str);
+  }
 
+  _prev_fg = fg;
+  _prev_bg = bg;
 }
 
 std::shared_ptr<spdlog::sinks::sink> net_terminal::sink() {
@@ -60,9 +77,18 @@ void net_terminal::_async_worker() {
   while (_active.test_and_set(std::memory_order_relaxed)) {
     if (_session == nullptr || not _session->is_connected()) {
       // if session is not initialized or died, reinitialize.
-      std::lock_guard _{_session_lock};
-      _session.reset();
-      _session = std::make_unique<net_session>(&_init_cached);
+      {
+        std::lock_guard _{_session_lock};
+        _session.reset();
+      }
+      auto ptr = std::make_unique<net_session>(&_init_cached);
+      {
+        std::lock_guard _{_session_lock};
+        _session = std::move(ptr);
+
+        // flush buffered text to newly established connection.
+        _prev_fg = _prev_bg = {};
+      }
     }
 
     if (not _session->is_connected()) {

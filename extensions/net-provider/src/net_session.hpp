@@ -35,7 +35,7 @@ class net_session {
   perfkit::commands::registry* commands();
   std::optional<std::string> fetch_command(std::chrono::milliseconds timeout);
   void push_command(std::string_view command);
-  void write(std::string_view str, perfkit::termcolor fg, perfkit::termcolor bg);
+  void write(std::string_view str);
 
   void poll();
 

@@ -1,12 +1,13 @@
 #pragma once
+#include <algorithm>
 
 namespace perfkit {
-enum class colors;
+enum class termcolors;
 
 /** Color info */
 struct termcolor {
   union {
-    int code;
+    uint32_t code;
     struct {
       uint8_t r, g, b, a;
     };
@@ -14,20 +15,42 @@ struct termcolor {
 
   explicit constexpr termcolor(
           uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha = 255) noexcept
-          : r(red), g(green), b(blue), a(alpha) {}
+          : termcolor((alpha << 24) + (blue << 16) + (green << 8) + (red)) {}
 
   explicit constexpr termcolor(int hex) noexcept
           : code(hex) {}
 
-  constexpr termcolor(colors hex) noexcept  // intentionally implicit
-          : code((int)hex + (0xff << 24)) {}
+  constexpr termcolor(termcolors hex) noexcept  // intentionally implicit
+          : code((uint32_t)hex + (0xff << 24)) {}
 
   constexpr termcolor() noexcept
           : termcolor(0) {}
+
+  constexpr termcolor(termcolor&&) noexcept      = default;
+  constexpr termcolor(termcolor const&) noexcept = default;
+  constexpr termcolor& operator=(termcolor const&) noexcept = default;
+  constexpr termcolor& operator=(termcolor&&) noexcept = default;
+
+  constexpr bool operator==(termcolor const& r) const noexcept { return code == r.code; }
+  constexpr bool operator!=(termcolor const& r) const noexcept { return code != r.code; }
+  constexpr bool operator<(termcolor const& r) const noexcept { return code < r.code; }
+
+  template <typename OutIt_>
+  void append_xterm_256(OutIt_ out, bool fg = true) noexcept {
+    char buf[16];
+    auto n_written = snprintf(buf, sizeof buf, "\033[%d;5;%dm", fg ? 38 : 48, xterm_256());
+    std::copy_n(buf, n_written + 1, out);  // include null character
+  }
+
+  constexpr uint8_t xterm_256() const noexcept {
+    if (code == 0) { return 7; }  // default color is normal white
+    // scale channels in range 0-5, by dividing them ((256/6) + 1).floor()
+    return 16 + 36 * (r / 43) + 6 * (g / 43) + (b / 43);
+  }
 };
 
 /// See extended CSS color keywords (4.3) in http://www.w3.org/TR/2011/REC-css3-color-20110607/
-enum class colors {
+enum class termcolors {
   alice_blue             = 0xf0f8ff,
   antique_white          = 0xfaebd7,
   aqua                   = 0xFFFF,
