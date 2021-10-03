@@ -89,6 +89,7 @@ array_view<char> try_recv(socket_ty sock, std::string* to, size_t size_to_recv, 
   while (received < size_to_recv) {
     pollfd_ty pollee{sock, POLLIN, 0};
     if (auto r_poll = ::poll(&pollee, 1, timeout); r_poll <= 0) {
+      SPDLOG_LOGGER_CRITICAL(glog(), "connection timeout; no data received for {} ms", timeout);
       throw connection_error{};
     }
 
@@ -100,7 +101,9 @@ array_view<char> try_recv(socket_ty sock, std::string* to, size_t size_to_recv, 
     auto to_recv = size_to_recv - received;
     auto n_read  = ::recv(sock, &to[offset], to_recv, 0);
     if (n_read < 0) {
-      SPDLOG_LOGGER_CRITICAL(glog(), "failed to receive, something gone wrong!");
+      SPDLOG_LOGGER_CRITICAL(
+              glog(), "failed to receive, something gone wrong! ({}) {}",
+              errno, strerror(errno));
       throw connection_error{};
     }
 
