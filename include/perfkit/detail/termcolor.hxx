@@ -4,7 +4,7 @@ namespace perfkit {
 enum class colors;
 
 /** Color info */
-struct color {
+struct termcolor {
   union {
     int code;
     struct {
@@ -12,18 +12,18 @@ struct color {
     };
   };
 
-  explicit constexpr color(
+  explicit constexpr termcolor(
           uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha = 255) noexcept
           : r(red), g(green), b(blue), a(alpha) {}
 
-  explicit constexpr color(int hex) noexcept
+  explicit constexpr termcolor(int hex) noexcept
           : code(hex) {}
 
-  constexpr color(colors hex) noexcept  // intentionally implicit
+  constexpr termcolor(colors hex) noexcept  // intentionally implicit
           : code((int)hex + (0xff << 24)) {}
 
-  constexpr color() noexcept
-          : color(0) {}
+  constexpr termcolor() noexcept
+          : termcolor(0) {}
 };
 
 /// See extended CSS color keywords (4.3) in http://www.w3.org/TR/2011/REC-css3-color-20110607/

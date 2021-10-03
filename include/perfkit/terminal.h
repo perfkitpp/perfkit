@@ -6,7 +6,7 @@
 #include <spdlog/fwd.h>
 
 #include "perfkit/common/array_view.hxx"
-#include "perfkit/detail/color.hxx"
+#include "perfkit/detail/termcolor.hxx"
 
 namespace perfkit {
 namespace commands {
@@ -50,7 +50,7 @@ class if_terminal {
   /**
    * Output string to terminal
    */
-  virtual void write(std::string_view str, color fg = {}, color bg = {}) = 0;
+  virtual void write(std::string_view str, termcolor fg = {}, termcolor bg = {}) = 0;
 
   /**
    *

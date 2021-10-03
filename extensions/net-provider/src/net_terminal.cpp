@@ -12,8 +12,9 @@
 #include "perfkit/_net/net-proto.hpp"
 #include "perfkit/detail/base.hpp"
 
-namespace perfkit::net {
+using namespace std::literals;
 
+namespace perfkit::net {
 perfkit::commands::registry* net_terminal::commands() {
   return nullptr;
 }
@@ -27,7 +28,8 @@ std::optional<std::string> net_terminal::fetch_command(std::chrono::milliseconds
 void net_terminal::push_command(std::string_view command) {
 }
 
-void net_terminal::write(std::string_view str, perfkit::color fg, perfkit::color bg) {
+void net_terminal::write(std::string_view str, perfkit::termcolor fg, perfkit::termcolor bg) {
+
 }
 
 std::shared_ptr<spdlog::sinks::sink> net_terminal::sink() {
@@ -37,6 +39,14 @@ std::shared_ptr<spdlog::sinks::sink> net_terminal::sink() {
 net_terminal::net_terminal(terminal::net_provider::init_info info)
         : _init_cached{std::move(info)} {
   _async_loop = std::thread{[&] { _async_worker(); }};
+
+  if (info.wait_connection) {
+    // if `wait_connection` flag is specified, wait until the first valid connection.
+    for (;; std::this_thread::sleep_for(50ms)) {
+      std::lock_guard _{_session_lock};
+      if (_session && _session->is_connected()) { break; }
+    }
+  }
 }
 
 net_terminal::~net_terminal() {
@@ -50,6 +60,7 @@ void net_terminal::_async_worker() {
   while (_active.test_and_set(std::memory_order_relaxed)) {
     if (_session == nullptr || not _session->is_connected()) {
       // if session is not initialized or died, reinitialize.
+      std::lock_guard _{_session_lock};
       _session.reset();
       _session = std::make_unique<net_session>(&_init_cached);
     }

@@ -32,7 +32,7 @@ std::optional<std::string> perfkit::net::net_session::fetch_command(std::chrono:
 void perfkit::net::net_session::push_command(std::string_view command) {
 }
 
-void perfkit::net::net_session::write(std::string_view str, perfkit::color fg, perfkit::color bg) {
+void perfkit::net::net_session::write(std::string_view str, perfkit::termcolor fg, perfkit::termcolor bg) {
 }
 
 perfkit::net::net_session::~net_session() {

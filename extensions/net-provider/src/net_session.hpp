@@ -9,7 +9,7 @@
 #include <optional>
 
 #include "perfkit/_net/net-proto.hpp"
-#include "perfkit/detail/color.hxx"
+#include "perfkit/detail/termcolor.hxx"
 #include "perfkit/extension/net-provider.hpp"
 
 namespace perfkit::commands {
@@ -35,7 +35,7 @@ class net_session {
   perfkit::commands::registry* commands();
   std::optional<std::string> fetch_command(std::chrono::milliseconds timeout);
   void push_command(std::string_view command);
-  void write(std::string_view str, perfkit::color fg, perfkit::color bg);
+  void write(std::string_view str, perfkit::termcolor fg, perfkit::termcolor bg);
 
   void poll();
 

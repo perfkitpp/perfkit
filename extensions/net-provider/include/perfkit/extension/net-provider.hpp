@@ -14,6 +14,9 @@ struct init_info {
   /** Session name to introduce self */
   std::string const name;
 
+  /** Blocks until the first connection is successfully established. */
+  bool wait_connection = false;
+
   /** Host name to connect with. */
   std::string host_name = "localhost";
 
