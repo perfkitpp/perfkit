@@ -2,7 +2,18 @@
 
 std::string_view perfkit::_net::message_builder::_serialize(
         uint8_t msg, const nlohmann::json& payload) {
-  std::string output;
-  nlohmann::json::to_bson(payload, output);
+  _buf.clear();
+  _buf.resize(sizeof(message_header));
+
+  auto* head = reinterpret_cast<message_header*>(&_buf[0]);
+  memcpy(head->header, HEADER.data(), sizeof(message_header));
+  head->type._value = msg;
+
+  nlohmann::json::to_bson(payload, _adapter);
+
+  // possibly memory origin was relocated ...
+  head               = reinterpret_cast<message_header*>(&_buf[0]);
+  head->payload_size = _buf.size() - sizeof(message_header);
+
   return _buf;
 }

@@ -8,17 +8,20 @@ namespace perfkit::terminal::net_provider {
  * @param info
  * @return
  */
-terminal_ptr create(std::string session_name, struct init_info const& info);
+terminal_ptr create(struct init_info const& info);
 
 struct init_info {
+  /** Session name to introduce self */
+  std::string const name;
+
   /** Host name to connect with. */
   std::string host_name = "localhost";
 
+  /** Describes this session */
+  std::string description;
+
   /** Host port to connect with. */
   uint16_t host_port = 25572;
-
-  /** Polling does not send actual data, but only notifies latest successful fetch timestamp */
-  perfkit::milliseconds poll_interval{200};
 
   /**
    * Specify if remote connection should be read-only.
@@ -28,7 +31,13 @@ struct init_info {
   /**
    * Specify if password is required for access.
    * If password is empty, any access will be allowed. */
-  std::string password = "";
+  std::string password;
+
+  /**
+   * Specify how many milliseconds to wait for host response */
+  std::chrono::milliseconds connection_timeout_ms{10'000};
+
+  explicit init_info(std::string session_name) : name{std::move(session_name)} {};
 };
 
 }  // namespace perfkit::terminal::net_provider

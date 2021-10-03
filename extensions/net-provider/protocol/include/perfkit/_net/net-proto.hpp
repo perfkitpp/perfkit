@@ -1,3 +1,4 @@
+#pragma once
 #include <string_view>
 
 #include <nlohmann/json.hpp>
@@ -74,8 +75,12 @@ struct message_builder {
     return _serialize(static_cast<uint8_t>(msg), payload);
   }
 
-  std::string_view operator()(provider_message);
-  std::string_view operator()(server_message);
+  template <typename Ty_>
+  std::string_view operator()(Ty_ const& msg) {
+    return _serialize(static_cast<uint8_t>(Ty_::MESSAGE), msg);
+  }
+
+  std::string_view get() const noexcept { return _buf; }
 
  private:
   std::string_view _serialize(uint8_t msg, json const& payload);

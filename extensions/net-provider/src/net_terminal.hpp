@@ -13,7 +13,7 @@ class net_session;
 
 class net_terminal : public perfkit::if_terminal {
  public:
-  net_terminal(terminal::net_provider::init_info const&);
+  explicit net_terminal(terminal::net_provider::init_info);
   ~net_terminal();
 
  public:
@@ -24,7 +24,13 @@ class net_terminal : public perfkit::if_terminal {
   std::shared_ptr<spdlog::sinks::sink> sink() override;
 
  private:
+  void _async_worker();
+
+ private:
   std::unique_ptr<net_session> _session;
-  terminal::net_provider::init_info _init_cached;
+  terminal::net_provider::init_info const _init_cached;
+
+  std::thread _async_loop;
+  std::atomic_flag _active{true};
 };
 }  // namespace perfkit::net
