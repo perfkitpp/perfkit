@@ -23,14 +23,16 @@ using json = nlohmann::json;
 constexpr std::string_view HEADER = "p=&f4?t";
 
 template <typename... Args_>
-void _from_json(nlohmann::json const& js, Args_&... args) {
+void _from_json(nlohmann::json const& obj, Args_&... args) {
   size_t Idx_ = 0;
+  auto& js    = obj["value"];
   ((args = js[Idx_++].get_ref<Args_ const&>()), ...);
 }
 
 template <typename... Args_>
-void _to_json(nlohmann::json& js, Args_&&... args) {
+void _to_json(nlohmann::json& obj, Args_&&... args) {
   size_t Idx_ = 0;
+  auto& js    = obj["value"];
   ((js[Idx_++] = std::forward<Args_>(args)), ...);
 }
 
