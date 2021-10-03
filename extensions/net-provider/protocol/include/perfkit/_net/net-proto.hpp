@@ -114,7 +114,10 @@ struct shell_flush_chunk {
 
 struct shell_input_line {
   static constexpr auto MESSAGE = server_message::shell_input;
+  bool is_suggest;
   std::string content;
+
+  INTERNAL_PERFKIT_GEN_MARSHAL(shell_input_line, is_suggest, content);
 };
 
 struct shell_suggest_line {

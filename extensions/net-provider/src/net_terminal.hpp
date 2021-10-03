@@ -3,10 +3,12 @@
 //
 
 #pragma once
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 
 #include "perfkit/common/circular_queue.hxx"
+#include "perfkit/detail/commands.hpp"
 #include "perfkit/extension/net-provider.hpp"
 #include "perfkit/terminal.h"
 
@@ -41,5 +43,11 @@ class net_terminal : public perfkit::if_terminal {
 
   circular_queue<std::string> _cmd_queue{64};
   std::mutex _cmd_queue_lock;
+  std::condition_variable _cmd_queue_notify;
+
+  perfkit::commands::registry _commands;
+
+  std::shared_ptr<spdlog::sinks::sink> _log_sink;
+  std::shared_ptr<bool> _alive_flag = std::make_shared<bool>();
 };
 }  // namespace perfkit::net

@@ -21,17 +21,6 @@ using pollfd_ty = pollfd;
 
 #endif
 
-perfkit::commands::registry* perfkit::net::net_session::commands() {
-  return nullptr;
-}
-
-std::optional<std::string> perfkit::net::net_session::fetch_command(std::chrono::milliseconds timeout) {
-  return {};
-}
-
-void perfkit::net::net_session::push_command(std::string_view command) {
-}
-
 perfkit::net::net_session::~net_session() {
   _connected = false;
 
@@ -77,7 +66,7 @@ perfkit::net::net_session::net_session(
   ::send(_sock, data.data(), data.size(), 0);
 
   // Send all configs
-  _dump_all_config();
+  _send_all_config();
 
   // set as connected
   _connected = true;
@@ -125,11 +114,12 @@ Ty_* try_recv_as(socket_ty sock, std::string& to, int timeout) {
 
 }  // namespace perfkit::net
 
-void perfkit::net::net_session::poll() {
+void perfkit::net::net_session::poll(arg_poll const& arg) {
   auto ms_to_wait = _pinit->connection_timeout_ms.count();
-  _bufmem.clear();
 
   try {
+    _bufmem.clear();
+
     auto head = try_recv_as<_net::message_header>(_sock, _bufmem, ms_to_wait);
     if (0 != ::memcmp(head->header, _net::HEADER.data(), _net::HEADER.size())) {
       SPDLOG_LOGGER_CRITICAL(glog(), "invalid packet header received ... content: {}",
@@ -168,5 +158,4 @@ void perfkit::net::net_session::poll() {
 }
 
 void perfkit::net::net_session::write(std::string_view str) {
-
 }

@@ -9,6 +9,7 @@
 #include <optional>
 
 #include "perfkit/_net/net-proto.hpp"
+#include "perfkit/common/circular_queue.hxx"
 #include "perfkit/detail/termcolor.hxx"
 #include "perfkit/extension/net-provider.hpp"
 
@@ -28,21 +29,22 @@ class net_session {
   using clock_ty = std::chrono::steady_clock;
 
  public:
+  struct arg_poll {
+    commands::registry const* command_registry;
+    std::function<void(std::string_view)> enqueue_command;
+  };
+
+ public:
   explicit net_session(terminal::net_provider::init_info const*);
   ~net_session();
 
  public:
-  perfkit::commands::registry* commands();
-  std::optional<std::string> fetch_command(std::chrono::milliseconds timeout);
-  void push_command(std::string_view command);
   void write(std::string_view str);
-
-  void poll();
-
+  void poll(arg_poll const& arg);
   bool is_connected() const noexcept { return _connected.load(std::memory_order_relaxed); }
 
  private:
-  void _dump_all_config() {}
+  void _send_all_config() {}
 
  public:
   socket_ty _sock = {};
