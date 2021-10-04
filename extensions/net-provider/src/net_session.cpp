@@ -34,6 +34,10 @@ perfkit::net::net_session::~net_session() {
   }
 }
 
+static int64_t g_epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                     std::chrono::system_clock::now().time_since_epoch())
+                                     .count();
+
 perfkit::net::net_session::net_session(
         perfkit::terminal::net_provider::init_info const* init)
         : _pinit{init} {
@@ -64,9 +68,7 @@ perfkit::net::net_session::net_session(
   session.machine_name = (gethostname(buf, sizeof buf), buf);
   session.description  = init->description;
   session.pid          = getpid();
-  session.epoch        = std::chrono::duration_cast<std::chrono::milliseconds>(
-                          std::chrono::system_clock::now().time_since_epoch())
-                          .count();
+  session.epoch        = g_epoch_time;
   _send(_msg_gen(session));
 
   // Send all configs
