@@ -282,7 +282,7 @@ void basic_interactive_terminal::push_command(std::string_view command) {
   _cmd_queued.emplace_back(command);
 }
 
-void basic_interactive_terminal::write(std::string_view str, color fg, color bg) {
+void basic_interactive_terminal::write(std::string_view str, termcolor fg, termcolor bg) {
   bool has_cr_lf = false;
   for (auto ch : str) {
     if (ch == '\n') {
