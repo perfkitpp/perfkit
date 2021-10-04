@@ -9,11 +9,15 @@ std::string_view perfkit::_net::message_builder::_serialize(
   memcpy(head->header, HEADER.data(), sizeof(message_header));
   head->type._value = msg;
 
-  nlohmann::json::to_bson(payload, _adapter);
+  if (not payload.empty()) {
+    nlohmann::json::to_bson(payload, _adapter);
 
-  // possibly memory origin was relocated ...
-  head               = reinterpret_cast<message_header*>(&_buf[0]);
-  head->payload_size = _buf.size() - sizeof(message_header);
+    // possibly memory origin was relocated ...
+    head               = reinterpret_cast<message_header*>(&_buf[0]);
+    head->payload_size = _buf.size() - sizeof(message_header);
+  } else {
+    head->payload_size = 0;
+  }
 
   return _buf;
 }

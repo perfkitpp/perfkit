@@ -35,8 +35,8 @@ perfkit::net::net_session::~net_session() {
 }
 
 static int64_t g_epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                     std::chrono::system_clock::now().time_since_epoch())
-                                     .count();
+                                      std::chrono::system_clock::now().time_since_epoch())
+                                      .count();
 
 perfkit::net::net_session::net_session(
         perfkit::terminal::net_provider::init_info const* init)
@@ -102,11 +102,15 @@ array_view<char> try_recv(socket_ty sock, std::string* to, size_t size_to_recv, 
     }
 
     auto to_recv = size_to_recv - received;
-    auto n_read  = ::recv(sock, &to[offset], to_recv, 0);
+    auto n_read  = ::recv(sock, &(*to)[offset], to_recv, 0);
     if (n_read < 0) {
       SPDLOG_LOGGER_CRITICAL(
               glog(), "failed to receive, something gone wrong! ({}) {}",
               errno, strerror(errno));
+      throw connection_error{};
+    }
+    if (n_read == 0) {
+      SPDLOG_LOGGER_INFO(glog(), "disconnected from server.");
       throw connection_error{};
     }
 
@@ -131,13 +135,16 @@ void perfkit::net::net_session::poll(arg_poll const& arg) {
     _bufmem.clear();
 
     auto head = try_recv_as<_net::message_header>(_sock, &_bufmem, ms_to_wait);
-    if (0 != ::memcmp(head->header, _net::HEADER.data(), _net::HEADER.size())) {
+    if (_bufmem.empty() || 0 != ::memcmp(head->header, _net::HEADER.data(), _net::HEADER.size())) {
       SPDLOG_LOGGER_CRITICAL(glog(), "invalid packet header received ... content: {}",
                              std::string_view{head->header, sizeof head->header});
       _connected = false;
       return;
     }
 
+    SPDLOG_LOGGER_TRACE(
+            glog(), "header info: type {:02x}, payload {} bytes",
+            head->type._value, head->payload_size);
     auto payload = try_recv(_sock, &_bufmem, head->payload_size, ms_to_wait);
 
     switch (head->type.server) {
@@ -166,6 +173,7 @@ void perfkit::net::net_session::write(std::string_view str) {
 }
 
 void perfkit::net::net_session::_send_heartbeat() {
+  SPDLOG_LOGGER_DEBUG(glog(), "heartbeat received.");
   _send(_msg_gen(_net::provider_message::heartbeat, {}));
 }
 

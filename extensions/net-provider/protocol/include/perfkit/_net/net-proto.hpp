@@ -42,10 +42,10 @@ enum class provider_message : uint8_t {
   config_all       = 0x02,
   config_update    = 0x03,
   trace_groups     = 0x04,
-  trace_update     = 0x04,
-  trace_image      = 0x05,
-  shell_flush      = 0x06,
-  shell_suggest    = 0x07,
+  trace_update     = 0x05,
+  trace_image      = 0x06,
+  shell_flush      = 0x07,
+  shell_suggest    = 0x08,
   heartbeat        = 0x0F,
 };
 
