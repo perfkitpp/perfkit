@@ -33,7 +33,7 @@ option(perfkit_BUILD_EXAMPLES "" OFF)
 
 # JSON Bundling
 if (perfkit_USE_BUNDLED_JSON)
-    message("Using bundled json")
+    message("[${PROJECT_NAME}]: Using bundled json")
     target_include_directories(${PROJECT_NAME} PUBLIC "third/json")
 endif ()
 
@@ -43,18 +43,18 @@ if (perfkit_BUILD_FTXUI_EXTENSION)
         add_subdirectory(third/FTXUI/)
     endif ()
 
-    message("Configuring FTXUI Extension Library ...")
+    message("[${PROJECT_NAME}]: Configuring FTXUI Extension Library ...")
     add_subdirectory(extensions/ftxui/)
 endif ()
 
 # NET Extension
 if (perfkit_BUILD_NET_CLIENT)
-    message("Configuring NET CLIENT extension ...")
+    message("[${PROJECT_NAME}]: Configuring NET CLIENT extension ...")
     add_subdirectory(extensions/net-provider/)
 endif ()
 
 if (perfkit_BUILD_CLI)
-    message("Configuring CLI extension ...")
+    message("[${PROJECT_NAME}]: Configuring CLI extension ...")
     add_subdirectory(extensions/cli/)
 
     if (UNIX)
@@ -118,7 +118,7 @@ target_link_libraries(
 )
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    message("enabling debugging log statements ...")
+    message("[${PROJECT_NAME}]: enabling trace log level ...")
     target_compile_definitions(
             ${PROJECT_NAME}
 
