@@ -17,6 +17,8 @@
 #include <sys/unistd.h>
 
 using pollfd_ty = pollfd;
+using std::lock_guard;
+
 #elif _WIN32
 #define _CRT_NONSTDC_NO_WARNINGS
 #include <Winsock2.h>
@@ -25,6 +27,20 @@ using pollfd_ty = pollfd;
 #endif
 
 using namespace std::literals;
+
+template <typename Ty_>
+std::optional<Ty_> perfkit::net::net_session::_retrieve(std::string_view s) {
+  try {
+    return _net::json::from_bson(s).get<Ty_>();
+  } catch (_net::json::parse_error& e) {
+    SPDLOG_WARN("parse error: ({}:{}) {}", e.id, e.byte, e.what());
+  } catch (std::exception& e) {
+    SPDLOG_WARN("conversion error: {}", e.what());
+  }
+
+  return {};
+}
+
 perfkit::net::net_session::~net_session() {
   _connected = false;
 
@@ -151,9 +167,10 @@ void perfkit::net::net_session::poll(arg_poll const& arg) {
       case _net::server_message::heartbeat: _send_heartbeat(); break;
       case _net::server_message::config_fetch: _handle_config_fetch(payload); break;
       case _net::server_message::shell_input: _handle_shell_input(payload); break;
-      case _net::server_message::shell_fetch: _handle_shell_fetch(payload); break;
+      case _net::server_message::shell_fetch: _handle_shell_fetch(); break;
       case _net::server_message::trace_fetch: _handle_trace_fetch(payload); break;
 
+      case _net::server_message::trace_group_open_close:
       default:
       case _net::server_message::invalid:
         _connected = false;
@@ -170,14 +187,33 @@ void perfkit::net::net_session::poll(arg_poll const& arg) {
 }
 
 void perfkit::net::net_session::write(std::string_view str) {
+  lock_guard _{_char_seq_lock};
+  std::copy(str.begin(), str.end(), std::back_inserter(_chars_pending));
+  _char_sequence += str.size();
 }
 
 void perfkit::net::net_session::_send_heartbeat() {
   SPDLOG_LOGGER_DEBUG(glog(), "heartbeat received.");
+  std::lock_guard _{_sock_send_lock};
   _send(_msg_gen(_net::provider_message::heartbeat, {}));
 }
 
 void perfkit::net::net_session::_send(std::string_view payload) {
-  std::lock_guard _{_sock_send_lock};
   ::send(_sock, payload.data(), payload.size(), 0);
+}
+
+void perfkit::net::net_session::_handle_shell_fetch() {
+  SPDLOG_LOGGER_DEBUG(glog(), "shell fetch request received.");
+
+  _net::shell_flush_chunk msg;
+  {
+    lock_guard _{_char_seq_lock};
+    msg.sequence = _char_sequence;
+    msg.data.reserve(_chars_pending.size());
+    _chars_pending.dequeue_n(_chars_pending.size(), std::back_inserter(msg.data));
+  }
+  {
+    lock_guard _{_sock_send_lock};
+    _send(_msg_gen(_net::provider_message::shell_flush, msg));
+  }
 }

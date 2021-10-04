@@ -50,10 +50,13 @@ class net_session {
   void _send_heartbeat();
   void _handle_config_fetch(array_view<char> payload) {}
   void _handle_trace_fetch(array_view<char> payload) {}
-  void _handle_shell_fetch(array_view<char> payload) {}
+  void _handle_shell_fetch();
   void _handle_shell_input(array_view<char> payload) {}
 
   void _send(std::string_view payload);
+
+  template <typename Ty_>
+  std::optional<Ty_> _retrieve(std::string_view s);
 
  public:
   socket_ty _sock = {};
@@ -65,7 +68,8 @@ class net_session {
   std::atomic_bool _connected;
   std::string _bufmem;
 
-  size_t _char_sequence;
+  std::mutex _char_seq_lock;
+  size_t _char_sequence = 0;
   circular_queue<char> _chars_pending{512 * 1024 - 1};
 };
 }  // namespace perfkit::net

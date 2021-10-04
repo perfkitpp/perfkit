@@ -114,8 +114,10 @@ struct session_register_info {
 struct shell_flush_chunk {
   static constexpr auto MESSAGE = provider_message::shell_flush;
 
-  size_t sequence_offset;
+  int64_t sequence;
   std::string data;
+
+  INTERNAL_PERFKIT_GEN_MARSHAL(shell_flush_chunk, sequence, data);
 };
 
 struct shell_input_line {
