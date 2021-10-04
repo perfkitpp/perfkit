@@ -65,7 +65,7 @@ class net_sink_mt : public spdlog::sinks::base_sink<std::mutex> {
   using super = spdlog::sinks::base_sink<std::mutex>;
 
  public:
-  net_sink_mt(net_terminal* owner, std::weak_ptr<bool> alive) : _owner{owner} {}
+  net_sink_mt(net_terminal* owner, std::weak_ptr<bool> alive) : _owner{owner}, _alive(alive) {}
 
  protected:
   void sink_it_(const spdlog::details::log_msg& msg) override {
@@ -78,7 +78,12 @@ class net_sink_mt : public spdlog::sinks::base_sink<std::mutex> {
     spdlog::memory_buf_t formatted;
     super::formatter_->format(msg, formatted);
 
-    _owner->write({formatted.begin(), formatted.size()});
+    if (not lock) {
+      fmt::format("WARNING: Server is closed.\n");
+      fmt::format("message: {}", to_string(formatted));
+    } else {
+      _owner->write({formatted.begin(), formatted.size()});
+    }
   }
 
   void flush_() override {}
