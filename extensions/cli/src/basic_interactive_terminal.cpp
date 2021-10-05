@@ -58,7 +58,7 @@ std::optional<std::string> basic_interactive_terminal::fetch_command(millisecond
   return entered;
 }
 
-void basic_interactive_terminal::write(std::string_view str, color fg, color bg) {
+void basic_interactive_terminal::write(std::string_view str, termcolor fg, termcolor bg) {
   fwrite(str.data(), str.size(), 1, stdout);
 }
 
