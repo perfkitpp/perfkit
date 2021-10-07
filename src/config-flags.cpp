@@ -114,7 +114,7 @@ class single_dash_parse : public if_state {
   bool invoke(std::string_view tok, if_state** next) override {
     auto ch_first = tok[0];
     if (config_ptr conf; ch_first != 'N'
-                         && tok.size() > 1
+                         && tok.size() >= 1
                          && (conf = _find_conf(ch_first, ignore_undefined))
                          && not conf->default_value().is_boolean()) {
       // it's asserted to be value string from second charater.
