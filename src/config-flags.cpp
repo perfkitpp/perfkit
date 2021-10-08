@@ -87,10 +87,24 @@ class value_parse : public if_state {
 
     try {
       if (_conf->default_value().is_string()) {
-        std::string parsed;
-        parsed.reserve(2 + tok.size());
-        parsed < R"("{}")"_fmt % tok;
-        _conf->request_modify(nlohmann::json::parse(parsed));
+        std::string data;
+        data.reserve(2 + tok.size());
+        (R"("{}")"_fmt % tok) > data;
+        _conf->request_modify(nlohmann::json::parse(data.begin(), data.end()));
+      } else if (_conf->default_value().is_array()) {
+        auto curvalue = _conf->serialize();
+        auto jsvalue  = nlohmann::json::parse(tok.begin(), tok.end(), nullptr, false);
+
+        // if parsing fails, try once more as plain string
+        if (jsvalue.is_discarded()) {
+          std::string data;
+          data.reserve(2 + tok.size());
+          (R"("{}")"_fmt % tok) > data;
+          jsvalue = nlohmann::json::parse(data.begin(), data.end());
+        }
+
+        curvalue.emplace_back(std::move(jsvalue));
+        _conf->request_modify(std::move(curvalue));
       } else {
         _conf->request_modify(nlohmann::json::parse(tok.begin(), tok.end()));
       }
@@ -114,7 +128,7 @@ class single_dash_parse : public if_state {
   bool invoke(std::string_view tok, if_state** next) override {
     auto ch_first = tok[0];
     if (config_ptr conf; ch_first != 'N'
-                         && tok.size() > 1
+                         && tok.size() >= 1
                          && (conf = _find_conf(ch_first, ignore_undefined))
                          && not conf->default_value().is_boolean()) {
       // it's asserted to be value string from second charater.
@@ -187,7 +201,7 @@ class initial_state : public if_state {
     std::string str;
 
     using namespace ranges;
-    str += "usage: <program> ";
+    str += "\n\nusage: <program> ";
     for (const auto& [key, conf] : _flags()) {
       flag_mappings[conf.get()].push_back(key);
       str << "[{}{}{}] "_fmt
@@ -202,14 +216,14 @@ class initial_state : public if_state {
 
     str += "\n\n"_fmt.s();
     for (const auto& [conf, keys] : flag_mappings) {
-      str << "  {:.<60}\n"_fmt
+      str << "  {:.<80}\n"_fmt
                       % to_string("{{ \"{}\" :{} }}"_fmt
                                   % conf->display_key()
                                   % conf->default_value().type_name());
-      str += "    <flags> ";
+      str += "    | flags         : ";
       for (auto& key : keys) { str << "{}{} "_fmt % (key.size() == 1 ? "-" : "--") % key; }
-      str << "\n    <default> {}\n"_fmt % conf->default_value().dump();
-      str << "    <description> {}\n\n"_fmt % (conf->description().empty() ? "<no description>" : conf->description());
+      str << "\n    | default value :  {}\n"_fmt % conf->default_value().dump();
+      str << "    | description   :  {}\n\n"_fmt % (conf->description().empty() ? "<no description>" : conf->description());
     }
 
     throw parse_help(std::move(str));

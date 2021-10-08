@@ -112,7 +112,7 @@ namespace configs {
 struct duplicated_flag_binding : std::logic_error { using std::logic_error::logic_error; };
 struct invalid_flag_name : std::logic_error { using std::logic_error::logic_error; };
 struct parse_error : std::runtime_error { using std::runtime_error::runtime_error; };
-struct parse_help : std::runtime_error { using std::runtime_error::runtime_error; };
+struct parse_help : parse_error { using parse_error::parse_error; };
 // clang-format on
 
 using flag_binding_table = std::map<std::string, config_ptr, std::less<>>;
