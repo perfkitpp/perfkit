@@ -38,7 +38,7 @@ struct init_info {
 
   /**
    * Specify how many milliseconds to wait for host response */
-  std::chrono::milliseconds connection_timeout_ms{10'000};
+  std::chrono::milliseconds connection_timeout_ms{5'000};
 
   explicit init_info(std::string session_name) : name{std::move(session_name)} {};
 };
