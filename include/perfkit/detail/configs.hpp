@@ -264,7 +264,7 @@ class config {
 
     // set reference attribute
     nlohmann::json js_attrib;
-    js_attrib["default"] = default_value;
+    js_attrib["default"] = _value;
 
     if constexpr (Attr_::flag & _attr_flag::has_min) {
       js_attrib["min"] = *attribute.min;
