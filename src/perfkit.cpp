@@ -92,7 +92,7 @@ bool perfkit::export_options(std::string_view dstpath_s) {
   }
 
   dst << exported.dump(4) << std::endl;
-  glog()->info("configuration export to file [{}] is done.", dstpath.string());
+  glog()->debug("configuration export to file [{}] is done.", dstpath.string());
 
   return true;
 }
