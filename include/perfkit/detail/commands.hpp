@@ -36,8 +36,9 @@ void tokenize_by_argv_rule(
 /**
  * Invocation Handler
  */
-using args_view = array_view<std::string_view>;
-using invoke_fn = std::function<bool(args_view full_tokens)>;
+using args_view      = array_view<std::string_view>;
+using invoke_fn      = std::function<bool(args_view full_tokens)>;
+using invoke_void_fn = std::function<void(args_view full_tokens)>;
 
 /**
  * When this handler is called, out_candidates parameter will hold initial
@@ -50,6 +51,12 @@ class registry {
  public:
  public:
   class node {
+    perfkit::commands::registry::node* _add_subcommand(
+            std::string cmd,
+            invoke_fn handler               = {},
+            autocomplete_suggest_fn suggest = {},
+            bool name_constant              = false);
+
    public:
     /**
      * Create new subcommand.
@@ -60,11 +67,38 @@ class registry {
      * @param name_constant Disable renaming of this command.
      * @return nullptr if given command is invalid.
      */
+    template <typename Fn_ = nullptr_t>
     perfkit::commands::registry::node* add_subcommand(
             std::string cmd,
-            invoke_fn handler               = {},
+            Fn_&& handler                   = nullptr,
             autocomplete_suggest_fn suggest = {},
-            bool name_constant              = false);
+            bool name_constant              = false) {
+      if constexpr (std::is_invocable_r_v<bool, Fn_, args_view>) {
+        return _add_subcommand(
+                std::move(cmd), std::forward<Fn_>(handler), std::move(suggest), name_constant);
+      } else if constexpr (std::is_invocable_v<Fn_, args_view>) {
+        return _add_subcommand(
+                std::move(cmd),
+                [fn = std::forward<Fn_>(handler)](auto&& args) {
+                  fn(std::forward(args));
+                  return true;
+                },
+                std::move(suggest), name_constant);
+      } else if constexpr (std::is_invocable_v<Fn_>) {
+        return _add_subcommand(
+                std::move(cmd),
+                [fn = std::forward<Fn_>(handler)](auto&& args) {
+                  fn();
+                  return true;
+                },
+                std::move(suggest), name_constant);
+      } else if (std::is_same_v<Fn_, nullptr_t>) {
+        return _add_subcommand(
+                std::move(cmd),
+                {},
+                std::move(suggest), name_constant);
+      }
+    }
 
     /**
      * Find subcommand of current node.
@@ -72,7 +106,8 @@ class registry {
      * @param cmd_or_alias
      * @return
      */
-    node const* find_subcommand(std::string_view cmd_or_alias) const;
+    node const*
+    find_subcommand(std::string_view cmd_or_alias) const;
     node* find_subcommand(std::string_view cmd_or_alias);
 
     /**

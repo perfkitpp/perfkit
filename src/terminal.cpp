@@ -128,7 +128,7 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
 
   auto logging = ref->commands()->root()->add_subcommand(
           cmdstr,
-          {},
+          nullptr,
           [ref, cmdstr, fn_sugg](auto&&, auto&& cands) -> bool {
             auto node = ref->commands()->root()->find_subcommand(cmdstr);
             spdlog::details::registry::instance().apply_all(
