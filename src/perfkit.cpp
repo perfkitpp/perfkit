@@ -7,6 +7,8 @@
 #include <fstream>
 #include <sstream>
 
+#include <perfkit/detail/base.hpp>
+
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/stdout_sinks.h"
 #include "spdlog/spdlog.h"
@@ -48,14 +50,14 @@ bool perfkit::import_options(std::string_view srcpath_s) {
         continue;
       }
 
-      auto r_req = config_registry::request_update_value(std::string(ptr->full_key()), *it);
+      auto r_req = config_registry::request_update_value(ptr->full_key(), *it);
       if (!r_req) {
         glog()->critical("FOUND KEY {} IS MISSING FROM GLOBAL LIST. SOMETHING GONE WRONG !!!", name);
         std::terminate();
       }
 
       ++loaded;
-      glog()->debug("IMPORTING: {} << {}", name, *it);
+      glog()->debug("IMPORTING: {} << {}", name, it->dump());
     }
 
     glog()->info(
@@ -79,20 +81,8 @@ bool perfkit::export_options(std::string_view dstpath_s) {
     return false;
   }
 
-  nlohmann::json exported;
-  auto& obj = exported["___OPTIONS___"];
-
-  for (auto const& [name, ptr] : config_registry::all()) {
-    if (ptr->attribute().contains("transient")) {
-      continue;
-    }
-
-    obj[std::string(ptr->display_key())] = ptr->serialize();
-    glog()->debug("EXPORTING: {} >>> {}", name, ptr->serialize().dump());
-  }
-
-  dst << exported.dump(4) << std::endl;
-  glog()->debug("configuration export to file [{}] is done.", dstpath.string());
+  dst << dump_options() << std::endl;
+  glog()->info("configuration export to file [{}] is finished.", dstpath.string());
 
   return true;
 }
@@ -106,4 +96,20 @@ std::shared_ptr<spdlog::logger> perfkit::glog() {
   }
 
   return _inst.lock();
+}
+
+std::string perfkit::dump_options() {
+  nlohmann::json exported;
+  auto& obj = exported["___OPTIONS___"];
+
+  for (auto const& [name, ptr] : config_registry::all()) {
+    if (ptr->attribute().contains("transient")) {
+      continue;
+    }
+
+    obj[std::string(ptr->display_key())] = ptr->serialize();
+    glog()->debug("EXPORTING: {} >>> {}", name, ptr->serialize().dump());
+  }
+
+  return exported.dump(4);
 }
