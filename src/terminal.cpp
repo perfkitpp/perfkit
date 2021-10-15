@@ -182,7 +182,11 @@ class _trace_manip {
 
   void suggest(string_set& repos) {
     // list of tracers
-    for (const auto& tracer : tracer::all()) { repos.insert(tracer->name()); }
+    for (const auto& wtracer : tracer::all()) {
+      if (auto tracer = wtracer.lock()) {
+        repos.insert(tracer->name());
+      }
+    }
   }
 
   bool invoke(args_view args) {
@@ -210,21 +214,26 @@ class _trace_manip {
     }
 
     using namespace ranges;
-    auto it = std::find_if(tracer::all().begin(),
-                           tracer::all().end(),
-                           [&](auto& p) { return p->name() == args[0]; });
+    auto traces = tracer::all();
+
+    auto it = std::find_if(traces.begin(),
+                           traces.end(),
+                           [&](auto& p) {
+                             auto ptr = p.lock();
+                             return ptr && ptr->name() == args[0];
+                           });
 
     if (it == tracer::all().end()) {
       SPDLOG_LOGGER_ERROR(glog(), "name '{}' is not valid tracer name", args[0]);
       return false;
     }
 
-    _async = std::async(std::launch::async, [=] { _async_request(*it, pattern, setter); });
+    _async = std::async(std::launch::async, [=] { _async_request(it->lock(), pattern, setter); });
     return true;
   }
 
  private:
-  void _async_request(tracer* ref, std::string pattern, std::optional<bool> setter) {
+  void _async_request(std::shared_ptr<tracer> ref, std::string pattern, std::optional<bool> setter) {
     tracer::future_result fut;
     ref->async_fetch_request(&fut);
 
