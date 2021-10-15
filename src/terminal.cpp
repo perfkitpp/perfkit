@@ -182,10 +182,8 @@ class _trace_manip {
 
   void suggest(string_set& repos) {
     // list of tracers
-    for (const auto& wtracer : tracer::all()) {
-      if (auto tracer = wtracer.lock()) {
-        repos.insert(tracer->name());
-      }
+    for (const auto& tracer : tracer::all()) {
+      repos.insert(tracer->name());
     }
   }
 
@@ -219,16 +217,15 @@ class _trace_manip {
     auto it = std::find_if(traces.begin(),
                            traces.end(),
                            [&](auto& p) {
-                             auto ptr = p.lock();
-                             return ptr && ptr->name() == args[0];
+                             return p->name() == args[0];
                            });
 
-    if (it == tracer::all().end()) {
+    if (it == traces.end()) {
       SPDLOG_LOGGER_ERROR(glog(), "name '{}' is not valid tracer name", args[0]);
       return false;
     }
 
-    _async = std::async(std::launch::async, [=] { _async_request(it->lock(), pattern, setter); });
+    _async = std::async(std::launch::async, [=] { _async_request(*it, pattern, setter); });
     return true;
   }
 

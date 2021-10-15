@@ -116,8 +116,16 @@ std::vector<std::weak_ptr<tracer>>& tracer::_all() noexcept {
   return inst;
 }
 
-std::vector<std::weak_ptr<tracer>> tracer::all() noexcept {
-  return lock_tracer_repo(), _all();
+std::vector<std::shared_ptr<tracer>> tracer::all() noexcept {
+  return lock_tracer_repo(),
+         [] {
+           std::vector<std::shared_ptr<tracer>> ret{};
+           ret.reserve(_all().size());
+           std::transform(
+                   _all().begin(), _all().end(), back_inserter(ret),
+                   [](auto&& p) { return p.lock(); });
+           return ret;
+         }();
 }
 
 void tracer::async_fetch_request(tracer::future_result* out) {
@@ -138,16 +146,17 @@ void tracer::async_fetch_request(tracer::future_result* out) {
 auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer> {
   auto _{lock_tracer_repo()};
   std::shared_ptr<tracer> entity{new tracer{order, name}};
+  entity->_self_weak = entity;
 
   auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
-  _all().insert(it_insert, entity->weak_from_this());
+  _all().insert(it_insert, entity);
   return entity;
 }
 
 perfkit::tracer::~tracer() noexcept {
   auto _{lock_tracer_repo()};
-  auto mine = weak_from_this();
-  auto it   = std::find_if(_all().begin(), _all().end(), [&](auto&& wptr) { return wptr.owner_before(mine); });
+  auto it = std::find_if(_all().begin(), _all().end(),
+                         [&](auto&& wptr) { return wptr.owner_before(_self_weak); });
   if (it != _all().end()) { _all().erase(it); }
 };
 

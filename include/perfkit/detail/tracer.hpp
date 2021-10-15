@@ -35,7 +35,7 @@ struct trace_variant_type : std::variant<clock_type::duration,
   using variant::variant;
 };
 
-class tracer : std::enable_shared_from_this<tracer> {
+class tracer {
  public:
   using clock_type   = perfkit::clock_type;
   using variant_type = trace_variant_type;
@@ -204,7 +204,7 @@ class tracer : std::enable_shared_from_this<tracer> {
 
  public:
   static auto create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer>;
-  static std::vector<std::weak_ptr<tracer>> all() noexcept;
+  static std::vector<std::shared_ptr<tracer>> all() noexcept;
 
  public:
   /**
@@ -258,6 +258,8 @@ class tracer : std::enable_shared_from_this<tracer> {
 
   int _occurence_order;
   std::string const _name;
+
+  std::weak_ptr<tracer> _self_weak;
 };
 
 using tracer_ptr  = std::shared_ptr<tracer>;
