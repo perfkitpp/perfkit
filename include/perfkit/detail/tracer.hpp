@@ -190,17 +190,21 @@ class tracer {
 
   using future_result = tracer_future_result;
 
- public:
   /**
    * Registers new memory block to global storage.
    *
    * @param order All blocks will be occur by its specified order.
    * @param name
    */
+ private:
   tracer(int order, std::string_view name) noexcept;
+
+ public:
   ~tracer() noexcept;
 
-  static array_view<tracer*> all() noexcept;
+ public:
+  static auto create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer>;
+  static std::vector<std::shared_ptr<tracer>> all() noexcept;
 
  public:
   /**
@@ -227,8 +231,7 @@ class tracer {
 
   // Create new or find existing.
   tracer::_entity_ty* _fork_branch(_entity_ty const* parent, std::string_view name, bool initial_subscribe_state);
-
-  static std::vector<tracer*>& _all() noexcept;
+  static std::vector<std::weak_ptr<tracer>>& _all() noexcept;
 
  private:
   // 고려사항
@@ -255,7 +258,12 @@ class tracer {
 
   int _occurence_order;
   std::string const _name;
+
+  std::weak_ptr<tracer> _self_weak;
 };
+
+using tracer_ptr  = std::shared_ptr<tracer>;
+using tracer_wptr = std::weak_ptr<tracer>;
 
 /**
  * Sort messages by rule

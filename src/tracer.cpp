@@ -96,23 +96,36 @@ tracer::proxy tracer::fork(const std::string& n) {
 namespace {
 struct message_block_sorter {
   int n;
-  friend bool operator<(tracer* ptr, message_block_sorter s) { return s.n > ptr->order(); }
+  friend bool operator<(std::weak_ptr<tracer> ptr, message_block_sorter s) {
+    return s.n > ptr.lock()->order();
+  }
 };
 }  // namespace
 
+static auto lock_tracer_repo = [] {
+  static std::mutex _lck;
+  return std::unique_lock{_lck};
+};
+
 tracer::tracer(int order, std::string_view name) noexcept
         : self(new _impl), _occurence_order(order), _name(name) {
-  auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
-  _all().insert(it_insert, this);
 }
 
-std::vector<tracer*>& tracer::_all() noexcept {
-  static std::vector<tracer*> inst;
+std::vector<std::weak_ptr<tracer>>& tracer::_all() noexcept {
+  static std::vector<std::weak_ptr<tracer>> inst;
   return inst;
 }
 
-array_view<tracer*> tracer::all() noexcept {
-  return _all();
+std::vector<std::shared_ptr<tracer>> tracer::all() noexcept {
+  return lock_tracer_repo(),
+         [] {
+           std::vector<std::shared_ptr<tracer>> ret{};
+           ret.reserve(_all().size());
+           std::transform(
+                   _all().begin(), _all().end(), back_inserter(ret),
+                   [](auto&& p) { return p.lock(); });
+           return ret;
+         }();
 }
 
 void tracer::async_fetch_request(tracer::future_result* out) {
@@ -129,7 +142,23 @@ void tracer::async_fetch_request(tracer::future_result* out) {
   self->msg_future = std::shared_future(self->msg_promise->get_future());
   *out             = self->msg_future;
 }
-perfkit::tracer::~tracer() noexcept = default;
+
+auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer> {
+  auto _{lock_tracer_repo()};
+  std::shared_ptr<tracer> entity{new tracer{order, name}};
+  entity->_self_weak = entity;
+
+  auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
+  _all().insert(it_insert, entity);
+  return entity;
+}
+
+perfkit::tracer::~tracer() noexcept {
+  auto _{lock_tracer_repo()};
+  auto it = std::find_if(_all().begin(), _all().end(),
+                         [&](auto&& wptr) { return wptr.owner_before(_self_weak); });
+  if (it != _all().end()) { _all().erase(it); }
+};
 
 tracer::proxy tracer::proxy::branch(std::string_view n) noexcept {
   proxy px;

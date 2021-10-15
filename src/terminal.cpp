@@ -128,7 +128,7 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
 
   auto logging = ref->commands()->root()->add_subcommand(
           cmdstr,
-          {},
+          nullptr,
           [ref, cmdstr, fn_sugg](auto&&, auto&& cands) -> bool {
             auto node = ref->commands()->root()->find_subcommand(cmdstr);
             spdlog::details::registry::instance().apply_all(
@@ -182,7 +182,9 @@ class _trace_manip {
 
   void suggest(string_set& repos) {
     // list of tracers
-    for (const auto& tracer : tracer::all()) { repos.insert(tracer->name()); }
+    for (const auto& tracer : tracer::all()) {
+      repos.insert(tracer->name());
+    }
   }
 
   bool invoke(args_view args) {
@@ -210,11 +212,15 @@ class _trace_manip {
     }
 
     using namespace ranges;
-    auto it = std::find_if(tracer::all().begin(),
-                           tracer::all().end(),
-                           [&](auto& p) { return p->name() == args[0]; });
+    auto traces = tracer::all();
 
-    if (it == tracer::all().end()) {
+    auto it = std::find_if(traces.begin(),
+                           traces.end(),
+                           [&](auto& p) {
+                             return p->name() == args[0];
+                           });
+
+    if (it == traces.end()) {
       SPDLOG_LOGGER_ERROR(glog(), "name '{}' is not valid tracer name", args[0]);
       return false;
     }
@@ -224,7 +230,7 @@ class _trace_manip {
   }
 
  private:
-  void _async_request(tracer* ref, std::string pattern, std::optional<bool> setter) {
+  void _async_request(std::shared_ptr<tracer> ref, std::string pattern, std::optional<bool> setter) {
     tracer::future_result fut;
     ref->async_fetch_request(&fut);
 

@@ -119,13 +119,16 @@ void perfkit::config_registry::queue_update_value(std::string_view full_key, con
   // to prevent value ignorance on contiguous load-save call without apply_changes(),
   // stores cache without validation.
   it->second->_cached_serialized = value;
+  it->second->_fence_serialized  = it->second->num_modified();
   _pending_updates.insert(it->second.get());
 }
 
 bool perfkit::config_registry::request_update_value(std::string_view full_key, const nlohmann::json& value) {
   if (auto it = all().find(full_key); it != all().end()) {
-    it->second->_owner->queue_update_value(std::string(full_key), value);
+    it->second->_owner->queue_update_value(full_key, value);
     return true;
+  } else {
+    glog()->error("failed to find key '{}' from global configuration list", full_key);
   }
   return false;
 }

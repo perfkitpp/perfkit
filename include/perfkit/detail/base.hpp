@@ -16,5 +16,6 @@ void parse_trace_status(std::string);  // TODO
 
 bool import_options(std::string_view src);
 bool export_options(std::string_view dstpath);
+std::string dump_options();
 
 }  // namespace perfkit

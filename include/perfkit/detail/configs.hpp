@@ -133,6 +133,8 @@ class config_registry {
 
  public:
   bool apply_update_and_check_if_dirty();
+  bool update() { return apply_update_and_check_if_dirty(); }
+
   static bool request_update_value(std::string_view full_key, nlohmann::json const& value);
 
   void queue_update_value(std::string_view full_key, nlohmann::json const& value);
@@ -264,7 +266,7 @@ class config {
 
     // set reference attribute
     nlohmann::json js_attrib;
-    js_attrib["default"] = default_value;
+    js_attrib["default"] = _value;
 
     if constexpr (Attr_::flag & _attr_flag::has_min) {
       js_attrib["min"] = *attribute.min;
@@ -348,11 +350,19 @@ class config {
   Ty_ const& get() const noexcept { return _value; }
   Ty_ const& value() const noexcept { return _value; }
 
+  /**
+   * Provides thread-safe access for configuration.
+   *
+   * @return
+   */
+  Ty_ copy() const noexcept { return _owner->_access_lock(), Ty_{_value}; }
+
   Ty_ const& operator*() const noexcept { return get(); }
   Ty_ const* operator->() const noexcept { return &get(); }
   explicit operator const Ty_&() const noexcept { return get(); }
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
+  bool check_update() const { return _opt->consume_dirty(); }
   void async_modify(Ty_ v) { _owner->queue_update_value(_opt->full_key(), std::move(v)); }
 
   auto& base() const { return *_opt; }

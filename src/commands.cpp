@@ -21,7 +21,7 @@ const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|((?:[^\s\\]|\\
 const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 }  // namespace
 
-perfkit::commands::registry::node* perfkit::commands::registry::node::add_subcommand(
+perfkit::commands::registry::node* perfkit::commands::registry::node::_add_subcommand(
         std::string cmd,
         invoke_fn handler,
         autocomplete_suggest_fn suggest,
