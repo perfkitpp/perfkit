@@ -100,10 +100,16 @@ struct message_block_sorter {
 };
 }  // namespace
 
+static auto lock_tracer_repo = [] {
+  static std::mutex _lck;
+  return std::unique_lock{_lck};
+};
+
 tracer::tracer(int order, std::string_view name) noexcept
         : self(new _impl), _occurence_order(order), _name(name) {
   auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
-  _all().insert(it_insert, this);
+
+  lock_tracer_repo(), _all().insert(it_insert, this);
 }
 
 std::vector<tracer*>& tracer::_all() noexcept {
@@ -112,7 +118,7 @@ std::vector<tracer*>& tracer::_all() noexcept {
 }
 
 array_view<tracer*> tracer::all() noexcept {
-  return _all();
+  return lock_tracer_repo(), _all();
 }
 
 void tracer::async_fetch_request(tracer::future_result* out) {
