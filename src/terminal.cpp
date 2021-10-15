@@ -225,7 +225,8 @@ class _trace_manip {
       return false;
     }
 
-    _async = std::async(std::launch::async, [=] { _async_request(*it, pattern, setter); });
+    auto trc = *it;
+    _async      = std::async(std::launch::async, [=] { _async_request(trc, pattern, setter); });
     return true;
   }
 
@@ -239,7 +240,7 @@ class _trace_manip {
       return;
     }
 
-    if (fut.wait_for(10s) == std::future_status::timeout) {
+    if (fut.wait_for(3s) == std::future_status::timeout) {
       SPDLOG_LOGGER_ERROR(glog(), "tracer '{}' update timeout", ref->name());
       return;
     }

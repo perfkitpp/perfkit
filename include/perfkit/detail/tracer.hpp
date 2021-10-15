@@ -174,8 +174,8 @@ class tracer {
   struct async_trace_result {
    public:
     std::pair<
-            std::unique_lock<perfkit::spinlock>,
-            fetched_traces*>
+            std::unique_lock<std::mutex>,
+            std::shared_ptr<fetched_traces>>
     acquire() const noexcept {
       return std::make_pair(std::unique_lock{*_mtx_access}, _data);
     }
@@ -184,8 +184,8 @@ class tracer {
 
    private:
     friend class tracer;
-    perfkit::spinlock* _mtx_access;
-    fetched_traces* _data;
+    std::shared_ptr<std::mutex> _mtx_access;
+    std::shared_ptr<fetched_traces> _data;
   };
 
   using future_result = tracer_future_result;
@@ -253,7 +253,7 @@ class tracer {
 
   int _order_active = 0;  // temporary variable for single iteration
 
-  mutable spinlock _sort_merge_lock;
+  mutable std::mutex _sort_merge_lock;
   fetched_traces _local_reused_memory;
 
   int _occurence_order;
