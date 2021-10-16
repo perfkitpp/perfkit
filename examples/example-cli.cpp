@@ -24,9 +24,13 @@ int main(int argc, char** argv) {
           ->add_subcommand("test command 2")
           ->add_subcommand("test command 3");
 
+  term->commands()
+          ->root()
+          ->add_subcommand("dump", [&] { term->write(perfkit::configs::export_all().dump(2)); });
+
   std::string latest_cmd;
   for (size_t ic = 0;;) {
-    cfg::registry().apply_update_and_check_if_dirty();
+    cfg::registry().update();
     do_trace(++ic, latest_cmd);
 
     auto cmd = term->fetch_command(1000ms);

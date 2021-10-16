@@ -102,7 +102,15 @@ void queue_changes(shared_ptr<config_registry> rg, json patch) {
 }
 }  // namespace perfkit::configs::_io
 
+static auto import_export_reenter_lock() {
+  static std::mutex mt;
+  return std::unique_lock{mt};
+}
+
 void perfkit::configs::import_from(const json& data) {
+  auto _l{import_export_reenter_lock()};
+  (void)_l;
+
   // 1. Replace cache as new configuration object
   // 2. Queue all changes for each registry
   {
@@ -119,26 +127,37 @@ void perfkit::configs::import_from(const json& data) {
   }
 }
 
-perfkit::json perfkit::configs::export_to() {
+perfkit::json perfkit::configs::export_all() {
+  auto _l{import_export_reenter_lock()};
+  (void)_l;
+
   // 1. Iterate all registry instances, and compose configuration list
   // 2. Merge configuration list into existing loaded cache, then return it.
   auto regs = config_registry::bk_enumerate_registries();
+
+  glog()->trace("exporting {} config repositories ...", regs.size());
   json exported;
-
-  for (const auto& rg : regs) {
-    if (not rg->_initially_updated()) { continue; }  // the first update() not called yet.
-    auto category = &exported[rg->name()];
-
-    for (const auto& [full_key, config] : rg->bk_all()) {
-      category->emplace(config->display_key(), config->serialize());
-    }
-  }
 
   // merge onto existing (will not affect existing cache)
   json current;
   {
     auto [js, _] = _io::_loaded();
     current      = *js;
+  }
+
+  for (const auto& rg : regs) {
+    // if there's no target currently, export as template
+    bool do_export = not current.contains(rg->name());
+
+    // if registry is updated after creation, export unconditionally.
+    do_export |= rg->_initially_updated();
+
+    if (not do_export) { continue; }  // the first update() not called yet.
+    auto category = &exported[rg->name()];
+
+    for (const auto& [full_key, config] : rg->bk_all()) {
+      category->emplace(config->display_key(), config->serialize());
+    }
   }
 
   for (auto& item : exported.items()) {

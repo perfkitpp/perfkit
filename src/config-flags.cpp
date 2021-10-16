@@ -295,6 +295,6 @@ bool perfkit::configs::export_to(std::string_view path) {
     return false;
   }
 
-  fs << export_to().dump(2);
+  fs << export_all().dump(2);
   return true;
 }

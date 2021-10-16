@@ -63,9 +63,9 @@ class config_base {
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
 
-  std::string_view full_key() const { return _full_key; }
-  std::string_view display_key() const { return _display_key; }
-  std::string_view description() const { return _description; }
+  auto const& full_key() const { return _full_key; }
+  auto const& display_key() const { return _display_key; }
+  auto const& description() const { return _description; }
   auto tokenized_display_key() const { return make_view(_categories); }
   void request_modify(nlohmann::json js);
 
@@ -125,7 +125,7 @@ void parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = f
 void parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
 
 void import_from(const json& data);
-json export_to();
+json export_all();
 
 bool import_from(std::string_view path);
 bool export_to(std::string_view path);

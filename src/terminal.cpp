@@ -319,11 +319,14 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
   auto hook_enum_regs =
           [](auto&& hook_factory) {
             return [=](node_type* node_reg, auto&&) {
+              glog()->debug("registry hook: {}", (void*)node_reg);
+
+              auto _ = node_reg->acquire();
               node_reg->clear();
 
               for (const auto& registry : config_registry::bk_enumerate_registries()) {
-                node_reg->add_subcommand(registry->name());
-                node_reg->reset_opreation_hook(hook_factory(registry));
+                auto node = node_reg->add_subcommand(registry->name());
+                node->reset_opreation_hook(hook_factory(registry));
               }
             };
           };
@@ -331,12 +334,14 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
   node_set->reset_opreation_hook(
           hook_enum_regs([](std::weak_ptr<config_registry> wrg) {
             return [wrg](node_type* node_cfg, auto&&) {
+              glog()->debug("config hook: {}", (void*)node_cfg);
+
               auto rg = wrg.lock();
               if (not rg) { return; }
 
               for (const auto& [_, config] : rg->bk_all()) {
                 node_cfg->add_subcommand(
-                        std::string{config->display_key()},
+                        config->display_key(),
                         [wconf = std::weak_ptr{config}](args_view args) {
                           if (args.empty()) {
                             glog()->error("command 'set' requires argument");
@@ -362,40 +367,65 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
 
   node_get->reset_opreation_hook(
           hook_enum_regs([ref](std::weak_ptr<config_registry> wrg) {
-            return [wrg, ref](node_type* node_cfg, args_view args) {
-              // list all configurations belong to this category.
-              using namespace ranges;
-              auto rg = wrg.lock();
-              if (not rg) { return; }
+            return [wrg, ref](node_type* node_cfg, auto&&) {
+              if (auto rg = wrg.lock()) {
+                // register config info command
+                auto all = rg->bk_all();
 
-              auto all = &rg->bk_all();
+                for (auto& [key, config] : all) {
+                  node_cfg->add_subcommand(
+                          config->display_key(),
+                          [ref, _conf = config] {
+                            std::string buf{};
+                            buf.reserve(1024);
 
-              // use first token as pattern
-              std::string_view _category = "";
-              if (not args.empty()) { _category = args[0]; }
+                            buf.append("\n");
+                            buf << "<name        > {}\n"_fmt % _conf->display_key();
+                            buf << "<key         > {}\n"_fmt % _conf->full_key();
+                            buf << "<description > {}\n"_fmt % _conf->description();
+                            buf << "<attributes  > {}\n"_fmt % _conf->attribute().dump(2);
+                            buf << "<value       > {}\n"_fmt % _conf->serialize().dump(2);
 
-              std::string buf;
-              buf.reserve(1024);
-
-              // header
-              {
-                double width = 40;
-                ref->get("output-width", &width);
-
-                buf << "{:-<{}}\n"_fmt % (_category) % (int)width;
+                            ref->write(buf);
+                          });
+                }
+              } else {
+                return;
               }
 
-              // during string begins with this category name ...
-              for (const auto& [_, conf] : *all) {
-                if (conf->display_key().find(_category) != 0) { continue; }
+              node_cfg->reset_invoke_handler(
+                      [wrg, ref](args_view args) {
+                        // list all configurations belong to this category.
+                        using namespace ranges;
+                        auto rg = wrg.lock();
+                        if (not rg) { return false; }
 
-                // auto depth = conf->tokenized_display_key().size();
-                auto name = conf->display_key().substr(_category.size());
+                        auto all = &rg->bk_all();
 
-                buf << "..|{} = {}\n"_fmt % name % conf->serialize().dump();
-              }
+                        // use first token as pattern
+                        std::string_view _category = "";
+                        if (not args.empty()) { _category = args[0]; }
 
-              ref->write(buf);
+                        std::string buf;
+                        buf.reserve(1024);
+
+                        // header
+                        buf << "< {} >\n"_fmt % (_category);
+
+                        // during string begins with this category name ...
+                        for (const auto& [_, conf] : *all) {
+                          if (conf->display_key().find(_category) != 0) { continue; }
+
+                          // auto depth = conf->tokenized_display_key().size();
+                          auto name = conf->display_key();  //.substr(_category.size());
+
+                          buf << " {} = {}\n"_fmt % name % conf->serialize().dump();
+                        }
+
+                        buf += "\n";
+                        ref->write(buf);
+                        return true;
+                      });
             };
           }));
 }
