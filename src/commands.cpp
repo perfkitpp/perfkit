@@ -161,8 +161,9 @@ std::string perfkit::commands::registry::node::suggest(
         std::vector<std::string>& out_candidates,
         bool space_after_last_token,
         int* target_token_index,
-        bool* out_has_unique_match) const {
+        bool* out_has_unique_match) {
   lock_guard _{*_subcmd_lock};
+  if (_hook_pre_op) { _hook_pre_op(this, full_tokens); }
 
   using namespace ranges;
   string_set user_candidates;
@@ -184,7 +185,7 @@ std::string perfkit::commands::registry::node::suggest(
   auto exec          = full_tokens[0];
   bool is_last_token = full_tokens.size() == 1;
 
-  if (node const* subcmd = {}; !is_last_token) {
+  if (node* subcmd = {}; !is_last_token) {
     subcmd = _find_subcommand(exec);
 
     if (subcmd) {
@@ -239,9 +240,9 @@ std::string perfkit::commands::registry::node::suggest(
     bool is_unique_match = check_unique_prefix(sharing, out_candidates);
     out_has_unique_match && (*out_has_unique_match = is_unique_match);
 
-    if (node const* subcmd = {}; (space_after_last_token || is_unique_match)
-                                 && (subcmd = _find_subcommand(sharing))
-                                 && _check_name_exist(exec)) {
+    if (node* subcmd = {}; (space_after_last_token || is_unique_match)
+                           && (subcmd = _find_subcommand(sharing))
+                           && _check_name_exist(exec)) {
       out_candidates.clear();
       target_token_index && ++*target_token_index;
       return subcmd->suggest(full_tokens.subspan(1),
@@ -260,6 +261,7 @@ std::string perfkit::commands::registry::node::suggest(
 bool perfkit::commands::registry::node::invoke(
         perfkit::array_view<std::string_view> full_tokens) {
   unique_lock _{*_subcmd_lock};
+  if (_hook_pre_op) { _hook_pre_op(this, full_tokens); }
 
   if (full_tokens.size() > 0) {
     auto subcmd = _find_subcommand(full_tokens[0]);
@@ -276,7 +278,7 @@ bool perfkit::commands::registry::node::invoke(
   return false;
 }
 
-void perfkit::commands::registry::node::reset_invoke_handler(perfkit::commands::invoke_fn&& fn) {
+void perfkit::commands::registry::node::reset_invoke_handler(invoke_fn fn) {
   unique_lock _{*_subcmd_lock};
 
   _invoke = std::move(fn);
@@ -290,10 +292,17 @@ void perfkit::commands::registry::node::clear() {
 }
 
 void perfkit::commands::registry::node::reset_suggest_handler(
-        perfkit::commands::autocomplete_suggest_fn&& fn) {
+        autocomplete_suggest_fn fn) {
   unique_lock _{*_subcmd_lock};
 
   _suggest = std::move(fn);
+}
+
+void perfkit::commands::registry::node::reset_opreation_hook(
+        std::function<void(node*, args_view)> hook) {
+  unique_lock _{*_subcmd_lock};
+
+  _hook_pre_op = std::move(hook);
 }
 
 void perfkit::commands::tokenize_by_argv_rule(

@@ -107,7 +107,6 @@ class registry {
      * @param cmd_or_alias
      * @return
      */
-   public:
     auto find_subcommand(std::string_view ss) const {
       return std::make_pair(
               _find_subcommand(ss),
@@ -120,6 +119,12 @@ class registry {
               std::unique_lock{*_subcmd_lock});
     }
 
+    /**
+     * Check if command exists
+     *
+     * @param s
+     * @return
+     */
     bool is_valid_command(std::string_view s) const { return !!_find_subcommand(s); }
 
     /**
@@ -147,12 +152,17 @@ class registry {
     /**
      * Reset handler with given argument.
      */
-    void reset_invoke_handler(invoke_fn&& fn);
+    void reset_invoke_handler(invoke_fn fn);
 
     /**
      * Reset suggest fn
      */
-    void reset_suggest_handler(autocomplete_suggest_fn&& fn);
+    void reset_suggest_handler(autocomplete_suggest_fn fn);
+
+    /**
+     * Set operation hook which is invoked before every suggest/invoke
+     */
+    void reset_opreation_hook(std::function<void(node*, args_view)> hook);
 
     /**
      * Suggest next command based on current tokens.
@@ -168,7 +178,7 @@ class registry {
             std::vector<std::string>& out_candidates,
             bool space_after_last_token,
             int* target_token_index    = nullptr,
-            bool* out_has_unique_match = nullptr) const;
+            bool* out_has_unique_match = nullptr);
 
     /**
      * Invoke command with given arguments.
@@ -200,6 +210,7 @@ class registry {
 
     invoke_fn _invoke;
     autocomplete_suggest_fn _suggest;
+    std::function<void(node*, args_view)> _hook_pre_op;
     bool _constant_name = {};
   };
 
