@@ -32,13 +32,13 @@ class _config_saveload_manager {
   bool load_from(args_view args = {}) {
     auto path = args.empty() ? _latest : args.front();
     _latest   = path;
-    return perfkit::import_options(path);
+    return perfkit::configs::import_from(path);
   }
 
   bool save_to(args_view args = {}) {
     auto path = args.empty() ? _latest : args.front();
     _latest   = path;
-    return perfkit::export_options(path);
+    return perfkit::configs::export_to(path);
   }
 
   void retrieve_filenames(args_view args, string_set& cands) {
@@ -362,7 +362,7 @@ class _config_category_manip {
   bool operator()(args_view) {
     // list all configurations belong to this category.
     using namespace ranges;
-    auto all = &config_registry::all();
+    auto regs = config_registry::bk_enumerate_registries();
 
     std::string buf;
     buf.reserve(1024);
@@ -376,13 +376,15 @@ class _config_category_manip {
     }
 
     // during string begins with this category name ...
-    for (const auto& [_, conf] : *all) {
-      if (conf->display_key().find(_category) != 0) { continue; }
+    for (auto reg : regs) {
+      for (const auto& [_, conf] : reg->bk_all()) {
+        if (conf->display_key().find(_category) != 0) { continue; }
 
-      auto depth = conf->tokenized_display_key().size();
-      auto name  = conf->display_key().substr(_category.size());
+        auto depth = conf->tokenized_display_key().size();
+        auto name  = conf->display_key().substr(_category.size());
 
-      buf << "..|{} = {}\n"_fmt % name % conf->serialize().dump();
+        buf << "..|{} = {}\n"_fmt % name % conf->serialize().dump();
+      }
     }
 
     _ref->write(buf);

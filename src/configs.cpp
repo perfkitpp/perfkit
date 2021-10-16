@@ -42,7 +42,7 @@ perfkit::config_registry::~config_registry() noexcept {
   all->erase(all->find(name()));
 }
 
-auto perfkit::config_registry::bk_enumerate_registry() noexcept -> std::vector<std::shared_ptr<config_registry>> {
+auto perfkit::config_registry::bk_enumerate_registries() noexcept -> std::vector<std::shared_ptr<config_registry>> {
   std::vector<std::shared_ptr<config_registry>> out;
   {
     using namespace ranges;
@@ -86,12 +86,19 @@ void queue_changes(shared_ptr<config_registry> rg, json patch) {
   }
 
   // apply all update
-  for (auto& [key, value] : patch.items()) {
-    auto key_valid = rg->bk_queue_update_value(key, std::move(value));
-    if (not key_valid) { glog()->warn("key {} does not exist on category {}", key, rg->name()); }
-  }
+  for (auto& [disp_key, value] : patch.items()) {
+    auto full_key = rg->bk_find_key(disp_key);
+    if (full_key.empty()) {
+      glog()->warn("key {} does not exist on category {}", disp_key, rg->name());
+      continue;
+    }
 
-  rg->_set_config_loaded();
+    auto key_valid = rg->bk_queue_update_value(full_key, std::move(value));
+    if (not key_valid) {
+      glog()->critical("rg: {}, disp key: {}, full_key: {}, is not valid.",
+                       rg->name(), disp_key, full_key);
+    }
+  }
 }
 }  // namespace perfkit::configs::_io
 
@@ -103,7 +110,7 @@ void perfkit::configs::import_from(const json& data) {
     *js          = data;
   }
 
-  auto registries = config_registry::bk_enumerate_registry();
+  auto registries = config_registry::bk_enumerate_registries();
   for (const auto& registry : registries) {
     auto it = data.find(registry->name());
     if (it == data.end()) { continue; }
@@ -115,11 +122,11 @@ void perfkit::configs::import_from(const json& data) {
 perfkit::json perfkit::configs::export_to() {
   // 1. Iterate all registry instances, and compose configuration list
   // 2. Merge configuration list into existing loaded cache, then return it.
-  auto regs = config_registry::bk_enumerate_registry();
+  auto regs = config_registry::bk_enumerate_registries();
   json exported;
 
   for (const auto& rg : regs) {
-    if (not rg->_is_config_loaded()) { continue; }  // update() not called yet.
+    if (not rg->_initially_updated()) { continue; }  // the first update() not called yet.
     auto category = &exported[rg->name()];
 
     for (const auto& [full_key, config] : rg->bk_all()) {
@@ -143,13 +150,16 @@ perfkit::json perfkit::configs::export_to() {
 
 bool perfkit::config_registry::update() {
   decltype(_pending_updates) update;
-  if (not _config_loaded.load(std::memory_order_acq_rel)) {
-    glog()->debug("registry '{}' instantiated after loading configurationsu", name());
+  if (not _initial_update_done.load(std::memory_order_acq_rel)) {
+    glog()->debug("registry '{}' instantiated after loading configurations", name());
 
     auto patch = configs::_io::fetch_changes(name());
     if (not patch.empty()) {
       configs::_io::queue_changes(shared_from_this(), std::move(patch));
     }
+
+    // exporting configs only allowed after first update.
+    _initial_update_done.store(true, std::memory_order_acq_rel);
   }
 
   if (std::unique_lock _l{_update_lock}) {
@@ -172,8 +182,15 @@ bool perfkit::config_registry::update() {
 }
 
 void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
+  if (_initially_updated()) {
+    glog()->critical(
+            "putting new configuration '{}' after first update of registry '{}'...",
+            o->display_key(), name());
+    throw std::logic_error{""};
+  }
+
   if (auto it = _entities.find(o->full_key()); it != _entities.end()) {
-    throw std::invalid_argument("Argument MUST be unique!!!");
+    throw std::invalid_argument("Argument name MUST be unique within category!!!");
   }
 
   if (not bk_find_key(o->display_key()).empty()) {

@@ -156,7 +156,7 @@ class config_registry : std::enable_shared_from_this<config_registry> {
   auto const& bk_all() const noexcept { return _entities; }
 
  public:
-  static auto bk_enumerate_registry() noexcept -> std::vector<std::shared_ptr<config_registry>>;
+  static auto bk_enumerate_registries() noexcept -> std::vector<std::shared_ptr<config_registry>>;
   static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
 
   // TODO: deprecate this!
@@ -167,8 +167,7 @@ class config_registry : std::enable_shared_from_this<config_registry> {
 
  public:
   void _put(std::shared_ptr<detail::config_base> o);
-  bool _is_config_loaded() const noexcept { return _config_loaded.load(std::memory_order_acq_rel); }
-  void _set_config_loaded() noexcept { _config_loaded.store(true, std::memory_order_acq_rel); }
+  bool _initially_updated() const noexcept { return _initial_update_done.load(); }
 
  private:
   std::string _name;
@@ -179,7 +178,7 @@ class config_registry : std::enable_shared_from_this<config_registry> {
 
   // since configurations can be loaded before registry instance loaded, this flag makes
   //  the first update of registry to apply loaded configurations.
-  std::atomic_bool _config_loaded{false};
+  std::atomic_bool _initial_update_done{false};
 };
 
 namespace _attr_flag {
