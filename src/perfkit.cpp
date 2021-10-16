@@ -50,11 +50,11 @@ bool perfkit::import_options(std::string_view srcpath_s) {
         continue;
       }
 
-      auto r_req = config_registry::request_update_value(ptr->full_key(), *it);
-      if (!r_req) {
-        glog()->critical("FOUND KEY {} IS MISSING FROM GLOBAL LIST. SOMETHING GONE WRONG !!!", name);
-        std::terminate();
-      }
+      //      auto r_req = config_registry::request_update_value(ptr->full_key(), *it);
+      //      if (!r_req) {
+      //        glog()->critical("FOUND KEY {} IS MISSING FROM GLOBAL LIST. SOMETHING GONE WRONG !!!", name);
+      //        std::terminate();
+      //      }
 
       ++loaded;
       glog()->debug("IMPORTING: {} << {}", name, it->dump());

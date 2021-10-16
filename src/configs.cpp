@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <regex>
+#include <utility>
 
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/transform.hpp>
@@ -13,20 +14,144 @@
 #include "perfkit/common/format.hxx"
 #include "perfkit/perfkit.h"
 
-perfkit::config_registry& perfkit::config_registry::create() noexcept {
-  static container _all;
-  auto& rg = *_all.emplace_back(std::make_unique<perfkit::config_registry>());
-  glog()->debug("Creating new config registry {}", (void*)&rg);
+namespace perfkit::detail {
+auto _all_repos() {
+  static config_registry::container _inst;
+  static spinlock _lock;
+  return std::make_pair(&_inst, std::unique_lock{_lock});
+}
+}  // namespace perfkit::detail
+
+auto perfkit::config_registry::create(std::string name) -> shared_ptr<config_registry> {
+  auto [all, _] = detail::_all_repos();
+
+  auto rg_ptr = new config_registry{std::move(name)};
+  shared_ptr<config_registry> rg{rg_ptr};
+  auto [it, is_new] = all->try_emplace(rg->name(), rg);
+
+  if (not is_new) { throw std::logic_error{"CONFIG REGISTRY NAME MUST BE UNIQUE!!!"}; }
+
+  glog()->debug("Creating new config registry {}", name);
   return rg;
 }
 
-perfkit::config_registry::config_table& perfkit::config_registry::all() noexcept {
-  static config_table _inst;
-  return _inst;
+perfkit::config_registry::~config_registry() noexcept {
+  glog()->debug("destroying config registry {}", name());
+
+  auto [all, _] = detail::_all_repos();
+  all->erase(all->find(name()));
 }
 
-bool perfkit::config_registry::apply_update_and_check_if_dirty() {
+auto perfkit::config_registry::bk_enumerate_registry() noexcept -> std::vector<std::shared_ptr<config_registry>> {
+  std::vector<std::shared_ptr<config_registry>> out;
+  {
+    using namespace ranges;
+    auto [all, _] = detail::_all_repos();
+    auto ptrs     = views::all(*all) | views::transform([](auto&& o) { return o.second.lock(); });
+    out.assign(ptrs.begin(), ptrs.end());
+  }
+  return out;
+}
+
+auto perfkit::config_registry::bk_find_reg(std::string_view name) noexcept -> std::shared_ptr<perfkit::config_registry> {
+  auto [all, _] = detail::_all_repos();
+  auto it       = all->find(name);
+
+  if (it == all->end()) { return nullptr; }
+  auto ptr = it->second.lock();
+
+  assert(ptr != nullptr && "LOGIC ERROR: POINTER MUST NOT BE NULL HERE!");
+  return ptr;
+}
+
+namespace perfkit::configs::_io {
+auto _loaded() {
+  static json _all;
+  static spinlock _lock;
+
+  return std::make_pair(&_all, std::unique_lock{_lock});
+}
+
+json fetch_changes(std::string_view reg_name) {
+  auto [js, _] = _io::_loaded();
+  auto it      = js->find(reg_name);
+  if (it == js->end()) { return {}; }
+
+  return *it;
+}
+
+void queue_changes(shared_ptr<config_registry> rg, json patch) {
+  if (glog()->should_log(spdlog::level::debug)) {
+    glog()->debug("applying changes to category '{}', content: \n", rg->name(), patch.dump(2));
+  }
+
+  // apply all update
+  for (auto& [key, value] : patch.items()) {
+    auto key_valid = rg->bk_queue_update_value(key, std::move(value));
+    if (not key_valid) { glog()->warn("key {} does not exist on category {}", key, rg->name()); }
+  }
+
+  rg->_set_config_loaded();
+}
+}  // namespace perfkit::configs::_io
+
+void perfkit::configs::import_from(const json& data) {
+  // 1. Replace cache as new configuration object
+  // 2. Queue all changes for each registry
+  {
+    auto [js, _] = _io::_loaded();
+    *js          = data;
+  }
+
+  auto registries = config_registry::bk_enumerate_registry();
+  for (const auto& registry : registries) {
+    auto it = data.find(registry->name());
+    if (it == data.end()) { continue; }
+
+    _io::queue_changes(registry, *it);
+  }
+}
+
+perfkit::json perfkit::configs::export_to() {
+  // 1. Iterate all registry instances, and compose configuration list
+  // 2. Merge configuration list into existing loaded cache, then return it.
+  auto regs = config_registry::bk_enumerate_registry();
+  json exported;
+
+  for (const auto& rg : regs) {
+    if (not rg->_is_config_loaded()) { continue; }  // update() not called yet.
+    auto category = &exported[rg->name()];
+
+    for (const auto& [full_key, config] : rg->bk_all()) {
+      category->emplace(config->display_key(), config->serialize());
+    }
+  }
+
+  // merge onto existing (will not affect existing cache)
+  json current;
+  {
+    auto [js, _] = _io::_loaded();
+    current      = *js;
+  }
+
+  for (auto& item : exported.items()) {
+    current[item.key()] = std::move(item.value());
+  }
+
+  return current;
+}
+
+bool perfkit::config_registry::update() {
   decltype(_pending_updates) update;
+  if (not _config_loaded.load(std::memory_order_acq_rel)) {
+    glog()->debug("registry '{}' instantiated after loading configurationsu", name());
+
+    auto patch = configs::_io::fetch_changes(name());
+    if (not patch.empty()) {
+      configs::_io::queue_changes(shared_from_this(), std::move(patch));
+    }
+  }
+
   if (std::unique_lock _l{_update_lock}) {
     if (_pending_updates.empty()) { return false; }  // no update.
 
@@ -41,37 +166,26 @@ bool perfkit::config_registry::apply_update_and_check_if_dirty() {
         ptr->_serialize(ptr->_cached_serialized, ptr->_raw);  // roll back
       }
     }
-
-    _global_dirty.store(true, std::memory_order_relaxed);
   }
 
   return true;
 }
 
-static auto& key_mapping() {
-  static std::map<std::string_view, std::string_view> _inst;
-  return _inst;
-}
-
 void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
-  if (auto it = all().find(o->full_key()); it != all().end()) {
+  if (auto it = _entities.find(o->full_key()); it != _entities.end()) {
     throw std::invalid_argument("Argument MUST be unique!!!");
   }
 
-  if (!find_key(o->display_key()).empty()) {
+  if (not bk_find_key(o->display_key()).empty()) {
     throw std::invalid_argument(fmt::format(
             "Duplicated Display Key Found: \n\t{} (from full key {})",
             o->display_key(), o->full_key()));
   }
 
-  key_mapping().try_emplace(o->display_key(), o->full_key());
+  _disp_keymap.try_emplace(o->display_key(), o->full_key());
+  _entities.try_emplace(o->full_key(), o);
 
-  _opts.try_emplace(o->full_key(), o);
-  all().try_emplace(o->full_key(), o);
-
-  glog()->debug("({:04}) declaring new config ... [{}] -> [{}]",
-                all().size(), o->display_key(), o->full_key());
-
+  // TODO: throw error if flag belongs to disposable registry
   if (auto attr = &o->attribute(); attr->contains("is_flag")) {
     std::vector<std::string> bindings;
     if (auto it = attr->find("flag_binding"); it != attr->end()) {
@@ -102,39 +216,27 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
   }
 }
 
-std::string_view perfkit::config_registry::find_key(std::string_view display_key) {
-  if (auto it = key_mapping().find(display_key); it != key_mapping().end()) {
+std::string_view perfkit::config_registry::bk_find_key(std::string_view display_key) {
+  if (auto it = _disp_keymap.find(display_key); it != _disp_keymap.end()) {
     return it->second;
   } else {
     return {};
   }
 }
 
-void perfkit::config_registry::queue_update_value(std::string_view full_key, const nlohmann::json& value) {
+bool perfkit::config_registry::bk_queue_update_value(std::string_view full_key, json value) {
   auto _ = _access_lock();
 
-  auto it  = _opts.find(full_key);
-  full_key = it->first;
+  auto it = _entities.find(full_key);
+  if (it == _entities.end()) { return false; }
 
   // to prevent value ignorance on contiguous load-save call without apply_changes(),
   // stores cache without validation.
-  it->second->_cached_serialized = value;
+  it->second->_cached_serialized = std::move(value);
   it->second->_fence_serialized  = it->second->num_modified();
   _pending_updates.insert(it->second.get());
-}
 
-bool perfkit::config_registry::request_update_value(std::string_view full_key, const nlohmann::json& value) {
-  if (auto it = all().find(full_key); it != all().end()) {
-    it->second->_owner->queue_update_value(full_key, value);
-    return true;
-  } else {
-    glog()->error("failed to find key '{}' from global configuration list", full_key);
-  }
-  return false;
-}
-
-bool perfkit::config_registry::check_dirty_and_consume_global() {
-  return _global_dirty.exchange(false, std::memory_order_relaxed);
+  return true;
 }
 
 perfkit::detail::config_base::config_base(
@@ -224,8 +326,8 @@ void perfkit::detail::config_base::serialize(std::function<void(nlohmann::json c
   fn(_cached_serialized);
 }
 
-void perfkit::detail::config_base::request_modify(nlohmann::json const& js) {
-  config_registry::request_update_value(std::string(full_key()), js);
+void perfkit::detail::config_base::request_modify(nlohmann::json js) {
+  _owner->bk_queue_update_value(std::string(full_key()), std::move(js));
 }
 
 void perfkit::detail::config_base::_split_categories(std::string_view view, std::vector<std::string_view>& out) {

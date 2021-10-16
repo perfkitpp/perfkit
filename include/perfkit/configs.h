@@ -17,14 +17,14 @@ std::string INDEXER_STR(int order);
 #define PERFKIT_CATEGORY(category)                                                   \
   namespace category {                                                               \
   ::std::string _perfkit_INTERNAL_CATNAME() {                                        \
-    return INTERNAL_PERFKIT_INDEXER #category "|";                                   \
+    return "";                                                                       \
   }                                                                                  \
   ::std::string _perfkit_INTERNAL_CATNAME_2() {                                      \
     return _perfkit_INTERNAL_CATNAME();                                              \
   }                                                                                  \
   ::perfkit::config_registry& _registry() {                                          \
-    static auto& inst = ::perfkit::config_registry::create();                        \
-    return inst;                                                                     \
+    static auto inst = ::perfkit::config_registry::create(#category);                \
+    return *inst;                                                                    \
   }                                                                                  \
   [[deprecated]] ::perfkit::config_registry& root_registry() { return _registry(); } \
   ::perfkit::config_registry& registry() { return _registry(); }                     \
