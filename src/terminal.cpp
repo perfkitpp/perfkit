@@ -309,7 +309,95 @@ void initialize_with_basic_commands(if_terminal* ref) {
 }
 
 void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
-  auto root = ref->commands()->root()->add_subcommand(std::string{cmd});
+  auto _locked  = ref->commands()->root()->acquire();
+  auto node_cmd = ref->commands()->root()->add_subcommand(std::string{cmd});
+
+  auto node_set = node_cmd->add_subcommand("set");
+  auto node_get = node_cmd->add_subcommand("get");
+
+  using node_type = commands::registry::node;
+  auto hook_enum_regs =
+          [](auto&& hook_factory) {
+            return [=](node_type* node_reg, auto&&) {
+              node_reg->clear();
+
+              for (const auto& registry : config_registry::bk_enumerate_registries()) {
+                node_reg->add_subcommand(registry->name());
+                node_reg->reset_opreation_hook(hook_factory(registry));
+              }
+            };
+          };
+
+  node_set->reset_opreation_hook(
+          hook_enum_regs([](std::weak_ptr<config_registry> wrg) {
+            return [wrg](node_type* node_cfg, auto&&) {
+              auto rg = wrg.lock();
+              if (not rg) { return; }
+
+              for (const auto& [_, config] : rg->bk_all()) {
+                node_cfg->add_subcommand(
+                        std::string{config->display_key()},
+                        [wconf = std::weak_ptr{config}](args_view args) {
+                          if (args.empty()) {
+                            glog()->error("command 'set' requires argument");
+                            return;
+                          }
+
+                          auto conf = wconf.lock();
+                          if (not conf) { return; }
+
+                          auto value  = args[0];
+                          auto parsed = json::parse(value.begin(), value.end(), nullptr, false);
+
+                          if (parsed.is_discarded()) {
+                            glog()->error("failed to parse input value");
+                            return;
+                          }
+
+                          conf->request_modify(std::move(parsed));
+                        });
+              }
+            };
+          }));
+
+  node_get->reset_opreation_hook(
+          hook_enum_regs([ref](std::weak_ptr<config_registry> wrg) {
+            return [wrg, ref](node_type* node_cfg, args_view args) {
+              // list all configurations belong to this category.
+              using namespace ranges;
+              auto rg = wrg.lock();
+              if (not rg) { return; }
+
+              auto all = &rg->bk_all();
+
+              // use first token as pattern
+              std::string_view _category = "";
+              if (not args.empty()) { _category = args[0]; }
+
+              std::string buf;
+              buf.reserve(1024);
+
+              // header
+              {
+                double width = 40;
+                ref->get("output-width", &width);
+
+                buf << "{:-<{}}\n"_fmt % (_category) % (int)width;
+              }
+
+              // during string begins with this category name ...
+              for (const auto& [_, conf] : *all) {
+                if (conf->display_key().find(_category) != 0) { continue; }
+
+                // auto depth = conf->tokenized_display_key().size();
+                auto name = conf->display_key().substr(_category.size());
+
+                buf << "..|{} = {}\n"_fmt % name % conf->serialize().dump();
+              }
+
+              ref->write(buf);
+            };
+          }));
 }
 
 }  // namespace perfkit::terminal

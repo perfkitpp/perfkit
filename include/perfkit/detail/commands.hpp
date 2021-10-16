@@ -81,7 +81,7 @@ class registry {
         return _add_subcommand(
                 std::move(cmd),
                 [fn = std::forward<Fn_>(handler)](auto&& args) {
-                  fn(std::forward(args));
+                  fn(args);
                   return true;
                 },
                 std::move(suggest), name_constant);
@@ -100,6 +100,11 @@ class registry {
                 std::move(suggest), name_constant);
       }
     }
+
+    /**
+     * Acquire lock for transaction
+     */
+    auto acquire() const { return std::unique_lock{*_subcmd_lock}; }
 
     /**
      * Find subcommand of current node.

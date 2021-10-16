@@ -124,9 +124,10 @@ flag_binding_table& _flags() noexcept;
 void parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
 void parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
 
-bool import_from(std::string_view path);
 void import_from(const json& data);
 json export_to();
+
+bool import_from(std::string_view path);
 bool export_to(std::string_view path);
 }  // namespace configs
 

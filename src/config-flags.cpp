@@ -1,15 +1,17 @@
 //
 // Created by Seungwoo on 2021-10-01.
 //
+#include <fstream>
 #include <list>
 
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/map.hpp>
-#include <range/v3/view/transform.hpp>
+#include <spdlog/logger.h>
 
 #include "perfkit/common/format.hxx"
+#include "perfkit/detail/base.hpp"
 #include "perfkit/detail/configs.hpp"
 
 void perfkit::configs::parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined) {
@@ -263,4 +265,36 @@ void perfkit::configs::parse_args(
 perfkit::configs::flag_binding_table& perfkit::configs::_flags() noexcept {
   static flag_binding_table _inst;
   return _inst;
+}
+
+bool perfkit::configs::import_from(std::string_view path) {
+  std::ifstream fs{std::string{path}};
+  if (not fs.is_open()) {
+    glog()->error("config load failed: file '{}' does not exist", path);
+    return false;
+  }
+
+  try {
+    auto js = json::parse(std::istream_iterator<char>{fs}, std::istream_iterator<char>{});
+    import_from(js);
+
+    return true;
+  } catch (json::parse_error& e) {
+    glog()->error(
+            "config load failed: file '{}' is not valid json: (error at {}) {}",
+            path, e.byte, e.what());
+
+    return false;
+  }
+}
+
+bool perfkit::configs::export_to(std::string_view path) {
+  std::ofstream fs{std::string{path}};
+  if (not fs.is_open()) {
+    glog()->error("config export failed: not valid file path: {}", path);
+    return false;
+  }
+
+  fs << export_to().dump(2);
+  return true;
 }
