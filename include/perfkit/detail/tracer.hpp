@@ -98,6 +98,7 @@ class tracer {
 
     ~proxy() noexcept;  // if no data specified, ...
 
+   private:
     variant_type& data() noexcept;
 
     template <typename Ty_>
@@ -111,6 +112,7 @@ class tracer {
     auto& string() noexcept { return data_as<std::string>(); }
     auto& any() noexcept { return data_as<std::any>(); }
 
+   public:
     template <typename... Args_>
     void format(std::string_view fmt, Args_&&... args) {
       string() = fmt::format(fmt, std::forward<Args_>(args)...);
