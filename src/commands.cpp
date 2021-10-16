@@ -17,6 +17,9 @@
 #include "spdlog/fmt/bundled/ranges.h"
 
 namespace {
+using std::lock_guard;
+using std::unique_lock;
+
 const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|((?:[^\s\\]|\\.)+)))RG"};
 const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 }  // namespace
@@ -26,6 +29,8 @@ perfkit::commands::registry::node* perfkit::commands::registry::node::_add_subco
         invoke_fn handler,
         autocomplete_suggest_fn suggest,
         bool name_constant) {
+  lock_guard _{*_subcmd_lock};
+
   if (_check_name_exist(cmd)) {
     glog()->error("command name [{}] already exists as command or token.", cmd);
     throw command_already_exist_exception{};
@@ -42,6 +47,7 @@ perfkit::commands::registry::node* perfkit::commands::registry::node::_add_subco
   subcmd._suggest       = std::move(suggest);
   subcmd._constant_name = name_constant;
   subcmd._parent        = this;
+  subcmd._subcmd_lock   = _subcmd_lock;
 
   return &subcmd;
 }
@@ -57,8 +63,9 @@ bool perfkit::commands::registry::node::_check_name_exist(std::string_view cmd) 
   return false;
 }
 
-perfkit::commands::registry::node const* perfkit::commands::registry::node::find_subcommand(std::string_view cmd_or_alias) const {
+perfkit::commands::registry::node const* perfkit::commands::registry::node::_find_subcommand(std::string_view cmd_or_alias) const {
   using namespace ranges;
+  lock_guard _{*_subcmd_lock};
 
   if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
     return &it->second;
@@ -74,26 +81,28 @@ perfkit::commands::registry::node const* perfkit::commands::registry::node::find
     auto it = _subcommands.lower_bound(cmd_or_alias);
     for (; it != _subcommands.end() && it->first.find(cmd_or_alias) == 0; ++it) {
       if (subcmd) { return nullptr; }
-      subcmd = find_subcommand(it->first);
+      subcmd = _find_subcommand(it->first);
     }
   }
   {
     auto it = _aliases.lower_bound(cmd_or_alias);
     for (; it != _aliases.end() && it->first.find(cmd_or_alias) == 0; ++it) {
       if (subcmd) { return nullptr; }
-      subcmd = find_subcommand(it->first);
+      subcmd = _find_subcommand(it->first);
     }
   }
 
   return subcmd;
 }
 
-perfkit::commands::registry::node* perfkit::commands::registry::node::find_subcommand(std::string_view cmd_or_alias) {
-  auto n = static_cast<registry::node const*>(this)->find_subcommand(cmd_or_alias);
+perfkit::commands::registry::node* perfkit::commands::registry::node::_find_subcommand(std::string_view cmd_or_alias) {
+  auto n = static_cast<registry::node const*>(this)->_find_subcommand(cmd_or_alias);
   return const_cast<registry::node*>(n);
 }
 
 bool perfkit::commands::registry::node::erase_subcommand(std::string_view cmd_or_alias) {
+  lock_guard _{*_subcmd_lock};
+
   if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
     // erase all bound aliases to given command
     for (auto it_a = _aliases.begin(); it_a != _aliases.end();) {
@@ -118,6 +127,8 @@ bool perfkit::commands::registry::node::erase_subcommand(std::string_view cmd_or
 
 bool perfkit::commands::registry::node::alias(
         std::string_view cmd, std::string alias) {
+  lock_guard _{*_subcmd_lock};
+
   if (_check_name_exist(alias)) {
     glog()->error("alias name [{}] already exists as command or token.");
     return false;
@@ -151,6 +162,8 @@ std::string perfkit::commands::registry::node::suggest(
         bool space_after_last_token,
         int* target_token_index,
         bool* out_has_unique_match) const {
+  lock_guard _{*_subcmd_lock};
+
   using namespace ranges;
   string_set user_candidates;
 
@@ -172,7 +185,7 @@ std::string perfkit::commands::registry::node::suggest(
   bool is_last_token = full_tokens.size() == 1;
 
   if (node const* subcmd = {}; !is_last_token) {
-    subcmd = find_subcommand(exec);
+    subcmd = _find_subcommand(exec);
 
     if (subcmd) {
       // evaluate as next command, only when unique subcommand is found.
@@ -227,7 +240,7 @@ std::string perfkit::commands::registry::node::suggest(
     out_has_unique_match && (*out_has_unique_match = is_unique_match);
 
     if (node const* subcmd = {}; (space_after_last_token || is_unique_match)
-                                 && (subcmd = find_subcommand(sharing))
+                                 && (subcmd = _find_subcommand(sharing))
                                  && _check_name_exist(exec)) {
       out_candidates.clear();
       target_token_index && ++*target_token_index;
@@ -246,54 +259,40 @@ std::string perfkit::commands::registry::node::suggest(
 
 bool perfkit::commands::registry::node::invoke(
         perfkit::array_view<std::string_view> full_tokens) {
+  unique_lock _{*_subcmd_lock};
+
   if (full_tokens.size() > 0) {
-    auto subcmd = find_subcommand(full_tokens[0]);
+    auto subcmd = _find_subcommand(full_tokens[0]);
     if (subcmd) {
       return subcmd->invoke(full_tokens.subspan(1));
     }
   }
 
-  if (!_is_interface()) { return _invoke(full_tokens); }
+  if (!_is_interface()) {
+    return _invoke(full_tokens);
+  }
 
   glog()->debug("command not found. all arguments: {}", full_tokens);
   return false;
 }
 
 void perfkit::commands::registry::node::reset_invoke_handler(perfkit::commands::invoke_fn&& fn) {
+  unique_lock _{*_subcmd_lock};
+
   _invoke = std::move(fn);
 }
 
-bool perfkit::commands::registry::node::rename_subcommand(std::string_view from, std::string_view to) {
-  if (find_subcommand(to) != nullptr) {
-    glog()->error("subcommand rename failed: name {} already exist.", to);
-    return false;
-  }
-
-  if (auto it1 = _subcommands.find(from); it1 != _subcommands.end()) {
-    if (it1->second._constant_name) {
-      glog()->error("subcommand rename failed; node name '{}' is protected.");
-      return false;
-    }
-    _subcommands.try_emplace(std::string{to}, std::move(it1->second));
-    _subcommands.erase(it1);
-  } else if (auto it2 = _aliases.find(from); it2 != _aliases.end()) {
-    _aliases.try_emplace(std::string{to}, it2->second);
-    _aliases.erase(it2);
-  } else {
-    glog()->error("subcommand rename failed: command {} does not exist.");
-    return false;
-  }
-
-  return true;
-}
-
 void perfkit::commands::registry::node::clear() {
+  unique_lock _{*_subcmd_lock};
+
   _subcommands.clear();
   _aliases.clear();
 }
 
 void perfkit::commands::registry::node::reset_suggest_handler(
         perfkit::commands::autocomplete_suggest_fn&& fn) {
+  unique_lock _{*_subcmd_lock};
+
   _suggest = std::move(fn);
 }
 

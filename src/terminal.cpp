@@ -130,12 +130,14 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
           cmdstr,
           nullptr,
           [ref, cmdstr, fn_sugg](auto&&, auto&& cands) -> bool {
-            auto node = ref->commands()->root()->find_subcommand(cmdstr);
+            auto [node_ptr, _l0] = ref->commands()->root()->find_subcommand(cmdstr);
+            auto node            = node_ptr;
+
             spdlog::details::registry::instance().apply_all(
                     [&](const std::shared_ptr<spdlog::logger>& logger) {
                       if (logger->name().empty()) { return; }
-                      if (node->find_subcommand(logger->name())) { return; }
-                      auto cmd = node->add_subcommand(logger->name(), fn_op{ref, logger->name()}, fn_sugg);
+                      if (node->is_valid_command(logger->name())) { return; }
+                      node->add_subcommand(logger->name(), fn_op{ref, logger->name()}, fn_sugg);
                     });
 
             return true;
@@ -421,7 +423,7 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
     auto category_match = "*"s.append(std::string_view{key}.substr(0, category_len));
 
     // add category command
-    if (not category_match.empty() && nullptr == node_conf->find_subcommand(category_match)) {
+    if (not category_match.empty() && nullptr == node_conf->_find_subcommand(category_match)) {
       auto category_name = hierarchy.end()[-2];
 
       auto manip = std::make_shared<_config_category_manip>(

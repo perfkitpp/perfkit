@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 
 #include "perfkit/common/array_view.hxx"
@@ -106,9 +107,20 @@ class registry {
      * @param cmd_or_alias
      * @return
      */
-    node const*
-    find_subcommand(std::string_view cmd_or_alias) const;
-    node* find_subcommand(std::string_view cmd_or_alias);
+   public:
+    auto find_subcommand(std::string_view ss) const {
+      return std::make_pair(
+              _find_subcommand(ss),
+              std::unique_lock{*_subcmd_lock});
+    }
+
+    auto find_subcommand(std::string_view ss) {
+      return std::make_pair(
+              _find_subcommand(ss),
+              std::unique_lock{*_subcmd_lock});
+    }
+
+    bool is_valid_command(std::string_view s) const { return !!_find_subcommand(s); }
 
     /**
      * Erase subcommand.
@@ -122,15 +134,6 @@ class registry {
      * Erase all subcommands
      */
     void clear();
-
-    /**
-     * Rename subcommand. If target is alias, alias will be moved.
-     *
-     * @param cmd_or_alias
-     * @param to
-     * @return false if given key is invalid, or destination already exist
-     */
-    bool rename_subcommand(std::string_view from, std::string_view to);
 
     /**
      * Alias command.
@@ -183,11 +186,17 @@ class registry {
     bool _check_name_exist(std::string_view) const noexcept;
     bool _is_interface() const noexcept { return !_invoke; }
 
+    node const* _find_subcommand(std::string_view cmd_or_alias) const;
+    node* _find_subcommand(std::string_view cmd_or_alias);
+
    private:
+    friend class registry;
+
     std::map<std::string const, node, std::less<>> _subcommands;
     std::map<std::string const, std::string const, std::less<>> _aliases;
 
     node* _parent;
+    std::recursive_mutex* _subcmd_lock;
 
     invoke_fn _invoke;
     autocomplete_suggest_fn _suggest;
@@ -202,6 +211,8 @@ class registry {
   node* root() { return _root.get(); }
   node const* root() const { return _root.get(); }
 
+  registry() { _root->_subcmd_lock = &_subcmd_lock; }
+
   intptr_t add_invoke_hook(hook_fn hook);
   bool remove_invoke_hook(intptr_t);
 
@@ -214,6 +225,9 @@ class registry {
 
   // invocation hooks.
   std::vector<std::pair<intptr_t, hook_fn>> _invoke_hooks;
+
+  // make all operation atomic
+  std::recursive_mutex _subcmd_lock;
 };
 
 }  // namespace perfkit::commands
