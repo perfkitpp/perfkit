@@ -403,7 +403,7 @@ template <typename Ty_>
 using _cvt_ty = std::conditional_t<
         std::is_convertible_v<Ty_, std::string>,
         std::string,
-        Ty_>;
+        std::remove_reference_t<Ty_>>;
 
 template <typename Ty_>
 auto configure(config_registry& dispatcher,

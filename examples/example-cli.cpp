@@ -8,6 +8,16 @@
 
 using namespace std::literals;
 
+struct my_cat {
+  PERFKIT_T_CATEGORY_body(my_cat);
+
+  PERFKIT_T_CONFIGURE(some_name, "vlvl").confirm();
+
+  PERFKIT_T_SUBCATEGORY(
+          subc, "subcateory",
+          PERFKIT_T_CONFIGURE(some_varnam2e, 1.31).confirm(););
+};
+
 int main(int argc, char** argv) {
   perfkit::configs::parse_args(&argc, &argv, true);
   perfkit::glog()->set_level(spdlog::level::trace);
@@ -28,6 +38,8 @@ int main(int argc, char** argv) {
           ->root()
           ->add_subcommand("dump", [&] { term->write(perfkit::configs::export_all().dump(2)); });
 
+  std::unique_ptr<my_cat> sample;
+
   std::string latest_cmd;
   for (size_t ic = 0;;) {
     cfg::registry().update();
@@ -38,9 +50,18 @@ int main(int argc, char** argv) {
     latest_cmd = *cmd;
 
     if (cmd == "q") { break; }
-    if (!term->commands()->invoke_command(*cmd)) {
-      spdlog::error("execution failed .. '{}'", *cmd);
+
+    if (cmd == "gg") {
+      if (sample)
+        sample.reset();
+      else
+        sample = std::make_unique<my_cat>("gg");
+
+      continue;
     }
+
+    if (!term->commands()->invoke_command(*cmd))
+      spdlog::error("execution failed .. '{}'", *cmd);
   }
 
   spdlog::info("done.");

@@ -46,7 +46,9 @@ std::string INDEXER_STR(int order);
   namespace category
 
 #define PERFKIT_CONFIGURE(name, default_value)                                                   \
-  auto name = perfkit::configure(registry(),                                                     \
+  ::perfkit::config<::perfkit::_cvt_ty<decltype(default_value)>>                                 \
+          name                                                                                   \
+          = ::perfkit::configure(registry(),                                                     \
                                  _perfkit_INTERNAL_CATNAME_2() + INTERNAL_PERFKIT_INDEXER #name, \
                                  default_value)
 
@@ -65,3 +67,45 @@ std::string INDEXER_STR(int order);
   ::perfkit::config_registry& registry();        \
   }                                              \
   namespace hierarchy
+
+#define PERFKIT_T_CATEGORY_body(name)                               \
+ private:                                                           \
+  using _internal_super = name;                                     \
+  std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG; \
+  static std::string _category_name() { return ""; }                \
+                                                                    \
+ public:                                                            \
+  explicit name(std::string s) : _perfkit_INTERNAL_RG(              \
+          ::perfkit::config_registry::create(std::move(s))) {}
+
+#define PERFKIT_T_SUBCATEGORY_body(name, category_str)              \
+ private:                                                           \
+  static std::string _category_name() {                             \
+    return category_str "|";                                        \
+  }                                                                 \
+                                                                    \
+  ::perfkit::config_registry* _perfkit_INTERNAL_RG;                 \
+                                                                    \
+ public:                                                            \
+  template <typename TT_>                                           \
+  explicit name(TT_* _super)                                        \
+          : _perfkit_INTERNAL_RG(&*_super->_perfkit_INTERNAL_RG) {} \
+                                                                    \
+ private:                                                           \
+  using _internal_super = name;                                     \
+                                                                    \
+ public:
+
+#define PERFKIT_T_SUBCATEGORY(varname, category, ...) \
+  struct varname##_ {                                 \
+    PERFKIT_T_SUBCATEGORY_body(varname##_, category); \
+    __VA_ARGS__                                       \
+  } varname{this};
+
+#define PERFKIT_T_CONFIGURE(name, default_value)       \
+  ::perfkit::config<                                   \
+          ::perfkit::_cvt_ty<decltype(default_value)>> \
+          name = ::perfkit::configure(                 \
+                  *_perfkit_INTERNAL_RG,               \
+                  _category_name() + #name,            \
+                  default_value)
