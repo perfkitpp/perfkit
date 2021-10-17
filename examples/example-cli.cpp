@@ -45,7 +45,8 @@ int main(int argc, char** argv) {
           ->root()
           ->add_subcommand("dump", [&] { term->write(perfkit::configs::export_all().dump(2)); });
 
-  std::unique_ptr<my_cat> sample;
+  std::vector<std::unique_ptr<my_cat>> sample;
+  nlohmann::json conf;
 
   std::string latest_cmd;
   for (size_t ic = 0;;) {
@@ -58,13 +59,19 @@ int main(int argc, char** argv) {
 
     if (cmd == "q") { break; }
 
-    if (cmd == "gg") {
-      if (sample)
-        sample.reset();
-      else
-        sample = std::make_unique<my_cat>("gg");
-
+    if (cmd == "gg_push") {
+      sample.push_back(std::make_unique<my_cat>("zc-" + std::to_string(rand())));
       continue;
+    } else if (cmd == "gg_pop") {
+      if (sample.empty() == false)
+        sample.pop_back();
+    } else if (cmd == "gg_dump") {
+      conf = perfkit::configs::export_all();
+      spdlog::info("dump: {}", conf.dump(2));
+    } else if (cmd == "gg_load") {
+      spdlog::info("config: {}", conf.dump(2));
+      spdlog::info("importing ...");
+      perfkit::configs::import_from(conf);
     }
 
     if (!term->commands()->invoke_command(*cmd))

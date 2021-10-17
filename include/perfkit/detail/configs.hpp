@@ -142,19 +142,23 @@ class config_registry : std::enable_shared_from_this<config_registry> {
   using container         = std::map<std::string, weak_ptr<config_registry>, std::less<>>;
 
  private:
-  explicit config_registry(std::string name) : _name(std::move(name)) {}
+  explicit config_registry(std::string name);
 
  public:
   ~config_registry() noexcept;
 
  public:
   bool update();
+  void export_to(nlohmann::json*);
+  void import_from(nlohmann::json);
+
   auto const& name() const { return _name; }
 
  public:
   bool bk_queue_update_value(std::string_view full_key, json value);
   std::string_view bk_find_key(std::string_view display_key);
   auto const& bk_all() const noexcept { return _entities; }
+  uint64_t bk_schema_hash() const noexcept { return _schema_hash; }
 
  public:
   static auto bk_enumerate_registries() noexcept -> std::vector<std::shared_ptr<config_registry>>;
@@ -176,6 +180,10 @@ class config_registry : std::enable_shared_from_this<config_registry> {
   string_view_table _disp_keymap;
   std::set<detail::config_base*> _pending_updates;
   std::mutex _update_lock;
+
+  // this value is used for identifying config registry's schema type, as config registry's
+  //  layout never changes after updated once.
+  uint64_t _schema_hash;
 
   // since configurations can be loaded before registry instance loaded, this flag makes
   //  the first update of registry to apply loaded configurations.

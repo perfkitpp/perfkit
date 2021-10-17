@@ -12,6 +12,7 @@
 #include <spdlog/spdlog.h>
 
 #include "perfkit/common/format.hxx"
+#include "perfkit/common/hasher.hxx"
 #include "perfkit/perfkit.h"
 
 namespace perfkit::detail {
@@ -82,7 +83,7 @@ json fetch_changes(std::string_view reg_name) {
 
 void queue_changes(shared_ptr<config_registry> rg, json patch) {
   if (glog()->should_log(spdlog::level::debug)) {
-    glog()->debug("applying changes to category '{}', content: \n", rg->name(), patch.dump(2));
+    glog()->debug("applying changes to category '{}', content: {}\n", rg->name(), patch.dump(2));
   }
 
   // apply all update
@@ -127,6 +128,18 @@ void perfkit::configs::import_from(const json& data) {
   }
 }
 
+void perfkit::config_registry::export_to(nlohmann::json* category) {
+  category->clear();
+
+  for (const auto& [full_key, config] : bk_all()) {
+    category->emplace(config->display_key(), config->serialize());
+  }
+}
+
+void perfkit::config_registry::import_from(nlohmann::json obj) {
+  configs::_io::queue_changes(shared_from_this(), std::move(obj));
+}
+
 perfkit::json perfkit::configs::export_all() {
   auto _l{import_export_reenter_lock()};
   (void)_l;
@@ -155,9 +168,7 @@ perfkit::json perfkit::configs::export_all() {
     if (not do_export) { continue; }  // the first update() not called yet.
     auto category = &exported[rg->name()];
 
-    for (const auto& [full_key, config] : rg->bk_all()) {
-      category->emplace(config->display_key(), config->serialize());
-    }
+    rg->export_to(category);
   }
 
   for (auto& item : exported.items()) {
@@ -221,6 +232,9 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
   _disp_keymap.try_emplace(o->display_key(), o->full_key());
   _entities.try_emplace(o->full_key(), o);
 
+  // update schema hash
+  _schema_hash = hasher::fnv1a_64(o->full_key().begin(), o->full_key().end(), _schema_hash);
+
   // TODO: throw error if flag belongs to disposable registry
   if (auto attr = &o->attribute(); attr->contains("is_flag")) {
     std::vector<std::string> bindings;
@@ -274,6 +288,10 @@ bool perfkit::config_registry::bk_queue_update_value(std::string_view full_key, 
 
   return true;
 }
+
+perfkit::config_registry::config_registry(std::string name)
+        : _name(std::move(name)),
+          _schema_hash{hasher::FNV_OFFSET_BASE} {}
 
 perfkit::detail::config_base::config_base(
         config_registry* owner,
