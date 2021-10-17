@@ -8,15 +8,22 @@
 
 using namespace std::literals;
 
-struct my_cat {
-  PERFKIT_T_CATEGORY_body(my_cat);
+PERFKIT_T_CATEGORY(
+        my_cat,
+        PERFKIT_T_CONFIGURE(some_name, "vlvl")
+                .confirm();
 
-  PERFKIT_T_CONFIGURE(some_name, "vlvl").confirm();
+        PERFKIT_T_SUBCATEGORY(
+                subc,
+                PERFKIT_T_CONFIGURE(some_varnam2e, 1.31)
+                        .confirm();
 
-  PERFKIT_T_SUBCATEGORY(
-          subc, "subcateory",
-          PERFKIT_T_CONFIGURE(some_varnam2e, 1.31).confirm(););
-};
+                PERFKIT_T_SUBCATEGORY(
+                        subc2,
+                        PERFKIT_T_CONFIGURE(somvar, "hell,world!").confirm()))
+
+                PERFKIT_T_CONFIGURE(some_other_var, 5.51)
+                        .confirm());
 
 int main(int argc, char** argv) {
   perfkit::configs::parse_args(&argc, &argv, true);
