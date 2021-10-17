@@ -25,7 +25,7 @@ class config_base;
 
 class config_registry;
 using config_shared_ptr = std::shared_ptr<detail::config_base>;
-using config_wptr = std::weak_ptr<detail::config_base>;
+using config_wptr       = std::weak_ptr<detail::config_base>;
 using std::shared_ptr;
 using std::weak_ptr;
 
@@ -380,19 +380,20 @@ class config {
    *
    * @return
    */
-  Ty_ const& get() const noexcept { return _value; }
-  Ty_ const& value() const noexcept { return _value; }
+  [[deprecated]] Ty_ const& get() const noexcept { return _value; }
+  Ty_ value() const noexcept { return _copy(); }
+  Ty_ const& ref() const noexcept { return _value; }
 
   /**
    * Provides thread-safe access for configuration.
    *
    * @return
    */
-  Ty_ copy() const noexcept { return _owner->_access_lock(), Ty_{_value}; }
+  Ty_ _copy() const noexcept { return _owner->_access_lock(), Ty_{_value}; }
 
-  Ty_ const& operator*() const noexcept { return get(); }
-  Ty_ const* operator->() const noexcept { return &get(); }
-  explicit operator const Ty_&() const noexcept { return get(); }
+  Ty_ const& operator*() const noexcept { return ref(); }
+  Ty_ const* operator->() const noexcept { return &ref(); }
+  operator Ty_() const noexcept { return _copy(); }
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
   bool check_update() const { return _opt->consume_dirty(); }
