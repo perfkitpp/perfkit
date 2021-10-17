@@ -16,6 +16,7 @@ std::string INDEXER_STR(int order);
 // HELPER MACROS
 #define PERFKIT_CATEGORY(category)                                                   \
   namespace category {                                                               \
+                                                                                     \
   ::std::string _perfkit_INTERNAL_CATNAME() {                                        \
     return "";                                                                       \
   }                                                                                  \
@@ -28,6 +29,8 @@ std::string INDEXER_STR(int order);
   }                                                                                  \
   [[deprecated]] ::perfkit::config_registry& root_registry() { return _registry(); } \
   ::perfkit::config_registry& registry() { return _registry(); }                     \
+                                                                                     \
+  bool update() { return _registry().update(); }                                     \
   }                                                                                  \
   namespace category
 
@@ -65,6 +68,7 @@ std::string INDEXER_STR(int order);
   ::std::string _perfkit_INTERNAL_CATNAME();     \
   ::perfkit::config_registry& _registry();       \
   ::perfkit::config_registry& registry();        \
+  bool update();                                 \
   }                                              \
   namespace hierarchy
 
