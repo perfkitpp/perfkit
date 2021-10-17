@@ -62,14 +62,14 @@ class if_state {
   state_ptr _child;
 };
 
-config_ptr _find_conf(std::string_view name, bool ignore_undefined) {
+config_shared_ptr _find_conf(std::string_view name, bool ignore_undefined) {
   auto it = _flags().find(name);
   if (it != _flags().end()) { return it->second; }
   if (!ignore_undefined) { throw invalid_flag_name{"flag not exist: {}"_fmt % name}; }
   return {};
 }
 
-config_ptr _find_conf(char name, bool ignore_undefined) {
+config_shared_ptr _find_conf(char name, bool ignore_undefined) {
   return _find_conf(std::string_view{&name, 1}, ignore_undefined);
 }
 
@@ -81,7 +81,7 @@ std::string_view _retrieve_key(std::string_view flag) {
 
 class value_parse : public if_state {
  public:
-  explicit value_parse(config_ptr conf)
+  explicit value_parse(config_shared_ptr conf)
           : _conf{conf} {}
 
   bool invoke(std::string_view tok, if_state** next) override {
@@ -122,14 +122,14 @@ class value_parse : public if_state {
   }
 
  private:
-  config_ptr _conf;
+  config_shared_ptr _conf;
 };
 
 class single_dash_parse : public if_state {
  public:
   bool invoke(std::string_view tok, if_state** next) override {
     auto ch_first = tok[0];
-    if (config_ptr conf; ch_first != 'N'
+    if (config_shared_ptr conf; ch_first != 'N'
                          && tok.size() >= 1
                          && (conf = _find_conf(ch_first, ignore_undefined))
                          && not conf->default_value().is_boolean()) {

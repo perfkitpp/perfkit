@@ -24,7 +24,7 @@ class config_base;
 }
 
 class config_registry;
-using config_ptr  = std::shared_ptr<detail::config_base>;
+using config_shared_ptr = std::shared_ptr<detail::config_base>;
 using config_wptr = std::weak_ptr<detail::config_base>;
 using std::shared_ptr;
 using std::weak_ptr;
@@ -118,7 +118,7 @@ struct parse_error : std::runtime_error { using std::runtime_error::runtime_erro
 struct parse_help : parse_error { using parse_error::parse_error; };
 // clang-format on
 
-using flag_binding_table = std::map<std::string, config_ptr, std::less<>>;
+using flag_binding_table = std::map<std::string, config_shared_ptr, std::less<>>;
 flag_binding_table& _flags() noexcept;
 
 void parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
@@ -401,7 +401,7 @@ class config {
   auto& base() const { return *_opt; }
 
  private:
-  config_ptr _opt;
+  config_shared_ptr _opt;
 
   config_registry* _owner;
   Ty_ _value;
