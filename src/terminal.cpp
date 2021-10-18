@@ -126,23 +126,16 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
     s.insert({"trace", "debug", "info", "warn", "error", "critical"});
   };
 
-  auto logging = ref->commands()->root()->add_subcommand(
-          cmdstr,
-          nullptr,
-          [ref, cmdstr, fn_sugg](auto&&, auto&& cands) -> bool {
-            auto [node_ptr, _l0] = ref->commands()->root()->find_subcommand(cmdstr);
-            auto node            = node_ptr;
-
+  auto logging = ref->commands()->root()->add_subcommand(cmdstr);
+  logging->reset_opreation_hook(
+          [ref, cmdstr, fn_sugg](commands::registry::node* node, auto&&) {
             spdlog::details::registry::instance().apply_all(
                     [&](const std::shared_ptr<spdlog::logger>& logger) {
                       if (logger->name().empty()) { return; }
                       if (node->is_valid_command(logger->name())) { return; }
                       node->add_subcommand(logger->name(), fn_op{ref, logger->name()}, fn_sugg);
                     });
-
-            return true;
-          },
-          true);
+          });
 
   logging->add_subcommand("_default_", fn_op{ref, ""}, fn_sugg);
   logging->add_subcommand(
@@ -228,7 +221,7 @@ class _trace_manip {
     }
 
     auto trc = *it;
-    _async      = std::async(std::launch::async, [=] { _async_request(trc, pattern, setter); });
+    _async   = std::async(std::launch::async, [=] { _async_request(trc, pattern, setter); });
     return true;
   }
 
