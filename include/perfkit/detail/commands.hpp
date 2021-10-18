@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 
 #include "perfkit/common/array_view.hxx"
@@ -80,7 +81,7 @@ class registry {
         return _add_subcommand(
                 std::move(cmd),
                 [fn = std::forward<Fn_>(handler)](auto&& args) {
-                  fn(std::forward(args));
+                  fn(args);
                   return true;
                 },
                 std::move(suggest), name_constant);
@@ -101,14 +102,35 @@ class registry {
     }
 
     /**
+     * Acquire lock for transaction
+     */
+    auto acquire() const { return std::unique_lock{*_subcmd_lock}; }
+
+    /**
      * Find subcommand of current node.
      *
      * @param cmd_or_alias
      * @return
      */
-    node const*
-    find_subcommand(std::string_view cmd_or_alias) const;
-    node* find_subcommand(std::string_view cmd_or_alias);
+    auto find_subcommand(std::string_view ss) const {
+      return std::make_pair(
+              _find_subcommand(ss),
+              std::unique_lock{*_subcmd_lock});
+    }
+
+    auto find_subcommand(std::string_view ss) {
+      return std::make_pair(
+              _find_subcommand(ss),
+              std::unique_lock{*_subcmd_lock});
+    }
+
+    /**
+     * Check if command exists
+     *
+     * @param s
+     * @return
+     */
+    bool is_valid_command(std::string_view s) const { return !!_find_subcommand(s); }
 
     /**
      * Erase subcommand.
@@ -124,15 +146,6 @@ class registry {
     void clear();
 
     /**
-     * Rename subcommand. If target is alias, alias will be moved.
-     *
-     * @param cmd_or_alias
-     * @param to
-     * @return false if given key is invalid, or destination already exist
-     */
-    bool rename_subcommand(std::string_view from, std::string_view to);
-
-    /**
      * Alias command.
      *
      * @param cmd
@@ -144,12 +157,17 @@ class registry {
     /**
      * Reset handler with given argument.
      */
-    void reset_invoke_handler(invoke_fn&& fn);
+    void reset_invoke_handler(invoke_fn fn);
 
     /**
      * Reset suggest fn
      */
-    void reset_suggest_handler(autocomplete_suggest_fn&& fn);
+    void reset_suggest_handler(autocomplete_suggest_fn fn);
+
+    /**
+     * Set operation hook which is invoked before every suggest/invoke
+     */
+    void reset_opreation_hook(std::function<void(node*, args_view)> hook);
 
     /**
      * Suggest next command based on current tokens.
@@ -165,7 +183,7 @@ class registry {
             std::vector<std::string>& out_candidates,
             bool space_after_last_token,
             int* target_token_index    = nullptr,
-            bool* out_has_unique_match = nullptr) const;
+            bool* out_has_unique_match = nullptr);
 
     /**
      * Invoke command with given arguments.
@@ -183,14 +201,21 @@ class registry {
     bool _check_name_exist(std::string_view) const noexcept;
     bool _is_interface() const noexcept { return !_invoke; }
 
+    node const* _find_subcommand(std::string_view cmd_or_alias) const;
+    node* _find_subcommand(std::string_view cmd_or_alias);
+
    private:
+    friend class registry;
+
     std::map<std::string const, node, std::less<>> _subcommands;
     std::map<std::string const, std::string const, std::less<>> _aliases;
 
     node* _parent;
+    std::recursive_mutex* _subcmd_lock;
 
     invoke_fn _invoke;
     autocomplete_suggest_fn _suggest;
+    std::function<void(node*, args_view)> _hook_pre_op;
     bool _constant_name = {};
   };
 
@@ -201,6 +226,8 @@ class registry {
   bool invoke_command(std::string command);
   node* root() { return _root.get(); }
   node const* root() const { return _root.get(); }
+
+  registry() { _root->_subcmd_lock = &_subcmd_lock; }
 
   intptr_t add_invoke_hook(hook_fn hook);
   bool remove_invoke_hook(intptr_t);
@@ -214,6 +241,9 @@ class registry {
 
   // invocation hooks.
   std::vector<std::pair<intptr_t, hook_fn>> _invoke_hooks;
+
+  // make all operation atomic
+  std::recursive_mutex _subcmd_lock;
 };
 
 }  // namespace perfkit::commands

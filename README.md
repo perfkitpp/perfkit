@@ -31,7 +31,7 @@ void some_function(double, int, std::string const&);
 int main(void) {
   while (true) {
     // some intensive multi-threaded loop ...
-    if (optd.apply_update_and_check_if_dirty()) {
+    if (optd.update()) {
       if (opt_coeff_a.check_dirty_and_consume()) {
         // ... DO SOME REFRESH ...
       }
@@ -48,7 +48,7 @@ int main(void) {
     // use options as-is.
     //
     // there is no overhead on reading options, as any change of config value is guaranteed
-    // to be occurred only during invocation of config_registry::apply_update_and_check_if_dirty
+    // to be occurred only during invocation of config_registry::update
     //
     some_function(opt_coeff_a.get(), opt_coeff_b.get(), opt_category.get());
 

@@ -1,15 +1,17 @@
 //
 // Created by Seungwoo on 2021-10-01.
 //
+#include <fstream>
 #include <list>
 
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/map.hpp>
-#include <range/v3/view/transform.hpp>
+#include <spdlog/logger.h>
 
 #include "perfkit/common/format.hxx"
+#include "perfkit/detail/base.hpp"
 #include "perfkit/detail/configs.hpp"
 
 void perfkit::configs::parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined) {
@@ -60,14 +62,14 @@ class if_state {
   state_ptr _child;
 };
 
-config_ptr _find_conf(std::string_view name, bool ignore_undefined) {
+config_shared_ptr _find_conf(std::string_view name, bool ignore_undefined) {
   auto it = _flags().find(name);
   if (it != _flags().end()) { return it->second; }
   if (!ignore_undefined) { throw invalid_flag_name{"flag not exist: {}"_fmt % name}; }
   return {};
 }
 
-config_ptr _find_conf(char name, bool ignore_undefined) {
+config_shared_ptr _find_conf(char name, bool ignore_undefined) {
   return _find_conf(std::string_view{&name, 1}, ignore_undefined);
 }
 
@@ -79,7 +81,7 @@ std::string_view _retrieve_key(std::string_view flag) {
 
 class value_parse : public if_state {
  public:
-  explicit value_parse(config_ptr conf)
+  explicit value_parse(config_shared_ptr conf)
           : _conf{conf} {}
 
   bool invoke(std::string_view tok, if_state** next) override {
@@ -120,14 +122,14 @@ class value_parse : public if_state {
   }
 
  private:
-  config_ptr _conf;
+  config_shared_ptr _conf;
 };
 
 class single_dash_parse : public if_state {
  public:
   bool invoke(std::string_view tok, if_state** next) override {
     auto ch_first = tok[0];
-    if (config_ptr conf; ch_first != 'N'
+    if (config_shared_ptr conf; ch_first != 'N'
                          && tok.size() >= 1
                          && (conf = _find_conf(ch_first, ignore_undefined))
                          && not conf->default_value().is_boolean()) {
@@ -263,4 +265,36 @@ void perfkit::configs::parse_args(
 perfkit::configs::flag_binding_table& perfkit::configs::_flags() noexcept {
   static flag_binding_table _inst;
   return _inst;
+}
+
+bool perfkit::configs::import_from(std::string_view path) {
+  std::ifstream fs{std::string{path}};
+  if (not fs.is_open()) {
+    glog()->error("config load failed: file '{}' does not exist", path);
+    return false;
+  }
+
+  try {
+    auto js = json::parse(std::istream_iterator<char>{fs}, std::istream_iterator<char>{});
+    import_from(js);
+
+    return true;
+  } catch (json::parse_error& e) {
+    glog()->error(
+            "config load failed: file '{}' is not valid json: (error at {}) {}",
+            path, e.byte, e.what());
+
+    return false;
+  }
+}
+
+bool perfkit::configs::export_to(std::string_view path) {
+  std::ofstream fs{std::string{path}};
+  if (not fs.is_open()) {
+    glog()->error("config export failed: not valid file path: {}", path);
+    return false;
+  }
+
+  fs << export_all().dump(2);
+  return true;
 }

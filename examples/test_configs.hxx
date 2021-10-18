@@ -138,12 +138,12 @@ PERFKIT_CATEGORY(vlao33) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 PERFKIT_CATEGORY(vlao44) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 PERFKIT_CATEGORY(vlao55) { PERFKIT_CONFIGURE(e_cedrs, 1).confirm(); }
 
-perfkit::tracer trace_a{0, ".. Trace A"};
-perfkit::tracer trace_b{1, ".  Trace B"};
+auto trace_a = perfkit::tracer::create(0, ".. Trace A");
+auto trace_b = perfkit::tracer::create(1, ".. Trace B");
 
 void do_trace(size_t ic, std::string cmd) {
-  auto trc_root        = trace_a.fork("a,  b ,   c ,   d");
-  auto trc_b           = trace_b.fork("a,  b ,   c ,   d, e e    f,    g");
+  auto trc_root        = trace_a->fork("a,  b ,   c ,   d");
+  auto trc_b           = trace_b->fork("a,  b ,   c ,   d, e e    f,    g");
   trc_b["placeholder"] = "vlvlvl";
   trc_b["command"]     = "cmd";
 

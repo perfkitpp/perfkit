@@ -32,13 +32,13 @@ class _config_saveload_manager {
   bool load_from(args_view args = {}) {
     auto path = args.empty() ? _latest : args.front();
     _latest   = path;
-    return perfkit::import_options(path);
+    return perfkit::configs::import_from(path);
   }
 
   bool save_to(args_view args = {}) {
     auto path = args.empty() ? _latest : args.front();
     _latest   = path;
-    return perfkit::export_options(path);
+    return perfkit::configs::export_to(path);
   }
 
   void retrieve_filenames(args_view args, string_set& cands) {
@@ -130,12 +130,14 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd) {
           cmdstr,
           nullptr,
           [ref, cmdstr, fn_sugg](auto&&, auto&& cands) -> bool {
-            auto node = ref->commands()->root()->find_subcommand(cmdstr);
+            auto [node_ptr, _l0] = ref->commands()->root()->find_subcommand(cmdstr);
+            auto node            = node_ptr;
+
             spdlog::details::registry::instance().apply_all(
                     [&](const std::shared_ptr<spdlog::logger>& logger) {
                       if (logger->name().empty()) { return; }
-                      if (node->find_subcommand(logger->name())) { return; }
-                      auto cmd = node->add_subcommand(logger->name(), fn_op{ref, logger->name()}, fn_sugg);
+                      if (node->is_valid_command(logger->name())) { return; }
+                      node->add_subcommand(logger->name(), fn_op{ref, logger->name()}, fn_sugg);
                     });
 
             return true;
@@ -300,164 +302,133 @@ void register_trace_manip_command(if_terminal* ref, std::string_view cmd) {
           });
 }
 
-class _config_manip {
- public:
-  _config_manip(if_terminal* ref, config_ptr pt)
-          : _ref(ref), _conf(pt) {}
-
-  bool get(args_view) {
-    _ref->write(("{} = {}\n"_fmt % _conf->display_key() % _conf->serialize().dump()) / 16);
-    return true;
-  }
-
-  bool set(args_view tok) {
-    if (tok.empty()) {
-      SPDLOG_LOGGER_ERROR(glog(), "");
-      return false;
-    }
-
-    try {
-      _conf->request_modify(nlohmann::json::parse(tok[0].begin(), tok[0].end()));
-    } catch (nlohmann::json::parse_error& e) {
-      SPDLOG_LOGGER_ERROR(glog(), "parse error: {}", e.what());
-      return false;
-    }
-    return true;
-  }
-
-  void set_suggest(string_set& s) {
-    s.insert(_conf->serialize().dump());
-  }
-
-  bool info(args_view) {
-    std::string buf{};
-    buf.reserve(1024);
-
-    buf.append("\n");
-    buf << "<name        > {}\n"_fmt % _conf->display_key();
-    buf << "<key         > {}\n"_fmt % _conf->full_key();
-    buf << "<description > {}\n"_fmt % _conf->description();
-    buf << "<attributes  > {}\n"_fmt % _conf->attribute().dump(2);
-    buf << "<value       > {}\n"_fmt % _conf->serialize().dump(2);
-
-    _ref->write(buf);
-    return true;
-  }
-
-  bool toggle(args_view) {
-    return false;
-  }
-
- private:
-  if_terminal* _ref;
-  config_ptr _conf;
-};
-
-class _config_category_manip {
- public:
-  explicit _config_category_manip(if_terminal* ref, std::string display, int depth)
-          : _ref{ref}, _category{std::move(display).substr(1).append("|")}, _depth{depth} {
-    ranges::replace(_category, '.', '|');
-  }
-
-  bool operator()(args_view) {
-    // list all configurations belong to this category.
-    using namespace ranges;
-    auto all = &config_registry::all();
-
-    std::string buf;
-    buf.reserve(1024);
-
-    // header
-    {
-      double width = 40;
-      _ref->get("output-width", &width);
-
-      buf << "{:-<{}}\n"_fmt % (_category + " ") % (int)width;
-    }
-
-    // during string begins with this category name ...
-    for (const auto& [_, conf] : *all) {
-      if (conf->display_key().find(_category) != 0) { continue; }
-
-      auto depth = conf->tokenized_display_key().size();
-      auto name  = conf->display_key().substr(_category.size());
-
-      buf << "..|{} = {}\n"_fmt % name % conf->serialize().dump();
-    }
-
-    _ref->write(buf);
-    return true;
-  }
-
- private:
-  if_terminal* _ref;
-  std::string _category;
-  int _depth;
-};
-
-void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
-  using namespace ranges;
-
-  auto node_conf = ref->commands()->root()->add_subcommand(
-          std::string{cmd},
-          [cmdstr = std::string{cmd}](auto&&) -> bool {
-            glog()->error("usage: {} <config_name> [set [<values...>]|toggle] ");
-            return true;
-          },
-          {});
-
-  for (const auto& [_, config] : config_registry::all()) {
-    auto hierarchy = config->tokenized_display_key();
-
-    // change display key expression into <a>.<b>.<c>
-    auto key = subrange(hierarchy.begin(), hierarchy.end() - 1)
-             | views::join('.')
-             | to<std::string>();
-
-    size_t category_len = key.size();
-    (key.empty() ? key : key.append(".")).append(hierarchy.back());
-    auto category_match = "*"s.append(std::string_view{key}.substr(0, category_len));
-
-    // add category command
-    if (not category_match.empty() && nullptr == node_conf->find_subcommand(category_match)) {
-      auto category_name = hierarchy.end()[-2];
-
-      auto manip = std::make_shared<_config_category_manip>(
-              ref,
-              std::string{category_match},
-              (int)hierarchy.size() - 1);
-
-      auto node_cat = node_conf->add_subcommand(
-              category_match,
-              [=](auto&& tok) { return (*manip)(tok); });
-    }
-
-    // add manipulation commands
-    auto manip = std::make_shared<_config_manip>(ref, config);
-    auto node  = node_conf->add_subcommand(
-             key,
-             [=](auto&& s) { return manip->get(s); });
-
-    node->add_subcommand(
-            "set",
-            [=](auto&& s) { return manip->set(s); },
-            [=](auto&&, auto&& s) { manip->set_suggest(s); });
-    node->add_subcommand(
-            "detail",
-            [=](auto&& s) { return manip->info(s); });
-
-    if (config->attribute()["default"].is_boolean()) {
-      node->add_subcommand("toggle", [=](auto&& s) { return manip->toggle(s); });
-    }
-  }
-}
-
 void initialize_with_basic_commands(if_terminal* ref) {
   register_logging_manip_command(ref);
   register_trace_manip_command(ref);
   register_conffile_io_commands(ref);
   register_config_manip_command(ref);
+}
+
+void register_config_manip_command(if_terminal* ref, std::string_view cmd) {
+  auto _locked  = ref->commands()->root()->acquire();
+  auto node_cmd = ref->commands()->root()->add_subcommand(std::string{cmd});
+
+  auto node_set = node_cmd->add_subcommand("set");
+  auto node_get = node_cmd->add_subcommand("get");
+
+  using node_type = commands::registry::node;
+  auto hook_enum_regs =
+          [](auto&& hook_factory) {
+            return [=](node_type* node_reg, auto&&) {
+              glog()->debug("registry hook: {}", (void*)node_reg);
+
+              auto _ = node_reg->acquire();
+              node_reg->clear();
+
+              for (const auto& registry : config_registry::bk_enumerate_registries()) {
+                auto node = node_reg->add_subcommand(registry->name());
+                node->reset_opreation_hook(hook_factory(registry));
+              }
+            };
+          };
+
+  node_set->reset_opreation_hook(
+          hook_enum_regs([](std::weak_ptr<config_registry> wrg) {
+            return [wrg](node_type* node_cfg, auto&&) {
+              glog()->debug("config hook: {}", (void*)node_cfg);
+
+              auto rg = wrg.lock();
+              if (not rg) { return; }
+
+              for (const auto& [_, config] : rg->bk_all()) {
+                node_cfg->add_subcommand(
+                        config->display_key(),
+                        [wconf = std::weak_ptr{config}](args_view args) {
+                          if (args.empty()) {
+                            glog()->error("command 'set' requires argument");
+                            return;
+                          }
+
+                          auto conf = wconf.lock();
+                          if (not conf) { return; }
+
+                          auto value  = args[0];
+                          auto parsed = json::parse(value.begin(), value.end(), nullptr, false);
+
+                          if (parsed.is_discarded()) {
+                            glog()->error("failed to parse input value");
+                            return;
+                          }
+
+                          conf->request_modify(std::move(parsed));
+                        });
+              }
+            };
+          }));
+
+  node_get->reset_opreation_hook(
+          hook_enum_regs([ref](std::weak_ptr<config_registry> wrg) {
+            return [wrg, ref](node_type* node_cfg, auto&&) {
+              if (auto rg = wrg.lock()) {
+                // register config info command
+                auto all = rg->bk_all();
+
+                for (auto& [key, config] : all) {
+                  node_cfg->add_subcommand(
+                          config->display_key(),
+                          [ref, _conf = config] {
+                            std::string buf{};
+                            buf.reserve(1024);
+
+                            buf.append("\n");
+                            buf << "<name        > {}\n"_fmt % _conf->display_key();
+                            buf << "<key         > {}\n"_fmt % _conf->full_key();
+                            buf << "<description > {}\n"_fmt % _conf->description();
+                            buf << "<attributes  > {}\n"_fmt % _conf->attribute().dump(2);
+                            buf << "<value       > {}\n"_fmt % _conf->serialize().dump(2);
+
+                            ref->write(buf);
+                          });
+                }
+              } else {
+                return;
+              }
+
+              node_cfg->reset_invoke_handler(
+                      [wrg, ref](args_view args) {
+                        // list all configurations belong to this category.
+                        using namespace ranges;
+                        auto rg = wrg.lock();
+                        if (not rg) { return false; }
+
+                        auto all = &rg->bk_all();
+
+                        // use first token as pattern
+                        std::string_view _category = "";
+                        if (not args.empty()) { _category = args[0]; }
+
+                        std::string buf;
+                        buf.reserve(1024);
+
+                        // header
+                        buf << "< {} >\n"_fmt % (_category);
+
+                        // during string begins with this category name ...
+                        for (const auto& [_, conf] : *all) {
+                          if (conf->display_key().find(_category) != 0) { continue; }
+
+                          // auto depth = conf->tokenized_display_key().size();
+                          auto name = conf->display_key();  //.substr(_category.size());
+
+                          buf << " {} = {}\n"_fmt % name % conf->serialize().dump();
+                        }
+
+                        buf += "\n";
+                        ref->write(buf);
+                        return true;
+                      });
+            };
+          }));
 }
 
 }  // namespace perfkit::terminal

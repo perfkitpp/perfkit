@@ -24,7 +24,10 @@ class config_base;
 }
 
 class config_registry;
-using config_ptr = std::shared_ptr<detail::config_base>;
+using config_shared_ptr = std::shared_ptr<detail::config_base>;
+using config_wptr       = std::weak_ptr<detail::config_base>;
+using std::shared_ptr;
+using std::weak_ptr;
 
 namespace detail {
 
@@ -60,11 +63,11 @@ class config_base {
 
   bool consume_dirty() { return _dirty && !(_dirty = false); }
 
-  std::string_view full_key() const { return _full_key; }
-  std::string_view display_key() const { return _display_key; }
-  std::string_view description() const { return _description; }
+  auto const& full_key() const { return _full_key; }
+  auto const& display_key() const { return _display_key; }
+  auto const& description() const { return _description; }
   auto tokenized_display_key() const { return make_view(_categories); }
-  void request_modify(nlohmann::json const& js);
+  void request_modify(nlohmann::json js);
 
   size_t num_modified() const { return _fence_modified.load(std::memory_order_relaxed); };
   bool is_transient() const noexcept { return attribute().contains("transient"); }
@@ -115,46 +118,76 @@ struct parse_error : std::runtime_error { using std::runtime_error::runtime_erro
 struct parse_help : parse_error { using parse_error::parse_error; };
 // clang-format on
 
-using flag_binding_table = std::map<std::string, config_ptr, std::less<>>;
+using flag_binding_table = std::map<std::string, config_shared_ptr, std::less<>>;
 flag_binding_table& _flags() noexcept;
 
 void parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
 void parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
+
+void import_from(const json& data);
+json export_all();
+
+bool import_from(std::string_view path);
+bool export_to(std::string_view path);
 }  // namespace configs
 
 /**
  *
  */
-class config_registry {
+class config_registry : std::enable_shared_from_this<config_registry> {
  public:
-  using json_table   = std::map<std::string_view, nlohmann::json>;
-  using config_table = std::map<std::string_view, std::shared_ptr<detail::config_base>>;
-  using container    = std::vector<std::unique_ptr<config_registry>>;
+  using json_table        = std::map<std::string_view, nlohmann::json>;
+  using config_table      = std::map<std::string_view, std::shared_ptr<detail::config_base>>;
+  using string_view_table = std::map<std::string_view, std::string_view>;
+  using container         = std::map<std::string, weak_ptr<config_registry>, std::less<>>;
+
+ private:
+  explicit config_registry(std::string name);
 
  public:
-  bool apply_update_and_check_if_dirty();
-  bool update() { return apply_update_and_check_if_dirty(); }
+  ~config_registry() noexcept;
 
-  static bool request_update_value(std::string_view full_key, nlohmann::json const& value);
+ public:
+  bool update();
+  void export_to(nlohmann::json*);
+  void import_from(nlohmann::json);
 
-  void queue_update_value(std::string_view full_key, nlohmann::json const& value);
-  static std::string_view find_key(std::string_view display_key);
-  static bool check_dirty_and_consume_global();
-  static config_registry& create() noexcept;
-  static config_table& all() noexcept;
+  auto const& name() const { return _name; }
+
+ public:
+  bool bk_queue_update_value(std::string_view full_key, json value);
+  std::string_view bk_find_key(std::string_view display_key);
+  auto const& bk_all() const noexcept { return _entities; }
+  uint64_t bk_schema_hash() const noexcept { return _schema_hash; }
+
+ public:
+  static auto bk_enumerate_registries() noexcept -> std::vector<std::shared_ptr<config_registry>>;
+  static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
+
+  // TODO: deprecate this!
+  static shared_ptr<config_registry> create(std::string name);
 
  public:  // for internal use only.
   auto _access_lock() { return std::unique_lock{_update_lock}; }
 
  public:
   void _put(std::shared_ptr<detail::config_base> o);
+  bool _initially_updated() const noexcept { return _initial_update_done.load(); }
 
  private:
-  config_table _opts;
+  std::string _name;
+  config_table _entities;
+  string_view_table _disp_keymap;
   std::set<detail::config_base*> _pending_updates;
   std::mutex _update_lock;
 
-  alignas(128) static inline std::atomic_bool _global_dirty;
+  // this value is used for identifying config registry's schema type, as config registry's
+  //  layout never changes after updated once.
+  uint64_t _schema_hash;
+
+  // since configurations can be loaded before registry instance loaded, this flag makes
+  //  the first update of registry to apply loaded configurations.
+  std::atomic_bool _initial_update_done{false};
 };
 
 namespace _attr_flag {
@@ -252,11 +285,11 @@ class config {
  public:
   template <typename Attr_ = _config_factory<Ty_>>
   config(
-          config_registry& dispatcher,
+          config_registry& repo,
           std::string full_key,
           Ty_&& default_value,
           _config_attrib_data<Ty_> attribute) noexcept
-          : _owner(&dispatcher), _value(std::forward<Ty_>(default_value)) {
+          : _owner(&repo), _value(std::forward<Ty_>(default_value)) {
     auto description = std::move(attribute.description);
 
     // define serializer
@@ -335,7 +368,7 @@ class config {
             std::move(js_attrib));
 
     // put instance to global queue
-    dispatcher._put(_opt);
+    repo._put(_opt);
   }
 
   config(const config&) noexcept = delete;
@@ -343,32 +376,33 @@ class config {
 
   /**
    * @warning
-   *    Reading Ty_ and invocation of apply_update_and_check_if_dirty() MUST occur on same thread!
+   *    Reading Ty_ and invocation of update() MUST occur on same thread!
    *
    * @return
    */
-  Ty_ const& get() const noexcept { return _value; }
-  Ty_ const& value() const noexcept { return _value; }
+  [[deprecated]] Ty_ const& get() const noexcept { return _value; }
+  Ty_ value() const noexcept { return _copy(); }
+  Ty_ const& ref() const noexcept { return _value; }
 
   /**
    * Provides thread-safe access for configuration.
    *
    * @return
    */
-  Ty_ copy() const noexcept { return _owner->_access_lock(), Ty_{_value}; }
+  Ty_ _copy() const noexcept { return _owner->_access_lock(), Ty_{_value}; }
 
-  Ty_ const& operator*() const noexcept { return get(); }
-  Ty_ const* operator->() const noexcept { return &get(); }
-  explicit operator const Ty_&() const noexcept { return get(); }
+  Ty_ const& operator*() const noexcept { return ref(); }
+  Ty_ const* operator->() const noexcept { return &ref(); }
+  operator Ty_() const noexcept { return _copy(); }
 
   bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
   bool check_update() const { return _opt->consume_dirty(); }
-  void async_modify(Ty_ v) { _owner->queue_update_value(_opt->full_key(), std::move(v)); }
+  void async_modify(Ty_ v) { _owner->bk_queue_update_value(_opt->full_key(), std::move(v)); }
 
   auto& base() const { return *_opt; }
 
  private:
-  config_ptr _opt;
+  config_shared_ptr _opt;
 
   config_registry* _owner;
   Ty_ _value;
@@ -378,7 +412,7 @@ template <typename Ty_>
 using _cvt_ty = std::conditional_t<
         std::is_convertible_v<Ty_, std::string>,
         std::string,
-        Ty_>;
+        std::remove_reference_t<Ty_>>;
 
 template <typename Ty_>
 auto configure(config_registry& dispatcher,
