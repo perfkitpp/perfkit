@@ -2,10 +2,8 @@
 // Created by Seungwoo on 2021-08-25.
 //
 #pragma once
-#include <any>
 #include <atomic>
 #include <chrono>
-#include <list>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -15,9 +13,6 @@
 #include <variant>
 #include <vector>
 
-#include <spdlog/fmt/fmt.h>
-
-#include "interactive_image.hpp"
 #include "perfkit/common/array_view.hxx"
 #include "perfkit/common/spinlock.hxx"
 
@@ -26,13 +21,14 @@ class tracer_future_result;
 class tracer;
 
 using clock_type = std::chrono::steady_clock;
-struct trace_variant_type : std::variant<clock_type::duration,
-                                         int64_t,
-                                         double,
-                                         std::string,
-                                         bool,
-                                         trace::interactive_image,
-                                         std::any> {
+struct trace_variant_type
+        : std::variant<
+                  nullptr_t,
+                  clock_type::duration,
+                  int64_t,
+                  double,
+                  std::string,
+                  bool> {
   using variant::variant;
 };
 
@@ -90,43 +86,35 @@ class tracer_proxy {
   ~tracer_proxy() noexcept;  // if no data specified, ...
 
  private:
-  trace_variant_type& data() noexcept;
+  trace_variant_type& _data() noexcept;
 
   template <typename Ty_>
-  Ty_& data_as() noexcept {
-    if (!std::holds_alternative<Ty_>(data())) {
-      data().emplace<Ty_>();
+  Ty_& _data_as() noexcept {
+    if (!std::holds_alternative<Ty_>(_data())) {
+      _data().emplace<Ty_>();
     }
-    return std::get<Ty_>(data());
+    return std::get<Ty_>(_data());
   }
 
-  auto& string() noexcept { return data_as<std::string>(); }
-  auto& any() noexcept { return data_as<std::any>(); }
+  auto& _string() noexcept { return _data_as<std::string>(); }
 
  public:
-  template <typename... Args_>
-  void format(std::string_view fmt, Args_&&... args) {
-    string() = fmt::format(fmt, std::forward<Args_>(args)...);
-  }
-
   template <typename Other_>
   tracer_proxy& operator=(Other_&& oty) noexcept {
     using other_t = std::remove_const_t<std::remove_reference_t<Other_>>;
 
     if constexpr (std::is_same_v<other_t, bool>) {
-      data() = oty;
+      _data() = oty;
     } else if constexpr (std::is_integral_v<other_t>) {
-      data() = static_cast<int64_t>(std::forward<Other_>(oty));
+      _data() = static_cast<int64_t>(std::forward<Other_>(oty));
     } else if constexpr (std::is_floating_point_v<other_t>) {
-      data() = static_cast<double>(std::forward<Other_>(oty));
+      _data() = static_cast<double>(std::forward<Other_>(oty));
     } else if constexpr (std::is_convertible_v<other_t, std::string>) {
-      string() = static_cast<std::string>(std::forward<Other_>(oty));
+      _string() = static_cast<std::string>(std::forward<Other_>(oty));
     } else if constexpr (std::is_same_v<other_t, std::string_view>) {
-      string() = static_cast<std::string>(std::forward<Other_>(oty));
+      _string() = static_cast<std::string>(std::forward<Other_>(oty));
     } else if constexpr (std::is_same_v<other_t, clock_type::duration>) {
-      data() = std::forward<Other_>(oty);
-    } else {
-      any() = std::forward<Other_>(oty);
+      _data() = std::forward<Other_>(oty);
     }
     return *this;
   }
@@ -152,15 +140,15 @@ class tracer_proxy {
     return _ref->is_subscribed.load(std::memory_order_consume);
   }
 
-  bool is_valid() const noexcept { return !!_owner && !!_ref; }
+  bool is_valid() const noexcept { return _owner && _ref; }
 
  private:
   friend class tracer;
-  tracer_proxy() noexcept {}
+  tracer_proxy() noexcept { (void)0; };
 
  private:
   tracer* _owner                            = nullptr;
-  _trace::_entity_ty* _ref                          = nullptr;
+  _trace::_entity_ty* _ref                  = nullptr;
   clock_type::time_point _epoch_if_required = {};
 };
 

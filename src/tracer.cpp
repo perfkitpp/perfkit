@@ -180,11 +180,11 @@ tracer::proxy tracer::proxy::timer(std::string_view n) noexcept {
 tracer_proxy::~tracer_proxy() noexcept {
   if (!_owner) { return; }
   if (_epoch_if_required != clock_type::time_point{}) {
-    data() = clock_type::now() - _epoch_if_required;
+    _data() = clock_type::now() - _epoch_if_required;
   }
 }
 
-tracer::variant_type& tracer::proxy::data() noexcept {
+tracer::variant_type& tracer::proxy::_data() noexcept {
   return _ref->body.data;
 }
 
@@ -257,37 +257,37 @@ void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept {
 
 void tracer::trace::dump_data(std::string& s) const {
   switch (data.index()) {
-    case 0:  //<clock_type::duration,
+    case 0:
+      s = "[null]";
+      break;
+
+    case 1:  //<clock_type::duration,
     {
       auto count = std::chrono::duration<double>{std::get<clock_type ::duration>(data)}.count();
       s          = fmt::format("{:.4f} ms", count * 1000.);
     } break;
 
-    case 1:  // int64_t,
+    case 2:  // int64_t,
       s = std::to_string(std::get<int64_t>(data));
       break;
 
-    case 2:  // double,
+    case 3:  // double,
       s = std::to_string(std::get<double>(data));
       break;
 
-    case 3:  // std::string,
+    case 4:  // std::string,
       s.clear();
       s.append("\"");
       s.append(std::get<std::string>(data));
       s.append("\"");
       break;
 
-    case 4:  // bool,
+    case 5:  // bool,
       s = std::get<bool>(data) ? "true" : "false";
       break;
 
-    case 5:                     // interactive_image_t;
+    case 6:                     // interactive_image_t;
       s = "interactive_image";  // TODO
-      break;
-
-    case 6:  // std::any;
-      s = "--custom type--";
       break;
 
     default:

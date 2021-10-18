@@ -41,7 +41,7 @@ TEST_CASE("Create Message Blocks") {
     auto TM_0 = my_block.fork("Foo");
 
     auto DT_0_0 = TM_0.branch("My");
-    if (i > 0) { CHECK(14 == DT_0_0.data_as<int64_t>()); }
+    if (i > 0) { CHECK(14 == DT_0_0._data_as<int64_t>()); }
     DT_0_0 = 14;
 
     auto tm = TM_0.timer("TT");
