@@ -71,9 +71,11 @@ tracer::proxy tracer::fork(const std::string& n) {
                      _local_reused_memory.begin(),
                      [](std::pair<const uint64_t, _entity_ty> const& g) { return g.second.body; });
 
+      auto self_ptr = _self_weak.lock();
+
       async_trace_result rs = {};
-      rs._mtx_access        = &_sort_merge_lock;
-      rs._data              = &_local_reused_memory;
+      rs._mtx_access        = decltype(rs._mtx_access){self_ptr, &_sort_merge_lock};
+      rs._data              = decltype(rs._data){self_ptr, &_local_reused_memory};
       promise.set_value(rs);
 
       self->msg_future  = {};
@@ -258,7 +260,7 @@ void tracer::trace::dump_data(std::string& s) const {
     case 0:  //<clock_type::duration,
     {
       auto count = std::chrono::duration<double>{std::get<clock_type ::duration>(data)}.count();
-      s          = fmt::format("{:.4f}", count * 1000.);
+      s          = fmt::format("{:.4f} ms", count * 1000.);
     } break;
 
     case 1:  // int64_t,

@@ -134,7 +134,7 @@ bool export_to(std::string_view path);
 /**
  *
  */
-class config_registry : std::enable_shared_from_this<config_registry> {
+class config_registry : public std::enable_shared_from_this<config_registry> {
  public:
   using json_table        = std::map<std::string_view, nlohmann::json>;
   using config_table      = std::map<std::string_view, std::shared_ptr<detail::config_base>>;
@@ -395,7 +395,7 @@ class config {
   Ty_ const* operator->() const noexcept { return &ref(); }
   operator Ty_() const noexcept { return _copy(); }
 
-  bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
+  [[deprecated]] bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
   bool check_update() const { return _opt->consume_dirty(); }
   void async_modify(Ty_ v) { _owner->bk_queue_update_value(_opt->full_key(), std::move(v)); }
 

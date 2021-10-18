@@ -48,12 +48,12 @@ std::string INDEXER_STR(int order);
   }                                                                                                 \
   namespace category
 
-#define PERFKIT_CONFIGURE(name, default_value)                                                   \
-  ::perfkit::config<::perfkit::_cvt_ty<decltype(default_value)>>                                 \
+#define PERFKIT_CONFIGURE(name, ...)                                                             \
+  ::perfkit::config<::perfkit::_cvt_ty<decltype(__VA_ARGS__)>>                                   \
           name                                                                                   \
           = ::perfkit::configure(registry(),                                                     \
                                  _perfkit_INTERNAL_CATNAME_2() + INTERNAL_PERFKIT_INDEXER #name, \
-                                 default_value)
+                                 __VA_ARGS__)
 
 #define PERFKIT_FORWARD_CATEGORY(hierarchy)                   \
   namespace hierarchy {                                       \
@@ -80,7 +80,8 @@ std::string INDEXER_STR(int order);
                                                                     \
  public:                                                            \
   explicit name(std::string s) : _perfkit_INTERNAL_RG(              \
-          ::perfkit::config_registry::create(std::move(s))) {}
+          ::perfkit::config_registry::create(std::move(s))) {}      \
+  bool update() { return _perfkit_INTERNAL_RG->update(); }
 
 #define INTERNAL_PERFKIT_T_SUBCATEGORY_body(varname)                \
  private:                                                           \
@@ -113,10 +114,10 @@ std::string INDEXER_STR(int order);
     __VA_ARGS__;                                                             \
   } varname{this};
 
-#define PERFKIT_T_CONFIGURE(name, default_value)       \
-  ::perfkit::config<                                   \
-          ::perfkit::_cvt_ty<decltype(default_value)>> \
-          name = ::perfkit::configure(                 \
-                  *_perfkit_INTERNAL_RG,               \
-                  _category_name() + #name,            \
-                  default_value)
+#define PERFKIT_T_CONFIGURE(name, ...)               \
+  ::perfkit::config<                                 \
+          ::perfkit::_cvt_ty<decltype(__VA_ARGS__)>> \
+          name = ::perfkit::configure(               \
+                  *_perfkit_INTERNAL_RG,             \
+                  _category_name() + #name,          \
+                  __VA_ARGS__)
