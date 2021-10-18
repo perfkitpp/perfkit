@@ -23,6 +23,7 @@
 
 namespace perfkit {
 class tracer_future_result;
+class tracer;
 
 using clock_type = std::chrono::steady_clock;
 struct trace_variant_type : std::variant<clock_type::duration,
@@ -35,144 +36,148 @@ struct trace_variant_type : std::variant<clock_type::duration,
   using variant::variant;
 };
 
-class tracer {
+namespace _trace {
+struct trace {
+  std::optional<clock_type::duration> as_timer() const noexcept {
+    if (auto ptr = std::get_if<clock_type::duration>(&data)) { return *ptr; }
+    return {};
+  }
+
+  void subscribe(bool enabled) noexcept {
+    _is_subscribed->store(enabled, std::memory_order_relaxed);
+  }
+
+  bool subscribing() const noexcept { return _is_subscribed->load(std::memory_order_relaxed); }
+
+  void dump_data(std::string&) const;
+
  public:
-  using clock_type   = perfkit::clock_type;
-  using variant_type = trace_variant_type;
+  std::string_view key;
+  uint64_t hash;
 
-  struct trace {
-    std::optional<clock_type::duration> as_timer() const noexcept {
-      if (auto ptr = std::get_if<clock_type::duration>(&data)) { return *ptr; }
-      return {};
-    }
+  size_t fence = 0;
+  int order    = 0;
+  array_view<std::string_view> hierarchy;
 
-    void subscribe(bool enabled) noexcept {
-      _is_subscribed->store(enabled, std::memory_order_relaxed);
-    }
-
-    bool subscribing() const noexcept { return _is_subscribed->load(std::memory_order_relaxed); }
-
-    void dump_data(std::string&) const;
-
-   public:
-    std::string_view key;
-    uint64_t hash;
-
-    size_t fence = 0;
-    int order    = 0;
-    array_view<std::string_view> hierarchy;
-
-    variant_type data;
-
-   private:
-    friend class tracer;
-    std::atomic_bool* _is_subscribed = {};
-  };
-
-  using fetched_traces = std::vector<trace>;
-
-  static_assert(std::is_nothrow_move_assignable_v<trace>);
-  static_assert(std::is_nothrow_move_constructible_v<trace>);
+  trace_variant_type data;
 
  private:
-  struct _entity_ty {
-    trace body;
-    std::string key_buffer;
-    std::vector<std::string_view> hierarchy;
-    std::atomic_bool is_subscribed;
-  };
+  friend class ::perfkit::tracer;
+  std::atomic_bool* _is_subscribed = {};
+};
+
+struct _entity_ty {
+  trace body;
+  std::string key_buffer;
+  std::vector<std::string_view> hierarchy;
+  std::atomic_bool is_subscribed;
+};
+}  // namespace _trace
+
+class tracer_proxy {
+ public:
+  tracer_proxy(tracer_proxy&& o) noexcept {
+    *this = std::move(o);
+  }
+
+  tracer_proxy branch(std::string_view n) noexcept;
+  tracer_proxy timer(std::string_view n) noexcept;
+
+  template <size_t N_>
+  tracer_proxy operator[](char const (&s)[N_]) noexcept { return branch(s); }
+  tracer_proxy operator[](std::string_view n) noexcept { return branch(n); }
+
+  ~tracer_proxy() noexcept;  // if no data specified, ...
+
+ private:
+  trace_variant_type& data() noexcept;
+
+  template <typename Ty_>
+  Ty_& data_as() noexcept {
+    if (!std::holds_alternative<Ty_>(data())) {
+      data().emplace<Ty_>();
+    }
+    return std::get<Ty_>(data());
+  }
+
+  auto& string() noexcept { return data_as<std::string>(); }
+  auto& any() noexcept { return data_as<std::any>(); }
 
  public:
-  struct proxy {
-   public:
-    proxy(proxy&& o) noexcept {
-      *this = std::move(o);
+  template <typename... Args_>
+  void format(std::string_view fmt, Args_&&... args) {
+    string() = fmt::format(fmt, std::forward<Args_>(args)...);
+  }
+
+  template <typename Other_>
+  tracer_proxy& operator=(Other_&& oty) noexcept {
+    using other_t = std::remove_const_t<std::remove_reference_t<Other_>>;
+
+    if constexpr (std::is_same_v<other_t, bool>) {
+      data() = oty;
+    } else if constexpr (std::is_integral_v<other_t>) {
+      data() = static_cast<int64_t>(std::forward<Other_>(oty));
+    } else if constexpr (std::is_floating_point_v<other_t>) {
+      data() = static_cast<double>(std::forward<Other_>(oty));
+    } else if constexpr (std::is_convertible_v<other_t, std::string>) {
+      string() = static_cast<std::string>(std::forward<Other_>(oty));
+    } else if constexpr (std::is_same_v<other_t, std::string_view>) {
+      string() = static_cast<std::string>(std::forward<Other_>(oty));
+    } else if constexpr (std::is_same_v<other_t, clock_type::duration>) {
+      data() = std::forward<Other_>(oty);
+    } else {
+      any() = std::forward<Other_>(oty);
     }
+    return *this;
+  }
 
-    proxy branch(std::string_view n) noexcept;
-    proxy timer(std::string_view n) noexcept;
+  tracer_proxy& operator=(tracer_proxy&& other) noexcept {
+    this->~tracer_proxy();
+    _owner             = other._owner;
+    _ref               = other._ref;
+    _epoch_if_required = other._epoch_if_required;
 
-    template <size_t N_>
-    proxy operator[](char const (&s)[N_]) noexcept { return branch(s); }
-    proxy operator[](std::string_view n) noexcept { return branch(n); }
+    other._owner             = {};
+    other._ref               = {};
+    other._epoch_if_required = {};
 
-    ~proxy() noexcept;  // if no data specified, ...
+    return *this;
+  }
 
-   private:
-    variant_type& data() noexcept;
+  void commit() noexcept {
+    *this = {};
+  }
 
-    template <typename Ty_>
-    Ty_& data_as() noexcept {
-      if (!std::holds_alternative<Ty_>(data())) {
-        data().emplace<Ty_>();
-      }
-      return std::get<Ty_>(data());
-    }
+  operator bool() const noexcept {
+    return _ref->is_subscribed.load(std::memory_order_consume);
+  }
 
-    auto& string() noexcept { return data_as<std::string>(); }
-    auto& any() noexcept { return data_as<std::any>(); }
+  bool is_valid() const noexcept { return !!_owner && !!_ref; }
 
-   public:
-    template <typename... Args_>
-    void format(std::string_view fmt, Args_&&... args) {
-      string() = fmt::format(fmt, std::forward<Args_>(args)...);
-    }
+ private:
+  friend class tracer;
+  tracer_proxy() noexcept {}
 
-    template <typename Other_>
-    proxy& operator=(Other_&& oty) noexcept {
-      using other_t = std::remove_const_t<std::remove_reference_t<Other_>>;
+ private:
+  tracer* _owner                            = nullptr;
+  _trace::_entity_ty* _ref                          = nullptr;
+  clock_type::time_point _epoch_if_required = {};
+};
 
-      if constexpr (std::is_same_v<other_t, bool>) {
-        data() = oty;
-      } else if constexpr (std::is_integral_v<other_t>) {
-        data() = static_cast<int64_t>(std::forward<Other_>(oty));
-      } else if constexpr (std::is_floating_point_v<other_t>) {
-        data() = static_cast<double>(std::forward<Other_>(oty));
-      } else if constexpr (std::is_convertible_v<other_t, std::string>) {
-        string() = static_cast<std::string>(std::forward<Other_>(oty));
-      } else if constexpr (std::is_same_v<other_t, std::string_view>) {
-        string() = static_cast<std::string>(std::forward<Other_>(oty));
-      } else if constexpr (std::is_same_v<other_t, clock_type::duration>) {
-        data() = std::forward<Other_>(oty);
-      } else {
-        any() = std::forward<Other_>(oty);
-      }
-      return *this;
-    }
+class tracer {
+ public:
+  using clock_type     = perfkit::clock_type;
+  using variant_type   = trace_variant_type;
+  using fetched_traces = std::vector<_trace::trace>;
+  using _entity_ty     = _trace::_entity_ty;
+  using trace          = _trace::trace;
+  using proxy          = tracer_proxy;
 
-    proxy& operator=(proxy&& other) noexcept {
-      this->~proxy();
-      _owner             = other._owner;
-      _ref               = other._ref;
-      _epoch_if_required = other._epoch_if_required;
+  static_assert(std::is_nothrow_move_assignable_v<_trace::trace>);
+  static_assert(std::is_nothrow_move_constructible_v<_trace::trace>);
 
-      other._owner             = {};
-      other._ref               = {};
-      other._epoch_if_required = {};
-
-      return *this;
-    }
-
-    void commit() noexcept {
-      *this = {};
-    }
-
-    operator bool() const noexcept {
-      return _ref->is_subscribed.load(std::memory_order_consume);
-    }
-
-    bool is_valid() const noexcept { return !!_owner && !!_ref; }
-
-   private:
-    friend class tracer;
-    proxy() noexcept {}
-
-   private:
-    tracer* _owner                            = nullptr;
-    _entity_ty* _ref                          = nullptr;
-    clock_type::time_point _epoch_if_required = {};
-  };
-
+ private:
+ public:
   struct async_trace_result {
    public:
     std::pair<
@@ -217,7 +222,7 @@ class tracer {
    *
    * @return
    */
-  proxy fork(std::string const& n);
+  tracer_proxy fork(std::string const& n);
 
   /**
    * Reserves for async data sort
@@ -229,13 +234,15 @@ class tracer {
   auto order() const noexcept { return _occurence_order; }
 
  private:
-  uint64_t _hash_active(_entity_ty const* parent, std::string_view top);
+  uint64_t _hash_active(_trace::_entity_ty const* parent, std::string_view top);
 
   // Create new or find existing.
-  tracer::_entity_ty* _fork_branch(_entity_ty const* parent, std::string_view name, bool initial_subscribe_state);
+  _trace::_entity_ty* _fork_branch(_trace::_entity_ty const* parent, std::string_view name, bool initial_subscribe_state);
   static std::vector<std::weak_ptr<tracer>>& _all() noexcept;
 
  private:
+  friend class tracer_proxy;
+
   // 고려사항
   // 1. consumer가 오랫동안 안 읽어갈수도 있음 -> 매번 메모리 비우고 할당하기 = 낭비
   //    (e.g. 1초에 1000번 iteration ... 10번만 read ... 너무 큰 낭비다)
@@ -250,7 +257,7 @@ class tracer {
   // 2. 프록시가 데이터 넣을 때마다(타이머는 소멸 시) 데이터 블록의 백 버퍼 맵에 이름-값 쌍 할당
   // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
   //    이 때 최신 시퀀스 넘버도 같이 받는다.
-  std::map<std::size_t, _entity_ty> _table;
+  std::map<std::size_t, _trace::_entity_ty> _table;
   size_t _fence_active = 0;  // active sequence number of back buffer.
 
   int _order_active = 0;  // temporary variable for single iteration

@@ -87,7 +87,7 @@ tracer::proxy tracer::fork(const std::string& n) {
   _fence_active++;
   _order_active = 0;
 
-  proxy prx;
+  tracer_proxy prx;
   prx._owner             = this;
   prx._ref               = _fork_branch(nullptr, n, false);
   prx._epoch_if_required = clock_type::now();
@@ -163,21 +163,21 @@ perfkit::tracer::~tracer() noexcept {
 };
 
 tracer::proxy tracer::proxy::branch(std::string_view n) noexcept {
-  proxy px;
+  tracer_proxy px;
   px._owner = _owner;
   px._ref   = _owner->_fork_branch(_ref, n, false);
   return px;
 }
 
 tracer::proxy tracer::proxy::timer(std::string_view n) noexcept {
-  proxy px;
+  tracer_proxy px;
   px._owner             = _owner;
   px._ref               = _owner->_fork_branch(_ref, n, false);
   px._epoch_if_required = clock_type::now();
   return px;
 }
 
-tracer::proxy::~proxy() noexcept {
+tracer_proxy::~tracer_proxy() noexcept {
   if (!_owner) { return; }
   if (_epoch_if_required != clock_type::time_point{}) {
     data() = clock_type::now() - _epoch_if_required;

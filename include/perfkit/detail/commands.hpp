@@ -50,7 +50,6 @@ using autocomplete_suggest_fn = std::function<void(args_view hint, string_set& c
 
 class registry {
  public:
- public:
   class node {
     perfkit::commands::registry::node* _add_subcommand(
             std::string cmd,
