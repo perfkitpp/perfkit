@@ -16,6 +16,8 @@
 #include "perfkit/common/array_view.hxx"
 #include "perfkit/common/spinlock.hxx"
 
+namespace fmt {}
+
 namespace perfkit {
 class tracer_future_result;
 class tracer;
@@ -99,8 +101,21 @@ class tracer_proxy {
   auto& _string() noexcept { return _data_as<std::string>(); }
 
  public:
+  template <typename Str_, typename... Args_>
+  tracer_proxy& operator()(Str_&& fmt, Args_&&... args) {
+    using namespace fmt;
+
+    if (is_valid())
+      format(std::forward<Str_>(fmt), std::forward<Args_>(args)...);
+
+    return *this;
+  }
+
   template <typename Other_>
   tracer_proxy& operator=(Other_&& oty) noexcept {
+    if (not is_valid())
+      return *this;
+
     using other_t = std::remove_const_t<std::remove_reference_t<Other_>>;
 
     if constexpr (std::is_same_v<other_t, bool>) {
@@ -137,7 +152,7 @@ class tracer_proxy {
   }
 
   operator bool() const noexcept {
-    return _ref->is_subscribed.load(std::memory_order_consume);
+    return is_valid() && _ref->is_subscribed.load(std::memory_order_consume);
   }
 
   bool is_valid() const noexcept { return _owner && _ref; }
@@ -210,7 +225,7 @@ class tracer {
    *
    * @return
    */
-  tracer_proxy fork(std::string const& n);
+  tracer_proxy fork(std::string const& n, size_t interval = 0);
 
   /**
    * Reserves for async data sort
@@ -223,6 +238,7 @@ class tracer {
 
  private:
   uint64_t _hash_active(_trace::_entity_ty const* parent, std::string_view top);
+  bool _deliver_previous_result();
 
   // Create new or find existing.
   _trace::_entity_ty* _fork_branch(_trace::_entity_ty const* parent, std::string_view name, bool initial_subscribe_state);
@@ -246,7 +262,9 @@ class tracer {
   // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
   //    이 때 최신 시퀀스 넘버도 같이 받는다.
   std::map<std::size_t, _trace::_entity_ty> _table;
-  size_t _fence_active = 0;  // active sequence number of back buffer.
+  size_t _fence_active     = 0;  // active sequence number of back buffer.
+  size_t _fence_latest     = 0;
+  size_t _interval_counter = 0;
 
   int _order_active = 0;  // temporary variable for single iteration
 

@@ -38,7 +38,7 @@ TEST_CASE("Create Message Blocks") {
   for (int i = 0; i < 5; ++i) {
     perfkit::tracer_future_result fut;
     my_block.async_fetch_request(&fut);
-    auto TM_0 = my_block.fork("Foo");
+    auto TM_0 = my_block.fork("Foo", 0);
 
     auto DT_0_0 = TM_0.branch("My");
     if (i > 0) { CHECK(14 == DT_0_0._data_as<int64_t>()); }

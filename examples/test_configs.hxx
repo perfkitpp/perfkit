@@ -142,8 +142,8 @@ auto trace_a = perfkit::tracer::create(0, ".. Trace A");
 auto trace_b = perfkit::tracer::create(1, ".. Trace B");
 
 void do_trace(size_t ic, std::string cmd) {
-  auto trc_root        = trace_a->fork("a,  b ,   c ,   d");
-  auto trc_b           = trace_b->fork("a,  b ,   c ,   d, e e    f,    g");
+  auto trc_root        = trace_a->fork("a,  b ,   c ,   d", 0);
+  auto trc_b           = trace_b->fork("a,  b ,   c ,   d, e e    f,    g", 0);
   trc_b["placeholder"] = "vlvlvl";
   trc_b["command"]     = "cmd";
 

@@ -14,7 +14,6 @@
 #include "spdlog/fmt/fmt.h"
 
 using namespace std::literals;
-
 using namespace perfkit;
 
 struct tracer::_impl {
@@ -22,6 +21,7 @@ struct tracer::_impl {
   tracer_future_result msg_future;
 };
 
+void _deliever_previous_result();
 tracer::_entity_ty* tracer::_fork_branch(
         _entity_ty const* parent, std::string_view name, bool initial_subscribe_state) {
   auto hash = _hash_active(parent, name);
@@ -59,32 +59,15 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top) {
   return hash;
 }
 
-tracer::proxy tracer::fork(const std::string& n) {
-  if (auto _lck = std::unique_lock{_sort_merge_lock}) {
-    // perform queued sort-merge operation
-    if (self->msg_promise) {
-      auto& promise = *self->msg_promise;
+tracer_proxy tracer::fork(std::string const& n, size_t interval) {
+  if (_fence_active > _fence_latest)  // only when update exist...
+    std::unique_lock{_sort_merge_lock}, _deliver_previous_result();
 
-      // copies all messages and put them to cache buffer to prevent memory reallocation
-      _local_reused_memory.resize(_table.size());
-      std::transform(_table.begin(), _table.end(),
-                     _local_reused_memory.begin(),
-                     [](std::pair<const uint64_t, _entity_ty> const& g) { return g.second.body; });
-
-      auto self_ptr = _self_weak.lock();
-
-      async_trace_result rs = {};
-      rs._mtx_access        = decltype(rs._mtx_access){self_ptr, &_sort_merge_lock};
-      rs._data              = decltype(rs._data){self_ptr, &_local_reused_memory};
-      promise.set_value(rs);
-
-      self->msg_future  = {};
-      self->msg_promise = {};
-    }
-  }
+  if (interval > 1 && ++_interval_counter < interval)
+    return {};  // if fork interval is set ...
 
   // init new iteration
-  _fence_active++;
+  ++_fence_active;
   _order_active = 0;
 
   tracer_proxy prx;
@@ -93,6 +76,32 @@ tracer::proxy tracer::fork(const std::string& n) {
   prx._epoch_if_required = clock_type::now();
 
   return prx;
+}
+
+bool tracer::_deliver_previous_result() {  // perform queued sort-merge operation
+  if (not self->msg_promise)
+    return false;
+
+  auto& promise = *this->self->msg_promise;
+
+  // copies all messages and put them to cache buffer to prevent memory reallocation
+  this->_local_reused_memory.resize(this->_table.size());
+  std::transform(this->_table.begin(), this->_table.end(),
+                 this->_local_reused_memory.begin(),
+                 [](auto&& g) { return g.second.body; });
+
+  auto self_ptr = this->_self_weak.lock();
+
+  async_trace_result rs = {};
+  rs._mtx_access        = decltype(rs._mtx_access){self_ptr, &this->_sort_merge_lock};
+  rs._data              = decltype(rs._data){self_ptr, &this->_local_reused_memory};
+  promise.set_value(rs);
+
+  this->self->msg_future  = {};
+  this->self->msg_promise = {};
+
+  this->_fence_latest = this->_fence_active;
+  return true;
 }
 
 namespace {
@@ -163,6 +172,8 @@ perfkit::tracer::~tracer() noexcept {
 };
 
 tracer::proxy tracer::proxy::branch(std::string_view n) noexcept {
+  if (not is_valid()) { return {}; }
+
   tracer_proxy px;
   px._owner = _owner;
   px._ref   = _owner->_fork_branch(_ref, n, false);
@@ -170,6 +181,8 @@ tracer::proxy tracer::proxy::branch(std::string_view n) noexcept {
 }
 
 tracer::proxy tracer::proxy::timer(std::string_view n) noexcept {
+  if (not is_valid()) { return {}; }
+
   tracer_proxy px;
   px._owner             = _owner;
   px._ref               = _owner->_fork_branch(_ref, n, false);
