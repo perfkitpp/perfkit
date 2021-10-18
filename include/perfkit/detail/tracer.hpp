@@ -106,7 +106,7 @@ class tracer_proxy {
     using namespace fmt;
 
     if (is_valid())
-      format(std::forward<Str_>(fmt), std::forward<Args_>(args)...);
+      _string() = format(std::forward<Str_>(fmt), std::forward<Args_>(args)...);
 
     return *this;
   }
