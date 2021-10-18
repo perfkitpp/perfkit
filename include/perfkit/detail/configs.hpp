@@ -134,7 +134,7 @@ bool export_to(std::string_view path);
 /**
  *
  */
-class config_registry : std::enable_shared_from_this<config_registry> {
+class config_registry : public std::enable_shared_from_this<config_registry> {
  public:
   using json_table        = std::map<std::string_view, nlohmann::json>;
   using config_table      = std::map<std::string_view, std::shared_ptr<detail::config_base>>;
