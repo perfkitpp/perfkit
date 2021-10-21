@@ -180,7 +180,7 @@ perfkit::json perfkit::configs::export_all() {
 
 bool perfkit::config_registry::update() {
   decltype(_pending_updates) update;
-  if (not _initial_update_done.load(std::memory_order_acq_rel)) {
+  if (not _initial_update_done.load(std::memory_order_consume)) {
     glog()->debug("registry '{}' instantiated after loading configurations", name());
 
     auto patch = configs::_io::fetch_changes(name());
@@ -189,7 +189,7 @@ bool perfkit::config_registry::update() {
     }
 
     // exporting configs only allowed after first update.
-    _initial_update_done.store(true, std::memory_order_acq_rel);
+    _initial_update_done.store(true, std::memory_order_release);
   }
 
   if (std::unique_lock _l{_update_lock}) {
