@@ -267,7 +267,7 @@ perfkit::configs::flag_binding_table& perfkit::configs::_flags() noexcept {
   return _inst;
 }
 
-bool perfkit::configs::import_from(std::string_view path) {
+bool perfkit::configs::import_file(std::string_view path) {
   std::ifstream fs{std::string{path}};
   if (not fs.is_open()) {
     glog()->error("config load failed: file '{}' does not exist", path);

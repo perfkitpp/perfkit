@@ -127,7 +127,7 @@ void parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_u
 void import_from(const json& data);
 json export_all();
 
-bool import_from(std::string_view path);
+bool import_file(std::string_view path);
 bool export_to(std::string_view path);
 }  // namespace configs
 

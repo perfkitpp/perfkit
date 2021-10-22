@@ -32,7 +32,7 @@ class _config_saveload_manager {
   bool load_from(args_view args = {}) {
     auto path = args.empty() ? _latest : args.front();
     _latest   = path;
-    return perfkit::configs::import_from(path);
+    return perfkit::configs::import_file(path);
   }
 
   bool save_to(args_view args = {}) {
