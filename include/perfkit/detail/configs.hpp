@@ -61,7 +61,7 @@ class config_base {
   nlohmann::json const& attribute() const noexcept { return _attribute; }
   nlohmann::json const& default_value() const { return _attribute["default"]; }
 
-  bool consume_dirty() { return _dirty && !(_dirty = false); }
+  bool consume_dirty() { return _dirty.exchange(false); }
 
   auto const& full_key() const { return _full_key; }
   auto const& display_key() const { return _display_key; }
@@ -92,7 +92,7 @@ class config_base {
   std::string _display_key;
   std::string _description;
   void* _raw;
-  bool _dirty                             = true;  // default true to trigger initialization
+  std::atomic_bool _dirty                 = true;  // default true to trigger initialization
   std::atomic_bool _latest_marshal_failed = false;
 
   std::atomic_size_t _fence_modified = 0;
