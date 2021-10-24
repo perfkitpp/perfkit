@@ -5,6 +5,7 @@
 #pragma once
 #include <condition_variable>
 #include <mutex>
+#include <atomic>
 #include <thread>
 
 #include "perfkit/common/circular_queue.hxx"
@@ -28,7 +29,8 @@ class net_terminal : public perfkit::if_terminal {
   std::shared_ptr<spdlog::sinks::sink> sink() override;
 
  private:
-  void _async_worker();
+  void _worker_session_management();
+  void _worker_fetch_stdout();
 
  private:
   std::mutex _session_lock;
@@ -36,7 +38,8 @@ class net_terminal : public perfkit::if_terminal {
   terminal::net_provider::init_info const _init_cached;
 
   std::thread _async_loop;
-  std::atomic_flag _active{true};
+  std::thread _async_stdout_loop;
+  std::atomic_bool _active{true};
 
   circular_queue<char> _text_buffer{512 * 1024 - 1};
   termcolor _prev_bg, _prev_fg;
@@ -49,5 +52,14 @@ class net_terminal : public perfkit::if_terminal {
 
   std::shared_ptr<spdlog::sinks::sink> _log_sink;
   std::shared_ptr<bool> _alive_flag = std::make_shared<bool>();
+
+  std::string _reused_stdout_buf;
+
+  int _fd_stdout[2]     = {-1};
+  int _fd_stderr[2]     = {-1};
+
+  int _fd_source_stdout = -1;
+  int _fd_source_stderr = -1;
+
 };
 }  // namespace perfkit::net

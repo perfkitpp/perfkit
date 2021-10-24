@@ -13,6 +13,11 @@
 #include "perfkit/_net/net-proto.hpp"
 #include "perfkit/detail/base.hpp"
 
+#if __unix__ || __linux__
+#include <sys/poll.h>
+#include <unistd.h>
+#endif
+
 using namespace std::literals;
 
 namespace perfkit::net {
@@ -38,6 +43,7 @@ void net_terminal::push_command(std::string_view command) {
 
 void net_terminal::write(std::string_view str, perfkit::termcolor fg, perfkit::termcolor bg) {
   std::lock_guard _{_session_lock};
+
   if (_session == nullptr || not _session->is_connected()) {
     // if session is disconnected, put texts into buffer.
     auto oit = std::back_inserter(_text_buffer);
@@ -97,7 +103,7 @@ class net_sink_mt : public spdlog::sinks::base_sink<std::mutex> {
 
 net_terminal::net_terminal(terminal::net_provider::init_info info)
         : _init_cached{std::move(info)} {
-  _async_loop = std::thread{[&] { _async_worker(); }};
+  _async_loop = std::thread{[&] { _worker_session_management(); }};
   _log_sink   = std::make_shared<details::net_sink_mt>(this, _alive_flag);
 
   if (info.wait_connection) {
@@ -107,16 +113,34 @@ net_terminal::net_terminal(terminal::net_provider::init_info info)
       if (_session && _session->is_connected()) { break; }
     }
   }
+
+  _fd_source_stdout = dup(STDOUT_FILENO);
+  _fd_source_stderr = dup(STDERR_FILENO);
+
+  pipe(_fd_stdout);
+  pipe(_fd_stderr);
+
+  dup2(_fd_stdout[1], STDOUT_FILENO);
+  dup2(_fd_stderr[1], STDERR_FILENO);
+
+  _async_stdout_loop = std::thread{[&] { _worker_fetch_stdout(); }};
 }
 
 net_terminal::~net_terminal() {
   while (not _alive_flag.unique()) { std::this_thread::yield(); }
   _alive_flag.reset();
-  _active.clear();
+  _active.store(false);
   if (_async_loop.joinable()) { _async_loop.join(); }
+  if (_async_stdout_loop.joinable()) { _async_stdout_loop.join(); }
+
+  dup2(_fd_source_stdout, STDOUT_FILENO);
+  dup2(_fd_source_stderr, STDERR_FILENO);
+
+  ::close(_fd_stdout[0]), ::close(_fd_stdout[1]);
+  ::close(_fd_stderr[0]), ::close(_fd_stderr[1]);
 }
 
-void net_terminal::_async_worker() {
+void net_terminal::_worker_session_management() {
   size_t n_conn_err_retry = 0;
   net_session::arg_poll pollargs;
   pollargs.command_registry = commands();
@@ -127,7 +151,7 @@ void net_terminal::_async_worker() {
           };
 
   // primary loop which manages lifecycles of each session, and listens to incoming messages
-  while (_active.test_and_set(std::memory_order_relaxed)) {
+  while (_active) {
     if (_session == nullptr || not _session->is_connected()) {
       // if session is not initialized or died, reinitialize.
       (std::lock_guard{_session_lock}, _session.reset());
@@ -155,6 +179,42 @@ void net_terminal::_async_worker() {
     }
 
     _session->poll(pollargs);
+  }
+}
+
+void net_terminal::_worker_fetch_stdout() {
+  pollfd pollee[2];
+  pollee[0].events = POLLIN;
+  pollee[0].fd     = _fd_stdout[0];
+  pollee[1].events = POLLIN;
+  pollee[1].fd     = _fd_stderr[0];
+
+  int dests[] = {_fd_source_stdout, _fd_source_stderr};
+
+  char buf[1024];
+  while (_active) {
+    for (auto& pfd : pollee) { pfd.revents = 0; }
+
+    auto num_ready = ::poll(pollee, 1, 250);
+    if (num_ready == 0)
+      continue;
+
+    if (num_ready < 0) {
+      SPDLOG_LOGGER_ERROR(glog(), "Polling STDOUT FAILED: {}", strerror(errno));
+    }
+
+    auto source = &*dests;
+    for (auto const& pfd : pollee) {
+      if (not(pfd.revents & POLLIN))
+        continue;
+
+      size_t n_read = ::read(pfd.fd, buf, sizeof buf);
+      if (n_read == 0 || n_read == ~size_t{})
+        continue;
+
+      ((if_terminal*)this)->write({buf, n_read});
+      ::write(*source++, buf, n_read);
+    }
   }
 }
 

@@ -33,6 +33,7 @@ class net_session {
   struct arg_poll {
     commands::registry const* command_registry;
     std::function<void(std::string_view)> enqueue_command;
+    std::function<void()> fetch_stdout;
   };
 
  public:
