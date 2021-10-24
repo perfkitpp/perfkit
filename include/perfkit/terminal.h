@@ -66,6 +66,20 @@ class if_terminal {
 
   virtual bool get(std::string_view key, std::string_view* out) { return false; };
   virtual bool get(std::string_view key, double* out) { return false; };
+
+  /**
+   * Helper utility
+   */
+  template <typename FnHandler_,
+            typename FnSuggest_ = nullptr_t,
+            typename RgTy_      = commands::registry>
+  auto add_command(std::string name, FnHandler_&& handler = nullptr, FnSuggest_&& suggest = nullptr) {
+    RgTy_* cmd = commands();
+    return cmd->root()->add_subcommand(
+            name,
+            std::forward<FnHandler_>(handler),
+            std::forward<FnSuggest_>(suggest));
+  }
 };
 
 namespace terminal {
