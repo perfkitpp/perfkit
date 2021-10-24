@@ -33,6 +33,8 @@ class net_terminal : public perfkit::if_terminal {
   void _worker_fetch_stdout();
 
  private:
+  std::shared_ptr<spdlog::logger> _logger;
+
   std::mutex _session_lock;
   std::unique_ptr<net_session> _session;
   terminal::net_provider::init_info const _init_cached;

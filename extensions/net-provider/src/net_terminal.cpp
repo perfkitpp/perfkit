@@ -103,6 +103,12 @@ class net_sink_mt : public spdlog::sinks::base_sink<std::mutex> {
 
 net_terminal::net_terminal(terminal::net_provider::init_info info)
         : _init_cached{std::move(info)} {
+  _logger = spdlog::get("PERFKIT-NET");
+  if (not _logger) {
+    _logger = spdlog::default_logger()->clone("PERFKIT-NET");
+    spdlog::register_logger(_logger);
+  }
+
   _async_loop = std::thread{[&] { _worker_session_management(); }};
   _log_sink   = std::make_shared<details::net_sink_mt>(this, _alive_flag);
 
@@ -172,7 +178,7 @@ void net_terminal::_worker_session_management() {
 
     if (not _session->is_connected()) {
       n_conn_err_retry += 1;
-      SPDLOG_LOGGER_ERROR(glog(), "failed to connect perfkit server: retry {}", n_conn_err_retry);
+      SPDLOG_LOGGER_ERROR(_logger, "failed to connect perfkit server: retry {}", n_conn_err_retry);
       continue;
     } else {
       n_conn_err_retry = 0;
@@ -200,7 +206,7 @@ void net_terminal::_worker_fetch_stdout() {
       continue;
 
     if (num_ready < 0) {
-      SPDLOG_LOGGER_ERROR(glog(), "Polling STDOUT FAILED: {}", strerror(errno));
+      SPDLOG_LOGGER_ERROR(_logger, "Polling STDOUT FAILED: {}", strerror(errno));
     }
 
     auto source = &*dests;

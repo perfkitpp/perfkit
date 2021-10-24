@@ -31,7 +31,7 @@ class net_session {
 
  public:
   struct arg_poll {
-    commands::registry const* command_registry;
+    commands::registry* command_registry;
     std::function<void(std::string_view)> enqueue_command;
     std::function<void()> fetch_stdout;
   };
@@ -52,7 +52,7 @@ class net_session {
   void _handle_config_fetch(array_view<char> payload) {}
   void _handle_trace_fetch(array_view<char> payload) {}
   void _handle_shell_fetch();
-  void _handle_shell_input(array_view<char> payload) {}
+  void _handle_shell_input(array_view<char> payload);
 
   void _send(std::string_view payload);
 
@@ -60,6 +60,9 @@ class net_session {
   std::optional<Ty_> _retrieve(std::string_view s);
 
  public:
+  std::shared_ptr<spdlog::logger> _logger;
+  arg_poll const* _poll_context = {};
+
   socket_ty _sock = {};
   std::mutex _sock_send_lock;
 

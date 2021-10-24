@@ -9,6 +9,7 @@
 #include <spdlog/spdlog.h>
 
 #include "perfkit/detail/base.hpp"
+#include "perfkit/detail/commands.hpp"
 
 #if __linux__ || __unix__
 #include <arpa/inet.h>
@@ -57,7 +58,9 @@ static int64_t g_epoch_time = std::chrono::duration_cast<std::chrono::millisecon
 perfkit::net::net_session::net_session(
         perfkit::terminal::net_provider::init_info const* init)
         : _pinit{init} {
-  SPDLOG_LOGGER_INFO(glog(),
+  _logger = spdlog::get("PERFKIT-NET");
+
+  SPDLOG_LOGGER_INFO(_logger,
                      "[{}] session '{}' opening connection to {}:{}",
                      (void*)this, _pinit->name,
                      _pinit->host_name, _pinit->host_port);
@@ -71,7 +74,7 @@ perfkit::net::net_session::net_session(
   ep_host.sin_port        = htons(init->host_port);
 
   if (0 != ::connect(_sock, (sockaddr*)&ep_host, sizeof ep_host)) {
-    SPDLOG_LOGGER_ERROR(glog(), "connect() failed. ({}) {}", errno, strerror(errno));
+    SPDLOG_LOGGER_ERROR(_logger, "connect() failed. ({}) {}", errno, strerror(errno));
     std::this_thread::sleep_for(1s);
     return;
   }
@@ -146,24 +149,26 @@ Ty_* try_recv_as(socket_ty sock, std::string* to, int timeout) {
 
 void perfkit::net::net_session::poll(arg_poll const& arg) {
   auto ms_to_wait = _pinit->connection_timeout_ms.count();
+  _poll_context   = &arg;
 
   try {
     _bufmem.clear();
 
-    auto head = try_recv_as<_net::message_header>(_sock, &_bufmem, ms_to_wait);
-    if (_bufmem.empty() || 0 != ::memcmp(head->header, _net::HEADER.data(), _net::HEADER.size())) {
-      SPDLOG_LOGGER_CRITICAL(glog(), "invalid packet header received ... content: {}",
-                             std::string_view{head->header, sizeof head->header});
+    auto phead = try_recv_as<_net::message_header>(_sock, &_bufmem, ms_to_wait);
+    if (_bufmem.empty() || 0 != ::memcmp(phead->header, _net::HEADER.data(), _net::HEADER.size())) {
+      SPDLOG_LOGGER_CRITICAL(_logger, "invalid packet header received ... content: {}",
+                             std::string_view{phead->header, sizeof phead->header});
       _connected = false;
       return;
     }
 
+    auto head = *phead;
     SPDLOG_LOGGER_TRACE(
-            glog(), "header info: type {:02x}, payload {} bytes",
-            head->type._value, head->payload_size);
-    auto payload = try_recv(_sock, &_bufmem, head->payload_size, ms_to_wait);
+            _logger, "header info: type {:02x}, payload {} bytes",
+            head.type._value, head.payload_size);
+    auto payload = try_recv(_sock, &_bufmem, head.payload_size, ms_to_wait);
 
-    switch (head->type.server) {
+    switch (head.type.server) {
       case _net::server_message::heartbeat: _send_heartbeat(); break;
       case _net::server_message::config_fetch: _handle_config_fetch(payload); break;
       case _net::server_message::shell_input: _handle_shell_input(payload); break;
@@ -175,13 +180,13 @@ void perfkit::net::net_session::poll(arg_poll const& arg) {
       case _net::server_message::invalid:
         _connected = false;
         SPDLOG_LOGGER_CRITICAL(
-                glog(), "invalid packet header received ... type: 0x{:08x}", head->type.server);
+                _logger, "invalid packet header received ... type: 0x{:08x}", head.type.server);
         return;
     }
   } catch (connection_error&) {
     _connected = false;
     SPDLOG_LOGGER_ERROR(
-            glog(), "[{}:{}] connection error ... ({}) {}",
+            _logger, "[{}:{}] connection error ... ({}) {}",
             (void*)this, _sock, errno, strerror(errno));
   }
 }
@@ -193,7 +198,7 @@ void perfkit::net::net_session::write(std::string_view str) {
 }
 
 void perfkit::net::net_session::_send_heartbeat() {
-  SPDLOG_LOGGER_DEBUG(glog(), "heartbeat received.");
+  SPDLOG_LOGGER_DEBUG(_logger, "heartbeat received.");
   std::lock_guard _{_sock_send_lock};
   _send(_msg_gen(_net::provider_message::heartbeat, {}));
 }
@@ -203,7 +208,7 @@ void perfkit::net::net_session::_send(std::string_view payload) {
 }
 
 void perfkit::net::net_session::_handle_shell_fetch() {
-  SPDLOG_LOGGER_DEBUG(glog(), "shell fetch request received.");
+  SPDLOG_LOGGER_DEBUG(_logger, "shell fetch request received.");
 
   _net::shell_flush_chunk msg;
   {
@@ -216,4 +221,35 @@ void perfkit::net::net_session::_handle_shell_fetch() {
     lock_guard _{_sock_send_lock};
     _send(_msg_gen(_net::provider_message::shell_flush, msg));
   }
+}
+
+void perfkit::net::net_session::_handle_shell_input(perfkit::array_view<char> payload) {
+  auto message = _retrieve<_net::shell_input_line>({payload.data(), payload.size()});
+  if (not message) {
+    SPDLOG_LOGGER_WARN(_logger, "invalid shell input message received.");
+    return;
+  }
+
+  // if incoming message is invocation request, simply invoke it and forget it.
+  if (not message->is_suggest) {
+    _poll_context->enqueue_command(message->content);
+    return;
+  }
+
+  // if incoming message is suggestion request, generate replacement.
+  std::vector<std::string> candidates;
+  auto str = _poll_context->command_registry->suggest(
+          std::move(message->content), &candidates);
+
+  _net::shell_suggest_reply reply;
+  reply.content    = std::move(str);
+  reply.request_id = message->request_id;
+  reply.suggest_words.reserve(candidates.size());
+
+  std::transform(candidates.begin(), candidates.end(),
+                 std::back_inserter(reply.suggest_words),
+                 [](auto& m) { return std::move(m); });
+
+  lock_guard{_sock_send_lock},
+          _send(_msg_gen(reply));
 }

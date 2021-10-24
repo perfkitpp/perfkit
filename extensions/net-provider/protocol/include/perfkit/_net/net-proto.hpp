@@ -122,15 +122,20 @@ struct shell_flush_chunk {
 
 struct shell_input_line {
   static constexpr auto MESSAGE = server_message::shell_input;
+  int64_t request_id;
   bool is_suggest;
   std::string content;
 
-  INTERNAL_PERFKIT_GEN_MARSHAL(shell_input_line, is_suggest, content);
+  INTERNAL_PERFKIT_GEN_MARSHAL(shell_input_line, request_id, is_suggest, content);
 };
 
-struct shell_suggest_line {
+struct shell_suggest_reply {
   static constexpr auto MESSAGE = provider_message::shell_suggest;
+  int64_t request_id;
   std::string content;
+  std::vector<nlohmann::json> suggest_words;
+
+  INTERNAL_PERFKIT_GEN_MARSHAL(shell_suggest_reply, request_id, content, suggest_words);
 };
 
 // -- Manipulating Traces --

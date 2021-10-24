@@ -231,6 +231,8 @@ class registry {
   intptr_t add_invoke_hook(hook_fn hook);
   bool remove_invoke_hook(intptr_t);
 
+  std::string suggest(std::string line, std::vector<std::string>* candidates);
+
  public:
   node* _get_root() { return _root.get(); }
 

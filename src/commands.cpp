@@ -382,3 +382,69 @@ bool perfkit::commands::registry::remove_invoke_hook(intptr_t id) {
 
   return true;
 }
+
+std::string perfkit::commands::registry::suggest(
+        std::string line, std::vector<std::string>* candidates) {
+  using namespace std::literals;
+  int position = 0;
+
+  auto rg = root();
+
+  std::string str = line;
+  std::vector<std::string_view> tokens;
+  std::vector<commands::stroffset> offsets;
+  std::vector<std::string> suggests;
+
+  commands::tokenize_by_argv_rule(&str, tokens, &offsets);
+
+  int target_token = 0;
+  bool has_unique_match;
+  auto sharing = rg->suggest(
+          tokens, suggests,
+          not line.empty() && line.back() == ' ',
+          &target_token, &has_unique_match);
+
+  if (not tokens.empty()) {
+    if (target_token < tokens.size()) {
+      // means matching was performed on existing token
+      auto const& tokofst = offsets[target_token];
+
+      position = tokofst.position;
+      if (position > 0 && line[position - 1] == '"') { position -= 1; }
+    } else {
+      // matched all existing tokens, thus returned suggests are for next word.
+      // return last position of string for next completion.
+      position = offsets.back().position + offsets.back().length + has_unique_match;
+
+      if (line[position - 1] == '"') { position += 1; }
+    }
+  }
+
+  std::string suggest;
+  for (const auto& suggest_src : suggests) {
+    suggest = suggest_src;
+
+    // escape all '"'s
+    for (auto it = suggest.begin(); it != suggest.end(); ++it) {
+      if (*it == '"') { it = suggest.insert(it, '\\'), ++it; }
+    }
+
+    if (suggest.find(' ') != ~size_t{}) {  // check
+      candidates->emplace_back("\""s.append(suggest).append("\""));
+    } else {
+      candidates->emplace_back(std::move(suggest));
+    }
+  }
+
+  if (position < line.size()) {
+    // suggestion replaces existing word ...
+    line.erase(position);
+    line += sharing;
+  } else {
+    // suggestion appends to end of the line ...
+    line.append(position - line.size(), ' ');
+    line.append(sharing);
+  }
+
+  return std::move(line);
+}
