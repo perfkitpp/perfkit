@@ -261,7 +261,7 @@ void perfkit::net::net_session::_handle_shell_input(perfkit::array_view<char> pa
 void perfkit::net::net_session::_handle_flush_request_SHELL(
         perfkit::_net::session_flush_chunk* msg) {
   lock_guard _{_char_seq_lock};
-  msg->shell_sequence = _char_sequence;
+  msg->shell_fence = _char_sequence;
   msg->shell_content.reserve(_chars_pending.size());
   _chars_pending.dequeue_n(_chars_pending.size(), std::back_inserter(msg->shell_content));
 }
@@ -273,6 +273,9 @@ void perfkit::net::net_session::_handle_flush_request_CONFIGS(
     return;
   else
     _state_config.freq_timer.reset();
+
+  // update fence
+  msg->config_fence = ++_state_config.fence;
 
   // from all registries ...
   auto registries = perfkit::config_registry::bk_enumerate_registries();

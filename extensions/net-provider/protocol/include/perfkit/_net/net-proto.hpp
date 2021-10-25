@@ -33,6 +33,7 @@ template <typename... Args_>
 void _to_json(nlohmann::json& obj, Args_&&... args) {
   size_t Idx_ = 0;
   auto& js    = obj["content"];
+  js[sizeof...(args)];  // reserve array first.
   ((js[Idx_++] = std::forward<Args_>(args)), ...);
 }
 
@@ -150,16 +151,19 @@ struct session_flush_chunk {
   static constexpr auto MESSAGE = provider_message::session_flush_reply;
   int64_t fence;
 
-  int64_t shell_sequence;
+  int64_t shell_fence;
   std::string shell_content;
 
+  int64_t config_fence;
   std::vector<config_registry_descriptor> config_registry_new;
   std::vector<config_update_descriptor> config_updates;
 
   INTERNAL_PERFKIT_GEN_MARSHAL(
           session_flush_chunk,
-          shell_sequence,
+          fence,
+          shell_fence,
           shell_content,
+          config_fence,
           config_registry_new,
           config_updates);
 };

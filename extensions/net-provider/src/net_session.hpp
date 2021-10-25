@@ -89,6 +89,7 @@ class net_session {
 
   // configs, once inserted, never deleted.
   struct {
+    int64_t fence = 0;
     // since configuration update check is pretty expensive operation, this timer controls
     //  the frequency of configuration change calculation
     spdlog::stopwatch freq_timer;
