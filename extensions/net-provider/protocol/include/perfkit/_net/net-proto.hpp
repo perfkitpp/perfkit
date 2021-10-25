@@ -112,23 +112,26 @@ struct session_register_info {
 };
 
 struct config_entity_descriptor {
-  std::string full_key;
+  int64_t hash;
+  std::string order_key;
   std::string display_key;
   nlohmann::json metadata;
 
   INTERNAL_PERFKIT_GEN_MARSHAL(
           config_entity_descriptor,
-          full_key,
+          hash,
+          order_key,
+          display_key,
           metadata);
 };
 
 struct config_update_descriptor {
-  std::string full_key;
+  int64_t hash;
   nlohmann::json data;
 
   INTERNAL_PERFKIT_GEN_MARSHAL(
           config_update_descriptor,
-          full_key,
+          hash,
           data);
 };
 
@@ -146,18 +149,18 @@ struct config_registry_descriptor {
 struct session_flush_chunk {
   static constexpr auto MESSAGE = provider_message::session_flush_reply;
 
-  int64_t sequence;
+  int64_t shell_sequence;
   std::string shell_content;
 
-  std::vector<config_registry_descriptor> config_category_new;
-  std::vector<std::string> config_category_deleted;
+  std::vector<config_registry_descriptor> config_registry_new;
+  std::vector<config_update_descriptor> config_updates;
 
   INTERNAL_PERFKIT_GEN_MARSHAL(
           session_flush_chunk,
-          sequence,
+          shell_sequence,
           shell_content,
-          config_category_new,
-          config_category_deleted);
+          config_registry_new,
+          config_updates);
 };
 
 struct shell_input_line {

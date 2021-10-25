@@ -13,12 +13,14 @@
 
 #if __linux__ || __unix__
 #include <arpa/inet.h>
+#include <perfkit/detail/configs.hpp>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/unistd.h>
 
 using pollfd_ty = pollfd;
 using std::lock_guard;
+using std::unique_lock;
 
 #elif _WIN32
 #define _CRT_NONSTDC_NO_WARNINGS
@@ -207,16 +209,19 @@ void perfkit::net::net_session::_send(std::string_view payload) {
 void perfkit::net::net_session::_handle_flush_request() {
   SPDLOG_LOGGER_DEBUG(_logger, "shell fetch request received.");
 
-  _net::session_flush_chunk msg;
-  {
-    lock_guard _{_char_seq_lock};
-    msg.sequence = _char_sequence;
-    msg.shell_content.reserve(_chars_pending.size());
-    _chars_pending.dequeue_n(_chars_pending.size(), std::back_inserter(msg.shell_content));
-  }
+  auto* msg = &_reused_flush_chunk;
+  msg->shell_content.clear();
+  msg->config_registry_new.clear();
+  msg->config_updates.clear();
+
+  _handle_flush_request_SHELL(msg);
+  _handle_flush_request_CONFIGS(msg);
+  _handle_flush_request_TRACE(msg);
+  _handle_flush_request_IMAGES(msg);
+
   {
     lock_guard _{_sock_send_lock};
-    _send(_msg_gen(_net::provider_message::session_flush_reply, msg));
+    _send(_msg_gen(_net::provider_message::session_flush_reply, *msg));
   }
 }
 
@@ -249,4 +254,71 @@ void perfkit::net::net_session::_handle_shell_input(perfkit::array_view<char> pa
 
   lock_guard{_sock_send_lock},
           _send(_msg_gen(reply));
+}
+
+void perfkit::net::net_session::_handle_flush_request_SHELL(
+        perfkit::_net::session_flush_chunk* msg) {
+  lock_guard _{_char_seq_lock};
+  msg->shell_sequence = _char_sequence;
+  msg->shell_content.reserve(_chars_pending.size());
+  _chars_pending.dequeue_n(_chars_pending.size(), std::back_inserter(msg->shell_content));
+}
+
+void perfkit::net::net_session::_handle_flush_request_CONFIGS(
+        perfkit::_net::session_flush_chunk* msg) {
+  // adjust update frequency
+  if (_state_config.freq_timer.elapsed() < 0.5s)
+    return;
+  else
+    _state_config.freq_timer.reset();
+
+  // from all registries ...
+  auto registries = perfkit::config_registry::bk_enumerate_registries();
+
+  // find config registry insertions.
+  for (auto const& rg : registries) {
+    auto* monitor                = &_state_config.monitoring_registries;
+    bool const is_newly_inserted = monitor->find(rg->name()) == monitor->end();
+    if (not is_newly_inserted)
+      continue;
+
+    // register newly detected config registry
+    // - registry name
+    // - all entities' metadata
+    monitor->emplace(rg->name());
+    auto const& all_configs = rg->bk_all();
+    auto* message           = &msg->config_registry_new.emplace_back();
+
+    message->name = rg->name();
+    message->entities.reserve(all_configs.size());
+
+    for (const auto& [_, cfg] : all_configs) {
+      auto entity                     = &message->entities.emplace_back();
+      entity->hash                    = (intptr_t)cfg.get();
+      entity->order_key               = cfg->full_key();
+      entity->display_key             = cfg->display_key();
+      entity->metadata                = cfg->attribute();
+      entity->metadata["description"] = cfg->description();
+    }
+  }
+
+  // from all configuration entities ...
+  for (auto const& rg : registries) {
+    // iterate all configurations ...
+    for (const auto& [_, cfg] : rg->bk_all()) {
+      auto markers      = &_state_config.update_markers;
+      auto fence_update = cfg->num_modified() + cfg->num_serialized();
+      auto [it, is_new] = markers->try_emplace((intptr_t)cfg.get(), 0);
+
+      if (not is_new || it->second == fence_update)
+        continue;  // there was no update.
+
+      auto* entity = &msg->config_updates.emplace_back();
+      entity->hash = (intptr_t)cfg.get();
+      entity->data = cfg->serialize();
+
+      // clear dirty flag.
+      it->second = cfg->num_modified() + cfg->num_serialized();
+    }
+  }
 }

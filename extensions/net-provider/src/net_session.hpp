@@ -8,6 +8,9 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <set>
+
+#include <spdlog/stopwatch.h>
 
 #include "perfkit/_net/net-proto.hpp"
 #include "perfkit/common/circular_queue.hxx"
@@ -49,7 +52,13 @@ class net_session {
   void _send_all_config() {}
 
   void _send_heartbeat();
+
   void _handle_flush_request();
+  void _handle_flush_request_SHELL(_net::session_flush_chunk*);
+  void _handle_flush_request_CONFIGS(_net::session_flush_chunk*);
+  void _handle_flush_request_TRACE(_net::session_flush_chunk*) {}
+  void _handle_flush_request_IMAGES(_net::session_flush_chunk*) {}
+
   void _handle_shell_input(array_view<char> payload);
 
   void _send(std::string_view payload);
@@ -70,8 +79,21 @@ class net_session {
   std::atomic_bool _connected;
   std::string _bufmem;
 
+  _net::session_flush_chunk _reused_flush_chunk;
+
   std::mutex _char_seq_lock;
   size_t _char_sequence = 0;
   circular_queue<char> _chars_pending{512 * 1024 - 1};
+
+  // configs, once inserted, never deleted.
+  struct {
+    // since configuration update check is pretty expensive operation, this timer controls
+    //  the frequency of configuration change calculation
+    spdlog::stopwatch freq_timer;
+
+    std::unordered_map<uintptr_t, size_t> update_markers;
+
+    std::set<std::string> monitoring_registries;
+  } _state_config;
 };
 }  // namespace perfkit::net
