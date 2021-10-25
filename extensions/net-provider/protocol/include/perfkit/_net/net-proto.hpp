@@ -26,7 +26,7 @@ template <typename... Args_>
 void _from_json(nlohmann::json const& obj, Args_&... args) {
   size_t Idx_ = 0;
   auto& js    = obj["value"];
-  ((args = js[Idx_++].get_ref<Args_ const&>()), ...);
+  ((args = js[Idx_++].get<Args_>()), ...);
 }
 
 template <typename... Args_>
@@ -37,26 +37,21 @@ void _to_json(nlohmann::json& obj, Args_&&... args) {
 }
 
 enum class provider_message : uint8_t {
-  invalid          = 0,
-  register_session = 0x01,
-  config_all       = 0x02,
-  config_update    = 0x03,
-  trace_groups     = 0x04,
-  trace_update     = 0x05,
-  trace_image      = 0x06,
-  shell_flush      = 0x07,
-  shell_suggest    = 0x08,
-  heartbeat        = 0x0F,
+  invalid             = 0,
+  register_session    = 0x01,
+  image_reply         = 0x02,
+  session_flush_reply = 0x07,
+  shell_suggest       = 0x08,
+  heartbeat           = 0x0F,
 };
 
 enum class server_message : uint8_t {
-  invalid                = 0,
-  trace_fetch            = 0x81,
-  trace_group_open_close = 0x85,  //
-  config_fetch           = 0x82,  // fetches accumulated updates
-  shell_input            = 0x83,
-  shell_fetch            = 0x84,
-  heartbeat              = 0x8F,
+  invalid             = 0,
+  trace_interaction   = 0x81,
+  image_interaction   = 0x82,
+  shell_enter         = 0x83,
+  shell_flush_request = 0x84,
+  heartbeat           = 0x8F,
 };
 
 #pragma pack(push, 1)
@@ -111,17 +106,17 @@ struct session_register_info {
 };
 
 //
-struct shell_flush_chunk {
-  static constexpr auto MESSAGE = provider_message::shell_flush;
+struct session_flush_chunk {
+  static constexpr auto MESSAGE = provider_message::session_flush_reply;
 
   int64_t sequence;
-  std::string data;
+  std::string shell_content;
 
-  INTERNAL_PERFKIT_GEN_MARSHAL(shell_flush_chunk, sequence, data);
+  INTERNAL_PERFKIT_GEN_MARSHAL(session_flush_chunk, sequence, shell_content);
 };
 
 struct shell_input_line {
-  static constexpr auto MESSAGE = server_message::shell_input;
+  static constexpr auto MESSAGE = server_message::shell_enter;
   int64_t request_id;
   bool is_suggest;
   std::string content;
@@ -159,13 +154,5 @@ struct shell_suggest_reply {
 //    2. 모든 어트리뷰트
 //    3. 설명
 //  서버 사이드에서는 모든 변경사항 병합 및 관리
-struct config_desc_pack {
-  static constexpr auto MESSAGE = provider_message::config_all;
-};
-
-struct config_update_pack {
-  static constexpr auto MESSAGE = provider_message::config_update;
-  std::map<uint64_t, json> updates;
-};
 
 }  // namespace perfkit::_net

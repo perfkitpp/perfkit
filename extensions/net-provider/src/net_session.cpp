@@ -170,12 +170,9 @@ void perfkit::net::net_session::poll(arg_poll const& arg) {
 
     switch (head.type.server) {
       case _net::server_message::heartbeat: _send_heartbeat(); break;
-      case _net::server_message::config_fetch: _handle_config_fetch(payload); break;
-      case _net::server_message::shell_input: _handle_shell_input(payload); break;
-      case _net::server_message::shell_fetch: _handle_shell_fetch(); break;
-      case _net::server_message::trace_fetch: _handle_trace_fetch(payload); break;
+      case _net::server_message::shell_enter: _handle_shell_input(payload); break;
+      case _net::server_message::shell_flush_request: _handle_flush_request(); break;
 
-      case _net::server_message::trace_group_open_close:
       default:
       case _net::server_message::invalid:
         _connected = false;
@@ -207,19 +204,19 @@ void perfkit::net::net_session::_send(std::string_view payload) {
   ::send(_sock, payload.data(), payload.size(), 0);
 }
 
-void perfkit::net::net_session::_handle_shell_fetch() {
+void perfkit::net::net_session::_handle_flush_request() {
   SPDLOG_LOGGER_DEBUG(_logger, "shell fetch request received.");
 
-  _net::shell_flush_chunk msg;
+  _net::session_flush_chunk msg;
   {
     lock_guard _{_char_seq_lock};
     msg.sequence = _char_sequence;
-    msg.data.reserve(_chars_pending.size());
-    _chars_pending.dequeue_n(_chars_pending.size(), std::back_inserter(msg.data));
+    msg.shell_content.reserve(_chars_pending.size());
+    _chars_pending.dequeue_n(_chars_pending.size(), std::back_inserter(msg.shell_content));
   }
   {
     lock_guard _{_sock_send_lock};
-    _send(_msg_gen(_net::provider_message::shell_flush, msg));
+    _send(_msg_gen(_net::provider_message::session_flush_reply, msg));
   }
 }
 
@@ -239,10 +236,10 @@ void perfkit::net::net_session::_handle_shell_input(perfkit::array_view<char> pa
   // if incoming message is suggestion request, generate replacement.
   std::vector<std::string> candidates;
   auto str = _poll_context->command_registry->suggest(
-          std::move(message->content), &candidates);
+          message->content, &candidates);
 
   _net::shell_suggest_reply reply;
-  reply.content    = std::move(str);
+  reply.content    = str.empty() && candidates.empty() ? message->content : std::move(str);
   reply.request_id = message->request_id;
   reply.suggest_words.reserve(candidates.size());
 

@@ -49,9 +49,7 @@ class net_session {
   void _send_all_config() {}
 
   void _send_heartbeat();
-  void _handle_config_fetch(array_view<char> payload) {}
-  void _handle_trace_fetch(array_view<char> payload) {}
-  void _handle_shell_fetch();
+  void _handle_flush_request();
   void _handle_shell_input(array_view<char> payload);
 
   void _send(std::string_view payload);
