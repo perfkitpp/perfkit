@@ -315,7 +315,7 @@ void perfkit::net::net_session::_handle_flush_request_CONFIGS(
       auto fence_update = cfg->num_modified() + cfg->num_serialized();
       auto [it, is_new] = markers->try_emplace((intptr_t)cfg.get(), 0);
 
-      if (not is_new || it->second == fence_update)
+      if (not is_new && it->second == fence_update)
         continue;  // there was no update.
 
       auto* entity = &msg->config_updates.emplace_back();

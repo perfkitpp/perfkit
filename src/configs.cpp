@@ -283,7 +283,7 @@ bool perfkit::config_registry::bk_queue_update_value(std::string_view full_key, 
   // to prevent value ignorance on contiguous load-save call without apply_changes(),
   // stores cache without validation.
   it->second->_cached_serialized = std::move(value);
-  it->second->_fence_serialized  = it->second->num_modified();
+  it->second->_fence_serialized  = ++it->second->_fence_modified;
   _pending_updates.insert(it->second.get());
 
   return true;
