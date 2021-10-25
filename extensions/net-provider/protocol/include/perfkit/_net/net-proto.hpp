@@ -5,10 +5,10 @@
 
 #define INTERNAL_PERFKIT_GEN_MARSHAL(type, ...)              \
   void _from_json_m(nlohmann::json const& js) {              \
-    _from_json(js, __VA_ARGS__);                             \
+    _from_json(js, ##__VA_ARGS__);                           \
   }                                                          \
   void _to_json_m(nlohmann::json& js) const {                \
-    _to_json(js, __VA_ARGS__);                               \
+    _to_json(js, ##__VA_ARGS__);                             \
   }                                                          \
   friend void from_json(nlohmann::json const& js, type& r) { \
     r._from_json_m(js);                                      \
@@ -25,14 +25,14 @@ constexpr std::string_view HEADER = "p=&f4?t";
 template <typename... Args_>
 void _from_json(nlohmann::json const& obj, Args_&... args) {
   size_t Idx_ = 0;
-  auto& js    = obj["value"];
+  auto& js    = obj["content"];  // To serialize as BSON, create root object
   ((args = js[Idx_++].get<Args_>()), ...);
 }
 
 template <typename... Args_>
 void _to_json(nlohmann::json& obj, Args_&&... args) {
   size_t Idx_ = 0;
-  auto& js    = obj["value"];
+  auto& js    = obj["content"];
   ((js[Idx_++] = std::forward<Args_>(args)), ...);
 }
 
@@ -46,12 +46,13 @@ enum class provider_message : uint8_t {
 };
 
 enum class server_message : uint8_t {
-  invalid             = 0,
-  trace_interaction   = 0x81,
-  image_interaction   = 0x82,
-  shell_enter         = 0x83,
-  shell_flush_request = 0x84,
-  heartbeat           = 0x8F,
+  invalid               = 0,
+  trace_interaction     = 0x81,
+  image_interaction     = 0x82,
+  config_interaction    = 0x83,
+  shell_enter           = 0x84,
+  session_flush_request = 0x85,
+  heartbeat             = 0x8F,
 };
 
 #pragma pack(push, 1)
@@ -102,7 +103,43 @@ struct session_register_info {
   std::string description;
 
   INTERNAL_PERFKIT_GEN_MARSHAL(
-          session_register_info, session_name, machine_name, pid, epoch, description);
+          session_register_info,
+          session_name,
+          machine_name,
+          pid,
+          epoch,
+          description);
+};
+
+struct config_entity_descriptor {
+  std::string full_key;
+  std::string display_key;
+  nlohmann::json metadata;
+
+  INTERNAL_PERFKIT_GEN_MARSHAL(
+          config_entity_descriptor,
+          full_key,
+          metadata);
+};
+
+struct config_update_descriptor {
+  std::string full_key;
+  nlohmann::json data;
+
+  INTERNAL_PERFKIT_GEN_MARSHAL(
+          config_update_descriptor,
+          full_key,
+          data);
+};
+
+struct config_registry_descriptor {
+  std::string name;
+  std::vector<config_entity_descriptor> entities;
+
+  INTERNAL_PERFKIT_GEN_MARSHAL(
+          config_registry_descriptor,
+          name,
+          entities);
 };
 
 //
@@ -112,7 +149,15 @@ struct session_flush_chunk {
   int64_t sequence;
   std::string shell_content;
 
-  INTERNAL_PERFKIT_GEN_MARSHAL(session_flush_chunk, sequence, shell_content);
+  std::vector<config_registry_descriptor> config_category_new;
+  std::vector<std::string> config_category_deleted;
+
+  INTERNAL_PERFKIT_GEN_MARSHAL(
+          session_flush_chunk,
+          sequence,
+          shell_content,
+          config_category_new,
+          config_category_deleted);
 };
 
 struct shell_input_line {

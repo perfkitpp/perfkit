@@ -171,7 +171,7 @@ void perfkit::net::net_session::poll(arg_poll const& arg) {
     switch (head.type.server) {
       case _net::server_message::heartbeat: _send_heartbeat(); break;
       case _net::server_message::shell_enter: _handle_shell_input(payload); break;
-      case _net::server_message::shell_flush_request: _handle_flush_request(); break;
+      case _net::server_message::session_flush_request: _handle_flush_request(); break;
 
       default:
       case _net::server_message::invalid:
