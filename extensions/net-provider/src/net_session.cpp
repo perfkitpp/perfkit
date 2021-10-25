@@ -279,15 +279,15 @@ void perfkit::net::net_session::_handle_flush_request_CONFIGS(
 
   // find config registry insertions.
   for (auto const& rg : registries) {
-    auto* monitor                = &_state_config.monitoring_registries;
-    bool const is_newly_inserted = monitor->find(rg->name()) == monitor->end();
+    auto* monitoring             = &_state_config.monitoring_registries;
+    bool const is_newly_inserted = monitoring->find(rg->name()) == monitoring->end();
     if (not is_newly_inserted)
       continue;
 
     // register newly detected config registry
     // - registry name
     // - all entities' metadata
-    monitor->emplace(rg->name());
+    monitoring->emplace(rg->name());
     auto const& all_configs = rg->bk_all();
     auto* message           = &msg->config_registry_new.emplace_back();
 
