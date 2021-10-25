@@ -209,7 +209,9 @@ void perfkit::net::net_session::_send(std::string_view payload) {
 void perfkit::net::net_session::_handle_flush_request() {
   SPDLOG_LOGGER_DEBUG(_logger, "shell fetch request received.");
 
-  auto* msg = &_reused_flush_chunk;
+  auto* msg  = &_reused_flush_chunk;
+  msg->fence = ++_fence;
+
   msg->shell_content.clear();
   msg->config_registry_new.clear();
   msg->config_updates.clear();

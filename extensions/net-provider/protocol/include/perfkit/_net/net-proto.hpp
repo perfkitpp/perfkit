@@ -148,6 +148,7 @@ struct config_registry_descriptor {
 //
 struct session_flush_chunk {
   static constexpr auto MESSAGE = provider_message::session_flush_reply;
+  int64_t fence;
 
   int64_t shell_sequence;
   std::string shell_content;

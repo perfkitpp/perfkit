@@ -81,6 +81,8 @@ class net_session {
 
   _net::session_flush_chunk _reused_flush_chunk;
 
+  int64_t _fence = 0;
+
   std::mutex _char_seq_lock;
   size_t _char_sequence = 0;
   circular_queue<char> _chars_pending{512 * 1024 - 1};
