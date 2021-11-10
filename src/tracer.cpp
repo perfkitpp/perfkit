@@ -8,6 +8,7 @@
 #include <variant>
 
 #include <nlohmann/detail/conversions/from_json.hpp>
+#include <spdlog/spdlog.h>
 
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/detail/trace_future.hpp"
@@ -156,6 +157,7 @@ void tracer::async_fetch_request(tracer::future_result* out) {
 
 auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer> {
   auto _{lock_tracer_repo()};
+  SPDLOG_DEBUG("creating tracer {}", name);
   std::shared_ptr<tracer> entity{new tracer{order, name}};
   entity->_self_weak = entity;
 
@@ -165,10 +167,20 @@ auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::
 }
 
 perfkit::tracer::~tracer() noexcept {
+  static auto equivalent = [](auto&& p1, auto&& p2) {
+    return p1.lock() == p2.lock();
+  };
+
   auto _{lock_tracer_repo()};
+  SPDLOG_DEBUG("destroying tracer {}", _name);
   auto it = std::find_if(_all().begin(), _all().end(),
-                         [&](auto&& wptr) { return wptr.owner_before(_self_weak); });
-  if (it != _all().end()) { _all().erase(it); }
+                         [&](auto&& wptr) { return equivalent(wptr, _self_weak); });
+  if (it != _all().end()) {
+    _all().erase(it);
+    SPDLOG_DEBUG("erasing tracer from all {}", _name);
+  } else {
+    SPDLOG_DEBUG("logic error: tracer invalid! {}", _name);
+  }
 };
 
 tracer::proxy tracer::proxy::branch(std::string_view n) noexcept {
