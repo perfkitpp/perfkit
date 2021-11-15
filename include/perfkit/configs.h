@@ -3,7 +3,12 @@
 
 namespace perfkit::_internal {
 std::string INDEXER_STR(int order);
-}
+
+struct category_template_base {
+  virtual ~category_template_base()                                = default;
+  virtual std::shared_ptr<perfkit::config_registry> _rg() noexcept = 0;
+};
+}  // namespace perfkit::_internal
 
 #define PERFKIT_CONFIG_REGISTRY(Name) static inline auto& Name = perfkit::config_registry::create()
 
@@ -78,6 +83,10 @@ std::string INDEXER_STR(int order);
   std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG;               \
   static std::string _category_name() { return ""; }                              \
                                                                                   \
+  std::shared_ptr<perfkit::config_registry> _rg() noexcept override {             \
+    return _perfkit_INTERNAL_RG;                                                  \
+  }                                                                               \
+                                                                                  \
  public:                                                                          \
   explicit name(std::string s) : _perfkit_INTERNAL_RG(                            \
           ::perfkit::config_registry::create(std::move(s))) {}                    \
@@ -102,10 +111,10 @@ std::string INDEXER_STR(int order);
                                                                     \
  public:
 
-#define PERFKIT_T_CATEGORY(varname, ...)       \
-  struct varname {                             \
-    INTERNAL_PERFKIT_T_CATEGORY_body(varname); \
-    __VA_ARGS__;                               \
+#define PERFKIT_T_CATEGORY(varname, ...)                          \
+  struct varname : ::perfkit::_internal::category_template_base { \
+    INTERNAL_PERFKIT_T_CATEGORY_body(varname);                    \
+    __VA_ARGS__;                                                  \
   }
 
 #define PERFKIT_T_SUBCATEGORY(varname, ...)                                  \
@@ -122,3 +131,24 @@ std::string INDEXER_STR(int order);
                   *_perfkit_INTERNAL_RG,             \
                   _category_name() + #name,          \
                   __VA_ARGS__)
+
+#define PERFKIT_T_EXPAND_CATEGORY(varname, ...)                                     \
+  struct varname : ::perfkit::_internal::category_template_base {                   \
+   private:                                                                         \
+    using _internal_super = varname;                                                \
+    std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG;               \
+    static std::string _category_name() { return #varname; }                        \
+                                                                                    \
+    std::shared_ptr<perfkit::config_registry> _rg() noexcept override {             \
+      return _perfkit_INTERNAL_RG;                                                  \
+    }                                                                               \
+                                                                                    \
+   public:                                                                          \
+    explicit varname(::perfkit::_internal::category_template_base* other)           \
+            : _perfkit_INTERNAL_RG(other->_rg()) {}                                 \
+    ::perfkit::config_registry* operator->() { return _perfkit_INTERNAL_RG.get(); } \
+    bool update() { return _perfkit_INTERNAL_RG->update(); }                        \
+                                                                                    \
+   public:                                                                          \
+    __VA_ARGS__;                                                                    \
+  };
