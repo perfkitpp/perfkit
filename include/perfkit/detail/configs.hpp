@@ -96,8 +96,8 @@ class config_base {
   std::atomic_bool _dirty                 = true;  // default true to trigger initialization
   std::atomic_bool _latest_marshal_failed = false;
 
-  std::atomic_size_t _fence_modified = 0;
-  std::atomic_size_t _fence_serialized           = ~size_t{};
+  std::atomic_size_t _fence_modified   = 0;
+  std::atomic_size_t _fence_serialized = ~size_t{};
   nlohmann::json _cached_serialized;
   nlohmann::json _attribute;
 
