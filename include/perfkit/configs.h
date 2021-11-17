@@ -77,21 +77,20 @@ struct category_template_base {
   }                                              \
   namespace hierarchy
 
-#define INTERNAL_PERFKIT_T_CATEGORY_body(name)                                    \
- private:                                                                         \
-  using _internal_super = name;                                                   \
-  std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG;               \
-  static std::string _category_name() { return ""; }                              \
-                                                                                  \
-  std::shared_ptr<perfkit::config_registry> _rg() noexcept override {             \
-    return _perfkit_INTERNAL_RG;                                                  \
-  }                                                                               \
-                                                                                  \
- public:                                                                          \
-  explicit name(std::string s) : _perfkit_INTERNAL_RG(                            \
-          ::perfkit::config_registry::create(std::move(s))) {}                    \
-  ::perfkit::config_registry* operator->() { return _perfkit_INTERNAL_RG.get(); } \
-  bool update() { return _perfkit_INTERNAL_RG->update(); }
+#define INTERNAL_PERFKIT_T_CATEGORY_body(name)                        \
+ private:                                                             \
+  using _internal_super = name;                                       \
+  std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG;   \
+  static std::string _category_name() { return ""; }                  \
+                                                                      \
+  std::shared_ptr<perfkit::config_registry> _rg() noexcept override { \
+    return _perfkit_INTERNAL_RG;                                      \
+  }                                                                   \
+                                                                      \
+ public:                                                              \
+  explicit name(std::string s) : _perfkit_INTERNAL_RG(                \
+          ::perfkit::config_registry::create(std::move(s))) {}        \
+  ::perfkit::config_registry* operator->() { return _perfkit_INTERNAL_RG.get(); }
 
 #define INTERNAL_PERFKIT_T_SUBCATEGORY_body(varname)                \
  private:                                                           \
