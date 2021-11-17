@@ -74,7 +74,7 @@ struct _entity_ty {
 
 class tracer_proxy {
  public:
-  tracer_proxy(tracer_proxy&& o) noexcept {
+  tracer_proxy(tracer_proxy&& o) noexcept : _owner(nullptr) {
     *this = std::move(o);
   }
 
@@ -228,6 +228,13 @@ class tracer {
   tracer_proxy fork(std::string const& n, size_t interval = 0);
 
   /**
+   * Create new timer branch from the topmost trace stack
+   *
+   * @return
+   */
+  tracer_proxy timer(std::string_view name);
+
+  /**
    * Reserves for async data sort
    * @return empty optional when there's any already queued operation.
    */
@@ -243,6 +250,7 @@ class tracer {
   // Create new or find existing.
   _trace::_entity_ty* _fork_branch(_trace::_entity_ty const* parent, std::string_view name, bool initial_subscribe_state);
   static std::vector<std::weak_ptr<tracer>>& _all() noexcept;
+  void _try_pop(_trace::_entity_ty const* body);
 
  private:
   friend class tracer_proxy;
@@ -275,6 +283,7 @@ class tracer {
   std::string const _name;
 
   std::weak_ptr<tracer> _self_weak;
+  std::vector<_entity_ty const*> _stack;
 };
 
 using tracer_ptr  = std::shared_ptr<tracer>;

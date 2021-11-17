@@ -8,11 +8,11 @@
 #include <variant>
 
 #include <nlohmann/detail/conversions/from_json.hpp>
+#include <perfkit/common/assert.hxx>
+#include <perfkit/common/hasher.hxx>
+#include <perfkit/detail/trace_future.hpp>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
-
-#include "perfkit/common/hasher.hxx"
-#include "perfkit/detail/trace_future.hpp"
-#include "spdlog/fmt/fmt.h"
 
 using namespace std::literals;
 using namespace perfkit;
@@ -43,6 +43,7 @@ tracer::_entity_ty* tracer::_fork_branch(
 
   data.body.fence = _fence_active;
   data.body.order = _order_active++;
+  _stack.push_back(&data);
 
   return &data;
 }
@@ -70,6 +71,7 @@ tracer_proxy tracer::fork(std::string const& n, size_t interval) {
   // init new iteration
   ++_fence_active;
   _order_active = 0;
+  _stack.clear();
 
   tracer_proxy prx;
   prx._owner             = this;
@@ -181,6 +183,25 @@ perfkit::tracer::~tracer() noexcept {
   } else {
     SPDLOG_DEBUG("logic error: tracer invalid! {}", _name);
   }
+}
+
+void perfkit::tracer::_try_pop(const _trace::_entity_ty* body) {
+  assert_(not _stack.empty());
+
+  size_t i = _stack.size();
+  while (--i != ~size_t{} && _stack[i] != body)
+    ;
+
+  assert_(i != ~size_t{});
+  _stack.erase(_stack.begin() + i);
+}
+
+tracer_proxy perfkit::tracer::timer(std::string_view name) {
+  tracer_proxy px;
+  px._owner             = this;
+  px._ref               = _fork_branch(_stack.back(), name, false);
+  px._epoch_if_required = clock_type::now();
+  return px;
 };
 
 tracer::proxy tracer::proxy::branch(std::string_view n) noexcept {
@@ -204,9 +225,15 @@ tracer::proxy tracer::proxy::timer(std::string_view n) noexcept {
 
 tracer_proxy::~tracer_proxy() noexcept {
   if (!_owner) { return; }
+  _owner->_try_pop(_ref);
+
   if (_epoch_if_required != clock_type::time_point{}) {
     _data() = clock_type::now() - _epoch_if_required;
   }
+
+  // clear to prevent logic error
+  _owner = nullptr;
+  _ref   = nullptr;
 }
 
 tracer::variant_type& tracer::proxy::_data() noexcept {
