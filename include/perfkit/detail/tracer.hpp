@@ -69,6 +69,7 @@ struct _entity_ty {
   std::string key_buffer;
   std::vector<std::string_view> hierarchy;
   std::atomic_bool is_subscribed;
+  _entity_ty const* parent = nullptr;
 };
 }  // namespace _trace
 
@@ -111,7 +112,8 @@ class tracer_proxy {
     return *this;
   }
 
-  template <typename Other_>
+  template <typename Other_,
+            typename = std::enable_if_t<not std::is_convertible_v<Other_, tracer_proxy>>>
   tracer_proxy& operator=(Other_&& oty) noexcept {
     if (not is_valid())
       return *this;
@@ -147,9 +149,7 @@ class tracer_proxy {
     return *this;
   }
 
-  void commit() noexcept {
-    *this = {};
-  }
+  tracer_proxy& switch_to_timer(std::string_view name);
 
   operator bool() const noexcept {
     return is_valid() && _ref->is_subscribed.load(std::memory_order_consume);

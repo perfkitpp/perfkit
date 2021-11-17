@@ -41,6 +41,7 @@ tracer::_entity_ty* tracer::_fork_branch(
     data.body.hierarchy = data.hierarchy;
   }
 
+  data.parent     = parent;
   data.body.fence = _fence_active;
   data.body.order = _order_active++;
   _stack.push_back(&data);
@@ -238,6 +239,18 @@ tracer_proxy::~tracer_proxy() noexcept {
 
 tracer::variant_type& tracer::proxy::_data() noexcept {
   return _ref->body.data;
+}
+
+tracer_proxy& tracer_proxy::switch_to_timer(std::string_view name) {
+  auto owner  = _owner;
+  auto parent = _ref->parent;
+  *this       = {};
+
+  _ref               = owner->_fork_branch(parent, name, false);
+  _owner             = owner;
+  _epoch_if_required = clock_type::now();
+
+  return *this;
 }
 
 void tracer::async_trace_result::copy_sorted(fetched_traces& out) const noexcept {
