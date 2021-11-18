@@ -12,11 +12,31 @@ using image_key  = key_base<class LABEL_mesh3d_key>;
  * - Configurable 3D camera (camera parameters,
  * - Render 3D glyphs on world space (sphere, cube, etc ...)
  * - Render resources (3D modeling, image, etc ...). Resources are managed by integer key,
- *    and are cached in the client until next invalidation.
+ *    and are cached in the client until the next invalidation.
  *    (e.g. buffer->upload(0x1234, pointer_to_resource_data))
- * - IMGUI-styled immediate ui support & primitive layout system
- *
  */
-class buffer {
+class graphics {
+  // set canvas size
+
+  // move 3d camera
+
+  // configure 3d camera
+
+  // register 3d mesh resource
+
+  // register 2d texture resource
+
+  // draw 2d glyphs
+  // - shapes (polygon, rectangle, circle, text, ...)
+  // - bitblt/stretchblt textures
+
+  // draw 3d glyphs
+  // - shapes (lines, sphere, aabb, text, ...)
+  // - 3d mesh resource, with transform, texture information ...
+
+ private:
+  friend class instance;
+  void lock();  // interfaces lock_guard
+  void unlock();
 };
 }  // namespace perfkit::gui

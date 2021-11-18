@@ -56,7 +56,7 @@ class instance {
    * @return false if there's no graphics backend
    */
   template <typename RenderFn_,
-            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, buffer*>>>
+            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, graphics*>>>
   bool render(RenderFn_&& render_fn) {
     // TODO: call render_fn with buffer argument when ready
     if (not wait_backend_ready())
@@ -73,7 +73,7 @@ class instance {
    * @return
    */
   template <typename RenderFn_,
-            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, buffer*>>>
+            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, graphics*>>>
   bool try_render(RenderFn_&& render_fn) {
     if (not is_open() || not is_backend_ready())
       return false;
@@ -90,11 +90,11 @@ class instance {
    * @return
    */
   template <typename RenderFn_,
-            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, buffer*, modal_result*>>>
+            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, graphics*, modal_result*>>>
   modal_result modality(RenderFn_&& render_fn) {
     auto result = modal_result::refresh;
     while (result == modal_result::refresh)
-      this->render([&](buffer* f) { render_fn(f, &result); });
+      this->render([&](graphics* f) { render_fn(f, &result); });
 
     return result;
   }
