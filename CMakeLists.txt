@@ -19,6 +19,7 @@ set(
         src/tracer.cpp
         src/terminal.cpp
         src/config-flags.cpp
+        src/window.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})
