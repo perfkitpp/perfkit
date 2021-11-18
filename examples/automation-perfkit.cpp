@@ -25,7 +25,7 @@ TEST_CASE("Create Options") {
   CHECK(*has_value == 100);
   g_opts.queue_update_value("Has Value", 200);
   CHECK(*has_value == 100);
-  CHECK(g_opts.apply_update_and_check_if_dirty());
+  CHECK(g_opts.update());
   CHECK(has_value.check_dirty_and_consume());
   CHECK(*has_value == 200);
   CHECK(!has_value.check_dirty_and_consume());

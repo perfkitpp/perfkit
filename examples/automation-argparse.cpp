@@ -45,7 +45,7 @@ TEST_SUITE("Argument Parser") {
     auto argv   = charpp.data();
 
     perfkit::configs::parse_args(&argc, &argv, true);
-    argparse0::registry().apply_update_and_check_if_dirty();
+    argparse0::registry().update();
 
     CHECK(argc == 3);
     CHECK(argv[0] == "pos1"sv);

@@ -82,6 +82,23 @@ if (NOT TARGET spdlog)
     find_package(spdlog CONFIG REQUIRED)
 endif ()
 
+find_library(LIBDW dw)
+if (LIBDW)
+    message("LIBDW FOUND, enabling rich backtrace support ...")
+    target_link_libraries(
+            ${PROJECT_NAME}
+
+            PRIVATE
+            dw
+    )
+    target_compile_definitions(
+            ${PROJECT_NAME}
+
+            PRIVATE
+            -DBACKWARD_HAS_DW=1
+    )
+endif ()
+
 target_include_directories(
         ${PROJECT_NAME}
 
