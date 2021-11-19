@@ -197,6 +197,7 @@ enum ty : uint64_t {
   has_max      = 0x01 << 1,
   has_validate = 0x01 << 2,
   has_one_of   = 0x01 << 3,
+  has_verify   = 0x01 << 4,
 };
 }
 
@@ -212,6 +213,7 @@ template <typename Ty_>
 struct _config_attrib_data {
   std::string description;
   std::function<bool(Ty_&)> validate;
+  std::function<bool(Ty_ const&)> verify;
   std::optional<Ty_> min;
   std::optional<Ty_> max;
   std::optional<std::set<Ty_>> one_of;
@@ -238,9 +240,24 @@ class _config_factory {
     _data.one_of->insert(v.begin(), v.end());
     return _added<_attr_flag::has_one_of>();
   }
-  auto& validate(std::function<bool(nlohmann::json&)>&& v) {
-    _data.validate = std::move(v);
+
+  template <typename Callable_>
+  auto& validate(Callable_&& v) {
+    if constexpr (std::is_invocable_r_v<bool, Callable_, Ty_&>) {
+      _data.validate = std::move(v);
+    } else {
+      _data.validate =
+              [fn = std::forward<Callable_>(v)](Ty_& s) {
+                fn(s);
+                return true;
+              };
+    }
     return _added<_attr_flag::has_validate>();
+  }
+
+  auto& check(std::function<bool(Ty_ const&)>&& v) {
+    _data.verify = std::move(v);
+    return _added<_attr_flag::has_verify>();
   }
 
   template <typename... Str_>
@@ -334,6 +351,8 @@ class config {
               try {
                 Ty_ parsed;
 
+                bool okay = true;
+
                 _config_attrib_data<Ty_> const& attr = attrib;
                 nlohmann::from_json(in, parsed);
 
@@ -344,15 +363,19 @@ class config {
                   parsed = std::min<Ty_>(*attr.max, parsed);
                 }
                 if constexpr (Attr_::flag & _attr_flag::has_one_of) {
-                  auto& oneof = attr->oneof;
-                  if (oneof.find(parsed) == oneof.end()) { return false; }
+                  if (attr->oneof.find(parsed) == attr->oneof.end())
+                    return false;
+                }
+                if constexpr (Attr_::flag & _attr_flag::has_verify) {
+                  if (not attr.verify(parsed))
+                    return false;
                 }
                 if constexpr (Attr_::flag & _attr_flag::has_validate) {
-                  if (!attr.validate(parsed)) { return false; }
+                  okay |= attr.validate(parsed);  // value should be validated
                 }
 
                 *(Ty_*)out = parsed;
-                return true;
+                return okay;
               } catch (std::exception&) {
                 return false;
               }
