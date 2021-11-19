@@ -2,8 +2,8 @@
 #include <perfkit/common/hasher.hxx>
 
 namespace perfkit::gui {
-using mesh3d_key = key_base<class LABEL_mesh3d_key>;
-using image_key  = key_base<class LABEL_mesh3d_key>;
+using mesh3d_key = basic_key<class LABEL_mesh3d_key>;
+using image_key  = basic_key<class LABEL_mesh3d_key>;
 
 /**
  * A buffer which contains a set of displayable data.
