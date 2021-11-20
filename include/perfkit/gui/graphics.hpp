@@ -39,4 +39,16 @@ class graphics {
   void lock();  // interfaces lock_guard
   void unlock();
 };
+
+/**
+ * A proxy class to expose resource creation operations only
+ */
+class resource_proxy {
+};
+
+/**
+ * A proxy class to expose drawing operations only
+ */
+class draw_proxy {
+};
 }  // namespace perfkit::gui

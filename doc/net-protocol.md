@@ -162,7 +162,7 @@ category_scheme:
 
 entity_scheme:
   name: string
-  config_key: int64; a unique key in a config class scope
+  config_key: hash64; a unique key in a config class scope
   value: any; current value
   metadata:
     description: string
@@ -211,7 +211,7 @@ payload:
 
 node_scheme:
   name: string
-  trace_key: int64; unique key in trace class scope
+  trace_key: hash64; unique key in trace class scope
   subscribe: boolean; if subscribing this node
   children?: list<node_scheme>; if folded, field itself is skipped. 
 ```
@@ -223,7 +223,7 @@ node_scheme:
 ```yaml
 parameter:
   class_name: string; name of trace clsas
-  trace_key: int64
+  trace_key: hash64
   fold?: boolean; whether to fold or not a trace node
   subscribe?: boolean; whether to subscribe or not a trace node
 ```
@@ -251,10 +251,18 @@ image_meta_scheme:
 
 ```yaml
 parameter:
+  guid:
   window_key: string; target window to manipulate
   operation?: string one-of [open|close|yes|no]; 'yes' and 'no' are for modality, that are treated as simple 'close'
     on non-modal windows
-  camera_2d:  
+  wnd_size: int16[2]; current window size of client machine, which is used for optimize image/draw call transfer.
+  camera_3d?: camera_scheme; request new camera status if needed. this can be ignored/overwritten from server side.
+    by explicitly calling 'buffer->ignore_client_camera_control'
+    position: float[3]
+    rotation: float[3]
+    hfov: float; 
+
+
 ```
 
 ### *update:window_resource*
@@ -266,29 +274,53 @@ parameter:
 ```yaml
 payload:
   window_key: string; key of the target window where resources will be stored.
-  mesh_updates?: list<mesh_scheme>
-  texture_updates?: texture_scheme
-  deleted_resources?: list<int64>; list of deleted resource keys
+  textures?: list<texture_scheme>
+  meshes?: list<mesh_scheme>
+  materials?: list<material_scheme>
+  fonts?: list<font_scheme>
+  lights?: list<light_scheme>
+  deleted_resources?: list<hash64>; list of deleted resource keys
 
 mesh_scheme:
-  resource_key: int64; resource key of this
+  resource_key: hash64; resource key of this
   vertices: list<vertex_scheme>
   indices: list<int16>
-  material: int64; resource key of used textures.
 
 vertex_scheme[]: # array
   0: float[3]; vertex coordinate
-  1: fixed16.15f[3]; vertex normal
-  2: fixed16.15f[2]|byte[4]; uv0 or vertex color
+  1: fixed_16/15f[3]; vertex normal
+  2: fixed_16/15f[2]|byte[4]; uv0 or vertex color
+  # maybe uv1?
 
 texture_scheme:
-  resource_key: int64; resource key of this
+  resource_key: hash64; resource key of this
   offset?: int16[2]; offset of bytes target. if this field is specified, this texture data
     will refresh portion of existing image. otherwise, any different-sized
     or different-typed texture should overwrite existing resources
   size: int16[2]; texture resolution
-  type: string; texture encoding type - BMP, JPEG, MPEG, H264 ...
+  type: string; texture encoding type - RAW, BMP, JPEG, PNG, MPEG, H264 ...
   bytes: binary; encoded image stream
+
+material_scheme:
+  diffuse?: hash64; resource key to texture (RGBA)
+  normal?: hash64; resource key to texture (RGB)
+  emmisive?: hash64; resource key to texture (MONO)
+  attributes: set<string> [wireframe|flag_names...];
+
+font_scheme:
+  font_family: string;
+  default_size: float; font default size
+  weight: int16; font weight, 1000 as default
+
+light_scheme:
+  type: string one-of [point|spot|ambient]; type of light
+  position: float[3];
+  rotation?: float[3];
+  range0: float; light range. ambient light is not affected.
+  range1: float2; second light range. ambient light is not affected.
+  texture?: hash64; light texture.
+
+
 ```
 
 ### *update:window_draw_call*
@@ -297,39 +329,124 @@ texture_scheme:
 
 ```yaml
 payload:
-  window_key: string; 대상 윈도우
+  window_key: string; target window
   content: list<draw_call_scheme>
+  camera_3d?: camera_scheme; same as above.
 
 draw_call_scheme[]:
-  0: int64; target texture resource. 0 if draw call targets screen buffer.
+  0: hash64; target texture resource. 0 if draw call targets screen buffer.
   1: byte; draw call type
-  2: one-of from [1]; draw call content
-    (1=>x00) NONE: null; reserved for error
-    (1=>x10) 2D_BITBLT: copy image to target 2d space
-      0: hash; 
-      
-    (1=>x11) 2D_STRETCHBLT:
+  2: from [1]; draw call content
+    (1=>x10): 2D_BITBLT copy image to target 2d space
+      0: hash64; resource key to texture
+      1?: int16[2][2]; src image rectangle. if not specified, the whole image will be used.
+      2: int16[2]; dst image pivot
 
-    (1=>x21) 2D_LINES:
+    (1=>x11): 2D_STRETCHBLT
+      0: hash64; resource key to texture
+      1: int16[2][2]; dst image rect
+      2?: int16[2][2]; src image rect, if not specified, the whole image will be used.
+
+    (1=>x21): 2D_LINES
       0: byte[4]; color
       1: list<int16[2]>; points to connect
-      2: double; thickness of line
+      2: fixed_16/8f; thickness of line
 
-    (1=>x22) 2d_POLYGON:
+    (1=>x22): 2d_POLYGON
       0: byte[4]; color
       1: list<int16[2]>; points to connect. last point recurses to initial point
         to make closed shape.
       2: boolean; true if filled.
-      
-    (1=>x23) 2D_ELLIPSE:
-      0: 
-       
-    (1=>x24) 2D_TEXT:
 
-    (1=>x30) 3D_:
+    (1=>x23): 2D_ELLIPSE
+      0: byte[4]; color
+      1: int16[2][2]; rectangle (x, y, w, h)
+      2: boolean; true if filled
+
+    (1=>x24): 2D_TEXT
+      0: byte[4]; color
+      1: int16[2]; pivot position
+      2: hash64; resource key to font
+      3: string; content
+      4: fixed_16/12f; font scale
+
+    (1=>x30): 3D_OBJECT
+      1: hash64; resource key to mesh
+      2?: hash64; resource key to material. if not specified, mesh will be rendered as wireframe.
+      3: float[3]; position
+      4: float[3]; rotation
+      5: float[3]; scale
+
+    (1=>x40): 3D_DEBUG_LINES
+      1: byte[4]; color
+      2: list<float[3]>; points to connect
+
+    (1=>x41): 3D_DEBUG_SPHERE
+      1: byte[4]; color
+      2: float[3]; point
+      3: float; radius
+      4: boolean; is_filled
+
+    (1=>x42): 3D_DEBUG_CUBE
+      1: byte[4]; color
+      2: float[3][2]; AABB
+      3: boolean; is_filled
+
 
 ```
 
-> 작성중
-
 ### *cmd:window_interact*
+
+```yaml
+parameter:
+  window_key: string; target window name
+  events: list<event_scheme>
+
+event_scheme[]:
+  3: int64; event timestamp
+  1: byte; event type
+  2: from [1]; event content
+    (0=>x10): SIG_MOUSE_ENTER; mouse enters to window
+    (0=>x11): SIG_MOUSE_LEAVE; mouse leaves from window
+    (0=>x20): TICK_MOUSE_HOVER
+    (0=>x21): TICK_MOUSE_MOVE
+    (0=>x31): EVT_MOUSE_CLICK
+    (0=>x32): EVT_MOUSE_DBL_CLICK
+    (0=>x33): EVT_MOUSE_DOWN
+    (0=>x34): EVT_MOUSE_UP
+      0: int16[2]; mouse x, y
+      1: bitset<16>; mouse button status bitmask
+        B-0: LEFT_BUTTON
+        B-1: RIGHT_BUTTON
+        B-2: MIDDLE_BUTTON
+        B-8: KEY_CTRL
+        B-9: KEY_ALT
+        B-A: KEY_SHIFT
+        B-B: KEY_SPACE
+
+    (0=>x40): EVT_MOUSE_WHEEL_UP
+    (0=>x41): EVT_MOUSE_WHEEL_DN
+      0: int16[2]; mouse x, y
+      1: float; wheel amount. 1 is standard.
+
+    (0=>x42): EVT_WIDE; zoom in/out event. can be generated from touch device
+    (0=>x43): EVT_NEAR
+      0: int16[2]; pivot x, y
+      1: float; amount of zoom, x1.0 is default.
+
+    (0=>x80): EVT_KEY_DOWN
+    (0=>x81): EVT_KEY_UP
+    (0=>x82): EVT_KEY_INPUT_RAW
+      0: list<byte>; list of keycodes from event.
+
+    (0=>x83): EVT_KEY_INPUT_IME
+      0: string; utf-8 text input
+
+    (0=>xD0): EVT_TOUCH_DOWN
+    (0=>xD1): EVT_TOUCH_MOVE
+    (0=>xD2): EVT_TOUCH_UP
+
+
+
+
+```
