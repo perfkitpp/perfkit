@@ -4,6 +4,7 @@
 #include "perfkit/detail/configs.hpp"
 
 #include <cassert>
+#include <condition_variable>
 #include <regex>
 #include <utility>
 
@@ -186,8 +187,38 @@ perfkit::json perfkit::configs::export_all() {
   return current;
 }
 
+namespace perfkit::detail {
+static auto _cvars() {
+  static std::condition_variable cvar;
+  static std::mutex mtx;
+  static volatile uint64_t fence = 0;
+
+  return std::make_tuple(&cvar, &mtx, &fence);
+}
+
+static void notify_config_update_any() {
+  auto [cvar, mtx, fence] = _cvars();
+
+  std::lock_guard _{*mtx};
+  ++(*fence);
+  cvar->notify_all();
+}
+}  // namespace perfkit::detail
+
+bool perfkit::configs::wait_any_change(std::chrono::milliseconds timeout, uint64_t* out_fence) {
+  auto [cvar, mtx, fence] = detail::_cvars();
+
+  std::unique_lock lock{*mtx};
+  auto fence_org = *fence;
+
+  auto valid = cvar->wait_for(
+          lock, timeout, [&, fence = fence] { return fence_org != *fence; });
+
+  out_fence && (*out_fence = *fence);
+  return valid;
+}
+
 bool perfkit::config_registry::update() {
-  decltype(_pending_updates) update;
   if (not _initial_update_done.load(std::memory_order_consume)) {
     glog()->debug("registry '{}' instantiated after loading configurations", name());
 
@@ -201,10 +232,13 @@ bool perfkit::config_registry::update() {
   }
 
   if (std::unique_lock _l{_update_lock}) {
-    if (_pending_updates.empty()) { return false; }  // no update.
+    if (_pending_updates[0].empty()) { return false; }  // no update.
 
-    update = std::move(_pending_updates);
-    _pending_updates.clear();
+    auto& update = _pending_updates[1];
+
+    bool has_valid_update = false;
+    update                = _pending_updates[0];
+    _pending_updates[0].clear();
 
     for (auto ptr : update) {
       auto r_desrl = ptr->_try_deserialize(ptr->_cached_serialized);
@@ -212,8 +246,15 @@ bool perfkit::config_registry::update() {
       if (!r_desrl) {
         glog()->error("parse failed: '{}' <- {}", ptr->display_key(), ptr->_cached_serialized.dump());
         ptr->_serialize(ptr->_cached_serialized, ptr->_raw);  // roll back
+      } else {
+        has_valid_update |= true;
       }
     }
+
+    _l.unlock();
+
+    if (has_valid_update)
+      detail::notify_config_update_any();
   }
 
   return true;
@@ -292,7 +333,13 @@ bool perfkit::config_registry::bk_queue_update_value(std::string_view full_key, 
   // stores cache without validation.
   it->second->_cached_serialized = std::move(value);
   it->second->_fence_serialized  = ++it->second->_fence_modified;
-  _pending_updates.insert(it->second.get());
+
+  // push unique element
+  auto updates  = _pending_updates + 0;
+  auto conf_ptr = it->second.get();
+  if (auto it_up = std::find(updates->begin(), updates->end(), conf_ptr);
+      it_up == updates->end())
+    updates->push_back(conf_ptr);
 
   return true;
 }

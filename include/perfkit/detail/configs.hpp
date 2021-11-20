@@ -132,6 +132,9 @@ json export_all();
 
 bool import_file(std::string_view path);
 bool export_to(std::string_view path);
+
+/** wait until any configuration update is applied. */
+bool wait_any_change(std::chrono::milliseconds timeout, uint64_t* out_fence);
 }  // namespace configs
 
 /**
@@ -181,7 +184,7 @@ class config_registry : public std::enable_shared_from_this<config_registry> {
   std::string _name;
   config_table _entities;
   string_view_table _disp_keymap;
-  std::set<detail::config_base*> _pending_updates;
+  std::vector<detail::config_base*> _pending_updates[2];
   std::mutex _update_lock;
 
   // this value is used for identifying config registry's schema type, as config registry's
