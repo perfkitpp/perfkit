@@ -22,7 +22,6 @@ struct tracer::_impl {
   tracer_future_result msg_future;
 };
 
-void _deliever_previous_result();
 tracer::_entity_ty* tracer::_fork_branch(
         _entity_ty const* parent, std::string_view name, bool initial_subscribe_state) {
   auto hash = _hash_active(parent, name);
@@ -35,15 +34,17 @@ tracer::_entity_ty* tracer::_fork_branch(
     data.body.hash           = hash;
     data.body.key            = data.key_buffer;
     data.body._is_subscribed = &data.is_subscribed;
+    data.body._is_folded     = &data.is_folded;
     data.is_subscribed.store(initial_subscribe_state, std::memory_order_relaxed);
-    parent && (data.hierarchy = parent->hierarchy, true);  // only includes parent hierarchy.
+    parent && (data.hierarchy = parent->hierarchy, 0);  // only includes parent hierarchy.
     data.hierarchy.push_back(data.key_buffer);
-    data.body.hierarchy = data.hierarchy;
+    data.body.hierarchy    = data.hierarchy;
+    data.body.unique_order = _table.size();
   }
 
-  data.parent     = parent;
-  data.body.fence = _fence_active;
-  data.body.order = _order_active++;
+  data.parent            = parent;
+  data.body.fence        = _fence_active;
+  data.body.active_order = _order_active++;
   _stack.push_back(&data);
 
   return &data;
@@ -89,10 +90,21 @@ bool tracer::_deliver_previous_result() {  // perform queued sort-merge operatio
   auto& promise = *this->self->msg_promise;
 
   // copies all messages and put them to cache buffer to prevent memory reallocation
-  this->_local_reused_memory.resize(this->_table.size());
-  std::transform(this->_table.begin(), this->_table.end(),
-                 this->_local_reused_memory.begin(),
-                 [](auto&& g) { return g.second.body; });
+  // if any entity is folded, skip all of its subtree
+  this->_local_reused_memory.clear();
+  for (auto& [hash, entity] : _table) {
+    bool folded = false;
+    for (auto parent = entity.parent; parent; parent = parent->parent)
+      if (parent->is_folded) {
+        folded = true;
+        break;
+      }
+
+    if (folded)
+      continue;
+
+    this->_local_reused_memory.emplace_back(entity.body);
+  }
 
   auto self_ptr = this->_self_weak.lock();
 
@@ -123,7 +135,7 @@ static auto lock_tracer_repo = [] {
 };
 
 tracer::tracer(int order, std::string_view name) noexcept
-        : self(new _impl), _occurence_order(order), _name(name) {
+        : self(new _impl), _occurrence_order(order), _name(name) {
 }
 
 std::vector<std::weak_ptr<tracer>>& tracer::_all() noexcept {
@@ -302,12 +314,10 @@ void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept {
           [](tracer::trace const& a, tracer::trace const& b) {
             auto r_hcmp = compare_hierarchy(a.hierarchy, b.hierarchy);
             if (r_hcmp == hierarchy_compare_result::equal) {
-              return a.fence == b.fence
-                           ? a.order < b.order
-                           : a.fence < b.fence;
+              return a.unique_order < b.unique_order;
             }
             if (r_hcmp == hierarchy_compare_result::irrelevant) {
-              return a.order < b.order;
+              return a.unique_order < b.unique_order;
             }
             if (r_hcmp == hierarchy_compare_result::a_contains_b) {
               return false;

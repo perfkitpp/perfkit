@@ -44,8 +44,12 @@ struct trace {
   void subscribe(bool enabled) noexcept {
     _is_subscribed->store(enabled, std::memory_order_relaxed);
   }
+  void fold(bool folded) noexcept {
+    _is_folded->store(folded, std::memory_order_relaxed);
+  }
 
   bool subscribing() const noexcept { return _is_subscribed->load(std::memory_order_relaxed); }
+  bool folded() const noexcept { return _is_folded->load(std::memory_order_relaxed); }
 
   void dump_data(std::string&) const;
 
@@ -53,8 +57,9 @@ struct trace {
   std::string_view key;
   uint64_t hash;
 
-  size_t fence = 0;
-  int order    = 0;
+  size_t fence        = 0;
+  size_t unique_order = 0;
+  int active_order    = 0;
   array_view<std::string_view> hierarchy;
 
   trace_variant_type data;
@@ -62,13 +67,16 @@ struct trace {
  private:
   friend class ::perfkit::tracer;
   std::atomic_bool* _is_subscribed = {};
+  std::atomic_bool* _is_folded     = {};
 };
 
 struct _entity_ty {
   trace body;
   std::string key_buffer;
   std::vector<std::string_view> hierarchy;
-  std::atomic_bool is_subscribed;
+
+  std::atomic_bool is_subscribed{false};
+  std::atomic_bool is_folded{false};
   _entity_ty const* parent = nullptr;
 };
 }  // namespace _trace
@@ -241,7 +249,7 @@ class tracer {
   void async_fetch_request(tracer::future_result* out);
 
   auto name() const noexcept { return _name; }
-  auto order() const noexcept { return _occurence_order; }
+  auto order() const noexcept { return _occurrence_order; }
 
  private:
   uint64_t _hash_active(_trace::_entity_ty const* parent, std::string_view top);
@@ -269,7 +277,7 @@ class tracer {
   // 2. 프록시가 데이터 넣을 때마다(타이머는 소멸 시) 데이터 블록의 백 버퍼 맵에 이름-값 쌍 할당
   // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
   //    이 때 최신 시퀀스 넘버도 같이 받는다.
-  std::map<std::size_t, _trace::_entity_ty> _table;
+  std::unordered_map<uint64_t, _trace::_entity_ty> _table;
   size_t _fence_active     = 0;  // active sequence number of back buffer.
   size_t _fence_latest     = 0;
   size_t _interval_counter = 0;
@@ -279,7 +287,7 @@ class tracer {
   mutable std::mutex _sort_merge_lock;
   fetched_traces _local_reused_memory;
 
-  int _occurence_order;
+  int _occurrence_order;
   std::string const _name;
 
   std::weak_ptr<tracer> _self_weak;
