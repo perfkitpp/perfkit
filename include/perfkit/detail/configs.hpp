@@ -71,7 +71,9 @@ class config_base {
 
   size_t num_modified() const { return _fence_modified; };
   size_t num_serialized() const { return _fence_serialized; }
-  bool is_transient() const noexcept { return attribute().contains("transient"); }
+
+  bool can_export() const noexcept { return not attribute().contains("transient"); }
+  bool can_import() const noexcept { return not attribute().contains("block_read"); }
 
   /**
    * Check if latest marshalling result was invalid
@@ -201,9 +203,10 @@ enum ty : uint64_t {
 };
 }
 
-enum class _config_flag_type {
+enum class _config_io_type {
   persistent,
-  transient
+  transient,
+  transient_readonly,
 };
 
 template <typename Ty_>
@@ -217,9 +220,10 @@ struct _config_attrib_data {
   std::optional<Ty_> min;
   std::optional<Ty_> max;
   std::optional<std::set<Ty_>> one_of;
+  std::string env_name;
 
-  std::optional<std::pair<_config_flag_type, std::vector<std::string>>>
-          flag_binding;
+  std::optional<std::vector<std::string>> flag_binding;
+  _config_io_type transient_type = _config_io_type::persistent;
 };
 
 template <typename Ty_, uint64_t Flags_ = 0>
@@ -235,12 +239,17 @@ class _config_factory {
   auto& description(std::string&& s) { return _data.description = std::move(s), *this; }
   auto& min(Ty_ v) { return _data.min = v, _added<_attr_flag::has_min>(); }
   auto& max(Ty_ v) { return _data.max = v, _added<_attr_flag::has_max>(); }
+
+  /** value should be one of given entities */
   auto& one_of(std::initializer_list<Ty_> v) {
     _data.one_of.emplace();
     _data.one_of->insert(v.begin(), v.end());
     return _added<_attr_flag::has_one_of>();
   }
 
+  /**
+   * validate function makes value assignable to destination.
+   * if callback returns false, change won't be applied (same as verify()) */
   template <typename Callable_>
   auto& validate(Callable_&& v) {
     if constexpr (std::is_invocable_r_v<bool, Callable_, Ty_&>) {
@@ -255,21 +264,45 @@ class _config_factory {
     return _added<_attr_flag::has_validate>();
   }
 
-  auto& check(std::function<bool(Ty_ const&)>&& v) {
+  /** verify function will discard updated value if verification failed. */
+  auto& verify(std::function<bool(Ty_ const&)>&& v) {
     _data.verify = std::move(v);
     return _added<_attr_flag::has_verify>();
   }
 
+  /** expose entities as flags. configs MUST NOT BE field of any config template class! */
   template <typename... Str_>
-  auto& make_flag(bool save_to_config, Str_&&... args) {
+  auto& flags(Str_&&... args) {
     std::vector<std::string> flags;
     (flags.emplace_back(std::forward<Str_>(args)), ...);
 
-    _data.flag_binding.emplace(
-            std::make_pair(not save_to_config
-                                   ? _config_flag_type::transient
-                                   : _config_flag_type::persistent,
-                           std::move(flags)));
+    _data.flag_binding.emplace(std::move(flags));
+    return *this;
+  }
+
+  template <typename... Str_>
+  [[deprecated]] auto&
+  make_flag(bool save_to_config, Str_&&... args) {
+    if (not save_to_config)
+      transient();
+    return flags(std::forward<Str_>(args)...);
+  }
+
+  /** transient marked configs won't be saved or loaded from config files. */
+  auto& transient() {
+    _data.transient_type = _config_io_type::transient;
+    return *this;
+  }
+
+  /** readonly marked configs won't export, but still can import from config files. */
+  auto& readonly() {
+    _data.transient_type = _config_io_type::transient_readonly;
+    return *this;
+  }
+
+  /** */
+  auto& env(std::string s) {
+    _data.env_name = std::move(s);
     return *this;
   }
 
@@ -309,6 +342,7 @@ class config {
           _config_attrib_data<Ty_> attribute) noexcept
           : _owner(&repo), _value(std::forward<Ty_>(default_value)) {
     auto description = std::move(attribute.description);
+    std::string env  = std::move(attribute.env_name);
 
     // define serializer
     detail::config_base::serializer fn_d = [this](nlohmann::json& out, const void* in) {
@@ -335,14 +369,17 @@ class config {
     }
 
     if (attribute.flag_binding) {
-      std::vector<std::string>& binding = attribute.flag_binding->second;
+      std::vector<std::string>& binding = *attribute.flag_binding;
       js_attrib["is_flag"]              = true;
-      if (attribute.flag_binding->first == _config_flag_type::transient) {
-        js_attrib["transient"] = true;
-      }
       if (not binding.empty()) {
         js_attrib["flag_binding"] = std::move(binding);
       }
+    }
+
+    if (attribute.transient_type != _config_io_type::persistent) {
+      js_attrib["transient"] = true;
+      if (attribute.transient_type == _config_io_type::transient)
+        js_attrib["block_read"] = true;
     }
 
     // setup marshaller / de-marshaller with given rule of attribute
@@ -393,6 +430,16 @@ class config {
 
     // put instance to global queue
     repo._put(_opt);
+
+    // queue environment value if available
+    if (not env.empty())
+      if (auto env_value = getenv(env.c_str())) {
+        auto parsed_json = nlohmann::json::parse(
+                env_value, env_value + strlen(env_value), nullptr, false);
+
+        if (not parsed_json.is_discarded())
+          _opt->request_modify(std::move(parsed_json));
+      }
   }
 
   config(const config&) noexcept = delete;

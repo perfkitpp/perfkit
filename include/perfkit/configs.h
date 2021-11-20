@@ -10,8 +10,6 @@ struct category_template_base {
 };
 }  // namespace perfkit::_internal
 
-#define PERFKIT_CONFIG_REGISTRY(Name) static inline auto& Name = perfkit::config_registry::create()
-
 #define INTERNAL_PERFKIT_STRINGFY_2(A) #A
 #define INTERNAL_PERFKIT_STRINGFY(A)   INTERNAL_PERFKIT_STRINGFY_2(A)
 #define INTERNAL_PERFKIT_INDEXER       "+" + ::perfkit::_internal::INDEXER_STR(__COUNTER__) + "|"  // max 99999

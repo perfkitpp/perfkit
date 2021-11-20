@@ -5,7 +5,6 @@ add_executable(
         perfkit-automated-test
 
         automation.cpp
-        automation-perfkit.cpp
         automation-argparse.cpp
 )
 

@@ -94,11 +94,18 @@ void queue_changes(shared_ptr<config_registry> rg, json patch) {
       continue;
     }
 
-    auto key_valid = rg->bk_queue_update_value(full_key, std::move(value));
-    if (not key_valid) {
-      glog()->critical("rg: {}, disp key: {}, full_key: {}, is not valid.",
-                       rg->name(), disp_key, full_key);
+    auto it = rg->bk_all().find(full_key);
+    if (it == rg->bk_all().end()) {
+      glog()->critical(
+              "rg: {}, disp key: {}, full_key: {}, is not valid.",
+              rg->name(), disp_key, full_key);
+      continue;
     }
+
+    if (not it->second->can_import())
+      continue;
+
+    rg->bk_queue_update_value(full_key, std::move(value));
   }
 }
 }  // namespace perfkit::configs::_io
@@ -132,7 +139,8 @@ void perfkit::config_registry::export_to(nlohmann::json* category) {
   category->clear();
 
   for (const auto& [full_key, config] : bk_all()) {
-    category->emplace(config->display_key(), config->serialize());
+    if (config->can_export())
+      category->emplace(config->display_key(), config->serialize());
   }
 }
 
