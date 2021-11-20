@@ -32,6 +32,12 @@ option(perfkit_BUILD_NET_CLIENT "" ON)
 option(perfkit_BUILD_CLI "" ON)
 option(perfkit_USE_BUNDLED_JSON "" ON)
 option(perfkit_BUILD_EXAMPLES "" OFF)
+option(perfkit_BUILD_CPPHEADERS_TEST "" ON)
+
+if(perfkit_BUILD_CPPHEADERS_TEST)
+    message("[${PROJECT_NAME}]: Configuring imported cppheaders tests ...")
+    add_subdirectory(include/perfkit/common/tests)
+endif()
 
 # JSON Bundling
 if (perfkit_USE_BUNDLED_JSON)
