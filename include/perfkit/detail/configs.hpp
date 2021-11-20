@@ -453,8 +453,12 @@ class config {
     // queue environment value if available
     if (not env.empty())
       if (auto env_value = getenv(env.c_str())) {
-        auto parsed_json = nlohmann::json::parse(
-                env_value, env_value + strlen(env_value), nullptr, false);
+        nlohmann::json parsed_json;
+        if constexpr (std::is_same_v<Ty_, std::string>) // if it's string, apply as-is.
+          parsed_json = env_value;
+        else
+          parsed_json = nlohmann::json::parse(
+                  env_value, env_value + strlen(env_value), nullptr, false);
 
         if (not parsed_json.is_discarded())
           _opt->request_modify(std::move(parsed_json));
