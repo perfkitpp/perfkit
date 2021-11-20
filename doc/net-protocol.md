@@ -1,4 +1,4 @@
-# Web API spec for perfkit-apiserver
+# TCP PROTOCOL spec for perfkit remote GUI provider
 
 1. perfkit의 net provider에서 모든 데이터 형식 + 시퀀스 번호만 정의 및 분류. API 서버는 json object 형태로만 데이터를 다루게 된다. Websocket으로 업데이트 있을 때마다 모든
    클라이언트에 데이터 갱신 지속적으로 쏴주다가, 신규 연결 또는 reset 시 전체 데이터를 보내는 식
@@ -269,7 +269,7 @@ parameter:
 
 리소스 업데이트. 윈도우가 open 상태인 동안에만 유효하며, close 호출 후 다시 open 시 전체 리소스가 전부 재송신된다.
 
-> 클라이언트 구현 시, 명시적으로 open 하지 않은 윈도우에 대해서도
+> 멀티 클라이언트 구현 시, 명시적으로 open 하지 않은 윈도우에 대해서도 세션 데이터를 유지해야 함!
 
 ```yaml
 payload:
