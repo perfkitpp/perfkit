@@ -74,6 +74,7 @@ class config_base {
 
   bool can_export() const noexcept { return not attribute().contains("transient"); }
   bool can_import() const noexcept { return not attribute().contains("block_read"); }
+  bool is_hidden() const noexcept { return attribute().contains("hidden"); }
 
   /**
    * Check if latest marshalling result was invalid
@@ -224,6 +225,7 @@ struct _config_attrib_data {
   std::optional<Ty_> max;
   std::optional<std::set<Ty_>> one_of;
   std::string env_name;
+  bool hidden = false;
 
   std::optional<std::vector<std::string>> flag_binding;
   _config_io_type transient_type = _config_io_type::persistent;
@@ -251,8 +253,17 @@ class _config_factory {
   }
 
   /**
+   * Hidden elements, usually won't appear on
+   */
+  auto& hide() {
+    _data.hidden = true;
+    return *this;
+  }
+
+  /**
    * validate function makes value assignable to destination.
-   * if callback returns false, change won't be applied (same as verify()) */
+   * if callback returns false, change won't be applied (same as verify())
+   */
   template <typename Callable_>
   auto& validate(Callable_&& v) {
     if constexpr (std::is_invocable_r_v<bool, Callable_, Ty_&>) {
@@ -283,6 +294,7 @@ class _config_factory {
     return *this;
   }
 
+  /** deprecated. should be broken into transient() and flags(). */
   template <typename... Str_>
   [[deprecated]] auto&
   make_flag(bool save_to_config, Str_&&... args) {
@@ -303,7 +315,7 @@ class _config_factory {
     return *this;
   }
 
-  /** */
+  /** initialize from environment variable */
   auto& env(std::string s) {
     _data.env_name = std::move(s);
     return *this;
@@ -369,6 +381,10 @@ class config {
       js_attrib["has_custom_validator"] = true;
     } else {
       js_attrib["has_custom_validator"] = false;
+    }
+
+    if (attribute.hidden) {
+      js_attrib["hidden"] = true;
     }
 
     if (attribute.flag_binding) {
