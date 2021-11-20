@@ -2,6 +2,6 @@
 
 #include "net_terminal.hpp"
 
-perfkit::terminal_ptr perfkit::terminal::net_provider::create(const struct init_info& info) {
-  return std::make_shared<net::net_terminal>(info);
+perfkit::terminal_ptr perfkit::terminal::net::create(const struct terminal_init_info& info) {
+  return std::make_shared<net::terminal>(info);
 }

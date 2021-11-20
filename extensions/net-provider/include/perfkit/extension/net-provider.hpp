@@ -1,16 +1,16 @@
 #pragma once
 #include "perfkit/terminal.h"
 
-namespace perfkit::terminal::net_provider {
+namespace perfkit::terminal::net {
 /**
  * Create net client session instance
  *
  * @param info
  * @return
  */
-terminal_ptr create(struct init_info const& info);
+terminal_ptr create(struct terminal_init_info const& info);
 
-struct init_info {
+struct terminal_init_info {
   /** Session name to introduce self */
   std::string const name;
 
@@ -40,7 +40,7 @@ struct init_info {
    * Specify how many milliseconds to wait for host response */
   std::chrono::milliseconds connection_timeout_ms{5'000};
 
-  explicit init_info(std::string session_name) : name{std::move(session_name)} {};
+  explicit terminal_init_info(std::string session_name) : name{std::move(session_name)} {};
 };
 
 }  // namespace perfkit::terminal::net_provider

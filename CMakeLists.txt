@@ -5,6 +5,7 @@ project(perfkit)
 add_subdirectory(third)
 
 if (NOT TARGET range-v3::range-v3)
+    message("[${PROJECT_NAME}]: Using bundled range-v3 library ...")
     add_subdirectory(third/range-v3-master EXCLUDE_FROM_ALL)
 endif ()
 
@@ -41,7 +42,7 @@ endif ()
 # TUI Extension
 if (perfkit_BUILD_FTXUI_EXTENSION)
     if (NOT TARGET ftxui::dom)
-        add_subdirectory(third/FTXUI/)
+        message(FATAL_ERROR "FTXUI not found!")
     endif ()
 
     message("[${PROJECT_NAME}]: Configuring FTXUI Extension Library ...")
@@ -50,6 +51,9 @@ endif ()
 
 # NET Extension
 if (perfkit_BUILD_NET_CLIENT)
+    message("[${PROJECT_NAME}]: Using bundled asio library ... ")
+    add_subdirectory(third/asio-1.20.0)
+
     message("[${PROJECT_NAME}]: Configuring NET CLIENT extension ...")
     add_subdirectory(extensions/net-provider/)
 endif ()
@@ -85,7 +89,7 @@ endif ()
 
 find_library(LIBDW dw)
 if (LIBDW)
-    message("LIBDW FOUND, enabling rich backtrace support ...")
+    message("[${PROJECT_NAME}]: LIBDW FOUND, enabling rich backtrace support ...")
     target_link_libraries(
             ${PROJECT_NAME}
 

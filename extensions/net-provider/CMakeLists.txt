@@ -16,7 +16,7 @@ add_library(
 )
 
 add_library(
-        perfkit::net-provider ALIAS ${PROJECT_NAME}
+        perfkit::net::core ALIAS ${PROJECT_NAME}
 )
 
 target_link_libraries(
@@ -26,7 +26,7 @@ target_link_libraries(
         perfkit::core
 
         PRIVATE
-        perfkit::_internal::net-provider-protocols
+        perfkit::net::bundled-asio
 )
 
 target_include_directories(
