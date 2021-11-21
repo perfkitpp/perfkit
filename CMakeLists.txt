@@ -34,15 +34,17 @@ option(perfkit_USE_BUNDLED_JSON "" ON)
 option(perfkit_BUILD_EXAMPLES "" OFF)
 option(perfkit_BUILD_CPPHEADERS_TEST "" ON)
 
-if(perfkit_BUILD_CPPHEADERS_TEST)
+if (perfkit_BUILD_CPPHEADERS_TEST)
     message("[${PROJECT_NAME}]: Configuring imported cppheaders tests ...")
     add_subdirectory(include/perfkit/common/tests)
-endif()
+endif ()
 
 # JSON Bundling
 if (perfkit_USE_BUNDLED_JSON)
     message("[${PROJECT_NAME}]: Using bundled json")
     target_include_directories(${PROJECT_NAME} PUBLIC "third/json")
+else ()
+    target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann::json)
 endif ()
 
 # TUI Extension
