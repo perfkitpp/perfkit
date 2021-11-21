@@ -35,7 +35,7 @@ BSON/JSON 통신 가능하며, 오브젝트 단위로 메시지 넘어간다
 
 ```json
 {
-  "type": "string; e.g. cmd:reset_cache",
+  "route": "string; e.g. cmd:reset_cache",
   "parameter": {
     "key": "value"
   }
@@ -46,7 +46,7 @@ BSON/JSON 통신 가능하며, 오브젝트 단위로 메시지 넘어간다
 
 ```json
 {
-  "type": "string; e.g. update:shell",
+  "route": "string; e.g. update:shell",
   "cache_fence": "int64; ",
   "payload": {
     "key": "value"

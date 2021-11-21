@@ -6,6 +6,7 @@ add_library(
         STATIC
 
         src/net-provider.cpp
+        src/util.cpp
 )
 
 add_library(

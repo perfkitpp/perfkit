@@ -6,9 +6,14 @@ namespace perfkit::terminal::net {
  * Create net client session instance
  *
  * @param info
- * @return
  */
 terminal_ptr create(struct terminal_init_info const& info);
+
+/**
+ * Create net client from configuration profile
+ * @param config_profile_name
+ */
+terminal_ptr create(std::string config_profile_name);
 
 struct terminal_init_info {
   /** Session name to introduce self */
@@ -43,4 +48,4 @@ struct terminal_init_info {
   explicit terminal_init_info(std::string session_name) : name{std::move(session_name)} {};
 };
 
-}  // namespace perfkit::terminal::net_provider
+}  // namespace perfkit::terminal::net
