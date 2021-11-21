@@ -33,7 +33,7 @@ namespace perfkit::gui::imgui {
  */
 class context {
  public:
-  void new_frame(graphics*);
+  void new_frame(graphic*);
   bool window(std::string_view name);
 
 };

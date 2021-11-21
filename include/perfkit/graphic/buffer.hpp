@@ -15,7 +15,7 @@ using image_key  = basic_key<class LABEL_mesh3d_key>;
  *    and are cached in the client until the next invalidation.
  *    (e.g. buffer->upload(0x1234, pointer_to_resource_data))
  */
-class graphics {
+class graphic {
   // set canvas size
 
   // move 3d camera

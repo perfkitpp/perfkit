@@ -1,5 +1,5 @@
-#include <perfkit/gui/imgui.hpp>
-#include <perfkit/gui/window.hpp>
+#include <perfkit/graphic/gui.hpp>
+#include <perfkit/graphic/window.hpp>
 
 void foo() {
   perfkit::delegate<int> dd;

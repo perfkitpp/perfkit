@@ -20,7 +20,7 @@ set(
         src/tracer.cpp
         src/terminal.cpp
         src/config-flags.cpp
-        src/window.cpp
+        src/graphic/graphic.cpp
         src/helpers.cpp
 )
 

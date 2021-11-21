@@ -7,7 +7,7 @@
 #include <perfkit/common/hasher.hxx>
 #include <perfkit/fwd.hpp>
 
-#include "graphics.hpp"
+#include "buffer.hpp"
 
 namespace perfkit {
 using window_ptr = std::shared_ptr<gui::instance>;
@@ -34,18 +34,19 @@ struct arg_input {
 
 class events {
  public:
-  delegate<arg_mouse> clicked;
-  delegate<arg_mouse> mouse_down;
-  delegate<arg_mouse> mouse_move;
-  delegate<arg_mouse> mouse_up;
-  delegate<arg_keyboard> keypress;
-  delegate<arg_keyboard> keyup;
-  delegate<arg_input> input;
+  delegate_st<arg_mouse> clicked;
+  delegate_st<arg_mouse> mouse_down;
+  delegate_st<arg_mouse> mouse_move;
+  delegate_st<arg_mouse> mouse_up;
+  delegate_st<arg_keyboard> keypress;
+  delegate_st<arg_keyboard> keyup;
+  delegate_st<arg_input> input;
 };
 }  // namespace events
 
 /**
  * Provides indirect access to internal buffer instance, for load balancing & interactions.
+ * Registered events will be consumed inside these methods.
  */
 class instance {
  public:
@@ -56,7 +57,7 @@ class instance {
    * @return false if there's no graphics backend
    */
   template <typename RenderFn_,
-            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, graphics*>>>
+            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, graphic*>>>
   bool render(RenderFn_&& render_fn) {
     // TODO: call render_fn with buffer argument when ready
     if (not wait_backend_ready())
@@ -73,7 +74,7 @@ class instance {
    * @return
    */
   template <typename RenderFn_,
-            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, graphics*>>>
+            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, graphic*>>>
   bool try_render(RenderFn_&& render_fn) {
     if (not is_open() || not is_backend_ready())
       return false;
@@ -90,16 +91,20 @@ class instance {
    * @return
    */
   template <typename RenderFn_,
-            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, graphics*, modal_result*>>>
+            typename = std::enable_if_t<std::is_invocable_v<RenderFn_, graphic*, modal_result*>>>
   modal_result modality(RenderFn_&& render_fn) {
     auto result = modal_result::refresh;
     while (result == modal_result::refresh)
-      this->render([&](graphics* f) { render_fn(f, &result); });
+      this->render([&](graphic* f) { render_fn(f, &result); });
 
     return result;
   }
 
-  events::events* events() noexcept;
+  template <typename EventRegister_>
+  void events(EventRegister_&& handler) noexcept {
+    // apply bounded access for callable to register events safely.
+
+  }
 
  public:
   bool is_open() const noexcept { return true; }
