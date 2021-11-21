@@ -12,7 +12,6 @@ perfkit::terminal::net::dispatcher::~dispatcher() = default;
 perfkit::terminal::net::dispatcher::dispatcher(
         const perfkit::terminal::net::terminal_init_info& init_info) {
   // TODO: create appropriate implementation class from init_info
-
 }
 
 void perfkit::terminal::net::dispatcher::_register_recv(
@@ -24,6 +23,7 @@ void perfkit::terminal::net::dispatcher::_register_recv(
 void perfkit::terminal::net::dispatcher::_send(
         std::string_view route,
         int64_t fence,
-        send_archive_type payload) {
-  self->send(route, fence, std::move(payload));
+        void* userobj,
+        void (*payload)(send_archive_type*, void*)) {
+  self->send(route, fence, userobj, payload);
 }

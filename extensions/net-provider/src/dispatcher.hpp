@@ -16,7 +16,7 @@ class basic_dispatcher_impl;
 namespace perfkit::terminal::net {
 
 class dispatcher {
-  using impl_ptr     = std::unique_ptr<detail::basic_dispatcher_impl>;
+  using impl_ptr          = std::unique_ptr<detail::basic_dispatcher_impl>;
   using recv_archive_type = nlohmann::json;
   using send_archive_type = nlohmann::json;
 
@@ -42,10 +42,13 @@ class dispatcher {
   }
 
   template <typename MsgTy_>
-  void send(std::string_view route, int64_t fence, MsgTy_&& message) {
+  void send(std::string_view route, int64_t fence, MsgTy_ const& message) {
     // TODO: change serializer to use builder, which doesn't need to be marshaled into
     //        json object to be dumped to string.
-    _send(route, fence, std::forward<MsgTy_>(message));
+    _send(route, fence, &message,
+          [](send_archive_type* archive, void* data) {
+            *archive = *(MsgTy_ const*)data;
+          });
   }
 
  private:
@@ -56,7 +59,8 @@ class dispatcher {
   void _send(
           std::string_view route,
           int64_t fence,
-          send_archive_type payload);
+          void* userobj,
+          void (*payload)(send_archive_type*, void*));
 
  private:
   std::unique_ptr<detail::basic_dispatcher_impl> self;

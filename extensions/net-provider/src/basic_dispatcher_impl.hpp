@@ -83,13 +83,22 @@ class basic_dispatcher_impl {
 
   void register_recv(
           std::string route,
-          std::function<bool(recv_archive_type const& parameter)>) {}
+          std::function<bool(recv_archive_type const& parameter)> handler) {
+    // TODO register router
+  }
 
   void send(
           std::string_view route,
           int64_t fence,
-          send_archive_type payload) {
+          void* userobj,
+          void (*payload)(send_archive_type*, void*)) {
     // iterate all active sockets and push payload
+    send_archive_type ss;
+    payload(&ss[2], userobj);  // inverse order to prevent triple reallocation
+    ss[1] = fence;
+    ss[0] = route;
+
+    // TODO: send message
   }
 
  protected:
@@ -186,7 +195,12 @@ class basic_dispatcher_impl {
 
   void _handle_active_body(
           socket_id_t id, tcp::socket* sock, asio::error_code const& ec, size_t n_read) {
-    // TODO: parse message's routing,
+    if (ec || n_read != 8) {
+      CPPH_WARN("failed to receive header from socket {}", id.value);
+      return;
+    }
+
+    // TODO: find message's route and call handler.
 
     asio::async_read(
             *sock, _buf(8),
