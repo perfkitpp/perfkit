@@ -6,7 +6,11 @@ add_library(
         STATIC
 
         src/net-provider.cpp
+        src/net-context.cpp
         src/util.cpp
+        src/server_mode_dispatcher.cpp
+        src/dispatcher.cpp
+        src/basic_dispatcher_impl.cpp
 )
 
 add_library(

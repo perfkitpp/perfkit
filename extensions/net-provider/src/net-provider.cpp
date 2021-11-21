@@ -12,8 +12,8 @@ namespace perfkit::terminal::detail {
 PERFKIT_T_CATEGORY(
         terminal_profile,
 
-
-        );
+        // TODO: fill terminal_init_info struct with these args.
+);
 }  // namespace perfkit::terminal::detail
 
 perfkit::terminal_ptr perfkit::terminal::net::create(std::string config_profile_name) {
