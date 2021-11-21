@@ -10,6 +10,7 @@
 
 #include <asio/ip/tcp.hpp>
 #include <asio/read.hpp>
+#include <asio/write.hpp>
 #include <nlohmann/json.hpp>
 #include <perfkit/common/algorithm/base64.hxx>
 #include <perfkit/common/dynamic_array.hxx>
@@ -27,6 +28,7 @@ using send_archive_type = nlohmann::json;
 
 struct basic_dispatcher_impl_init_info {
   size_t buffer_size = 4 << 20;  // units in bytes
+  std::string auth_token;
 };
 
 #pragma pack(push, 4)
@@ -84,7 +86,10 @@ class basic_dispatcher_impl {
   void register_recv(
           std::string route,
           std::function<bool(recv_archive_type const& parameter)> handler) {
-    // TODO register router
+    auto lc{std::lock_guard{_mtx_modify}};
+    auto [it, is_new] = _recv_routes.try_emplace(route, std::move(handler));
+
+    assert_(is_new);
   }
 
   void send(
@@ -93,12 +98,27 @@ class basic_dispatcher_impl {
           void* userobj,
           void (*payload)(send_archive_type*, void*)) {
     // iterate all active sockets and push payload
-    send_archive_type ss;
+    send_archive_type archive;
+    auto& ss = archive["body"];
     payload(&ss[2], userobj);  // inverse order to prevent triple reallocation
     ss[1] = fence;
     ss[0] = route;
 
+    while (_n_sending > 0)
+      std::this_thread::yield();
+
     // TODO: send message
+    _bf_send.clear();
+    nlohmann::json::to_bson(archive, {_bf_send});
+
+    {
+      auto lc{std::lock_guard{_mtx_modify}};
+      _n_sending = _sockets_active.size();
+      for (auto sock : _sockets_active)
+        asio::async_write(
+                *sock, asio::const_buffer{_bf_send.data(), _bf_send.size()},
+                [this](auto&&, auto&&) { --_n_sending; });
+    }
   }
 
  protected:
@@ -141,6 +161,7 @@ class basic_dispatcher_impl {
           socket_id_t id, tcp::socket* sock, asio::error_code const& ec, size_t n_read) {
     if (ec || n_read != 8) {
       CPPH_WARN("failed to receive header from socket {}", id.value);
+      close(id);
       return ~size_t{};
     }
 
@@ -167,13 +188,35 @@ class basic_dispatcher_impl {
 
   void _handle_prelogin_body(
           socket_id_t id, tcp::socket* sock, asio::error_code const& ec, size_t n_read) {
-    if (ec || n_read != 8) {
+    if (ec) {
       CPPH_WARN("failed to receive header from socket {}", id.value);
+      close(id);
       return;
     }
 
-    // TODO: 항상 ok
-    CPPH_WARN("LOGIN LOGIC UNIMPLEMENTED YET, ALWAYS ACCEPT AUTHENTICATION ...");
+    bool login_success = false;
+    message_in_t message;
+    try {
+      auto buf = _view(n_read);
+      message  = nlohmann::json::parse(buf.begin(), buf.end());
+
+      if (std::get<0>(message.body) != "auth:login")
+        throw std::exception{};
+
+      auto& token   = std::get<1>(message.body).at("token").get_ref<std::string&>();
+      login_success = (_cfg.auth_token == token);
+    } catch (std::exception& e) {
+      CPPH_ERROR("failed to parse login message: {}", _view(n_read));
+    }
+
+    if (not login_success) {
+      CPPH_WARN("invalid login attempt from {}", sock->remote_endpoint().address().to_string());
+
+      asio::async_read(
+              *sock, _buf(8),
+              [this, id, sock](auto&& a, auto&& b) { _handle_prelogin_header(id, sock, a, b); });
+      return;
+    }
 
     auto lc{std::lock_guard{_mtx_modify}};
     _sockets_active.push_back(sock);
@@ -196,12 +239,28 @@ class basic_dispatcher_impl {
 
   void _handle_active_body(
           socket_id_t id, tcp::socket* sock, asio::error_code const& ec, size_t n_read) {
-    if (ec || n_read != 8) {
+    if (ec) {
       CPPH_WARN("failed to receive header from socket {}", id.value);
       return;
     }
 
-    // TODO: find message's route and call handler.
+    message_in_t message;
+
+    try {
+      auto buf = _buffer.subspan(0, n_read);
+      message  = nlohmann::json::from_bson(buf.begin(), buf.end());
+      decltype(_recv_routes)::mapped_type* fn;
+      {
+        std::lock_guard lc{_mtx_modify};
+        fn = &_recv_routes.at(std::get<0>(message.body));
+      }
+
+      (*fn)(std::get<1>(message.body));
+    } catch (std::out_of_range& e) {
+      CPPH_ERROR("INVALID ROUTE: {}", std::get<0>(message.body));
+    } catch (std::exception& e) {
+      CPPH_ERROR("failed to parse input log message");
+    }
 
     asio::async_read(
             *sock, _buf(8),
@@ -210,6 +269,11 @@ class basic_dispatcher_impl {
 
  private:  // helpers
   asio::mutable_buffer _buf(size_t num) {
+    assert_(num < _buffer.size());
+    return {_buffer.data(), num};
+  }
+
+  std::string_view _view(size_t num) {
     assert_(num < _buffer.size());
     return {_buffer.data(), num};
   }
@@ -252,6 +316,9 @@ class basic_dispatcher_impl {
 
   std::map<std::string, std::function<bool(recv_archive_type const& parameter)>>
           _recv_routes;
+
+  std::vector<uint8_t> _bf_send;
+  std::atomic_int _n_sending = 0;
 
   logger_ptr _logger = logging::find_or("PERFKIT:NET");
 };
