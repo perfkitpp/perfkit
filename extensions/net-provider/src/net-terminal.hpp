@@ -1,14 +1,18 @@
 #pragma once
 #include <perfkit/common/assert.hxx>
-#include <perfkit/terminal.h>
 #include <perfkit/extension/net.hpp>
+#include <perfkit/terminal.h>
+
+#include "dispatcher.hpp"
+#include "utils.hpp"
 
 namespace perfkit::terminal::net {
 class terminal : public if_terminal {
   using init_info = terminal_init_info;
 
  public:
-  explicit terminal(init_info const&) {
+  explicit terminal(init_info const& init) : _io(init) {
+    // register number of
   }
 
   commands::registry* commands() override {
@@ -25,6 +29,8 @@ class terminal : public if_terminal {
     return std::shared_ptr<spdlog::sinks::sink>();
   }
 
+ private:
+  dispatcher _io;
 };
 
 }  // namespace perfkit::terminal::net

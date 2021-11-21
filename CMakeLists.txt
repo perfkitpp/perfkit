@@ -21,6 +21,7 @@ set(
         src/terminal.cpp
         src/config-flags.cpp
         src/window.cpp
+        src/helpers.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})

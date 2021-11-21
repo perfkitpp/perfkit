@@ -7,7 +7,7 @@ add_library(
 
         src/net-provider.cpp
         src/net-context.cpp
-        src/util.cpp
+        src/utils.cpp
         src/server_mode_dispatcher.cpp
         src/dispatcher.cpp
         src/basic_dispatcher_impl.cpp

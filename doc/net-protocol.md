@@ -20,7 +20,14 @@
 
 BSON/JSON 통신 가능하며, 오브젝트 단위로 메시지 넘어간다
 
-실제 데이터 형식은 BSON/JSON으로 퍼블리시되며, 편의상
+실제 데이터 형식은 BSON/JSON으로 퍼블리시되며, 편의상 YAML로 표기
+
+### DATA TYPES PER ROUTE CHANNELS
+
+```yaml
+auth: json
+cmd, update, rpc: bson
+```
 
 ### HEADER
 
@@ -31,14 +38,18 @@ BSON/JSON 통신 가능하며, 오브젝트 단위로 메시지 넘어간다
     <- 4 byte header -><- 4 byte base64 buffer length ->  
     o ` P %            c x Z 3
 
+이 때, 항상 route 필드가 먼저 파싱될 수 있도록 array 필드에 순서를 정해 헤더에 넣는다.
+
 #### CLIENT -> SERVER
 
 ```json
 {
-  "route": "string; e.g. cmd:reset_cache",
-  "parameter": {
-    "key": "value"
-  }
+  "body": [
+    "string; e.g. route: cmd:reset_cache",
+    {
+      "key": "value; parameter"
+    }
+  ]
 }
 ```
 
@@ -46,17 +57,19 @@ BSON/JSON 통신 가능하며, 오브젝트 단위로 메시지 넘어간다
 
 ```json
 {
-  "route": "string; e.g. update:shell",
-  "cache_fence": "int64; ",
-  "payload": {
-    "key": "value"
-  }
+  "body": [
+    "string; route: e.g. update:shell",
+    "int64; fence_cache",
+    { 
+      "key": "value; payload" 
+    }
+  ]
 }
 ```
 
-### *cmd:login*
+### *auth:login*
 
-아이디/암호 페어로 로그인 요청.
+아이디/암호 페어로 로그인 요청. 항상 전체 메시지를 JSON 형식으로 날려야 한다.
 
 **REQ**
 
@@ -260,7 +273,7 @@ parameter:
     by explicitly calling 'buffer->ignore_client_camera_control'
     position: float[3]
     rotation: float[3]
-    hfov: float; 
+    hfov: float;
 
 
 ```
