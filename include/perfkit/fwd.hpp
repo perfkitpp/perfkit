@@ -1,4 +1,5 @@
 #pragma once
+#include <spdlog/fwd.h>
 
 namespace perfkit {
 namespace detail {
@@ -11,7 +12,7 @@ class tracer_proxy;
 
 namespace gui {
 class instance;
-}  // namespace window
+}  // namespace gui
 
 class if_terminal;
 
