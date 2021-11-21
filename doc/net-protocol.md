@@ -69,7 +69,7 @@ cmd, update, rpc: bson
 
 ### *auth:login*
 
-아이디/암호 페어로 로그인 요청. 항상 전체 메시지를 JSON 형식으로 날려야 한다.
+아이디/암호로 생성된 SHA256 해시로 로그인 요청. 항상 전체 메시지를 JSON 형식으로 날려야 한다.
 
 **REQ**
 
@@ -90,7 +90,7 @@ payload:
 
 ### *cmd:reset_cache*
 
-내부 캐시 상태를 리셋 요청한다. 일반적으로 login 성공 시 reset이 이루어지므로, client logic에 따라 다시 호출할 일이 없을 수도 있음.
+내부 캐시 상태를 리셋 요청한다. login과 동시에 1회 보내는 것이 기본.
 
 ```yaml
 parameter:
@@ -132,7 +132,7 @@ payload:
 
 ### *update:session_info*
 
-세션 정보. reset 이후 1회 송신. Reset의 signal을 겸한다.
+세션 정보. reset 이후 1회 송신. Reset의 signal을 겸한다. 역시 다른 클라이언트가 로그인하면 전체 재송신됨.
 
 ```yaml
 payload:
@@ -286,7 +286,7 @@ parameter:
 
 ```yaml
 payload:
-  window_key: string; key of the target window where resources will be stored.
+  window_key: string; key of the target window where the resources will be stored.
   textures?: list<texture_scheme>
   meshes?: list<mesh_scheme>
   materials?: list<material_scheme>

@@ -112,6 +112,7 @@ class basic_dispatcher_impl {
  protected:  // deriving classes may call this
   auto* io() { return &_io; }
 
+  // 구현부에서 호출. 새로운 client endpoint 생성 시 호출. 서버 accept 소켓 등은 해당 안 됨!
   void notify_new_connection(socket_id_t id, std::unique_ptr<tcp::socket> socket) {
     std::lock_guard lck{_mtx_modify};
 
