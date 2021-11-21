@@ -58,7 +58,7 @@ struct category_template_base {
                                  _perfkit_INTERNAL_CATNAME_2() + INTERNAL_PERFKIT_INDEXER #name, \
                                  __VA_ARGS__)
 
-#define PERFKIT_FORWARD_CATEGORY(hierarchy)                   \
+#define PERFKIT_DECLARE_SUBCATEGORY(hierarchy)                   \
   namespace hierarchy {                                       \
   ::std::string _perfkit_INTERNAL_CATNAME_2();                \
   [[deprecated]] ::perfkit::config_registry& root_registry(); \
@@ -66,7 +66,7 @@ struct category_template_base {
   }                                                           \
   namespace hierarchy
 
-#define PERFKIT_FORWARD_ROOT_CATEGORY(hierarchy) \
+#define PERFKIT_DECLARE_CATEGORY(hierarchy) \
   namespace hierarchy {                          \
   ::std::string _perfkit_INTERNAL_CATNAME();     \
   ::perfkit::config_registry& _registry();       \
