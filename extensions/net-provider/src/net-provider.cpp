@@ -1,8 +1,7 @@
-#include "perfkit/extension/net-provider.hpp"
-
 #include <perfkit/configs.h>
 
 #include "net-terminal.hpp"
+#include "perfkit/extension/net.hpp"
 
 perfkit::terminal_ptr perfkit::terminal::net::create(const struct terminal_init_info& info) {
   return std::make_shared<net::terminal>(info);

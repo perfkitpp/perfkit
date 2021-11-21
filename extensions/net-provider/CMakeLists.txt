@@ -25,6 +25,7 @@ target_link_libraries(
 
         PRIVATE
         perfkit::net::bundled-asio
+        perfkit::picosha2
 )
 
 target_include_directories(

@@ -1,6 +1,7 @@
 #pragma once
 #include <perfkit/common/assert.hxx>
 #include <perfkit/terminal.h>
+#include <perfkit/extension/net.hpp>
 
 namespace perfkit::terminal::net {
 class terminal : public if_terminal {
