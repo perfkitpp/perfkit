@@ -260,6 +260,7 @@ class basic_dispatcher_impl {
 
     bool login_success   = false;
     bool access_readonly = true;
+    std::string_view auth_id;
 
     if (_auth.empty()) {
       // there's no authentication info.
@@ -277,6 +278,7 @@ class basic_dispatcher_impl {
         auto& token = std::get<1>(message.body).at("token").get_ref<std::string&>();
         auto& auth  = _auth.at(token);
 
+        auth_id         = auth.id;
         login_success   = true;
         access_readonly = auth.readonly_access;
       } catch (std::exception& e) {
@@ -293,6 +295,9 @@ class basic_dispatcher_impl {
                 _handle_prelogin_header(id, sock, bf, a, b);
               });
       return;
+    } else {
+      auto ep = sock->remote_endpoint();
+      CPPH_INFO("${}@{}:{}. login successful", auth_id, ep.address().to_string(), ep.port());
     }
 
     auto lc{std::lock_guard{_mtx_modify}};
