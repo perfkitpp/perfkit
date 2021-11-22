@@ -10,6 +10,8 @@ class config_registry;
 class tracer;
 class tracer_proxy;
 
+struct config_class;
+
 namespace gui {
 class instance;
 }  // namespace gui
