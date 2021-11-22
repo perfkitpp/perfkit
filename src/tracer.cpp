@@ -210,10 +210,15 @@ void perfkit::tracer::_try_pop(const _trace::_entity_ty* body) {
 }
 
 tracer_proxy perfkit::tracer::timer(std::string_view name) {
+  auto px               = branch(name);
+  px._epoch_if_required = clock_type::now();
+  return px;
+}
+
+tracer_proxy perfkit::tracer::branch(std::string_view name) {
   tracer_proxy px;
   px._owner             = this;
   px._ref               = _fork_branch(_stack.back(), name, false);
-  px._epoch_if_required = clock_type::now();
   return px;
 };
 
