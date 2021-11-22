@@ -19,6 +19,7 @@
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
 #include <perfkit/common/timer.hxx>
 #include <perfkit/detail/helpers.hpp>
+#include <perfkit/extension/net.hpp>
 #include <spdlog/spdlog.h>
 
 namespace perfkit::terminal::net::detail {
@@ -31,8 +32,9 @@ using recv_archive_type = nlohmann::json;
 using send_archive_type = nlohmann::json;
 
 struct basic_dispatcher_impl_init_info {
-  size_t buffer_size = 4 << 20;  // units in bytes
-  std::string auth_token;
+  size_t buffer_size_hint   = 65535;
+  size_t message_size_limit = 1 << 20;
+  std::vector<auth_info> auth;
 };
 
 #pragma pack(push, 4)
@@ -55,7 +57,8 @@ struct message_out_t {
 
 class basic_dispatcher_impl {
  public:
-  using init_info = basic_dispatcher_impl_init_info;
+  using init_info  = basic_dispatcher_impl_init_info;
+  using buffer_ptr = std::shared_ptr<std::vector<char>>;
 
  public:
   virtual ~basic_dispatcher_impl() {
@@ -63,8 +66,13 @@ class basic_dispatcher_impl {
   };
 
   basic_dispatcher_impl(init_info s)
-          : _cfg(std::move(s)),
-            _buffer(_cfg.buffer_size) {}
+          : _cfg(std::move(s)) {
+    // TODO: configure auth
+    //         1. generate tokens from id, pw
+    //         2. clear pw of auth_info
+    //         3. emplace auth_info to auth, using token as key.
+    //         4. clear _cfg.auth vector
+  }
 
  public:
   void launch() {
@@ -168,11 +176,15 @@ class basic_dispatcher_impl {
 
     auto [it, is_new] = _sockets.try_emplace(id, std::move(socket));
     assert_(is_new);  // id must be unique!
+    auto [it_b, is_new_b] = _buffers.try_emplace(id, std::make_shared<std::vector<char>>());
+    it_b->second->reserve(_cfg.buffer_size_hint);
 
     auto* sock = &*it->second;
     asio::async_read(
-            *sock, _buf(8),
-            [this, id, sock](auto&& a, auto&& b) { _handle_prelogin_header(id, sock, a, b); });
+            *sock, asio::dynamic_buffer(*it_b->second).prepare(8),
+            [this, id, sock, buf = it_b->second](auto&& a, auto&& b) {
+              _handle_prelogin_header(id, sock, buf, a, b);
+            });
   }
 
   void close(socket_id_t id) {
@@ -183,12 +195,27 @@ class basic_dispatcher_impl {
     it->second->close();
     _sockets_active.erase(
             std::find(_sockets_active.begin(), _sockets_active.end(), &*it->second));
+    _buffers.erase(id);
     _sockets.erase(it);
+  }
+
+ private:  // handler helpers
+  auto _buf(buffer_ptr& t, size_t n) const {
+    return asio::dynamic_buffer(*t).prepare(n);
+  }
+
+  auto _view(buffer_ptr& t, size_t n) const {
+    return array_view{t->data(), n};
+  }
+
+  auto _strview(buffer_ptr& t, size_t n) const {
+    return std::string_view{t->data(), n};
   }
 
  private:  // handlers
   size_t _handle_header(
-          socket_id_t id, tcp::socket* sock, asio::error_code const& ec, size_t n_read) {
+          socket_id_t id, tcp::socket* sock, buffer_ptr& bf,
+          asio::error_code const& ec, size_t n_read) {
     if (ec || n_read != 8) {
       CPPH_WARN("failed to receive header from socket {}", id.value);
       close(id);
@@ -197,7 +224,7 @@ class basic_dispatcher_impl {
 
     _perf_in(n_read);
 
-    auto size = _retrieve_buffer_size(_buffer.as<message_header_t>());
+    auto size = _retrieve_buffer_size(_view(bf, n_read).as<message_header_t>());
     if (size == ~size_t{}) {
       CPPH_ERROR("socket {}: protocol error, closing connection ...");
       close(id);
@@ -208,18 +235,22 @@ class basic_dispatcher_impl {
   }
 
   void _handle_prelogin_header(
-          socket_id_t id, tcp::socket* sock, asio::error_code const& ec, size_t n_read) {
-    auto size = _handle_header(id, sock, ec, n_read);
+          socket_id_t id, tcp::socket* sock, buffer_ptr buf,
+          asio::error_code const& ec, size_t n_read) {
+    auto size = _handle_header(id, sock, buf, ec, n_read);
     if (~size_t{} == size)
       return;
 
     asio::async_read(
-            *sock, _buf(size),
-            [this, id, sock](auto&& a, auto&& b) { _handle_prelogin_body(id, sock, a, b); });
+            *sock, _buf(buf, size),
+            [this, id, sock, buf](auto&& a, auto&& b) {
+              _handle_prelogin_body(id, sock, buf, a, b);
+            });
   }
 
   void _handle_prelogin_body(
-          socket_id_t id, tcp::socket* sock, asio::error_code const& ec, size_t n_read) {
+          socket_id_t id, tcp::socket* sock, buffer_ptr bf,
+          asio::error_code const& ec, size_t n_read) {
     if (ec) {
       CPPH_WARN("failed to receive header from socket {}", id.value);
       close(id);
@@ -227,51 +258,91 @@ class basic_dispatcher_impl {
     }
     _perf_in(n_read);
 
-    bool login_success = false;
-    message_in_t message;
-    try {
-      auto buf = _view(n_read);
-      message  = nlohmann::json::parse(buf.begin(), buf.end());
+    bool login_success   = false;
+    bool access_readonly = true;
 
-      if (std::get<0>(message.body) != "auth:login")
-        throw std::exception{};
+    if (_auth.empty()) {
+      // there's no authentication info.
+      login_success = true;
 
-      auto& token   = std::get<1>(message.body).at("token").get_ref<std::string&>();
-      login_success = (_cfg.auth_token == token);
-    } catch (std::exception& e) {
-      CPPH_ERROR("failed to parse login message: {}", _view(n_read));
+    } else {
+      message_in_t message;
+      try {
+        auto buf = _view(bf, n_read);
+        message  = nlohmann::json::parse(buf.begin(), buf.end());
+
+        if (std::get<0>(message.body) != "auth:login")
+          throw std::exception{};
+
+        auto& token = std::get<1>(message.body).at("token").get_ref<std::string&>();
+        auto& auth  = _auth.at(token);
+
+        login_success   = true;
+        access_readonly = auth.readonly_access;
+      } catch (std::exception& e) {
+        CPPH_ERROR("failed to parse login message: {}", _strview(bf, n_read));
+      }
     }
 
     if (not login_success) {
       CPPH_WARN("invalid login attempt from {}", sock->remote_endpoint().address().to_string());
 
       asio::async_read(
-              *sock, _buf(8),
-              [this, id, sock](auto&& a, auto&& b) { _handle_prelogin_header(id, sock, a, b); });
+              *sock, _buf(bf, 8),
+              [this, id, bf, sock](auto&& a, auto&& b) {
+                _handle_prelogin_header(id, sock, bf, a, b);
+              });
       return;
     }
 
     auto lc{std::lock_guard{_mtx_modify}};
     _sockets_active.push_back(sock);
 
-    asio::async_read(
-            *sock, _buf(8),
-            [this, id, sock](auto&& a, auto&& b) { _handle_active_header(id, sock, a, b); });
+    if (access_readonly)
+      sock->async_read_some(
+              _buf(bf, _cfg.buffer_size_hint),
+              [this, id, sock, bf](auto&& a, auto&& b) {
+                _handle_discarded(id, sock, bf, a, b);
+              });
+    else
+      asio::async_read(
+              *sock, _buf(bf, 8),
+              [this, id, sock, bf](auto&& a, auto&& b) {
+                _handle_active_header(id, sock, bf, a, b);
+              });
+  }
+
+  void _handle_discarded(
+          socket_id_t id, tcp::socket* sock, buffer_ptr bf,
+          asio::error_code const& ec, size_t n_read) {
+    if (ec)
+      return;
+
+    _perf_in(n_read);
+    sock->async_read_some(
+            _buf(bf, _cfg.buffer_size_hint),
+            [this, id, sock, bf](auto&& a, auto&& b) {
+              _handle_discarded(id, sock, bf, a, b);
+            });
   }
 
   void _handle_active_header(
-          socket_id_t id, tcp::socket* sock, asio::error_code const& ec, size_t n_read) {
-    auto size = _handle_header(id, sock, ec, n_read);
+          socket_id_t id, tcp::socket* sock, buffer_ptr bf,
+          asio::error_code const& ec, size_t n_read) {
+    auto size = _handle_header(id, sock, bf, ec, n_read);
     if (~size_t{} == size)
       return;
 
     asio::async_read(
-            *sock, _buf(size),
-            [this, id, sock](auto&& a, auto&& b) { _handle_active_body(id, sock, a, b); });
+            *sock, _buf(bf, size),
+            [this, id, bf, sock](auto&& a, auto&& b) {
+              _handle_active_body(id, sock, bf, a, b);
+            });
   }
 
   void _handle_active_body(
-          socket_id_t id, tcp::socket* sock, asio::error_code const& ec, size_t n_read) {
+          socket_id_t id, tcp::socket* sock, buffer_ptr bf,
+          asio::error_code const& ec, size_t n_read) {
     if (ec) {
       CPPH_WARN("failed to receive header from socket {}", id.value);
       return;
@@ -281,7 +352,7 @@ class basic_dispatcher_impl {
     message_in_t message;
 
     try {
-      auto buf = _buffer.subspan(0, n_read);
+      auto buf = _view(bf, n_read);
       message  = nlohmann::json::from_bson(buf.begin(), buf.end());
       decltype(_recv_routes)::mapped_type* fn;
       {
@@ -297,19 +368,10 @@ class basic_dispatcher_impl {
     }
 
     asio::async_read(
-            *sock, _buf(8),
-            [this, id, sock](auto&& a, auto&& b) { _handle_active_header(id, sock, a, b); });
-  }
-
- private:  // helpers
-  asio::mutable_buffer _buf(size_t num) {
-    assert_(num < _buffer.size());
-    return {_buffer.data(), num};
-  }
-
-  std::string_view _view(size_t num) {
-    assert_(num < _buffer.size());
-    return {_buffer.data(), num};
+            *sock, _buf(bf, 8),
+            [this, id, sock, bf](auto&& a, auto&& b) {
+              _handle_active_header(id, sock, bf, a, b);
+            });
   }
 
   void _tick_perf() {
@@ -343,9 +405,9 @@ class basic_dispatcher_impl {
     if (not base64::decode(h.base64_buflen, (char*)&decoded))
       return CPPH_WARN("decoding base64: {}", std::string_view{h.base64_buflen, 4}), ~size_t{};
 
-    if (decoded >= _cfg.buffer_size)
-      return CPPH_WARN("buffer size exceeds max: {} [max {}]",
-                       decoded, _cfg.buffer_size),
+    if (decoded >= _cfg.message_size_limit)
+      return CPPH_WARN("buffer size exceeds max: {} [max {}B]",
+                       decoded, _cfg.message_size_limit),
              ~size_t{};
 
     return decoded;
@@ -356,11 +418,12 @@ class basic_dispatcher_impl {
 
  private:
   init_info _cfg;
+  std::map<std::string, auth_info> _auth;
+
   asio::io_context _io{1};
   std::unordered_map<socket_id_t, std::unique_ptr<tcp::socket>> _sockets;
+  std::unordered_map<socket_id_t, buffer_ptr> _buffers;
   std::vector<tcp::socket*> _sockets_active;
-
-  perfkit::dynamic_array<char> _buffer;
 
   std::atomic_bool _alive{false};
   std::thread _io_worker;
