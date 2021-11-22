@@ -16,10 +16,13 @@
 #include <perfkit/common/dynamic_array.hxx>
 #include <perfkit/common/hasher.hxx>
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
+#include <perfkit/common/timer.hxx>
 #include <perfkit/detail/helpers.hpp>
 #include <spdlog/spdlog.h>
 
 namespace perfkit::terminal::net::detail {
+using namespace std::literals;
+
 using asio::ip::tcp;
 using socket_id_t = perfkit::basic_key<class LABEL_socket_id_t>;
 
@@ -117,8 +120,16 @@ class basic_dispatcher_impl {
       for (auto sock : _sockets_active)
         asio::async_write(
                 *sock, asio::const_buffer{_bf_send.data(), _bf_send.size()},
-                [this](auto&&, auto&&) { --_n_sending; });
+                [this](auto&&, auto&& n) { --_n_sending, _perf_out(n); });
     }
+  }
+
+  size_t out_rate() const noexcept {
+    return _perf_out_rate;
+  }
+
+  size_t in_rate() const noexcept {
+    return _perf_in_rate;
   }
 
  protected:
@@ -165,6 +176,8 @@ class basic_dispatcher_impl {
       return ~size_t{};
     }
 
+    _perf_in(n_read);
+
     auto size = _retrieve_buffer_size(_buffer.as<message_header_t>());
     if (size == ~size_t{}) {
       CPPH_ERROR("socket {}: protocol error, closing connection ...");
@@ -193,6 +206,7 @@ class basic_dispatcher_impl {
       close(id);
       return;
     }
+    _perf_in(n_read);
 
     bool login_success = false;
     message_in_t message;
@@ -243,6 +257,7 @@ class basic_dispatcher_impl {
       CPPH_WARN("failed to receive header from socket {}", id.value);
       return;
     }
+    _perf_in(n_read);
 
     message_in_t message;
 
@@ -278,6 +293,25 @@ class basic_dispatcher_impl {
     return {_buffer.data(), num};
   }
 
+  void _tick_perf() {
+    if (_perf_timer()) {
+      _perf_in_rate  = _perf_bytes_in / _perf_timer.delta().count();
+      _perf_out_rate = _perf_bytes_out / _perf_timer.delta().count();
+
+      _perf_bytes_in = _perf_bytes_out = 0;
+    }
+  }
+
+  void _perf_in(size_t n) {
+    _tick_perf();
+    _perf_bytes_in += n;
+  }
+
+  void _perf_out(size_t n) {
+    _tick_perf();
+    _perf_bytes_out += n;
+  }
+
   size_t _retrieve_buffer_size(message_header_t h) {
     static constexpr message_header_t reference;
 
@@ -310,6 +344,12 @@ class basic_dispatcher_impl {
 
   std::atomic_bool _alive{false};
   std::thread _io_worker;
+
+  poll_timer _perf_timer{1s};
+  size_t _perf_bytes_out = 0;
+  size_t _perf_bytes_in  = 0;
+  size_t _perf_out_rate  = 0;
+  size_t _perf_in_rate   = 0;
 
   std::string _token;      // login token to compare with.
   std::mutex _mtx_modify;  // locks when modification (socket add/remove) occurs.
