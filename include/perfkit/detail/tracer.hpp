@@ -243,6 +243,12 @@ class tracer {
   tracer_proxy timer(std::string_view name);
 
   /**
+   * Create new branch from topmost trace stack
+   * @return
+   */
+  tracer_proxy branch(std::string_view name);
+
+  /**
    * Reserves for async data sort
    * @return empty optional when there's any already queued operation.
    */

@@ -1,14 +1,18 @@
 #pragma once
-#include "perfkit/detail/configs.hpp"
+#include <perfkit/detail/configs.hpp>
+#include <perfkit/fwd.hpp>
 
 namespace perfkit::_internal {
 std::string INDEXER_STR(int order);
 
-struct category_template_base {
-  virtual ~category_template_base()                                = default;
+}  // namespace perfkit::_internal
+
+namespace perfkit {
+struct config_class {
+  virtual ~config_class()                                     = default;
   virtual std::shared_ptr<perfkit::config_registry> _rg() noexcept = 0;
 };
-}  // namespace perfkit::_internal
+}  // namespace perfkit
 
 #define INTERNAL_PERFKIT_STRINGFY_2(A) #A
 #define INTERNAL_PERFKIT_STRINGFY(A)   INTERNAL_PERFKIT_STRINGFY_2(A)
@@ -58,7 +62,7 @@ struct category_template_base {
                                  _perfkit_INTERNAL_CATNAME_2() + INTERNAL_PERFKIT_INDEXER #name, \
                                  __VA_ARGS__)
 
-#define PERFKIT_DECLARE_SUBCATEGORY(hierarchy)                   \
+#define PERFKIT_DECLARE_SUBCATEGORY(hierarchy)                \
   namespace hierarchy {                                       \
   ::std::string _perfkit_INTERNAL_CATNAME_2();                \
   [[deprecated]] ::perfkit::config_registry& root_registry(); \
@@ -66,13 +70,13 @@ struct category_template_base {
   }                                                           \
   namespace hierarchy
 
-#define PERFKIT_DECLARE_CATEGORY(hierarchy) \
-  namespace hierarchy {                          \
-  ::std::string _perfkit_INTERNAL_CATNAME();     \
-  ::perfkit::config_registry& _registry();       \
-  ::perfkit::config_registry& registry();        \
-  bool update();                                 \
-  }                                              \
+#define PERFKIT_DECLARE_CATEGORY(hierarchy)  \
+  namespace hierarchy {                      \
+  ::std::string _perfkit_INTERNAL_CATNAME(); \
+  ::perfkit::config_registry& _registry();   \
+  ::perfkit::config_registry& registry();    \
+  bool update();                             \
+  }                                          \
   namespace hierarchy
 
 #define INTERNAL_PERFKIT_T_CATEGORY_body(name)                        \
@@ -108,10 +112,10 @@ struct category_template_base {
                                                                     \
  public:
 
-#define PERFKIT_T_CATEGORY(varname, ...)                          \
-  struct varname : ::perfkit::_internal::category_template_base { \
-    INTERNAL_PERFKIT_T_CATEGORY_body(varname);                    \
-    __VA_ARGS__;                                                  \
+#define PERFKIT_T_CATEGORY(varname, ...)          \
+  struct varname : ::perfkit::config_class { \
+    INTERNAL_PERFKIT_T_CATEGORY_body(varname);    \
+    __VA_ARGS__;                                  \
   }
 
 #define PERFKIT_T_SUBCATEGORY(varname, ...)                                  \
@@ -130,7 +134,7 @@ struct category_template_base {
                   __VA_ARGS__)
 
 #define PERFKIT_T_EXPAND_CATEGORY(varname, ...)                                     \
-  struct varname : ::perfkit::_internal::category_template_base {                   \
+  struct varname : ::perfkit::config_class {                                   \
    private:                                                                         \
     using _internal_super = varname;                                                \
     std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG;               \
@@ -141,7 +145,7 @@ struct category_template_base {
     }                                                                               \
                                                                                     \
    public:                                                                          \
-    explicit varname(::perfkit::_internal::category_template_base* other)           \
+    explicit varname(::perfkit::config_class* other)                           \
             : _perfkit_INTERNAL_RG(other->_rg()) {}                                 \
     ::perfkit::config_registry* operator->() { return _perfkit_INTERNAL_RG.get(); } \
     bool update() { return _perfkit_INTERNAL_RG->update(); }                        \
