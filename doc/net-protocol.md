@@ -268,7 +268,7 @@ parameter:
   window_key: string; target window to manipulate
   operation?: string one-of [open|close|yes|no]; 'yes' and 'no' are for modality, that are treated as simple 'close'
     on non-modal windows
-  wnd_size: int16[2]; current window size of client machine, which is used for optimize image/draw call transfer.
+  resize?: int16[2]; fill this field if canvas resize is required.
   camera_3d?: camera_scheme; request new camera status if needed. this can be ignored/overwritten from server side.
     by explicitly calling 'buffer->ignore_client_camera_control'
     position: float[3]
@@ -306,13 +306,15 @@ vertex_scheme[]: # array
   # maybe uv1?
 
 texture_scheme:
-  resource_key: hash64; resource key of this
+  resource_key: hash64; resource key of this. resource key 0 has special meaning - screen buffer.
   offset?: int16[2]; offset of bytes target. if this field is specified, this texture data
     will refresh portion of existing image. otherwise, any different-sized
     or different-typed texture should overwrite existing resources
   size: int16[2]; texture resolution
-  type: string; texture encoding type - RAW, BMP, JPEG, PNG, MPEG, H264 ...
-  bytes: binary; encoded image stream
+  channels: int8; number of channels (texel dimension)
+  type: string one-of [INT8|INT32|FLOAT32]; type per channel 
+  encoding?: string; texture encoding type - RAW, BMP, JPEG, PNG, MPEG, H264 ...
+  bytes?: binary; encoded image stream. if empty, an empty texture will be generated in client side.
 
 material_scheme:
   diffuse?: hash64; resource key to texture (RGBA)
@@ -350,7 +352,11 @@ draw_call_scheme[]:
   0: hash64; target texture resource. 0 if draw call targets screen buffer.
   1: byte; draw call type
   2: from [1]; draw call content
-    (1=>x10): 2D_BITBLT copy image to target 2d space
+    (0=>x02): CANVAS_RESIZE; event dispatched on canvas resize
+      0. int16[2]; previous size
+      1. int16[2]; new size
+     
+    (1=>x10): 2D_BITBLT; copy image to target 2d space
       0: hash64; resource key to texture
       1?: int16[2][2]; src image rectangle. if not specified, the whole image will be used.
       2: int16[2]; dst image pivot
