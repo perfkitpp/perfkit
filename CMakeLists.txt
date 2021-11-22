@@ -64,7 +64,7 @@ if (perfkit_BUILD_NET_CLIENT)
     add_subdirectory(third/asio-1.20.0)
 
     message("[${PROJECT_NAME}]: Configuring NET CLIENT extension ...")
-    add_subdirectory(extensions/net-provider/)
+    add_subdirectory(extensions/net)
 endif ()
 
 if (perfkit_BUILD_CLI)

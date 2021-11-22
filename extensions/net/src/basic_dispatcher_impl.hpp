@@ -13,6 +13,7 @@
 #include <asio/write.hpp>
 #include <nlohmann/json.hpp>
 #include <perfkit/common/algorithm/base64.hxx>
+#include <perfkit/common/assert.hxx>
 #include <perfkit/common/dynamic_array.hxx>
 #include <perfkit/common/hasher.hxx>
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
@@ -57,7 +58,9 @@ class basic_dispatcher_impl {
   using init_info = basic_dispatcher_impl_init_info;
 
  public:
-  virtual ~basic_dispatcher_impl() = default;
+  virtual ~basic_dispatcher_impl() {
+    shutdown();
+  };
 
   basic_dispatcher_impl(init_info s)
           : _cfg(std::move(s)),
@@ -68,9 +71,16 @@ class basic_dispatcher_impl {
     _alive     = true;
     _io_worker = std::thread{[&] {
       while (_alive) {
-        refresh();
+        try {
+          _io.restart();
+          refresh();
 
-        _io.run(), CPPH_INFO("IO CONTEXT STOPPED");
+          _io.run(), CPPH_INFO("IO CONTEXT STOPPED");
+        } catch (asio::system_error& e) {
+          CPPH_ERROR("uncaught asio exception: {} (what(): {})", e.code().message(), e.what());
+          CPPH_INFO("retrying refresh after 3 seconds ...");
+          std::this_thread::sleep_for(3s);
+        }
       }
 
       cleanup();
@@ -82,8 +92,17 @@ class basic_dispatcher_impl {
       return;
 
     _alive = true;
-    if (_io_worker.joinable())
+    if (_io_worker.joinable()) {
+      CPPH_INFO("shutting down async worker thread ...");
+
+      _io.stop();
       _io_worker.join();
+
+      _sockets.clear();
+      _sockets_active.clear();
+
+      CPPH_INFO("done. all connections disposed.");
+    }
   }
 
   void register_recv(
@@ -332,6 +351,7 @@ class basic_dispatcher_impl {
     return decoded;
   }
 
+ protected:
   spdlog::logger* CPPH_LOGGER() const { return _logger.get(); }
 
  private:
