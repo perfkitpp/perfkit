@@ -1,4 +1,4 @@
-project(perfkit-net-provider)
+project(perfkit-net)
 
 # ================================ TARGET: NET CLIENT
 add_library(
