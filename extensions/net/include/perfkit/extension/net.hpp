@@ -21,6 +21,14 @@ enum class operation_mode {
   relay_server_provider,
 };
 
+struct auth_info {
+  std::string id;
+  std::string password;
+
+  // If readonly access is enabled, every command without 'auth:login' will be discarded.
+  bool readonly_access = true;
+};
+
 struct terminal_init_info {
   /** Session name to introduce self */
   std::string const name;
@@ -28,26 +36,9 @@ struct terminal_init_info {
   /** Describes this session */
   std::string description;
 
-  /** Host name to connect with. */
-  std::string host_name = "localhost";
-
-  /** Host port to connect with. */
-  uint16_t host_port = 25572;
-
-  /**
-   * Specify if remote connection should be read-only.
-   * For security reason, default value is set to true.
-   * if read_only_access is enabled, all mutation operations will silently be discarded,
-   *  including shell commands. */
-  bool read_only_access = true;
-
   /**
    * Authentication information. If empty, every login attempt will be permitted. */
-  std::string id, password;
-
-  /**
-   * Specify how many milliseconds to wait for host response */
-  std::chrono::milliseconds connection_timeout_ms{5'000};
+  std::vector<auth_info> auths;
 
   /**
    * Create terminal instance as an independent server.

@@ -5,7 +5,7 @@ add_library(
         ${PROJECT_NAME}
         STATIC
 
-        src/net-provider.cpp
+        src/net.cpp
         src/net-context.cpp
         src/utils.cpp
         src/server_mode_dispatcher.cpp
