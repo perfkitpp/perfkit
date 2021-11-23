@@ -120,6 +120,7 @@ struct duplicated_flag_binding : std::logic_error { using std::logic_error::logi
 struct invalid_flag_name : std::logic_error { using std::logic_error::logic_error; };
 struct parse_error : std::runtime_error { using std::runtime_error::runtime_error; };
 struct parse_help : parse_error { using parse_error::parse_error; };
+struct schema_mismatch : parse_error { using parse_error::parse_error; };
 // clang-format on
 
 using flag_binding_table = std::map<std::string, config_shared_ptr, std::less<>>;
@@ -165,14 +166,14 @@ class config_registry : public std::enable_shared_from_this<config_registry> {
   bool bk_queue_update_value(std::string_view full_key, json value);
   std::string_view bk_find_key(std::string_view display_key);
   auto const& bk_all() const noexcept { return _entities; }
-  uint64_t bk_schema_hash() const noexcept { return _schema_hash; }
+  uint64_t bk_schema_hash() const noexcept { return (uintptr_t)_schema; }
 
  public:
   static auto bk_enumerate_registries() noexcept -> std::vector<std::shared_ptr<config_registry>>;
   static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
 
-  // TODO: deprecate this!
-  static shared_ptr<config_registry> create(std::string name);
+  static shared_ptr<config_registry> create(std::string name, std::type_info* schema = nullptr);
+  static shared_ptr<config_registry> share(std::string_view name, std::type_info* schema);
 
  public:  // for internal use only.
   auto _access_lock() { return std::unique_lock{_update_lock}; }
@@ -190,7 +191,7 @@ class config_registry : public std::enable_shared_from_this<config_registry> {
 
   // this value is used for identifying config registry's schema type, as config registry's
   //  layout never changes after updated once.
-  uint64_t _schema_hash;
+  std::type_info* _schema;
 
   // since configurations can be loaded before registry instance loaded, this flag makes
   //  the first update of registry to apply loaded configurations.
@@ -454,7 +455,7 @@ class config {
     if (not env.empty())
       if (auto env_value = getenv(env.c_str())) {
         nlohmann::json parsed_json;
-        if constexpr (std::is_same_v<Ty_, std::string>) // if it's string, apply as-is.
+        if constexpr (std::is_same_v<Ty_, std::string>)  // if it's string, apply as-is.
           parsed_json = env_value;
         else
           parsed_json = nlohmann::json::parse(

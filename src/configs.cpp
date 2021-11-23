@@ -24,10 +24,13 @@ auto _all_repos() {
 }
 }  // namespace perfkit::detail
 
-auto perfkit::config_registry::create(std::string name) -> shared_ptr<config_registry> {
+auto perfkit::config_registry::create(std::string name, std::type_info* schema)
+        -> shared_ptr<config_registry> {
   auto [all, _] = detail::_all_repos();
 
-  auto rg_ptr = new config_registry{std::move(name)};
+  auto rg_ptr     = new config_registry{std::move(name)};
+  rg_ptr->_schema = schema;
+
   shared_ptr<config_registry> rg{rg_ptr};
   auto [it, is_new] = all->try_emplace(rg->name(), rg);
 
@@ -35,6 +38,23 @@ auto perfkit::config_registry::create(std::string name) -> shared_ptr<config_reg
 
   glog()->debug("Creating new config registry {}", name);
   return rg;
+}
+
+auto perfkit::config_registry::share(std::string_view name, std::type_info* schema)
+        -> std::shared_ptr<perfkit::config_registry> {
+  if (auto [all, _] = detail::_all_repos(); 1) {
+    auto it = all->find(name);
+
+    if (it != all->end()) {
+      auto repo = it->second.lock();
+      if (repo->bk_schema_hash() != (uintptr_t)schema)
+        throw configs::schema_mismatch{"schema must match!"};
+
+      return repo;
+    }
+  }
+
+  return create(std::string{name}, schema);
 }
 
 perfkit::config_registry::~config_registry() noexcept {
@@ -345,8 +365,7 @@ bool perfkit::config_registry::bk_queue_update_value(std::string_view full_key, 
 }
 
 perfkit::config_registry::config_registry(std::string name)
-        : _name(std::move(name)),
-          _schema_hash{hasher::FNV_OFFSET_BASE} {}
+        : _name(std::move(name)) {}
 
 perfkit::detail::config_base::config_base(
         config_registry* owner,
