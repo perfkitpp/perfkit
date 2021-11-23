@@ -518,11 +518,18 @@ class watcher {
     return _check_update_and_consume(&conf.base());
   }
 
+  template <typename ConfTy_>
+  bool check_dirty_safe(ConfTy_ const& conf) const {
+    auto _{std::lock_guard{_lock}};
+    return _check_update_and_consume(&conf.base());
+  }
+
  private:
   bool _check_update_and_consume(detail::config_base* ptr) const;
 
  public:
   mutable std::unordered_map<detail::config_base*, uint64_t> _table;
+  mutable perfkit::spinlock _lock;
 };
 }  // namespace configs
 
