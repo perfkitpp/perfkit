@@ -11,6 +11,7 @@ class tracer;
 class tracer_proxy;
 
 struct config_class;
+struct config_class_hook;
 
 namespace gui {
 class instance;

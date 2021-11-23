@@ -12,7 +12,11 @@ struct config_class {
   virtual ~config_class()                                          = default;
   virtual std::shared_ptr<perfkit::config_registry> _rg() noexcept = 0;
 };
-}  // namespace perfkit
+
+struct config_class_hook : std::function<void(config_class*)> {
+  using std::function<void(config_class*)>::function;
+};
+};  // namespace perfkit
 
 #define INTERNAL_PERFKIT_STRINGFY_2(A) #A
 #define INTERNAL_PERFKIT_STRINGFY(A)   INTERNAL_PERFKIT_STRINGFY_2(A)
