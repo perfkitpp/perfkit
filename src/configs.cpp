@@ -24,6 +24,8 @@ auto _all_repos() {
 }
 }  // namespace perfkit::detail
 
+// namespace perfkit::detail
+
 auto perfkit::config_registry::create(std::string name, std::type_info const* schema)
         -> shared_ptr<config_registry> {
   auto [all, _] = detail::_all_repos();
@@ -474,4 +476,13 @@ void perfkit::detail::config_base::_split_categories(std::string_view view, std:
   }
 
   out.push_back(view);  // last segment.
+}
+
+bool perfkit::configs::watcher::_check_update_and_consume(
+        perfkit::detail::config_base* ptr) const {
+  auto* fence = &_table[ptr];
+  if (*fence != ptr->num_modified())
+    return *fence = ptr->num_modified(), true;
+  else
+    return false;
 }

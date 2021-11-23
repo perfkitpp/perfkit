@@ -509,6 +509,22 @@ class config {
   Ty_ _value;
 };
 
+namespace configs {
+class watcher {
+ public:
+  template <typename ConfTy_>
+  bool check_dirty(ConfTy_ const& conf) const {
+    return _check_update_and_consume(&conf.base());
+  }
+
+ private:
+  bool _check_update_and_consume(detail::config_base* ptr) const;
+
+ public:
+  mutable std::unordered_map<detail::config_base*, uint64_t> _table;
+};
+}  // namespace configs
+
 template <typename Ty_>
 using _cvt_ty = std::conditional_t<
         std::is_convertible_v<Ty_, std::string>,
