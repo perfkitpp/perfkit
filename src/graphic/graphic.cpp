@@ -2,12 +2,12 @@
 #include <perfkit/graphic/window.hpp>
 
 void foo() {
-  perfkit::delegate<int> dd;
+  perfkit::event<int> dd;
   dd.add([](int s) {});
   auto key = dd.add([]() {});
 
   dd.invoke(3);
-  dd.priority(key, perfkit::delegate_priority::high);
+  dd.priority(key, perfkit::event_priority::high);
   dd.remove(std::move(key));
 
   dd += [](int s) {};

@@ -3,7 +3,7 @@
 #include <string_view>
 #include <type_traits>
 
-#include <perfkit/common/delegate.hxx>
+#include <perfkit/common/event.hxx>
 #include <perfkit/common/hasher.hxx>
 #include <perfkit/fwd.hpp>
 
@@ -34,13 +34,13 @@ struct arg_input {
 
 class events {
  public:
-  delegate_st<arg_mouse> clicked;
-  delegate_st<arg_mouse> mouse_down;
-  delegate_st<arg_mouse> mouse_move;
-  delegate_st<arg_mouse> mouse_up;
-  delegate_st<arg_keyboard> keypress;
-  delegate_st<arg_keyboard> keyup;
-  delegate_st<arg_input> input;
+  event_st<arg_mouse> clicked;
+  event_st<arg_mouse> mouse_down;
+  event_st<arg_mouse> mouse_move;
+  event_st<arg_mouse> mouse_up;
+  event_st<arg_keyboard> keypress;
+  event_st<arg_keyboard> keyup;
+  event_st<arg_input> input;
 };
 }  // namespace events
 
