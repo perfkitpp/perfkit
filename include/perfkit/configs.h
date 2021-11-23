@@ -5,6 +5,23 @@
 
 namespace perfkit::_configs_internal {
 std::string INDEXER_STR(int order);
+
+//// no use anymore ... leaving just for reference
+//template <typename TypeName_>
+//static auto configure(
+//        ::perfkit::config_registry* rg,
+//        std::string name,
+//        TypeName_&& default_value)
+//        -> decltype(::perfkit::configure(
+//                std::declval<::perfkit::config_registry&>(),
+//                std::declval<std::string>(),
+//                std::declval<TypeName_>())) {
+//  return ::perfkit::configure(
+//          *rg,
+//          std::move(name),
+//          std::forward<TypeName_>(default_value));
+//};
+
 };  // namespace perfkit::_configs_internal
 
 namespace perfkit {
@@ -100,21 +117,6 @@ struct config_class_hook : std::function<void(config_class*)> {
     return _perfkit_INTERNAL_RG;                                      \
   }                                                                   \
                                                                       \
-  template <typename TypeName_>                                       \
-  static auto _configure(                                             \
-          ::perfkit::config_registry* rg,                             \
-          std::string_view name,                                      \
-          TypeName_&& default_value)                                  \
-          ->decltype(::perfkit::configure(                            \
-                  std::declval<::perfkit::config_registry&>(),        \
-                  std::declval<std::string>(),                        \
-                  std::declval<TypeName_>())) {                       \
-    return ::perfkit::configure(                                      \
-            *rg,                                                      \
-            std::move(_category_name().append(name)),                 \
-            std::forward<TypeName_>(default_value));                  \
-  };                                                                  \
-                                                                      \
  public:                                                              \
   ::perfkit::config_registry* operator->() { return _perfkit_INTERNAL_RG.get(); }
 
@@ -165,12 +167,10 @@ struct config_class_hook : std::function<void(config_class*)> {
 #define PERFKIT_T_CONFIGURE(ConfigName, ...)         \
   ::perfkit::config<                                 \
           ::perfkit::_cvt_ty<decltype(__VA_ARGS__)>> \
-          ConfigName = _configure(                   \
-                  &*_perfkit_INTERNAL_RG, #ConfigName, __VA_ARGS__)
-    //::perfkit::configure(               \
-                  //*_perfkit_INTERNAL_RG,             \
-                  //_category_name() + #name,          \
-                  //__VA_ARGS__)
+          ConfigName = ::perfkit::configure(         \
+                  *_perfkit_INTERNAL_RG,             \
+                  _category_name() + #ConfigName,    \
+                  __VA_ARGS__)
 
 #define PERFKIT_T_EXPAND_CATEGORY(varname, ...)      \
   struct varname : ::perfkit::config_class {         \
