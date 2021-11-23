@@ -15,6 +15,8 @@
 #include <nlohmann/json.hpp>
 
 #include "perfkit/common/array_view.hxx"
+#include "perfkit/common/hasher.hxx"
+#include "perfkit/common/macros.hxx"
 
 namespace perfkit {
 using json = nlohmann::json;
@@ -115,6 +117,8 @@ class config_base {
  *
  */
 namespace configs {
+CPPH_UNIQUE_KEY_TYPE(schema_hash_t);
+
 // clang-format off
 struct duplicated_flag_binding : std::logic_error { using std::logic_error::logic_error; };
 struct invalid_flag_name : std::logic_error { using std::logic_error::logic_error; };
@@ -166,14 +170,15 @@ class config_registry : public std::enable_shared_from_this<config_registry> {
   bool bk_queue_update_value(std::string_view full_key, json value);
   std::string_view bk_find_key(std::string_view display_key);
   auto const& bk_all() const noexcept { return _entities; }
-  uint64_t bk_schema_hash() const noexcept { return (uintptr_t)_schema; }
+  auto bk_schema_class() const noexcept { return _schema_class; }
+  auto bk_schema_hash() const noexcept { return _schema_hash; }
 
  public:
   static auto bk_enumerate_registries() noexcept -> std::vector<std::shared_ptr<config_registry>>;
   static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
 
-  static shared_ptr<config_registry> create(std::string name, std::type_info* schema = nullptr);
-  static shared_ptr<config_registry> share(std::string_view name, std::type_info* schema);
+  static shared_ptr<config_registry> create(std::string name, std::type_info const* schema = nullptr);
+  static shared_ptr<config_registry> share(std::string_view name, std::type_info const* schema);
 
  public:  // for internal use only.
   auto _access_lock() { return std::unique_lock{_update_lock}; }
@@ -191,7 +196,8 @@ class config_registry : public std::enable_shared_from_this<config_registry> {
 
   // this value is used for identifying config registry's schema type, as config registry's
   //  layout never changes after updated once.
-  std::type_info* _schema;
+  std::type_info const* _schema_class;
+  configs::schema_hash_t _schema_hash{hasher::FNV_OFFSET_BASE};
 
   // since configurations can be loaded before registry instance loaded, this flag makes
   //  the first update of registry to apply loaded configurations.
