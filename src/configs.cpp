@@ -24,10 +24,15 @@ auto _all_repos() {
 }
 }  // namespace perfkit::detail
 
-auto perfkit::config_registry::create(std::string name) -> shared_ptr<config_registry> {
+// namespace perfkit::detail
+
+auto perfkit::config_registry::create(std::string name, std::type_info const* schema)
+        -> shared_ptr<config_registry> {
   auto [all, _] = detail::_all_repos();
 
-  auto rg_ptr = new config_registry{std::move(name)};
+  auto rg_ptr           = new config_registry{std::move(name)};
+  rg_ptr->_schema_class = schema;
+
   shared_ptr<config_registry> rg{rg_ptr};
   auto [it, is_new] = all->try_emplace(rg->name(), rg);
 
@@ -35,6 +40,23 @@ auto perfkit::config_registry::create(std::string name) -> shared_ptr<config_reg
 
   glog()->debug("Creating new config registry {}", name);
   return rg;
+}
+
+auto perfkit::config_registry::share(std::string_view name, std::type_info const* schema)
+        -> std::shared_ptr<perfkit::config_registry> {
+  if (auto [all, _] = detail::_all_repos(); 1) {
+    auto it = all->find(name);
+
+    if (it != all->end()) {
+      auto repo = it->second.lock();
+      if (repo->bk_schema_class() != schema)
+        throw configs::schema_mismatch{"schema must match!"};
+
+      return repo;
+    }
+  }
+
+  return create(std::string{name}, schema);
 }
 
 perfkit::config_registry::~config_registry() noexcept {
@@ -282,7 +304,7 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o) {
   _entities.try_emplace(o->full_key(), o);
 
   // update schema hash
-  _schema_hash = hasher::fnv1a_64(o->full_key().begin(), o->full_key().end(), _schema_hash);
+  _schema_hash = {hasher::fnv1a_64(o->full_key(), _schema_hash.value)};
 
   // TODO: throw error if flag belongs to disposable registry
   if (auto attr = &o->attribute(); attr->contains("is_flag")) {
@@ -345,8 +367,7 @@ bool perfkit::config_registry::bk_queue_update_value(std::string_view full_key, 
 }
 
 perfkit::config_registry::config_registry(std::string name)
-        : _name(std::move(name)),
-          _schema_hash{hasher::FNV_OFFSET_BASE} {}
+        : _name(std::move(name)) {}
 
 perfkit::detail::config_base::config_base(
         config_registry* owner,
@@ -455,4 +476,13 @@ void perfkit::detail::config_base::_split_categories(std::string_view view, std:
   }
 
   out.push_back(view);  // last segment.
+}
+
+bool perfkit::configs::watcher::_check_update_and_consume(
+        perfkit::detail::config_base* ptr) const {
+  auto* fence = &_table[ptr];
+  if (*fence != ptr->num_modified())
+    return *fence = ptr->num_modified(), true;
+  else
+    return false;
 }

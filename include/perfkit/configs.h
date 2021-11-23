@@ -1,22 +1,46 @@
 #pragma once
-#include <perfkit/detail/configs.hpp>
-#include <perfkit/fwd.hpp>
+#include "perfkit/common/template_utils.hxx"
+#include "perfkit/detail/configs.hpp"
+#include "perfkit/fwd.hpp"
 
-namespace perfkit::_internal {
+namespace perfkit::_configs_internal {
 std::string INDEXER_STR(int order);
 
-}  // namespace perfkit::_internal
+//// no use anymore ... leaving just for reference
+//template <typename TypeName_>
+//static auto configure(
+//        ::perfkit::config_registry* rg,
+//        std::string name,
+//        TypeName_&& default_value)
+//        -> decltype(::perfkit::configure(
+//                std::declval<::perfkit::config_registry&>(),
+//                std::declval<std::string>(),
+//                std::declval<TypeName_>())) {
+//  return ::perfkit::configure(
+//          *rg,
+//          std::move(name),
+//          std::forward<TypeName_>(default_value));
+//};
+
+};  // namespace perfkit::_configs_internal
 
 namespace perfkit {
 struct config_class {
-  virtual ~config_class()                                     = default;
+  virtual ~config_class()                                          = default;
   virtual std::shared_ptr<perfkit::config_registry> _rg() noexcept = 0;
 };
-}  // namespace perfkit
+
+struct config_class_hook : std::function<void(config_class*)> {
+  using std::function<void(config_class*)>::function;
+};
+};  // namespace perfkit
 
 #define INTERNAL_PERFKIT_STRINGFY_2(A) #A
 #define INTERNAL_PERFKIT_STRINGFY(A)   INTERNAL_PERFKIT_STRINGFY_2(A)
-#define INTERNAL_PERFKIT_INDEXER       "+" + ::perfkit::_internal::INDEXER_STR(__COUNTER__) + "|"  // max 99999
+#define INTERNAL_PERFKIT_INDEXER       "+" + ::perfkit::_configs_internal::INDEXER_STR(__COUNTER__) + "|"  // max 99999
+
+#define INTERNAL_PERFKIT_CONFIG_COUNTER_NEXT(FieldName) \
+  enum { _indexof_##FieldName = __LINE__ };
 
 #define PERFKIT_FILEMARKER __FILE__ ":" INTERNAL_PERFKIT_STRINGFY(__LINE__) " " INTERNAL_PERFKIT_STRINGFY(__func__) "(): "
 
@@ -79,9 +103,13 @@ struct config_class {
   }                                          \
   namespace hierarchy
 
-#define INTERNAL_PERFKIT_T_CATEGORY_body(name)                        \
+#define INTERNAL_PERFKIT_T_CATEGORY_head(ClassName)
+
+#define INTERNAL_PERFKIT_T_CATEGORY_tail(name)
+
+#define INTERNAL_PERFKIT_T_CATEGORY_body(ClassName)                   \
  private:                                                             \
-  using _internal_super = name;                                       \
+  using _internal_super = ClassName;                                  \
   std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG;   \
   static std::string _category_name() { return ""; }                  \
                                                                       \
@@ -90,8 +118,6 @@ struct config_class {
   }                                                                   \
                                                                       \
  public:                                                              \
-  explicit name(std::string s) : _perfkit_INTERNAL_RG(                \
-          ::perfkit::config_registry::create(std::move(s))) {}        \
   ::perfkit::config_registry* operator->() { return _perfkit_INTERNAL_RG.get(); }
 
 #define INTERNAL_PERFKIT_T_SUBCATEGORY_body(varname)                \
@@ -112,10 +138,23 @@ struct config_class {
                                                                     \
  public:
 
-#define PERFKIT_T_CATEGORY(varname, ...)          \
-  struct varname : ::perfkit::config_class { \
-    INTERNAL_PERFKIT_T_CATEGORY_body(varname);    \
-    __VA_ARGS__;                                  \
+#define PERFKIT_T_CATEGORY(varname, ...)                                         \
+  struct varname : ::perfkit::config_class {                                     \
+    INTERNAL_PERFKIT_T_CATEGORY_body(varname);                                   \
+                                                                                 \
+    explicit varname(std::string s) : _perfkit_INTERNAL_RG(                      \
+            ::perfkit::config_registry::create(std::move(s), &typeid(*this))) {} \
+                                                                                 \
+    __VA_ARGS__;                                                                 \
+  }
+
+#define PERFKIT_T_SHARED_CATEGORY(varname, ...)                                 \
+  struct varname : ::perfkit::config_class {                                    \
+    INTERNAL_PERFKIT_T_CATEGORY_body(varname);                                  \
+    explicit varname(std::string s) : _perfkit_INTERNAL_RG(                     \
+            ::perfkit::config_registry::share(std::move(s), &typeid(*this))) {} \
+                                                                                \
+    __VA_ARGS__;                                                                \
   }
 
 #define PERFKIT_T_SUBCATEGORY(varname, ...)                                  \
@@ -125,31 +164,19 @@ struct config_class {
     __VA_ARGS__;                                                             \
   } varname{this};
 
-#define PERFKIT_T_CONFIGURE(name, ...)               \
+#define PERFKIT_T_CONFIGURE(ConfigName, ...)         \
   ::perfkit::config<                                 \
           ::perfkit::_cvt_ty<decltype(__VA_ARGS__)>> \
-          name = ::perfkit::configure(               \
+          ConfigName = ::perfkit::configure(         \
                   *_perfkit_INTERNAL_RG,             \
-                  _category_name() + #name,          \
+                  _category_name() + #ConfigName,    \
                   __VA_ARGS__)
 
-#define PERFKIT_T_EXPAND_CATEGORY(varname, ...)                                     \
-  struct varname : ::perfkit::config_class {                                   \
-   private:                                                                         \
-    using _internal_super = varname;                                                \
-    std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG;               \
-    static std::string _category_name() { return #varname; }                        \
-                                                                                    \
-    std::shared_ptr<perfkit::config_registry> _rg() noexcept override {             \
-      return _perfkit_INTERNAL_RG;                                                  \
-    }                                                                               \
-                                                                                    \
-   public:                                                                          \
-    explicit varname(::perfkit::config_class* other)                           \
-            : _perfkit_INTERNAL_RG(other->_rg()) {}                                 \
-    ::perfkit::config_registry* operator->() { return _perfkit_INTERNAL_RG.get(); } \
-    bool update() { return _perfkit_INTERNAL_RG->update(); }                        \
-                                                                                    \
-   public:                                                                          \
-    __VA_ARGS__;                                                                    \
+#define PERFKIT_T_EXPAND_CATEGORY(varname, ...)      \
+  struct varname : ::perfkit::config_class {         \
+    INTERNAL_PERFKIT_T_CATEGORY_body(varname);       \
+    explicit varname(::perfkit::config_class* other) \
+            : _perfkit_INTERNAL_RG(other->_rg()) {}  \
+                                                     \
+    __VA_ARGS__;                                     \
   };

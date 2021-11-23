@@ -15,6 +15,9 @@
 #include <nlohmann/json.hpp>
 
 #include "perfkit/common/array_view.hxx"
+#include "perfkit/common/hasher.hxx"
+#include "perfkit/common/macros.hxx"
+#include "perfkit/common/spinlock.hxx"
 
 namespace perfkit {
 using json = nlohmann::json;
@@ -115,11 +118,14 @@ class config_base {
  *
  */
 namespace configs {
+CPPH_UNIQUE_KEY_TYPE(schema_hash_t);
+
 // clang-format off
 struct duplicated_flag_binding : std::logic_error { using std::logic_error::logic_error; };
 struct invalid_flag_name : std::logic_error { using std::logic_error::logic_error; };
 struct parse_error : std::runtime_error { using std::runtime_error::runtime_error; };
 struct parse_help : parse_error { using parse_error::parse_error; };
+struct schema_mismatch : parse_error { using parse_error::parse_error; };
 // clang-format on
 
 using flag_binding_table = std::map<std::string, config_shared_ptr, std::less<>>;
@@ -165,14 +171,15 @@ class config_registry : public std::enable_shared_from_this<config_registry> {
   bool bk_queue_update_value(std::string_view full_key, json value);
   std::string_view bk_find_key(std::string_view display_key);
   auto const& bk_all() const noexcept { return _entities; }
-  uint64_t bk_schema_hash() const noexcept { return _schema_hash; }
+  auto bk_schema_class() const noexcept { return _schema_class; }
+  auto bk_schema_hash() const noexcept { return _schema_hash; }
 
  public:
   static auto bk_enumerate_registries() noexcept -> std::vector<std::shared_ptr<config_registry>>;
   static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
 
-  // TODO: deprecate this!
-  static shared_ptr<config_registry> create(std::string name);
+  static shared_ptr<config_registry> create(std::string name, std::type_info const* schema = nullptr);
+  static shared_ptr<config_registry> share(std::string_view name, std::type_info const* schema);
 
  public:  // for internal use only.
   auto _access_lock() { return std::unique_lock{_update_lock}; }
@@ -186,11 +193,12 @@ class config_registry : public std::enable_shared_from_this<config_registry> {
   config_table _entities;
   string_view_table _disp_keymap;
   std::vector<detail::config_base*> _pending_updates[2];
-  std::mutex _update_lock;
+  perfkit::spinlock _update_lock;
 
   // this value is used for identifying config registry's schema type, as config registry's
   //  layout never changes after updated once.
-  uint64_t _schema_hash;
+  std::type_info const* _schema_class;
+  configs::schema_hash_t _schema_hash{hasher::FNV_OFFSET_BASE};
 
   // since configurations can be loaded before registry instance loaded, this flag makes
   //  the first update of registry to apply loaded configurations.
@@ -454,7 +462,7 @@ class config {
     if (not env.empty())
       if (auto env_value = getenv(env.c_str())) {
         nlohmann::json parsed_json;
-        if constexpr (std::is_same_v<Ty_, std::string>) // if it's string, apply as-is.
+        if constexpr (std::is_same_v<Ty_, std::string>)  // if it's string, apply as-is.
           parsed_json = env_value;
         else
           parsed_json = nlohmann::json::parse(
@@ -501,6 +509,29 @@ class config {
   config_registry* _owner;
   Ty_ _value;
 };
+
+namespace configs {
+class watcher {
+ public:
+  template <typename ConfTy_>
+  bool check_dirty(ConfTy_ const& conf) const {
+    return _check_update_and_consume(&conf.base());
+  }
+
+  template <typename ConfTy_>
+  bool check_dirty_safe(ConfTy_ const& conf) const {
+    auto _{std::lock_guard{_lock}};
+    return _check_update_and_consume(&conf.base());
+  }
+
+ private:
+  bool _check_update_and_consume(detail::config_base* ptr) const;
+
+ public:
+  mutable std::unordered_map<detail::config_base*, uint64_t> _table;
+  mutable perfkit::spinlock _lock;
+};
+}  // namespace configs
 
 template <typename Ty_>
 using _cvt_ty = std::conditional_t<

@@ -13,7 +13,7 @@
 #include "spdlog/sinks/stdout_sinks.h"
 #include "spdlog/spdlog.h"
 
-std::string perfkit::_internal::INDEXER_STR(int order) {
+std::string perfkit::_configs_internal::INDEXER_STR(int order) {
   return fmt::format("{:->5}", order);
 }
 
