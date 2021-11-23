@@ -17,6 +17,7 @@
 #include "perfkit/common/array_view.hxx"
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/macros.hxx"
+#include "perfkit/common/spinlock.hxx"
 
 namespace perfkit {
 using json = nlohmann::json;
@@ -192,7 +193,7 @@ class config_registry : public std::enable_shared_from_this<config_registry> {
   config_table _entities;
   string_view_table _disp_keymap;
   std::vector<detail::config_base*> _pending_updates[2];
-  std::mutex _update_lock;
+  perfkit::spinlock _update_lock;
 
   // this value is used for identifying config registry's schema type, as config registry's
   //  layout never changes after updated once.
