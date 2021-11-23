@@ -148,15 +148,6 @@ struct config_class_hook : std::function<void(config_class*)> {
     __VA_ARGS__;                                                                 \
   }
 
-#define PERFKIT_T_SHARED_CATEGORY(varname, ...)                                 \
-  struct varname : ::perfkit::config_class {                                    \
-    INTERNAL_PERFKIT_T_CATEGORY_body(varname);                                  \
-    explicit varname(std::string s) : _perfkit_INTERNAL_RG(                     \
-            ::perfkit::config_registry::share(std::move(s), &typeid(*this))) {} \
-                                                                                \
-    __VA_ARGS__;                                                                \
-  }
-
 #define PERFKIT_T_SUBCATEGORY(varname, ...)                                  \
   static std::string _category_prev_##varname() { return _category_name(); } \
   struct varname##_ {                                                        \

@@ -179,6 +179,9 @@ class config_registry : public std::enable_shared_from_this<config_registry> {
   static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
 
   static shared_ptr<config_registry> create(std::string name, std::type_info const* schema = nullptr);
+
+ private:
+  // TODO: redesign this!
   static shared_ptr<config_registry> share(std::string_view name, std::type_info const* schema);
 
  public:  // for internal use only.
