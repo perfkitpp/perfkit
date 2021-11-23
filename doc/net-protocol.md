@@ -20,13 +20,13 @@
 
 BSON/JSON 통신 가능하며, 오브젝트 단위로 메시지 넘어간다
 
-실제 데이터 형식은 BSON/JSON으로 퍼블리시되며, 편의상 YAML로 표기
+실제 데이터 형식은 MesasgePack/JSON으로 퍼블리시되며, 편의상 YAML로 표기
 
 ### DATA TYPES PER ROUTE CHANNELS
 
 ```yaml
 auth: json
-cmd, update, rpc: bson
+cmd, update, rpc: messagepack
 ```
 
 ### HEADER
@@ -44,12 +44,10 @@ cmd, update, rpc: bson
 
 ```json
 {
-  "body": [
-    "string; e.g. route: cmd:reset_cache",
-    {
-      "key": "value; parameter"
-    }
-  ]
+  "route": "string; e.g. cmd:reset_cache",
+  "parameter": {
+    "key": "value; parameter"
+  }
 }
 ```
 
@@ -57,13 +55,11 @@ cmd, update, rpc: bson
 
 ```json
 {
-  "body": [
-    "string; route: e.g. update:shell",
-    "int64; fence_cache",
-    { 
-      "key": "value; payload" 
-    }
-  ]
+  "route": "string; e.g. update:shell",
+  "fence": "uint64; sequence number",
+  "payload": {
+    "key": "value;"
+  }
 }
 ```
 
@@ -312,7 +308,7 @@ texture_scheme:
     or different-typed texture should overwrite existing resources
   size: int16[2]; texture resolution
   channels: int8; number of channels (texel dimension)
-  type: string one-of [INT8|INT32|FLOAT32]; type per channel 
+  type: string one-of [INT8|INT32|FLOAT32]; type per channel
   encoding?: string; texture encoding type - RAW, BMP, JPEG, PNG, MPEG, H264 ...
   bytes?: binary; encoded image stream. if empty, an empty texture will be generated in client side.
 
@@ -355,7 +351,7 @@ draw_call_scheme[]:
     (0=>x02): CANVAS_RESIZE; event dispatched on canvas resize
       0. int16[2]; previous size
       1. int16[2]; new size
-     
+
     (1=>x10): 2D_BITBLT; copy image to target 2d space
       0: hash64; resource key to texture
       1?: int16[2][2]; src image rectangle. if not specified, the whole image will be used.

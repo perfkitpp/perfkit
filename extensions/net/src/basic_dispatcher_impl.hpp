@@ -1,7 +1,7 @@
 //
 // Created by ki608 on 2021-11-21.
 //
-
+// TODO: improve performance by removing intermediate marshalling to nlohmann::json
 #pragma once
 #include <mutex>
 #include <thread>
@@ -46,13 +46,18 @@ static_assert(sizeof(message_header_t) == 8);
 #pragma pack(pop)
 
 struct message_in_t {
-  std::tuple<std::string, recv_archive_type> body;
-  CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(message_in_t, body);
+  std::string route;
+  recv_archive_type parameter;
+
+  CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(message_in_t, route, parameter);
 };
 
 struct message_out_t {
-  std::tuple<std::string, int64_t, recv_archive_type> body;
-  CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(message_out_t, body);
+  std::string route;
+  uint64_t fence;
+  send_archive_type payload;
+
+  CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(message_out_t, route, fence, payload);
 };
 
 class basic_dispatcher_impl {
@@ -129,17 +134,15 @@ class basic_dispatcher_impl {
           void (*payload)(send_archive_type*, void*)) {
     // iterate all active sockets and push payload
     send_archive_type archive;
-    auto& ss = archive["body"];
-    payload(&ss[2], userobj);  // inverse order to prevent triple reallocation
-    ss[1] = fence;
-    ss[0] = route;
+    archive["route"] = route;
+    archive["fence"] = fence;
+    payload(&archive["body"], userobj);  // inverse order to prevent triple reallocation
 
     while (_n_sending > 0)
       std::this_thread::yield();
 
-    // TODO: send message
     _bf_send.clear();
-    nlohmann::json::to_bson(archive, {_bf_send});
+    nlohmann::json::to_msgpack(archive, {_bf_send});
 
     {
       auto lc{std::lock_guard{_mtx_modify}};
@@ -272,10 +275,10 @@ class basic_dispatcher_impl {
         auto buf = _view(bf, n_read);
         message  = nlohmann::json::parse(buf.begin(), buf.end());
 
-        if (std::get<0>(message.body) != "auth:login")
+        if (message.route != "auth:login")
           throw std::exception{};
 
-        auto& token = std::get<1>(message.body).at("token").get_ref<std::string&>();
+        auto& token = message.parameter.at("token").get_ref<std::string&>();
         auto& auth  = _auth.at(token);
 
         auth_id         = auth.id;
@@ -358,16 +361,16 @@ class basic_dispatcher_impl {
 
     try {
       auto buf = _view(bf, n_read);
-      message  = nlohmann::json::from_bson(buf.begin(), buf.end());
+      message  = nlohmann::json::from_msgpack(buf.begin(), buf.end());
       decltype(_recv_routes)::mapped_type* fn;
       {
         std::lock_guard lc{_mtx_modify};
-        fn = &_recv_routes.at(std::get<0>(message.body));
+        fn = &_recv_routes.at(message.route);
       }
 
-      (*fn)(std::get<1>(message.body));
+      (*fn)(message.parameter);
     } catch (std::out_of_range& e) {
-      CPPH_ERROR("INVALID ROUTE: {}", std::get<0>(message.body));
+      CPPH_ERROR("INVALID ROUTE: {}", message.route);
     } catch (std::exception& e) {
       CPPH_ERROR("failed to parse input log message");
     }
