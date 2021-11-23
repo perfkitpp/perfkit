@@ -8,8 +8,10 @@
 #include "perfkit/common/array_view.hxx"
 #include "perfkit/detail/termcolor.hxx"
 
-namespace perfkit {
-namespace commands {
+namespace perfkit
+{
+namespace commands
+{
 class registry;
 }
 
@@ -18,71 +20,76 @@ using terminal_ptr = std::shared_ptr<if_terminal>;
 using std::chrono::milliseconds;
 
 /** An exception that is thrown when user requests program termination */
-struct termination : std::exception {};
+struct termination : std::exception
+{
+};
 
 /**
  * Provides common user interface functionality for control purpose
  */
-class if_terminal {
- public:
-  /**
-   * Reference to registered command registry.
-   *
-   * @return reference to registered command registry.
-   */
-  virtual commands::registry* commands() = 0;
+class if_terminal
+{
+   public:
+    /**
+     * Reference to registered command registry.
+     *
+     * @return reference to registered command registry.
+     */
+    virtual commands::registry* commands() = 0;
 
-  /**
-   * Consume single command from user command input queue.
-   *
-   * @param timeout seconds to wait until receive command.
-   * @return valid optional string, if dequeueing was successful.
-   */
-  virtual std::optional<std::string> fetch_command(milliseconds timeout = {}) = 0;
+    /**
+     * Consume single command from user command input queue.
+     *
+     * @param timeout seconds to wait until receive command.
+     * @return valid optional string, if dequeueing was successful.
+     */
+    virtual std::optional<std::string> fetch_command(milliseconds timeout = {}) = 0;
 
-  /**
-   * Enqueue command to internal queue.
-   *
-   * This should appear in fetch_command();
-   */
-  virtual void push_command(std::string_view command) = 0;
+    /**
+     * Enqueue command to internal queue.
+     *
+     * This should appear in fetch_command();
+     */
+    virtual void push_command(std::string_view command) = 0;
 
-  /**
-   * Output string to terminal
-   */
-  virtual void write(std::string_view str, termcolor fg = termcolor{0}, termcolor bg = termcolors::black) = 0;
+    /**
+     * Output string to terminal
+     */
+    virtual void write(std::string_view str, termcolor fg = termcolor{0}, termcolor bg = termcolors::black) = 0;
 
-  /**
-   *
-   */
-  virtual std::shared_ptr<spdlog::sinks::sink> sink() = 0;
+    /**
+     *
+     */
+    virtual std::shared_ptr<spdlog::sinks::sink> sink() = 0;
 
-  /**
-   * Property manipulations
-   */
-  virtual bool set(std::string_view key) { return false; };
-  virtual bool set(std::string_view key, std::string_view value) { return false; };
-  virtual bool set(std::string_view key, double value) { return false; };
+    /**
+     * Property manipulations
+     */
+    virtual bool set(std::string_view key) { return false; };
+    virtual bool set(std::string_view key, std::string_view value) { return false; };
+    virtual bool set(std::string_view key, double value) { return false; };
 
-  virtual bool get(std::string_view key, std::string_view* out) { return false; };
-  virtual bool get(std::string_view key, double* out) { return false; };
+    virtual bool get(std::string_view key, std::string_view* out) { return false; };
+    virtual bool get(std::string_view key, double* out) { return false; };
 
-  /**
-   * Helper utility
-   */
-  template <typename FnHandler_,
-            typename FnSuggest_ = nullptr_t,
-            typename RgTy_      = commands::registry>
-  auto add_command(std::string name, FnHandler_&& handler = nullptr, FnSuggest_&& suggest = nullptr) {
-    RgTy_* cmd = commands();
-    return cmd->root()->add_subcommand(
-            name,
-            std::forward<FnHandler_>(handler),
-            std::forward<FnSuggest_>(suggest));
-  }
+    /**
+     * Helper utility
+     */
+    template <typename FnHandler_,
+              typename FnSuggest_ = nullptr_t,
+              typename RgTy_      = commands::registry>
+    auto add_command(std::string name, FnHandler_&& handler = nullptr, FnSuggest_&& suggest = nullptr)
+    {
+        RgTy_* cmd = commands();
+        return cmd->root()->add_subcommand(
+                name,
+                std::forward<FnHandler_>(handler),
+                std::forward<FnSuggest_>(suggest));
+    }
 };
 
-namespace terminal {
+namespace terminal
+{
 /**
  * Register basic commands
  *

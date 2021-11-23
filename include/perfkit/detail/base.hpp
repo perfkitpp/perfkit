@@ -5,7 +5,8 @@
 
 #include <spdlog/fwd.h>
 
-namespace perfkit {
+namespace perfkit
+{
 std::shared_ptr<spdlog::logger> glog();
 
 }  // namespace perfkit

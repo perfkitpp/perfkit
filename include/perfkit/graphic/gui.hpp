@@ -1,7 +1,8 @@
 #pragma once
 #include "window.hpp"
 
-namespace perfkit::gui::imgui {
+namespace perfkit::gui::imgui
+{
 /**
  * graphics context
  *
@@ -31,10 +32,10 @@ namespace perfkit::gui::imgui {
  *          }
  * \endcode
  */
-class context {
- public:
-  void new_frame(graphic*);
-  bool window(std::string_view name);
-
+class context
+{
+   public:
+    void new_frame(graphic*);
+    bool window(std::string_view name);
 };
-}  // namespace perfkit::window
+}  // namespace perfkit::gui::imgui

@@ -1,9 +1,11 @@
 #pragma once
 
-namespace perfkit {
+namespace perfkit
+{
 struct trace_variant_type;
 };
 
-namespace perfkit::util {
+namespace perfkit::util
+{
 class command_registry;
 }

@@ -1,7 +1,8 @@
 #pragma once
 #include <perfkit/common/hasher.hxx>
 
-namespace perfkit::gui {
+namespace perfkit::gui
+{
 using mesh3d_key = basic_key<class LABEL_mesh3d_key>;
 using image_key  = basic_key<class LABEL_mesh3d_key>;
 
@@ -15,40 +16,43 @@ using image_key  = basic_key<class LABEL_mesh3d_key>;
  *    and are cached in the client until the next invalidation.
  *    (e.g. buffer->upload(0x1234, pointer_to_resource_data))
  */
-class graphic {
-  // set canvas size
+class graphic
+{
+    // set canvas size
 
-  // move 3d camera
+    // move 3d camera
 
-  // configure 3d camera
+    // configure 3d camera
 
-  // register 3d mesh resource
+    // register 3d mesh resource
 
-  // register 2d texture resource
+    // register 2d texture resource
 
-  // draw 2d glyphs
-  // - shapes (polygon, rectangle, circle, text, ...)
-  // - bitblt/stretchblt textures
+    // draw 2d glyphs
+    // - shapes (polygon, rectangle, circle, text, ...)
+    // - bitblt/stretchblt textures
 
-  // draw 3d glyphs
-  // - shapes (lines, sphere, aabb, text, ...)
-  // - 3d mesh resource, with transform, texture information ...
+    // draw 3d glyphs
+    // - shapes (lines, sphere, aabb, text, ...)
+    // - 3d mesh resource, with transform, texture information ...
 
- private:
-  friend class instance;
-  void lock();  // interfaces lock_guard
-  void unlock();
+   private:
+    friend class instance;
+    void lock();  // interfaces lock_guard
+    void unlock();
 };
 
 /**
  * A proxy class to expose resource creation operations only
  */
-class resource_proxy {
+class resource_proxy
+{
 };
 
 /**
  * A proxy class to expose drawing operations only
  */
-class draw_proxy {
+class draw_proxy
+{
 };
 }  // namespace perfkit::gui
