@@ -4,6 +4,8 @@
 
 #include "test_class.hpp"
 
+#include <spdlog/spdlog.h>
+
 PERFKIT_CATEGORY(test_global_category)
 {
     PERFKIT_CONFIGURE(int_config, 1).confirm();
@@ -26,6 +28,8 @@ void test_class::start()
     _worker = std::thread{
             [&]()
             {
+                CPPH_INFO("worker thread created.");
+
                 while (_loop_active.load())
                 {
                     auto trc_root = _tracer->fork("time_all");
@@ -60,6 +64,8 @@ void test_class::start()
                         tr2["str"]     = _cfg.t_string.value();
                     }
                 }
+
+                CPPH_INFO("disposing worker thread.");
             }};
 }
 

@@ -20,8 +20,10 @@ set(
         src/tracer.cpp
         src/terminal.cpp
         src/config-flags.cpp
-        src/graphic/graphic.cpp
         src/helpers.cpp
+        src/logging.cpp
+
+        src/graphic/graphic.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${PERFKIT_CORE_SOURCES})

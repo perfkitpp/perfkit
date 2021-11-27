@@ -20,7 +20,9 @@ std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
     pollee.revents = 0;
 
     if (::poll(&pollee, 1, ms_to_wait) <= 0)
-        return {};  // nothing to read.
+    {
+        return {};
+    }
 
     int n_read = 0;
     ::ioctl(STDIN_FILENO, FIONREAD, &n_read);
