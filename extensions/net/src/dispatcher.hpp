@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <nlohmann/json.hpp>
+#include <perfkit/common/event.hxx>
 #include <perfkit/extension/net.hpp>
 
 namespace perfkit::terminal::net::detail
@@ -59,6 +60,11 @@ class dispatcher
                   *archive = *(MsgTy_ const*)data;
               });
     }
+
+    std::pair<int, int> bandwidth_io() const noexcept;
+
+    perfkit::event<>& on_new_connection();
+    perfkit::event<>& on_no_connection();
 
    private:
     void _register_recv(

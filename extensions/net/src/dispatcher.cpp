@@ -53,3 +53,18 @@ void perfkit::terminal::net::dispatcher::_send(
 {
     self->send(route, fence, userobj, payload);
 }
+
+perfkit::event<>& perfkit::terminal::net::dispatcher::on_no_connection()
+{
+    return self->on_no_connection;
+}
+
+perfkit::event<>& perfkit::terminal::net::dispatcher::on_new_connection()
+{
+    return self->on_new_connection;
+}
+
+std::pair<int, int> perfkit::terminal::net::dispatcher::bandwidth_io() const noexcept
+{
+    return std::make_pair(self->in_rate(), self->out_rate());
+}
