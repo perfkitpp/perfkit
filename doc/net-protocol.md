@@ -38,6 +38,7 @@ cmd, update, rpc: messagepack
     <- 4 byte header -><- 4 byte base64 buffer length ->  
     o ` P %            c x Z 3
     111 96 80 37
+
 이 때, 항상 route 필드가 먼저 파싱될 수 있도록 array 필드에 순서를 정해 헤더에 넣는다.
 
 #### CLIENT -> SERVER
@@ -168,8 +169,9 @@ payload:
 
 category_scheme:
   name: string
-  children: list<category_scheme|entity_scheme>
-
+  subcategories: list<category_scheme>
+  entities: list<entity_scheme>
+  
 entity_scheme:
   name: string
   config_key: hash64; a unique key in a config class scope
@@ -190,7 +192,7 @@ payload:
   content: list<entity_scheme>;
 
 entity_scheme:
-  config_key: integer; unique key from 'update:new_config_class'
+  config_key: hash64; unique key from 'update:new_config_class'
   value: any; new value
 ```
 

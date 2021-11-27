@@ -34,6 +34,55 @@ struct shell_output
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             shell_output, content);
 };
+
+struct new_config_clsas
+{
+    struct entity_scheme
+    {
+        std::string name;
+        uint64_t config_key;
+        nlohmann::json value;
+        nlohmann::json metadata;
+
+        CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+                entity_scheme, name, config_key, value, metadata);
+    };
+
+    struct category_scheme
+    {
+        std::string name;
+        std::forward_list<category_scheme> subcategories;
+        std::forward_list<entity_scheme> entities;
+
+        CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+                category_scheme, name, subcategories, entities);
+    };
+
+    std::string key;
+    category_scheme root;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            new_config_clsas, key, root);
+};
+
+struct config_entity
+{
+    struct entity_scheme
+    {
+        uint64_t config_key;
+        nlohmann::json value;
+
+        CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+                entity_scheme, config_key, value);
+    };
+
+    std::string class_key;
+    std::forward_list<entity_scheme> content;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            config_entity, class_key, content);
+};
+
 }  // namespace perfkit::terminal::net::outgoing
 
 namespace perfkit::terminal::net::incoming

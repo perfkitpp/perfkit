@@ -12,6 +12,8 @@ add_library(
         src/dispatcher.cpp
         src/net-terminal.cpp
         src/basic_dispatcher_impl.cpp
+
+        src/contexts/config.cpp
 )
 
 add_library(
