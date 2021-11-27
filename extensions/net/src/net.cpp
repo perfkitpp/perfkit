@@ -4,11 +4,13 @@
 
 #include "net-terminal.hpp"
 
-perfkit::terminal_ptr perfkit::terminal::net::create(const struct terminal_init_info& info) {
-  return std::make_shared<net::terminal>(info);
+perfkit::terminal_ptr perfkit::terminal::net::create(const struct terminal_init_info& info)
+{
+    return std::make_shared<net::terminal>(info);
 }
 
-namespace perfkit::terminal::net::detail {
+namespace perfkit::terminal::net::detail
+{
 PERFKIT_T_CATEGORY(
         terminal_profile,
 
@@ -40,17 +42,18 @@ PERFKIT_T_CATEGORY(
 );
 }  // namespace perfkit::terminal::net::detail
 
-perfkit::terminal_ptr perfkit::terminal::net::create(std::string config_profile_name) {
-  // TODO: parse auth info
-  detail::terminal_profile cfg{std::move(config_profile_name)};
-  cfg->update();
+perfkit::terminal_ptr perfkit::terminal::net::create(std::string config_profile_name)
+{
+    // TODO: parse auth info
+    detail::terminal_profile cfg{std::move(config_profile_name)};
+    cfg->update();
 
-  terminal_init_info init{*cfg.session_name};
-  // init.description; TODO: find description from description path
-  // init.auth; TODO: parse auth
+    terminal_init_info init{*cfg.session_name};
+    // init.description; TODO: find description from description path
+    // init.auth; TODO: parse auth
 
-  *cfg.has_relay_server ? init.relay_to(*cfg.ipaddr, *cfg.port)
-                        : init.serve(*cfg.ipaddr, *cfg.port);
+    *cfg.has_relay_server ? init.relay_to(*cfg.ipaddr, *cfg.port)
+                          : init.serve(*cfg.ipaddr, *cfg.port);
 
-  return std::make_shared<net::terminal>(init);
+    return std::make_shared<net::terminal>(init);
 }

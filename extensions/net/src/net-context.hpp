@@ -4,5 +4,6 @@
 
 #pragma once
 
-class context {
+class context
+{
 };

@@ -5,6 +5,7 @@
 
 #include "basic_interactive_terminal.hpp"
 
-std::shared_ptr<perfkit::if_terminal> perfkit::terminal::create_cli() {
-  return std::make_shared<basic_interactive_terminal>();
+std::shared_ptr<perfkit::if_terminal> perfkit::terminal::create_cli()
+{
+    return std::make_shared<basic_interactive_terminal>();
 }

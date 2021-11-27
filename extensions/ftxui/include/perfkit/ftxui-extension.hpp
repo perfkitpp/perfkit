@@ -10,34 +10,37 @@
 #include "perfkit/detail/fwd.hpp"
 #include "perfkit/terminal.h"
 
-namespace ftxui {
+namespace ftxui
+{
 class ScreenInteractive;
 };
 
-namespace perfkit_ftxui {
-
+namespace perfkit_ftxui
+{
 /**
  * Custom subscription event handler
  */
-class if_subscriber {
- public:
-  struct update_param_type {
-    std::string_view block_name;
+class if_subscriber
+{
+   public:
+    struct update_param_type
+    {
+        std::string_view block_name;
 
-    uint64_t hash = {};
-    perfkit::array_view<std::string_view> hierarchy;
-    std::string_view name;
-  };
+        uint64_t hash = {};
+        perfkit::array_view<std::string_view> hierarchy;
+        std::string_view name;
+    };
 
- public:
-  virtual ~if_subscriber() = default;
+   public:
+    virtual ~if_subscriber() = default;
 
-  virtual bool on_update(
-          update_param_type const& param_type,
-          perfkit::trace_variant_type const& value)
-          = 0;
+    virtual bool on_update(
+            update_param_type const& param_type,
+            perfkit::trace_variant_type const& value)
+            = 0;
 
-  virtual void on_end(update_param_type const& param_type) = 0;
+    virtual void on_end(update_param_type const& param_type) = 0;
 };
 
 using namespace std::literals;
@@ -46,11 +49,12 @@ static inline const auto EVENT_POLL = ftxui::Event::Special("POLL");
 ftxui::Component config_browser();
 ftxui::Component trace_browser(std::shared_ptr<if_subscriber> m);
 
-class string_queue {
- public:
-  virtual bool getline(std::string&, std::chrono::milliseconds) = 0;
-  bool try_getline(std::string& s) { return this->getline(s, 0ms); }
-  virtual ~string_queue() = default;
+class string_queue
+{
+   public:
+    virtual bool getline(std::string&, std::chrono::milliseconds) = 0;
+    bool try_getline(std::string& s) { return this->getline(s, 0ms); }
+    virtual ~string_queue() = default;
 };
 
 ftxui::Component command_input(std::shared_ptr<string_queue>* out_supplier,
