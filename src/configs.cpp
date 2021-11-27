@@ -431,13 +431,11 @@ perfkit::config_registry::config_registry(std::string name)
 perfkit::detail::config_base::config_base(
         config_registry* owner,
         void* raw, std::string full_key,
-        std::string description,
         perfkit::detail::config_base::deserializer fn_deserial,
         perfkit::detail::config_base::serializer fn_serial,
         nlohmann::json&& attribute)
         : _owner(owner),
           _full_key(std::move(full_key)),
-          _description(std::move(description)),
           _raw(raw),
           _attribute(std::move(attribute)),
           _deserialize(std::move(fn_deserial)),

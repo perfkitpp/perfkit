@@ -51,7 +51,6 @@ class config_base
     config_base(class config_registry* owner,
                 void* raw,
                 std::string full_key,
-                std::string description,
                 deserializer fn_deserial,
                 serializer fn_serial,
                 nlohmann::json&& attribute);
@@ -71,7 +70,7 @@ class config_base
 
     auto const& full_key() const { return _full_key; }
     auto const& display_key() const { return _display_key; }
-    auto const& description() const { return _description; }
+    auto const& description() const { return _attribute["description"].get_ref<std::string const&>(); }
     auto tokenized_display_key() const { return make_view(_categories); }
     void request_modify(nlohmann::json js);
 
@@ -101,7 +100,6 @@ class config_base
 
     std::string _full_key;
     std::string _display_key;
-    std::string _description;
     void* _raw;
     std::atomic_bool _dirty                 = true;  // default true to trigger initialization
     std::atomic_bool _latest_marshal_failed = false;
@@ -401,7 +399,6 @@ class config
             _config_attrib_data<Ty_> attribute) noexcept
             : _owner(&repo), _value(std::forward<Ty_>(default_value))
     {
-        auto description = std::move(attribute.description);
         std::string env  = std::move(attribute.env_name);
 
         // define serializer
@@ -413,6 +410,8 @@ class config
         // set reference attribute
         nlohmann::json js_attrib;
         js_attrib["default"] = _value;
+
+        js_attrib["description"] = attribute.description;
 
         if constexpr (Attr_::flag & _attr_flag::has_min)
         {
@@ -507,7 +506,6 @@ class config
                 _owner,
                 &_value,
                 std::move(full_key),
-                std::move(description),
                 std::move(fn_m),
                 std::move(fn_d),
                 std::move(js_attrib));
