@@ -25,6 +25,11 @@ class server_mode_dispatcher : public basic_dispatcher_impl
             : basic_dispatcher_impl(base),
               _init(init) {}
 
+    ~server_mode_dispatcher() override
+    {
+        cleanup();
+    }
+
    protected:
     void refresh() override
     {
@@ -35,6 +40,7 @@ class server_mode_dispatcher : public basic_dispatcher_impl
         tcp::endpoint endpoint{asio::ip::address::from_string(_init.bind_addr), _init.bind_port};
 
         _acceptor->open(tcp::v4());
+        _acceptor->set_option(tcp::acceptor::reuse_address{true});
         _acceptor->bind(endpoint);
         _acceptor->listen();
 
