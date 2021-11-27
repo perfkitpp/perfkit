@@ -4,24 +4,38 @@
 
 #include "dispatcher.hpp"
 
-#include <perfkit/common/assert.hxx>
 #include <utility>
 
+#include <perfkit/common/assert.hxx>
+
 #include "basic_dispatcher_impl.hpp"
+#include "server_mode_dispatcher.hpp"
 
 perfkit::terminal::net::dispatcher::~dispatcher() = default;
 perfkit::terminal::net::dispatcher::dispatcher(
         const perfkit::terminal::net::terminal_init_info& init_info)
 {
-    // TODO: create appropriate implementation class from init_info
+    // TODO: add advanced options for terminal_init_info
+    detail::basic_dispatcher_impl_init_info init0;
+
     if (init_info._mode == operation_mode::independent_server)
     {
+        detail::server_mode_dispatcher_init_info init1;
+        init1.bind_port = init_info._port_param;
+        init1.bind_addr = init_info._string_param;
 
+        self = std::make_unique<detail::server_mode_dispatcher>(init0, init1);
     }
     else if (init_info._mode == operation_mode::relay_server_provider)
     {
         UNIMPLEMENTED();
     }
+    else
+    {
+        throw std::logic_error{"specify valid terminal operation mode!"};
+    }
+
+    self->launch();
 }
 
 void perfkit::terminal::net::dispatcher::_register_recv(

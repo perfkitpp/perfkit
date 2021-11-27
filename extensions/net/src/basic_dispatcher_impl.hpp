@@ -120,7 +120,7 @@ class basic_dispatcher_impl
         if (not _alive)
             return;
 
-        _alive = true;
+        _alive.store(false);
         if (_io_worker.joinable())
         {
             CPPH_INFO("shutting down async worker thread ...");

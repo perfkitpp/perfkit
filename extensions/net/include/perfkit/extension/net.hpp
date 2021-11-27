@@ -54,6 +54,7 @@ struct terminal_init_info
      */
     void serve(std::string bindaddr, uint16_t port)
     {
+        _mode         = operation_mode::independent_server;
         _string_param = std::move(bindaddr);
         _port_param   = port;
     }
@@ -68,6 +69,7 @@ struct terminal_init_info
      */
     void relay_to(std::string addr, uint16_t port)
     {
+        _mode = operation_mode::relay_server_provider;
         // TODO.
     }
 

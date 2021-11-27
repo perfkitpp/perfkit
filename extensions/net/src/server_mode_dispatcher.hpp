@@ -4,6 +4,8 @@
 //
 
 #pragma once
+#include <memory>
+
 #include "basic_dispatcher_impl.hpp"
 
 namespace perfkit::terminal::net::detail
@@ -29,9 +31,10 @@ class server_mode_dispatcher : public basic_dispatcher_impl
         if (_acceptor && _acceptor->is_open())
             _acceptor->close();  // just try close.
 
-        _acceptor.reset(new tcp::acceptor{*io()});
+        _acceptor = std::make_unique<tcp::acceptor>(*io());
         tcp::endpoint endpoint{asio::ip::address::from_string(_init.bind_addr), _init.bind_port};
 
+        _acceptor->open(tcp::v4());
         _acceptor->bind(endpoint);
         _acceptor->listen();
 

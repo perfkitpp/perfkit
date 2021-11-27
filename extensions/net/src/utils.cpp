@@ -38,6 +38,11 @@ std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
         return {};
     }
 
+    if (not bytes.empty() && bytes.back() == '\n')
+    {
+        bytes.pop_back();
+    }
+
     return bytes;
 }
 #endif
