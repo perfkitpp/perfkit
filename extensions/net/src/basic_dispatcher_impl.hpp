@@ -31,6 +31,8 @@ using namespace std::literals;
 using asio::ip::tcp;
 using socket_id_t = perfkit::basic_key<class LABEL_socket_id_t>;
 
+using std::chrono::steady_clock;
+using timestamp_t       = std::chrono::steady_clock::time_point;
 using recv_archive_type = nlohmann::json;
 using send_archive_type = nlohmann::json;
 
@@ -71,6 +73,9 @@ struct connection_context_t
 {
     std::unique_ptr<tcp::socket> socket;
     std::vector<char> rdbuf;
+    bool is_active = false;
+
+    timestamp_t recv_latest;
 };
 
 class basic_dispatcher_impl
@@ -132,12 +137,12 @@ class basic_dispatcher_impl
         _alive.store(false);
         if (_io_worker.joinable())
         {
-            CPPH_INFO("shutting down async worker thread for {} connections ...", _sockets.size());
+            CPPH_INFO("shutting down async worker thread for {} connections ...", _connections.size());
 
             _io.stop();
             _io_worker.join();
 
-            _sockets.clear();
+            _connections.clear();
             _sockets_active.clear();
 
             CPPH_INFO("done. all connections disposed.");
@@ -160,6 +165,21 @@ class basic_dispatcher_impl
             void const* userobj,
             void (*payload)(send_archive_type*, void const*))
     {
+        if (_disconnect_timer())
+        {  // iterate each socket, and disconnect obsolete ones.
+            std::forward_list<socket_id_t> expired;
+
+            lock_guard{_mtx_modify}, [&]
+            {
+                for (auto& [key, ctx] : _connections)
+                    if (steady_clock::now() - ctx.recv_latest > 5s)
+                        expired.push_front(key);
+            }();
+
+            for (auto key : expired)
+                close(key, "no-activity");
+        }
+
         // iterate all active sockets and push payload
         send_archive_type archive;
         archive["route"] = route;
@@ -182,11 +202,14 @@ class basic_dispatcher_impl
 
         {
             auto lc{std::lock_guard{_mtx_modify}};
+
             for (auto sock : _sockets_active)
+            {
                 asio::async_write(
                         *sock, asio::const_buffer{_bf_send.data(), _bf_send.size()},
                         [this, refcnt = _n_sending](auto&&, auto&& n)
                         { _perf_out(n); });
+            }
         }
     }
 
@@ -220,10 +243,11 @@ class basic_dispatcher_impl
         std::lock_guard lck{_mtx_modify};
         CPPH_INFO("new connection notified: {}", id.value);
 
-        auto [it, is_new] = _sockets.try_emplace(id);
+        auto [it, is_new] = _connections.try_emplace(id);
         assert_(is_new);  // id must be unique!
-        auto* context   = &it->second;
-        context->socket = std::move(socket);
+        auto* context        = &it->second;
+        context->socket      = std::move(socket);
+        context->recv_latest = steady_clock::now();
 
         auto* sock = &*context->socket;
         asio::async_read(
@@ -234,16 +258,21 @@ class basic_dispatcher_impl
                 });
     }
 
-    void close(socket_id_t id)
+    void close(socket_id_t id, std::string_view why)
     {
-        CPPH_INFO("disconnecting socket {} ...", id.value);
+        CPPH_INFO("disconnecting socket {} for '{}'", id.value, why);
 
         bool zero_connection = false;
 
         {
             std::lock_guard lc{_mtx_modify};
-            auto it = _sockets.find(id);
-            assert_(it != _sockets.end());
+            auto it = _connections.find(id);
+
+            if (it == _connections.end())
+            {
+                CPPH_WARN("socket {} already destroyed.", id.value);
+                return;
+            }
 
             auto* socket = &*it->second.socket;
             auto ep      = socket->remote_endpoint();
@@ -252,7 +281,7 @@ class basic_dispatcher_impl
             auto it_active = perfkit::find(_sockets_active, socket);
             if (it_active != _sockets_active.end())
                 _sockets_active.erase(it_active);
-            _sockets.erase(it);
+            _connections.erase(it);
 
             CPPH_INFO("--> socket {} ({}:{}) disconnected.",
                       id.value, ep.address().to_string(), ep.port());
@@ -267,6 +296,7 @@ class basic_dispatcher_impl
    private:  // handler helpers
     static auto _buf(buffer_t& t, size_t n)
     {
+        t.clear();
         return asio::dynamic_buffer(t).prepare(n);
     }
 
@@ -282,26 +312,27 @@ class basic_dispatcher_impl
 
    private:  // handlers
     size_t _handle_header(
-            socket_id_t id, connection_context_t* bf,
+            socket_id_t id, connection_context_t* ctx,
             asio::error_code const& ec, size_t n_read)
     {
         if (ec || n_read != 8)
         {
             CPPH_WARN("failed to receive header from socket {}: {}", id.value, ec.message());
-            close(id);
+            close(id, "invalid-header");
             return ~size_t{};
         }
 
         _perf_in(n_read);
 
-        auto size = _retrieve_buffer_size(_view(bf->rdbuf, n_read).as<message_header_t>());
+        auto size = _retrieve_buffer_size(_view(ctx->rdbuf, n_read).as<message_header_t>());
         if (size == ~size_t{})
         {
             CPPH_ERROR("socket {}: protocol error, closing connection ...");
-            close(id);
+            close(id, "invalid-buffer-size");
             return ~size_t{};
         }
 
+        ctx->recv_latest = steady_clock::now();
         return size;
     }
 
@@ -328,7 +359,7 @@ class basic_dispatcher_impl
         if (ec)
         {
             CPPH_WARN("failed to receive header from socket {}", id.value);
-            close(id);
+            close(id, "disconnected");
             return;
         }
         _perf_in(n_read);
@@ -340,7 +371,8 @@ class basic_dispatcher_impl
         if (_auth.empty())
         {
             // there's no authentication info.
-            login_success = true;
+            login_success   = true;
+            access_readonly = false;
             CPPH_WARN(
                     "no authentication information registered."
                     " always passing login attempt...");
@@ -390,12 +422,15 @@ class basic_dispatcher_impl
         else
         {
             auto ep = ctx->socket->remote_endpoint();
-            CPPH_INFO("${}@{}:{}. login successful", auth_id, ep.address().to_string(), ep.port());
+            CPPH_INFO("${}@{}:{}. login as {} successful",
+                      auth_id, ep.address().to_string(), ep.port(),
+                      access_readonly ? "readonly-session" : "admin-session");
         }
 
         {
             auto lc{std::lock_guard{_mtx_modify}};
             _sockets_active.push_back(&*ctx->socket);
+            ctx->is_active = true;
 
             if (access_readonly)
                 ctx->socket->async_read_some(
@@ -422,6 +457,8 @@ class basic_dispatcher_impl
     {
         if (ec)
             return;
+
+        ctx->recv_latest = steady_clock::now();
 
         _perf_in(n_read);
         ctx->socket->async_read_some(
@@ -464,14 +501,22 @@ class basic_dispatcher_impl
         try
         {
             auto buf = _view(ctx->rdbuf, n_read);
-            message  = nlohmann::json::from_msgpack(buf.begin(), buf.end());
-            decltype(_recv_routes)::mapped_type* fn;
-            {
-                std::lock_guard lc{_mtx_modify};
-                fn = &_recv_routes.at(message.route);
-            }
+            message  = nlohmann::json::from_msgpack(buf.begin(), buf.begin() + n_read);
 
-            (*fn)(message.parameter);
+            if (message.route == "cmd:heartbeat")
+            {
+                ;  // silently ignore message.
+            }
+            else
+            {
+                decltype(_recv_routes)::mapped_type* fn;
+                {
+                    std::lock_guard lc{_mtx_modify};
+                    fn = &_recv_routes.at(message.route);
+                }
+
+                (*fn)(message.parameter);
+            }
         }
         catch (std::out_of_range& e)
         {
@@ -479,7 +524,7 @@ class basic_dispatcher_impl
         }
         catch (std::exception& e)
         {
-            CPPH_ERROR("failed to parse input log message");
+            CPPH_ERROR("failed to parse input messagepack: {}", e.what());
         }
 
         asio::async_read(
@@ -537,13 +582,14 @@ class basic_dispatcher_impl
     std::map<std::string, auth_info> _auth;
 
     asio::io_context _io{1};
-    std::unordered_map<socket_id_t, connection_context_t> _sockets;
+    std::unordered_map<socket_id_t, connection_context_t> _connections;
     std::vector<tcp::socket*> _sockets_active;
 
     std::atomic_bool _alive{false};
     std::thread _io_worker;
 
     poll_timer _perf_timer{1s};
+    poll_timer _disconnect_timer{3s};
     size_t _perf_bytes_out = 0;
     size_t _perf_bytes_in  = 0;
     size_t _perf_out_rate  = 0;
