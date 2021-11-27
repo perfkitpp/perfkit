@@ -38,4 +38,11 @@ struct shell_output
 
 namespace perfkit::terminal::net::incoming
 {
-}
+struct push_command
+{
+    std::string command;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            push_command, command);
+};
+}  // namespace perfkit::terminal::net::incoming

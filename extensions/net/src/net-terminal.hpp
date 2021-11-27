@@ -74,6 +74,11 @@ class terminal : public if_terminal
 
     void _char_handler(char c);
 
+    void _on_push_command(incoming::push_command&& s)
+    {
+        push_command(s.command);
+    }
+
    private:
     dispatcher _io;
     commands::registry _commands;

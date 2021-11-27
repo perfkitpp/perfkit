@@ -8,6 +8,7 @@ perfkit::terminal::net::terminal::terminal(
     _user_command_fetcher = std::thread(CPPH_BIND(_user_command_fetch_fn));
 
     // register number of handlers
+    _io.on_recv<incoming::push_command>("cmd:push_command", CPPH_BIND(_on_push_command));
 
     // redirect stdout, stderr
     detail::input_redirect(CPPH_BIND(_char_handler));
