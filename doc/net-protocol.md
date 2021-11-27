@@ -33,11 +33,11 @@ cmd, update, rpc: messagepack
 
 메시지 공통: 모든 메시지는 8바이트 ASCII 문자열로 시작한다.
 
-첫 4바이트는 식별을 위한 헤더, 다음 4바이트는 Base64 인코딩 된 메시지 페이로드 길이
+첫 4바이트는 식별을 위한 헤더, 다음 4바이트는 메시지 페이로드 길이
 
     <- 4 byte header -><- 4 byte base64 buffer length ->  
     o ` P %            c x Z 3
-
+    111 96 80 37
 이 때, 항상 route 필드가 먼저 파싱될 수 있도록 array 필드에 순서를 정해 헤더에 넣는다.
 
 #### CLIENT -> SERVER
@@ -71,7 +71,8 @@ cmd, update, rpc: messagepack
 
 ```yaml
 parameter:
-  token: string; SHA256 hash created with id and password
+  id: string; id
+  pw: string; SHA256 hash created with password
 ```
 
 ### *update:error*
@@ -126,9 +127,9 @@ payload:
   candidates: list<string>
 ```
 
-### *update:session_info*
+### *update:session_reset*
 
-세션 정보. reset 이후 1회 송신. Reset의 signal을 겸한다. 역시 다른 클라이언트가 로그인하면 전체 재송신됨.
+최초의 패킷을 나타내는 세션 정보.
 
 ```yaml
 payload:

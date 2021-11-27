@@ -35,11 +35,11 @@ int main(void)
 
     while (running)
     {
-        auto cmd = term->fetch_command(1000s);
+        auto cmd = term->fetch_command(1s);
         if (not cmd || cmd->empty())
             continue;
 
-        spdlog::info("command: {}", *cmd);
+        spdlog::info("command: [{}]", *cmd);
         term->commands()->invoke_command(*cmd);
     }
 }

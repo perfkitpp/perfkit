@@ -60,11 +60,11 @@ class server_mode_dispatcher : public basic_dispatcher_impl
                 }
                 else
                 {
-                    self->notify_new_connection({++self->_unique_id_gen}, std::move(sock));
-
                     auto ep = sock->remote_endpoint();
                     CPPH_INFO("new client connection has been established: {}:{}",
                               ep.address().to_string(), ep.port());
+
+                    self->notify_new_connection({++self->_unique_id_gen}, std::move(sock));
                 }
 
                 // prepare for next accept

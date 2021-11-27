@@ -12,6 +12,7 @@
 #include <asio/read.hpp>
 #include <asio/write.hpp>
 #include <nlohmann/json.hpp>
+#include <perfkit/common/algorithm.hxx>
 #include <perfkit/common/algorithm/base64.hxx>
 #include <perfkit/common/assert.hxx>
 #include <perfkit/common/dynamic_array.hxx>
@@ -42,8 +43,8 @@ struct basic_dispatcher_impl_init_info
 #pragma pack(push, 4)
 struct message_header_t
 {
-    char identifier[4]    = {'o', '`', 'P', '%'};
-    char base64_buflen[4] = {};
+    char identifier[4] = {'o', '`', 'P', '%'};
+    char buflen[4]     = {};
 };
 static_assert(sizeof(message_header_t) == 8);
 #pragma pack(pop)
@@ -161,7 +162,15 @@ class basic_dispatcher_impl
             std::this_thread::yield();
 
         _bf_send.clear();
+
+        _bf_send.resize(8);
         nlohmann::json::to_msgpack(archive, {_bf_send});
+
+        _bf_send[0]         = 'o';
+        _bf_send[1]         = '`';
+        _bf_send[2]         = 'P';
+        _bf_send[3]         = '%';
+        *(int*)&_bf_send[4] = _bf_send.size() - 8;
 
         {
             auto lc{std::lock_guard{_mtx_modify}};
@@ -199,6 +208,7 @@ class basic_dispatcher_impl
     void notify_new_connection(socket_id_t id, std::unique_ptr<tcp::socket> socket)
     {
         std::lock_guard lck{_mtx_modify};
+        CPPH_INFO("new connection notified: {}", id.value);
 
         auto [it, is_new] = _sockets.try_emplace(id, std::move(socket));
         assert_(is_new);  // id must be unique!
@@ -216,15 +226,23 @@ class basic_dispatcher_impl
 
     void close(socket_id_t id)
     {
+        CPPH_INFO("disconnecting socket {} ...", id.value);
+
         std::unique_lock lc{_mtx_modify};
         auto it = _sockets.find(id);
         assert_(it != _sockets.end());
 
+        auto ep = it->second->remote_endpoint();
+
         it->second->close();
-        _sockets_active.erase(
-                std::find(_sockets_active.begin(), _sockets_active.end(), &*it->second));
+        auto it_active = perfkit::find(_sockets_active, &*it->second);
+        if (it_active != _sockets_active.end())
+            _sockets_active.erase(it_active);
         _buffers.erase(id);
         _sockets.erase(it);
+
+        CPPH_INFO("--> socket {} ({}:{}) disconnected.",
+                  id.value, ep.address().to_string(), ep.port());
     }
 
    private:  // handler helpers
@@ -250,7 +268,7 @@ class basic_dispatcher_impl
     {
         if (ec || n_read != 8)
         {
-            CPPH_WARN("failed to receive header from socket {}", id.value);
+            CPPH_WARN("failed to receive header from socket {}: {}", id.value, ec.message());
             close(id);
             return ~size_t{};
         }
@@ -298,12 +316,15 @@ class basic_dispatcher_impl
 
         bool login_success   = false;
         bool access_readonly = true;
-        std::string_view auth_id;
+        std::string_view auth_id = "<none>";
 
         if (_auth.empty())
         {
             // there's no authentication info.
             login_success = true;
+            CPPH_WARN(
+                    "no authentication information registered."
+                    " always passing login attempt...");
         }
         else
         {
@@ -311,13 +332,18 @@ class basic_dispatcher_impl
             try
             {
                 auto buf = _view(bf, n_read);
-                message  = nlohmann::json::parse(buf.begin(), buf.end());
+                message  = nlohmann::json::from_msgpack(buf.begin(), buf.end());
 
                 if (message.route != "auth:login")
                     throw std::exception{};
 
-                auto& token = message.parameter.at("token").get_ref<std::string&>();
-                auto& auth  = _auth.at(token);
+                auto& id_str = message.parameter.at("id").get_ref<std::string&>();
+                auto& auth   = _auth.at(id_str);
+
+                CPPH_INFO("login attempt to id {}");
+
+                if (auth.password != message.parameter.at("pw").get_ref<std::string&>())
+                    throw std::runtime_error("password mismatch");
 
                 auth_id         = auth.id;
                 login_success   = true;
@@ -467,14 +493,9 @@ class basic_dispatcher_impl
     {
         static constexpr message_header_t reference;
 
-        // check header validity
-        if (not std::equal(h.identifier, *(&h.identifier + 1), reference.identifier))
-            return CPPH_WARN("identifier: {}", std::string_view{h.base64_buflen, 4}), ~size_t{};
-
         // check if header size does not exceed buffer length
         size_t decoded = 0;
-        if (not base64::decode(h.base64_buflen, (char*)&decoded))
-            return CPPH_WARN("decoding base64: {}", std::string_view{h.base64_buflen, 4}), ~size_t{};
+        decoded        = *(int*)h.buflen;
 
         if (decoded >= _cfg.message_size_limit)
             return CPPH_WARN("buffer size exceeds max: {} [max {}B]",
