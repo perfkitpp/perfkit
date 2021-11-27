@@ -25,6 +25,14 @@ class terminal : public if_terminal
     explicit terminal(init_info const& init) : _io(init)
     {
         // register number of handlers
+
+        // redirect stdout, stderr
+        detail::input_redirect(CPPH_BIND(_char_handler));
+    }
+
+    ~terminal()
+    {
+        detail::input_rollback();
     }
 
     commands::registry* commands() override
@@ -55,7 +63,7 @@ class terminal : public if_terminal
 
     void write(std::string_view str, termcolor fg, termcolor bg) override
     {
-        std::cout << str;
+        fwrite(str.data(), str.size(), 1, stdout);
     }
 
     std::shared_ptr<spdlog::sinks::sink> sink() override
@@ -72,6 +80,10 @@ class terminal : public if_terminal
         {
             _command_queue.emplace(std::move(str));
         }
+    }
+
+    void _char_handler(char c)
+    {
     }
 
    private:

@@ -45,6 +45,14 @@ struct terminal_init_info
     std::vector<auth_info> auths;
 
     /**
+     * Advanced configurations
+     */
+    struct _adv_t
+    {
+        bool redirect_terminal = true;
+    } advanced;
+
+    /**
      * Create terminal instance as an independent server.
      * Multiple clients will directly connect to this instance, which may cause
      *  performance problem when they're too many.

@@ -10,6 +10,7 @@ add_library(
         src/utils.cpp
         src/server_mode_dispatcher.cpp
         src/dispatcher.cpp
+        src/net-terminal.cpp
         src/basic_dispatcher_impl.cpp
 )
 
