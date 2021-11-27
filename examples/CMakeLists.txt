@@ -31,6 +31,21 @@ target_link_libraries(
 )
 
 # ======================================================================================================================
+add_executable(
+        example-net
+
+        example-net.cpp
+        test_class.cpp
+)
+
+target_link_libraries(
+        example-net
+
+        PRIVATE
+        perfkit::net::core
+)
+
+# ======================================================================================================================
 if (perfkit_BUILD_FTXUI_EXTENSION)
 
     # ex-ftxui-extension

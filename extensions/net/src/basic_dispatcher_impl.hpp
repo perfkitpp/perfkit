@@ -77,7 +77,7 @@ class basic_dispatcher_impl
         shutdown();
     };
 
-    basic_dispatcher_impl(init_info s)
+    explicit basic_dispatcher_impl(init_info s)
             : _cfg(std::move(s))
     {
         // TODO: configure auth
@@ -91,27 +91,28 @@ class basic_dispatcher_impl
     void launch()
     {
         _alive     = true;
-        _io_worker = std::thread{[&]
-                                 {
-                                     while (_alive)
-                                     {
-                                         try
-                                         {
-                                             _io.restart();
-                                             refresh();
+        _io_worker = std::thread{
+                [&]
+                {
+                    while (_alive)
+                    {
+                        try
+                        {
+                            _io.restart();
+                            refresh();
 
-                                             _io.run(), CPPH_INFO("IO CONTEXT STOPPED");
-                                         }
-                                         catch (asio::system_error& e)
-                                         {
-                                             CPPH_ERROR("uncaught asio exception: {} (what(): {})", e.code().message(), e.what());
-                                             CPPH_INFO("retrying refresh after 3 seconds ...");
-                                             std::this_thread::sleep_for(3s);
-                                         }
-                                     }
+                            _io.run(), CPPH_INFO("IO CONTEXT STOPPED");
+                        }
+                        catch (asio::system_error& e)
+                        {
+                            CPPH_ERROR("uncaught asio exception: {} (what(): {})", e.code().message(), e.what());
+                            CPPH_INFO("retrying refresh after 3 seconds ...");
+                            std::this_thread::sleep_for(3s);
+                        }
+                    }
 
-                                     cleanup();
-                                 }};
+                    cleanup();
+                }};
     }
 
     void shutdown()
@@ -154,7 +155,7 @@ class basic_dispatcher_impl
         send_archive_type archive;
         archive["route"] = route;
         archive["fence"] = fence;
-        payload(&archive["body"], userobj);  // inverse order to prevent triple reallocation
+        payload(&archive["body"], userobj);
 
         while (_n_sending > 0)
             std::this_thread::yield();
@@ -424,7 +425,7 @@ class basic_dispatcher_impl
         }
         catch (std::out_of_range& e)
         {
-            CPPH_ERROR("INVALID ROUTE: {}", message.route);
+            CPPH_CRITICAL("INVALID ROUTE RECEIVED: {}", message.route);
         }
         catch (std::exception& e)
         {
