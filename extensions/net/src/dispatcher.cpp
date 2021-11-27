@@ -48,8 +48,8 @@ void perfkit::terminal::net::dispatcher::_register_recv(
 void perfkit::terminal::net::dispatcher::_send(
         std::string_view route,
         int64_t fence,
-        void* userobj,
-        void (*payload)(send_archive_type*, void*))
+        void const* userobj,
+        void (*payload)(send_archive_type*, void const*))
 {
     self->send(route, fence, userobj, payload);
 }

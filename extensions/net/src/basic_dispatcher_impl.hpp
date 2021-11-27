@@ -102,6 +102,7 @@ class basic_dispatcher_impl
                             _io.restart();
                             refresh();
 
+                            CPPH_INFO("running io context ...");
                             _io.run(), CPPH_INFO("IO CONTEXT STOPPED");
                         }
                         catch (asio::system_error& e)
@@ -149,16 +150,16 @@ class basic_dispatcher_impl
     void send(
             std::string_view route,
             int64_t fence,
-            void* userobj,
-            void (*payload)(send_archive_type*, void*))
+            void const* userobj,
+            void (*payload)(send_archive_type*, void const*))
     {
         // iterate all active sockets and push payload
         send_archive_type archive;
         archive["route"] = route;
         archive["fence"] = fence;
-        payload(&archive["body"], userobj);
+        payload(&archive["payload"], userobj);
 
-        while (_n_sending > 0)
+        while (not _n_sending.unique())
             std::this_thread::yield();
 
         _bf_send.clear();
@@ -174,12 +175,11 @@ class basic_dispatcher_impl
 
         {
             auto lc{std::lock_guard{_mtx_modify}};
-            _n_sending = _sockets_active.size();
             for (auto sock : _sockets_active)
                 asio::async_write(
                         *sock, asio::const_buffer{_bf_send.data(), _bf_send.size()},
-                        [this](auto&&, auto&& n)
-                        { --_n_sending, _perf_out(n); });
+                        [this, refcnt = _n_sending](auto&&, auto&& n)
+                        { _perf_out(n); });
         }
     }
 
@@ -314,8 +314,8 @@ class basic_dispatcher_impl
         }
         _perf_in(n_read);
 
-        bool login_success   = false;
-        bool access_readonly = true;
+        bool login_success       = false;
+        bool access_readonly     = true;
         std::string_view auth_id = "<none>";
 
         if (_auth.empty())
@@ -533,7 +533,7 @@ class basic_dispatcher_impl
             _recv_routes;
 
     std::vector<uint8_t> _bf_send;
-    std::atomic_int _n_sending = 0;
+    std::shared_ptr<void> _n_sending = std::make_shared<nullptr_t>();
 
     logger_ptr _logger = logging::find_or("PERFKIT:NET");
 };

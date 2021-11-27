@@ -49,12 +49,12 @@ class dispatcher
     }
 
     template <typename MsgTy_>
-    void send(std::string_view route, int64_t fence, MsgTy_ const& message)
+    void send(std::string_view route, MsgTy_ const& message)
     {
         // TODO: change serializer to use builder, which doesn't need to be marshaled into
         //        json object to be dumped to string.
-        _send(route, fence, &message,
-              [](send_archive_type* archive, void* data)
+        _send(route, ++_fence, &message,
+              [](send_archive_type* archive, void const* data)
               {
                   *archive = *(MsgTy_ const*)data;
               });
@@ -68,11 +68,12 @@ class dispatcher
     void _send(
             std::string_view route,
             int64_t fence,
-            void* userobj,
-            void (*payload)(send_archive_type*, void*));
+            void const* userobj,
+            void (*payload)(send_archive_type*, void const*));
 
    private:
     std::unique_ptr<detail::basic_dispatcher_impl> self;
+    int64_t _fence = 0;
 };
 
 }  // namespace perfkit::terminal::net

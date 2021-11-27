@@ -134,7 +134,7 @@ payload:
 ```yaml
 payload:
   name: string; the session name server initially registered.
-  endpoint: string; endpoint of this session. can be used as key
+  keystr: string; keystring of this session. may contain various unique informations
   epoch: int64; timestamp in milliseconds that the server was initially created
   description: string; description of this session.
   num_cores: int32; number of machine cores of given session's system
