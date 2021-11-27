@@ -154,9 +154,9 @@ class basic_dispatcher_impl
             std::function<bool(recv_archive_type const& parameter)> handler)
     {
         auto lc{std::lock_guard{_mtx_modify}};
-        auto [it, is_new] = _recv_routes.try_emplace(route, std::move(handler));
+        auto [it, is_new] = _recv_routes.try_emplace(std::move(route), std::move(handler));
 
-        assert_(is_new);
+        assert_(is_new && "duplicated route is logic error ! ! !");
     }
 
     void send(
@@ -223,7 +223,7 @@ class basic_dispatcher_impl
         return _perf_in_rate;
     }
 
-    perfkit::event<> on_new_connection;
+    perfkit::event<int> on_new_connection;
     perfkit::event<> on_no_connection;
 
    protected:
@@ -427,9 +427,11 @@ class basic_dispatcher_impl
                       access_readonly ? "readonly-session" : "admin-session");
         }
 
+        int n_connections = 0;
         {
             auto lc{std::lock_guard{_mtx_modify}};
             _sockets_active.push_back(&*ctx->socket);
+            n_connections  = _sockets_active.size();
             ctx->is_active = true;
 
             if (access_readonly)
@@ -448,7 +450,7 @@ class basic_dispatcher_impl
                         });
         }
 
-        on_new_connection.invoke();
+        on_new_connection.invoke(n_connections);
     }
 
     void _handle_discarded(

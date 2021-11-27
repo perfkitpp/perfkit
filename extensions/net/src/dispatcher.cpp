@@ -34,8 +34,6 @@ perfkit::terminal::net::dispatcher::dispatcher(
     {
         throw std::logic_error{"specify valid terminal operation mode!"};
     }
-
-    self->launch();
 }
 
 void perfkit::terminal::net::dispatcher::_register_recv(
@@ -59,7 +57,7 @@ perfkit::event<>& perfkit::terminal::net::dispatcher::on_no_connection()
     return self->on_no_connection;
 }
 
-perfkit::event<>& perfkit::terminal::net::dispatcher::on_new_connection()
+perfkit::event<int>& perfkit::terminal::net::dispatcher::on_new_connection()
 {
     return self->on_new_connection;
 }
@@ -67,4 +65,9 @@ perfkit::event<>& perfkit::terminal::net::dispatcher::on_new_connection()
 std::pair<int, int> perfkit::terminal::net::dispatcher::bandwidth_io() const noexcept
 {
     return std::make_pair(self->in_rate(), self->out_rate());
+}
+
+void perfkit::terminal::net::dispatcher::launch()
+{
+    self->launch();
 }

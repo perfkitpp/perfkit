@@ -29,8 +29,9 @@ class terminal : public if_terminal
     {
         detail::input_rollback();
 
-        _active.store(false);
-        _user_command_fetcher.joinable() && (_user_command_fetcher.join(), 0);
+        _active.store(false), _touch_worker();
+        _worker.joinable() && (_worker.join(), 0);
+        _worker_user_command.joinable() && (_worker_user_command.join(), 0);
     }
 
     commands::registry* commands() override
@@ -59,25 +60,35 @@ class terminal : public if_terminal
     }
 
    private:
-    void _user_command_fetch_fn()
-    {
-        while (_active)
-        {
-            auto str = detail::try_fetch_input(500);
-
-            if (not str.empty())
-            {
-                _command_queue.emplace(std::move(str));
-            }
-        }
-    }
-
+    void _user_command_fetch_fn();
     void _char_handler(char c);
+    void _on_push_command(incoming::push_command&& s);
+    void _on_any_connection(int n_conn);
+    void _on_no_connection();
 
-    void _on_push_command(incoming::push_command&& s)
+    void _touch_worker()
     {
-        push_command(s.command);
+        std::lock_guard lc{_mtx_worker};
+        _dirty = true;
+        _cvar_worker.notify_one();
     }
+
+    void _exec();
+    void _transition(std::function<void()> fn);
+
+    // when there's no connection alive.
+    void _worker_idle();
+
+    // any new connection has been established.
+    void _worker_boostrap();
+
+    // typical loop.
+    void _worker_exec();
+
+    void _worker_cleanup() {}
+
+   private:
+    static spdlog::logger* CPPH_LOGGER() { return &*glog(); }
 
    private:
     dispatcher _io;
@@ -85,10 +96,24 @@ class terminal : public if_terminal
 
     std::atomic_bool _active = true;
 
-    std::thread _user_command_fetcher;
+    std::thread _worker_user_command;
     notify_queue<std::string> _command_queue;
 
     outgoing::shell_output _shell_buffered;
+
+    std::atomic_bool _any_connection = false;
+    std::thread _worker;
+    std::function<void()> _worker_state;
+
+    std::mutex _mtx_worker;
+    std::condition_variable _cvar_worker;
+    volatile bool _dirty;
+    std::atomic_bool _new_connection_exist;
+
+    struct _context_t
+    {
+
+    } _context;
 };
 
 }  // namespace perfkit::terminal::net

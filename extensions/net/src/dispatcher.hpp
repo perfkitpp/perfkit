@@ -63,8 +63,10 @@ class dispatcher
 
     std::pair<int, int> bandwidth_io() const noexcept;
 
-    perfkit::event<>& on_new_connection();
+    perfkit::event<int>& on_new_connection();
     perfkit::event<>& on_no_connection();
+
+    void launch();
 
    private:
     void _register_recv(
