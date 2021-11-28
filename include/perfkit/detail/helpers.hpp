@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <string>
 
 #include <perfkit/common/helper/spdlog_macros.hxx>
 #include <perfkit/fwd.hpp>

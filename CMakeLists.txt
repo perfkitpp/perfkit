@@ -182,4 +182,6 @@ if (MSVC)
             PUBLIC
             /utf-8 /FIciso646
     )
+
+    add_compile_options(/FIciso646)
 endif ()
