@@ -35,6 +35,10 @@ perfkit::terminal::net::terminal::terminal(
     _worker_user_command = std::thread(CPPH_BIND(_user_command_fetch_fn));
     _worker              = std::thread{CPPH_BIND(_exec)};
 
+    // register events
+    _io.on_new_connection() += CPPH_BIND(_on_any_connection);
+    _io.on_no_connection() += CPPH_BIND(_on_no_connection);
+
     // register handlers
     _io.on_recv<incoming::push_command>("cmd:push_command", CPPH_BIND(_on_push_command));
 
@@ -58,8 +62,6 @@ void perfkit::terminal::net::terminal::_on_no_connection()
 {
     if (_any_connection.exchange(false))
     {
-        CPPH_INFO("last connection has been disconnected. rolling back redirected stdout...");
-
         _touch_worker();
     }
 }
@@ -122,6 +124,7 @@ void perfkit::terminal::net::terminal::_worker_idle()
 {
     if (_any_connection)
     {
+        CPPH_INFO("new connection found. transitioning to bootstrap state...");
         _transition(CPPH_BIND(_worker_boostrap));
     }
     else
@@ -149,8 +152,7 @@ void perfkit::terminal::net::terminal::_worker_boostrap()
     // send session information
     _io.send("epoch", _init_msg);
 
-    //
-
+    CPPH_INFO("bootstrapping finished. transitioning to execution state ...");
     _transition(CPPH_BIND(_worker_exec));
 }
 
@@ -164,12 +166,14 @@ void perfkit::terminal::net::terminal::_worker_exec()
 {
     if (not _any_connection)
     {
+        CPPH_INFO("last connection has been lost. returning to idling state ...");
         _transition(CPPH_BIND(_worker_idle));
         return;
     }
 
     if (_new_connection_exist)
     {
+        CPPH_INFO("new connection found. resetting all state ...");
         _transition(CPPH_BIND(_worker_boostrap));
         return;
     }
