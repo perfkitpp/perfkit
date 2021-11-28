@@ -179,7 +179,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     auto bk_schema_hash() const noexcept { return _schema_hash; }
 
    public:
-    static auto bk_enumerate_registries() noexcept -> std::vector<std::shared_ptr<config_registry>>;
+    static auto bk_enumerate_registries(bool filter_complete = false) noexcept -> std::vector<std::shared_ptr<config_registry>>;
     static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
 
     static shared_ptr<config_registry> create(std::string name, std::type_info const* schema = nullptr);

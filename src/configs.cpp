@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <range/v3/range/conversion.hpp>
+#include <range/v3/view/filter.hpp>
 #include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
 
@@ -73,17 +74,38 @@ perfkit::config_registry::~config_registry() noexcept
     all->erase(all->find(name()));
 }
 
-auto perfkit::config_registry::bk_enumerate_registries() noexcept
+auto perfkit::config_registry::bk_enumerate_registries(bool filter_complete) noexcept
         -> std::vector<std::shared_ptr<config_registry>>
 {
     std::vector<std::shared_ptr<config_registry>> out;
     {
         using namespace ranges;
         auto [all, _] = detail::_all_repos();
-        auto ptrs     = views::all(*all) | views::transform([](auto&& o)
-                                                            { return o.second.lock(); });
-        out.assign(ptrs.begin(), ptrs.end());
+
+        auto ptrs = views::all(*all)
+                  | views::transform(
+                            [](auto&& o)
+                            {
+                                return o.second.lock();
+                            });
+
+        if (not filter_complete)
+        {
+            out.assign(ptrs.begin(), ptrs.end());
+        }
+        else
+        {
+            auto filtered = ptrs
+                          | views::filter(
+                                    [](auto&& sp)
+                                    {
+                                        return sp->_initially_updated();
+                                    });
+
+            out.assign(filtered.begin(), filtered.end());
+        }
     }
+
     return out;
 }
 
