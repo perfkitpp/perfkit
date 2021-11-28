@@ -34,6 +34,7 @@ option(perfkit_BUILD_FTXUI_EXTENSION "" OFF)
 option(perfkit_BUILD_NET_CLIENT "" ON)
 option(perfkit_BUILD_CLI "" ON)
 option(perfkit_USE_BUNDLED_JSON "" ON)
+option(perfkit_USE_BUNDLED_ASIO "" ON)
 option(perfkit_BUILD_EXAMPLES "" OFF)
 option(perfkit_BUILD_CPPHEADERS_TEST "" ON)
 
@@ -61,10 +62,12 @@ if (perfkit_BUILD_FTXUI_EXTENSION)
 endif ()
 
 # NET Extension
-if (perfkit_BUILD_NET_CLIENT)
+if (perfkit_USE_BUNDLED_ASIO OR perfkit_BUILD_NET_CLIENT)
     message("[${PROJECT_NAME}]: Using bundled asio library ... ")
     add_subdirectory(third/asio-1.20.0)
+endif ()
 
+if (perfkit_BUILD_NET_CLIENT)
     message("[${PROJECT_NAME}]: Configuring NET CLIENT extension ...")
     add_subdirectory(extensions/net)
 endif ()
