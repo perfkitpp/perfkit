@@ -189,8 +189,9 @@ class basic_dispatcher_impl
         while (not _n_sending.unique())
             std::this_thread::yield();
 
-        _bf_send.clear();
+        auto lc{std::lock_guard{_mtx_modify}};
 
+        _bf_send.clear();
         _bf_send.resize(8);
         nlohmann::json::to_msgpack(archive, {_bf_send});
 
@@ -200,16 +201,12 @@ class basic_dispatcher_impl
         _bf_send[3]         = '%';
         *(int*)&_bf_send[4] = _bf_send.size() - 8;
 
+        for (auto sock : _sockets_active)
         {
-            auto lc{std::lock_guard{_mtx_modify}};
-
-            for (auto sock : _sockets_active)
-            {
-                asio::async_write(
-                        *sock, asio::const_buffer{_bf_send.data(), _bf_send.size()},
-                        [this, refcnt = _n_sending](auto&&, auto&& n)
-                        { _perf_out(n); });
-            }
+            asio::async_write(
+                    *sock, asio::const_buffer{_bf_send.data(), _bf_send.size()},
+                    [this, refcnt = _n_sending](auto&&, auto&& n)
+                    { _perf_out(n); });
         }
     }
 

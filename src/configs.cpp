@@ -561,7 +561,6 @@ void perfkit::detail::config_base::_split_categories(std::string_view view, std:
     out.clear();
 
     // always suppose category is valid.
-    // automatically excludes last token = name of it.
     for (size_t i = 0; i < view.size();)
     {
         if (view[i] == '|')

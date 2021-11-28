@@ -1,5 +1,6 @@
 #pragma once
 #include <nlohmann/json.hpp>
+#include <list>
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
 
 namespace perfkit::terminal::net::outgoing
@@ -36,7 +37,7 @@ struct shell_output
             shell_output, content);
 };
 
-struct new_config_clsas
+struct new_config_class
 {
     struct entity_scheme
     {
@@ -52,8 +53,8 @@ struct new_config_clsas
     struct category_scheme
     {
         std::string name;
-        std::forward_list<category_scheme> subcategories;
-        std::forward_list<entity_scheme> entities;
+        std::list<category_scheme> subcategories;
+        std::list<entity_scheme> entities;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
                 category_scheme, name, subcategories, entities);
@@ -63,7 +64,7 @@ struct new_config_clsas
     category_scheme root;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
-            new_config_clsas, key, root);
+            new_config_class, key, root);
 };
 
 struct config_entity
