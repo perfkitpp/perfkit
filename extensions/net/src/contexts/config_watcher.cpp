@@ -142,6 +142,8 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
     }
 
     io->send("update:new_config_class", message);
+
+    puts(nlohmann::json{message}.dump(2).c_str());
 }
 
 void config_watcher::stop()

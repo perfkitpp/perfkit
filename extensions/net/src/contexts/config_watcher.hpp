@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "../messages.hpp"
 #include "if_watcher.hpp"
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/thread/worker.hxx"
 #include "perfkit/common/timer.hxx"
 #include "perfkit/detail/configs.hpp"
+#include "perfkit/extension/net-internals/messages.hpp"
 
 namespace perfkit::terminal::net::context
 {

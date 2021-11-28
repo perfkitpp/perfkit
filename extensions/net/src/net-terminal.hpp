@@ -14,7 +14,7 @@
 #include "contexts/graphics_watcher.hpp"
 #include "contexts/trace_watcher.hpp"
 #include "dispatcher.hpp"
-#include "messages.hpp"
+#include "perfkit/extension/net-internals/messages.hpp"
 #include "utils.hpp"
 
 namespace perfkit::terminal::net
