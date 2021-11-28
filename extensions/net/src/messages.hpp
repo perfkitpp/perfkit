@@ -7,6 +7,7 @@ namespace perfkit::terminal::net::outgoing
 struct session_reset
 {
     std::string name;
+    std::string hostname;
     std::string keystr;
     int64_t epoch;
     std::string description;

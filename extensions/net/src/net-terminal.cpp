@@ -1,9 +1,32 @@
 #include "net-terminal.hpp"
 
+extern "C" int gethostname(char*, size_t);
+
 perfkit::terminal::net::terminal::terminal(
         const perfkit::terminal::net::terminal::init_info& init)
         : _io(init)
 {
+    {
+        using namespace std::chrono;
+        _init_msg.epoch = duration_cast<milliseconds>(
+                                  steady_clock::now().time_since_epoch())
+                                  .count();
+        _init_msg.name        = init.name;
+        _init_msg.description = init.description;
+        _init_msg.num_cores   = std::thread::hardware_concurrency();
+
+        // key string generation
+        char hostname[65];
+        gethostname(hostname, std::size(hostname));
+
+        _init_msg.hostname = hostname;
+        _init_msg.keystr
+                = _init_msg.hostname + ';'
+                + std::to_string(_init_msg.num_cores) + ';'
+                + _init_msg.name + ';'
+                + std::to_string(_init_msg.epoch);
+    }
+
     // redirect stdout
     if (init.advanced.redirect_terminal)
         detail::input_redirect(CPPH_BIND(_char_handler));
@@ -112,7 +135,19 @@ void perfkit::terminal::net::terminal::_worker_boostrap()
     _new_connection_exist = false;
     _context              = {};
 
+    // register contexts
+    context::if_watcher* watchers[] = {
+            &_context.configs, &_context.traces, &_context.graphics};
+
+    for (auto* watcher : watchers)
+    {
+        watcher->notify_change = CPPH_BIND(_touch_worker);
+        watcher->io            = &_io;
+        watcher->start();
+    }
+
     // send session information
+    _io.send("epoch", _init_msg);
 
     //
 
@@ -137,5 +172,13 @@ void perfkit::terminal::net::terminal::_worker_exec()
     {
         _transition(CPPH_BIND(_worker_boostrap));
         return;
+    }
+
+    context::if_watcher* watchers[] = {
+            &_context.configs, &_context.traces, &_context.graphics};
+
+    for (auto* watcher : watchers)
+    {
+        watcher->update();
     }
 }

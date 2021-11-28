@@ -13,7 +13,9 @@ add_library(
         src/net-terminal.cpp
         src/basic_dispatcher_impl.cpp
 
-        src/contexts/config.cpp
+        src/contexts/config_watcher.cpp
+        src/contexts/trace_watcher.cpp
+        src/contexts/graphics_watcher.cpp
 )
 
 add_library(

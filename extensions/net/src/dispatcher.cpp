@@ -17,6 +17,7 @@ perfkit::terminal::net::dispatcher::dispatcher(
 {
     // TODO: add advanced options for terminal_init_info
     detail::basic_dispatcher_impl_init_info init0;
+    init0.auth = init_info.auths;
 
     if (init_info._mode == operation_mode::independent_server)
     {

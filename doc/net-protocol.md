@@ -128,13 +128,14 @@ payload:
   candidates: list<string>
 ```
 
-### *update:session_reset*
+### *epoch*
 
 최초의 패킷을 나타내는 세션 정보.
 
 ```yaml
 payload:
   name: string; the session name server initially registered.
+  hostname: string; machine name of session host device.
   keystr: string; keystring of this session. may contain various unique informations
   epoch: int64; timestamp in milliseconds that the server was initially created
   description: string; description of this session.

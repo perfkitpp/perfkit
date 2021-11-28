@@ -3,14 +3,14 @@
 //
 
 #pragma once
-#include "../dispatcher.hpp"
+#include "if_watcher.hpp"
 
 namespace perfkit::terminal::net::context
 {
-class config
+class config_watcher : public if_watcher
 {
    public:
-    void update(dispatcher* disp);
+    void update() override {}
 };
 
 }  // namespace perfkit::terminal::net::context

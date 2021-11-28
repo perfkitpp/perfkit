@@ -10,6 +10,9 @@
 #include <perfkit/terminal.h>
 #include <spdlog/spdlog.h>
 
+#include "contexts/config_watcher.hpp"
+#include "contexts/graphics_watcher.hpp"
+#include "contexts/trace_watcher.hpp"
 #include "dispatcher.hpp"
 #include "messages.hpp"
 #include "utils.hpp"
@@ -91,6 +94,8 @@ class terminal : public if_terminal
     static spdlog::logger* CPPH_LOGGER() { return &*glog(); }
 
    private:
+    outgoing::session_reset _init_msg;
+
     dispatcher _io;
     commands::registry _commands;
 
@@ -112,7 +117,9 @@ class terminal : public if_terminal
 
     struct _context_t
     {
-
+        context::config_watcher configs;
+        context::trace_watcher traces;
+        context::graphics_watcher graphics;
     } _context;
 };
 
