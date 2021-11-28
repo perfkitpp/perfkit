@@ -136,7 +136,6 @@ void perfkit::terminal::net::terminal::_worker_idle()
 void perfkit::terminal::net::terminal::_worker_boostrap()
 {
     _new_connection_exist = false;
-    _context              = {};
 
     // register contexts
     context::if_watcher* watchers[] = {
@@ -144,6 +143,7 @@ void perfkit::terminal::net::terminal::_worker_boostrap()
 
     for (auto* watcher : watchers)
     {
+        watcher->stop();
         watcher->notify_change = CPPH_BIND(_touch_worker);
         watcher->io            = &_io;
         watcher->start();

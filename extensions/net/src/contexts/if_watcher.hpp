@@ -15,6 +15,7 @@ class if_watcher
 
    public:
     virtual void start(){};
+    virtual void stop(){};
     virtual void update(){};
 };
 }  // namespace perfkit::terminal::net::context

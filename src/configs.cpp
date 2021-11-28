@@ -265,6 +265,7 @@ bool perfkit::configs::wait_any_change(std::chrono::milliseconds timeout, uint64
 
     std::unique_lock lock{*mtx};
     auto fence_org = *fence;
+    out_fence && (fence_org = *out_fence);
 
     auto valid = cvar->wait_for(
             lock, timeout, [&, fence = fence]
