@@ -128,7 +128,7 @@ payload:
   candidates: list<string>
 ```
 
-### *epoch*
+### *update:epoch*
 
 최초의 패킷을 나타내는 세션 정보.
 
@@ -195,6 +195,16 @@ payload:
 entity_scheme:
   config_key: hash64; unique key from 'update:new_config_class'
   value: any; new value
+```
+
+### *cmd:configure*
+
+```yaml
+parameter:
+  class_key: string; name of config class
+  content: list<entity_scheme>; same as above
+     
+entity_scheme: <same as above>
 ```
 
 ### *update:trace_class_list*

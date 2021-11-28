@@ -150,7 +150,7 @@ void perfkit::terminal::net::terminal::_worker_boostrap()
     }
 
     // send session information
-    _io.send("epoch", _init_msg);
+    _io.send("update:epoch", _init_msg);
 
     CPPH_INFO("bootstrapping finished. transitioning to execution state ...");
     _transition(CPPH_BIND(_worker_exec));
