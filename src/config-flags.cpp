@@ -14,6 +14,9 @@
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/configs.hpp"
 
+// TODO: change to store flag variables itself, and iterate all available configs everytime
+//        apply_flags() request is delivered, to handle config class instances correctly.
+
 void perfkit::configs::parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined)
 {
     using namespace ranges;
