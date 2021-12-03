@@ -20,8 +20,8 @@
 #include <perfkit/common/hasher.hxx>
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
 #include <perfkit/common/timer.hxx>
-#include <perfkit/detail/helpers.hpp>
 #include <perfkit/extension/net.hpp>
+#include <perfkit/logging.h>
 #include <spdlog/spdlog.h>
 
 namespace perfkit::terminal::net::detail
@@ -603,6 +603,6 @@ class basic_dispatcher_impl
     std::vector<uint8_t> _bf_send;
     std::shared_ptr<void> _n_sending = std::make_shared<nullptr_t>();
 
-    logger_ptr _logger = logging::find_or("PERFKIT:NET");
+    logger_ptr _logger = share_logger("PERFKIT:NET");
 };
 }  // namespace perfkit::terminal::net::detail

@@ -11,7 +11,8 @@ namespace perfkit
 {
 
 using logger_ptr = std::shared_ptr<spdlog::logger>;
-
 logger_ptr share_logger(std::string const& name);
+
+// TODO: logic for enumerate loggers, save/load logging status, etc ...
 
 }  // namespace perfkit

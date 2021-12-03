@@ -141,8 +141,8 @@ static struct redirection_context_t
                             if (not(pfd->revents & POLLIN))
                                 continue;
 
-                            auto n_read = ::read(pfd->fd, buffer, std::size(buffer));
-                            ::write(*fd, buffer, n_read);
+                            auto n_read  = ::read(pfd->fd, buffer, std::size(buffer));
+                            auto n_write = ::write(*fd, buffer, n_read);
 
                             for (auto c : perfkit::make_iterable(buffer, buffer + n_read))
                             {
