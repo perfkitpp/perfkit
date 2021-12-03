@@ -5,9 +5,6 @@
 
 #include "test_class.hpp"
 
-//
-#include "test_configs.inl.h"
-
 using namespace std::literals;
 
 int main(void)
