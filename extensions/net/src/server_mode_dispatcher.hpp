@@ -39,10 +39,12 @@ class server_mode_dispatcher : public basic_dispatcher_impl
         _acceptor = std::make_unique<tcp::acceptor>(*io());
         tcp::endpoint endpoint{asio::ip::address::from_string(_init.bind_addr), _init.bind_port};
 
-        _acceptor->open(tcp::v4());
+        _acceptor->open(endpoint.protocol());
         _acceptor->set_option(tcp::acceptor::reuse_address{true});
         _acceptor->bind(endpoint);
         _acceptor->listen();
+
+        CPPH_INFO("opening acceptor for {}:{} ...", _init.bind_addr, _init.bind_port);
 
         struct _accept_fn
         {
