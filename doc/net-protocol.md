@@ -117,6 +117,7 @@ parameter:
 parameter:
   reply_to: hash64; a hash to recognize rpc reply
   command: string
+  position: int32;
 ```
 
 **REP**

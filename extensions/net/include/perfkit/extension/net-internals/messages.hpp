@@ -96,6 +96,15 @@ struct config_entity
             config_entity, class_key, content);
 };
 
+struct suggest_command
+{
+    constexpr static char ROUTE[] = "rpc:suggest_command";
+
+    int64_t reply_to;
+    std::string new_command;
+    std::forward_list<std::string> candidates;
+};
+
 }  // namespace perfkit::terminal::net::outgoing
 
 namespace perfkit::terminal::net::incoming
@@ -108,5 +117,14 @@ struct push_command
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             push_command, command);
+};
+
+struct suggest_command
+{
+    constexpr static char ROUTE[] = "rpc:suggest_command";
+
+    int64_t reply_to;
+    int16_t position;
+    std::string command;
 };
 }  // namespace perfkit::terminal::net::incoming
