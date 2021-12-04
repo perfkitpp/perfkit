@@ -87,7 +87,7 @@ void config_watcher::update()
 
         for (auto& [_, message] : updates)
         {
-            io->send("update:config_entity", message);
+            io->send(message);
         }
     }
 }
@@ -141,7 +141,7 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
         dst->config_key = entity->id.value;
     }
 
-    io->send("update:new_config_class", message);
+    io->send(message);
 
     puts(nlohmann::json{message}.dump(2).c_str());
 }

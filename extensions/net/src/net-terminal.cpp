@@ -40,7 +40,7 @@ perfkit::terminal::net::terminal::terminal(
     _io.on_no_connection() += CPPH_BIND(_on_no_connection);
 
     // register handlers
-    _io.on_recv<incoming::push_command>("cmd:push_command", CPPH_BIND(_on_push_command));
+    _io.on_recv<incoming::push_command>(CPPH_BIND(_on_push_command));
 
     // launch asynchronous IO thread.
     _io.launch();
@@ -53,7 +53,7 @@ void perfkit::terminal::net::terminal::_char_handler(char c)
     if (c == '\n')
     {
         // send buffer as message
-        _io.send("update:shell_output", _shell_buffered);
+        _io.send(_shell_buffered);
         _shell_buffered.content.clear();
     }
 }
@@ -150,7 +150,7 @@ void perfkit::terminal::net::terminal::_worker_boostrap()
     }
 
     // send session information
-    _io.send("update:epoch", _init_msg);
+    _io.send(_init_msg);
 
     CPPH_INFO("bootstrapping finished. transitioning to execution state ...");
     _transition(CPPH_BIND(_worker_exec));
