@@ -1,12 +1,15 @@
 #pragma once
-#include <nlohmann/json.hpp>
 #include <list>
+
+#include <nlohmann/json.hpp>
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
 
 namespace perfkit::terminal::net::outgoing
 {
 struct session_reset
 {
+    constexpr static char ROUTE[] = "update:epoch";
+
     std::string name;
     std::string hostname;
     std::string keystr;
@@ -20,6 +23,8 @@ struct session_reset
 
 struct session_state
 {
+    constexpr static char ROUTE[] = "update:session_state";
+
     double cpu_usage;
     int64_t memory_usage;
     int32_t bw_out;
@@ -31,6 +36,8 @@ struct session_state
 
 struct shell_output
 {
+    constexpr static char ROUTE[] = "update:shell_output";
+
     std::string content;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
@@ -39,6 +46,8 @@ struct shell_output
 
 struct new_config_class
 {
+    constexpr static char ROUTE[] = "update:new_config_class";
+
     struct entity_scheme
     {
         std::string name;
@@ -69,6 +78,8 @@ struct new_config_class
 
 struct config_entity
 {
+    constexpr static char ROUTE[] = "update:config_entity";
+
     struct entity_scheme
     {
         uint64_t config_key;
@@ -91,6 +102,8 @@ namespace perfkit::terminal::net::incoming
 {
 struct push_command
 {
+    constexpr static char ROUTE[] = "cmd:push_command";
+
     std::string command;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
