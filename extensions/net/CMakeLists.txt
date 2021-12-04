@@ -29,7 +29,7 @@ target_link_libraries(
         perfkit::core
 
         PRIVATE
-        perfkit::net::bundled-asio
+        perfkit::net::asio
         perfkit::picosha2
 )
 
