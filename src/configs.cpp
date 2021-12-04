@@ -183,6 +183,9 @@ static auto import_export_reenter_lock()
 
 void perfkit::configs::import_from(const json& data)
 {
+    if (not data.is_object())
+        throw std::logic_error{"imported json must be object!"};
+
     auto _l{import_export_reenter_lock()};
     (void)_l;
 

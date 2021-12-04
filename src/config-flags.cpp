@@ -324,18 +324,24 @@ bool perfkit::configs::import_file(std::string_view path)
     try
     {
         auto js = json::parse(std::istream_iterator<char>{fs}, std::istream_iterator<char>{});
-        import_from(js);
-
-        return true;
+        if (js.is_object())
+        {
+            import_from(js);
+            return true;
+        }
+        else
+        {
+            glog()->error("config load failed: file '{}' is not a json object!", path);
+        }
     }
     catch (json::parse_error& e)
     {
         glog()->error(
                 "config load failed: file '{}' is not valid json: (error at {}) {}",
                 path, e.byte, e.what());
-
-        return false;
     }
+
+    return false;
 }
 
 bool perfkit::configs::export_to(std::string_view path)
