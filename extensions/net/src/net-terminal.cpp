@@ -48,13 +48,31 @@ perfkit::terminal::net::terminal::terminal(
 
 void perfkit::terminal::net::terminal::_char_handler(char c)
 {
-    _shell_buffered.content += c;
-
-    if (c == '\n')
+    if (not _shell_active.test_and_set())
     {
-        // send buffer as message
-        _io.send(_shell_buffered);
-        _shell_buffered.content.clear();
+        _shell_buffered.content = _shell_accumulated;
+    }
+
+    if (_any_connection)
+    {
+        _shell_buffered.content += c;
+
+        if (c == '\n')
+        {
+            // send buffer as message
+            _io.send(_shell_buffered);
+            _shell_buffered.content.clear();
+        }
+    }
+
+    _shell_accumulated += c;
+
+    int constexpr NUM_MAX_BUF = 1 << 20;
+    if (_shell_accumulated.size() > NUM_MAX_BUF)
+    {
+        _shell_accumulated.erase(
+                _shell_accumulated.begin(),
+                _shell_accumulated.end() - NUM_MAX_BUF / 2);
     }
 }
 
@@ -151,6 +169,7 @@ void perfkit::terminal::net::terminal::_worker_boostrap()
 
     // send session information
     _io.send(_init_msg);
+    _shell_active.clear();
 
     CPPH_INFO("bootstrapping finished. transitioning to execution state ...");
     _transition(CPPH_BIND(_worker_exec));
