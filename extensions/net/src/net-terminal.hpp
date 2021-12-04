@@ -105,8 +105,10 @@ class terminal : public if_terminal
     notify_queue<std::string> _command_queue;
 
     outgoing::shell_output _shell_buffered;
+    std::string _shell_accumulated;
+    std::atomic_flag _shell_active;
 
-    std::atomic_bool _any_connection = false;
+    alignas(64) std::atomic_bool _any_connection = false;
     std::thread _worker;
     std::function<void()> _worker_state;
 
