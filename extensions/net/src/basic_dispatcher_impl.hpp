@@ -165,7 +165,7 @@ class basic_dispatcher_impl
             void const* userobj,
             void (*payload)(send_archive_type*, void const*))
     {
-        if (_disconnect_timer())
+        if (false && _disconnect_timer())
         {  // iterate each socket, and disconnect obsolete ones.
             std::forward_list<socket_id_t> expired;
 
@@ -249,6 +249,7 @@ class basic_dispatcher_impl
         auto* sock = &*context->socket;
         asio::async_read(
                 *sock, asio::dynamic_buffer(context->rdbuf).prepare(8),
+                asio::transfer_all(),
                 [this, id, context](auto&& a, auto&& b)
                 {
                     _handle_prelogin_header(id, context, a, b);
@@ -293,8 +294,8 @@ class basic_dispatcher_impl
    private:  // handler helpers
     static auto _buf(buffer_t& t, size_t n)
     {
-        t.clear();
-        return asio::dynamic_buffer(t).prepare(n);
+        t.resize(n);
+        return asio::buffer(t);
     }
 
     static auto _view(buffer_t& t, size_t n)
@@ -324,7 +325,7 @@ class basic_dispatcher_impl
         auto size = _retrieve_buffer_size(_view(ctx->rdbuf, n_read).as<message_header_t>());
         if (size == ~size_t{})
         {
-            CPPH_ERROR("socket {}: protocol error, closing connection ...");
+            CPPH_ERROR("socket {}: protocol error, closing connection ...", id.value);
             close(id, "invalid-buffer-size");
             return ~size_t{};
         }
@@ -343,6 +344,7 @@ class basic_dispatcher_impl
 
         asio::async_read(
                 *context->socket, _buf(context->rdbuf, size),
+                asio::transfer_all(),
                 [this, id, context](auto&& a, auto&& b)
                 {
                     _handle_prelogin_body(id, context, a, b);
@@ -410,6 +412,7 @@ class basic_dispatcher_impl
 
             asio::async_read(
                     *ctx->socket, _buf(ctx->rdbuf, 8),
+                    asio::transfer_all(),
                     [this, id, ctx](auto&& a, auto&& b)
                     {
                         _handle_prelogin_header(id, ctx, a, b);
@@ -441,6 +444,7 @@ class basic_dispatcher_impl
             else
                 asio::async_read(
                         *ctx->socket, _buf(ctx->rdbuf, 8),
+                        asio::transfer_all(),
                         [this, id, ctx](auto&& a, auto&& b)
                         {
                             _handle_active_header(id, ctx, a, b);
@@ -478,6 +482,7 @@ class basic_dispatcher_impl
 
         asio::async_read(
                 *ctx->socket, _buf(ctx->rdbuf, size),
+                asio::transfer_all(),
                 [this, id, ctx](auto&& a, auto&& b)
                 {
                     _handle_active_body(id, ctx, a, b);
@@ -528,6 +533,7 @@ class basic_dispatcher_impl
 
         asio::async_read(
                 *ctx->socket, _buf(ctx->rdbuf, 8),
+                asio::transfer_all(),
                 [this, id, ctx](auto&& a, auto&& b)
                 {
                     _handle_active_header(id, ctx, a, b);
