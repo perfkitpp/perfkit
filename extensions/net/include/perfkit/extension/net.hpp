@@ -12,7 +12,17 @@ terminal_ptr create(struct terminal_init_info const& info);
 
 /**
  * Create net client from configuration profile
+ *
  * @param config_profile_name
+ *
+ * @details
+ *      You can configure terminal initialization parameters by following environment variables
+ *      - PERFKIT_NET_SESSION_NAME
+ *      - PERFKIT_NET_AUTH
+ *          <ID>:<PW>:<ACCESS>[;<ID>:<PW>:<ACCESS>[;...]]
+ *      - PERFKIT_NET_USE_RELAY_SERVER
+ *      - PERFKIT_NET_IPADDR
+ *      - PERFKIT_NET_PORT
  */
 terminal_ptr create(std::string config_profile_name);
 

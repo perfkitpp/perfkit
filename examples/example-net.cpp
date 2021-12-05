@@ -17,12 +17,10 @@ int main(void)
     test2.start();
     test3.start();
 
-    perfkit::terminal::net::terminal_init_info init{"example-net"};
-    init.serve(25572);
-    bool running = true;
-
-    auto term = create(init);
+    auto term = perfkit::terminal::net::create("__terminal");
     perfkit::terminal::initialize_with_basic_commands(&*term);
+
+    bool running = true;
     term->add_command(
             "quit",
             [&]
