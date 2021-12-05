@@ -25,8 +25,12 @@ void config_watcher::update()
         auto regs     = perfkit::config_registry::bk_enumerate_registries(true);
         auto* watches = &_cache.regs;
 
-        sort(regs, [](auto&& a, auto&& b)
-             { return a.owner_before(b); });
+        // discard obsolete registries
+        watches->erase(
+                perfkit::remove_if(*watches, [](auto&& e) { return e.expired(); }),
+                watches->end());
+
+        sort(regs, [](auto&& a, auto&& b) { return a.owner_before(b); });
 
         std::vector<std::shared_ptr<config_registry>> diffs;
         diffs.reserve(regs.size());
@@ -35,8 +39,7 @@ void config_watcher::update()
                 regs.begin(), regs.end(),
                 watches->begin(), watches->end(),
                 std::back_inserter(diffs),
-                [](auto&& a, auto&& b)
-                {
+                [](auto&& a, auto&& b) {
                     return ptr_equals(a, b);
                 });
 
@@ -122,8 +125,9 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
 
         for (auto category : make_iterable(hierarchy.begin(), hierarchy.end() - 1))
         {
-            auto it = perfkit::find_if(level->subcategories, [&](auto&& s)
-                                       { return s.name == category; });
+            auto it = perfkit::find_if(level->subcategories,
+                                       [&](auto&& s) { return s.name == category; });
+
             if (it == level->subcategories.end())
             {
                 level->subcategories.emplace_back();
@@ -165,8 +169,7 @@ void config_watcher::update_entity(
     std::lock_guard lc{_mtx_entities};
     auto& ents = _cache.entities;
 
-    auto it = perfkit::find_if(ents, [&](auto&& ent)
-                               { return ent.id.value == key; });
+    auto it = perfkit::find_if(ents, [&](auto&& ent) { return ent.id.value == key; });
 
     if (it == ents.end())
         return;
