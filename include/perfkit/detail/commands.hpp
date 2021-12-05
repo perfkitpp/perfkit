@@ -10,8 +10,7 @@
 
 #include "perfkit/common/array_view.hxx"
 
-namespace perfkit::commands
-{
+namespace perfkit::commands {
 class registry;
 struct stroffset
 {
@@ -93,8 +92,7 @@ class registry
             {
                 return _add_subcommand(
                         std::move(cmd),
-                        [fn = std::forward<Fn_>(handler)](auto&& args)
-                        {
+                        [fn = std::forward<Fn_>(handler)](auto&& args) {
                             fn(args);
                             return true;
                         },
@@ -104,8 +102,7 @@ class registry
             {
                 return _add_subcommand(
                         std::move(cmd),
-                        [fn = std::forward<Fn_>(handler)](auto&& args)
-                        {
+                        [fn = std::forward<Fn_>(handler)](auto&& args) {
                             fn();
                             return true;
                         },

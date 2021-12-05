@@ -1,8 +1,7 @@
 #pragma once
 #include "../dispatcher.hpp"
 
-namespace perfkit::terminal::net::context
-{
+namespace perfkit::terminal::net::context {
 class if_watcher
 {
    public:

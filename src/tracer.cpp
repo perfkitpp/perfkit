@@ -129,8 +129,7 @@ bool tracer::_deliver_previous_result()
     return true;
 }
 
-namespace
-{
+namespace {
 struct message_block_sorter
 {
     int n;
@@ -141,8 +140,7 @@ struct message_block_sorter
 };
 }  // namespace
 
-static auto lock_tracer_repo = []
-{
+static auto lock_tracer_repo = [] {
     static std::mutex _lck;
     return std::unique_lock{_lck};
 };
@@ -161,16 +159,14 @@ std::vector<std::weak_ptr<tracer>>& tracer::_all() noexcept
 std::vector<std::shared_ptr<tracer>> tracer::all() noexcept
 {
     return lock_tracer_repo(),
-           []
-    {
-        std::vector<std::shared_ptr<tracer>> ret{};
-        ret.reserve(_all().size());
-        std::transform(
-                _all().begin(), _all().end(), back_inserter(ret),
-                [](auto&& p)
-                { return p.lock(); });
-        return ret;
-    }();
+           [] {
+               std::vector<std::shared_ptr<tracer>> ret{};
+               ret.reserve(_all().size());
+               std::transform(
+                       _all().begin(), _all().end(), back_inserter(ret),
+                       [](auto&& p) { return p.lock(); });
+               return ret;
+           }();
 }
 
 void tracer::async_fetch_request(tracer::future_result* out)
@@ -194,7 +190,9 @@ auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::
 {
     auto _{lock_tracer_repo()};
     SPDLOG_DEBUG("creating tracer {}", name);
-    std::shared_ptr<tracer> entity{new tracer{order, name}};
+    std::shared_ptr<tracer> entity{
+            new tracer{order, name}
+    };
     entity->_self_weak = entity;
 
     auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
@@ -204,16 +202,14 @@ auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::
 
 perfkit::tracer::~tracer() noexcept
 {
-    static auto equivalent = [](auto&& p1, auto&& p2)
-    {
+    static auto equivalent = [](auto&& p1, auto&& p2) {
         return p1.lock() == p2.lock();
     };
 
     auto _{lock_tracer_repo()};
     SPDLOG_DEBUG("destroying tracer {}", _name);
     auto it = std::find_if(_all().begin(), _all().end(),
-                           [&](auto&& wptr)
-                           { return equivalent(wptr, _self_weak); });
+                           [&](auto&& wptr) { return equivalent(wptr, _self_weak); });
     if (it != _all().end())
     {
         _all().erase(it);
@@ -225,7 +221,7 @@ perfkit::tracer::~tracer() noexcept
     }
 }
 
-void perfkit::tracer::_try_pop(const _trace::_entity_ty* body)
+void perfkit::tracer::_try_pop(_trace::_entity_ty const* body)
 {
     assert_(not _stack.empty());
 
@@ -315,8 +311,7 @@ void tracer::async_trace_result::copy_sorted(fetched_traces& out) const noexcept
     sort_messages_by_rule(out);
 }
 
-namespace
-{
+namespace {
 enum class hierarchy_compare_result
 {
     irrelevant,
@@ -363,8 +358,7 @@ void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept
 {
     std::sort(
             msg.begin(), msg.end(),
-            [](tracer::trace const& a, tracer::trace const& b)
-            {
+            [](tracer::trace const& a, tracer::trace const& b) {
                 auto r_hcmp = compare_hierarchy(a.hierarchy, b.hierarchy);
                 if (r_hcmp == hierarchy_compare_result::equal)
                 {

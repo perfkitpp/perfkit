@@ -108,8 +108,7 @@ static struct redirection_context_t
 
         _active = true;
         _worker = std::thread(
-                [this, fn = std::move(fn)]
-                {
+                [this, fn = std::move(fn)] {
                     pollfd pollfds[2];
                     pollfds[0].fd     = _fd_pout[0];
                     pollfds[1].fd     = _fd_perr[0];

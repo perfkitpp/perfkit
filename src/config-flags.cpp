@@ -21,21 +21,18 @@ void perfkit::configs::parse_args(int* argc, char*** argv, bool consume, bool ig
 {
     using namespace ranges;
     auto args = views::iota(0, *argc)
-              | views::transform([&](auto i) -> std::string_view
-                                 { return (*argv)[i]; })
+              | views::transform([&](auto i) -> std::string_view { return (*argv)[i]; })
               | to<std::vector<std::string_view>>();
 
     parse_args(&args, consume, ignore_undefined);
     assert(args.size() <= *argc);
 
     *argc = static_cast<int>(args.size());
-    copy(args | views::transform([](std::string_view s)
-                                 { return const_cast<char*>(s.data()); }),
+    copy(args | views::transform([](std::string_view s) { return const_cast<char*>(s.data()); }),
          *argv);
 }
 
-namespace perfkit::configs::_parsing
-{
+namespace perfkit::configs::_parsing {
 class if_state;
 using state_ptr = std::unique_ptr<if_state>;
 
@@ -244,7 +241,7 @@ class initial_state : public if_state
 
         using namespace ranges;
         str += "\n\nusage: <program> ";
-        for (const auto& [key, conf] : _flags())
+        for (auto const& [key, conf] : _flags())
         {
             flag_mappings[conf.get()].push_back(key);
             str << "[{}{}{}] "_fmt
@@ -258,7 +255,7 @@ class initial_state : public if_state
         str += "args...";
 
         str += "\n\n"_fmt.s();
-        for (const auto& [conf, keys] : flag_mappings)
+        for (auto const& [conf, keys] : flag_mappings)
         {
             str << "  {:.<80}\n"_fmt
                             % to_string("{{ \"{}\" :{} }}"_fmt

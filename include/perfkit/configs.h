@@ -3,8 +3,7 @@
 #include "perfkit/detail/configs.hpp"
 #include "perfkit/fwd.hpp"
 
-namespace perfkit::_configs_internal
-{
+namespace perfkit::_configs_internal {
 std::string INDEXER_STR(int order);
 
 //// no use anymore ... leaving just for reference
@@ -25,8 +24,7 @@ std::string INDEXER_STR(int order);
 
 };  // namespace perfkit::_configs_internal
 
-namespace perfkit
-{
+namespace perfkit {
 struct config_class
 {
     virtual ~config_class()                                          = default;
@@ -53,8 +51,7 @@ struct config_class_hook : std::function<void(config_class*)>
 
 // HELPER MACROS
 #define PERFKIT_CATEGORY(category)                                                     \
-    namespace category                                                                 \
-    {                                                                                  \
+    namespace category {                                                               \
     ::std::string _perfkit_INTERNAL_CATNAME()                                          \
     {                                                                                  \
         return "";                                                                     \
@@ -76,8 +73,7 @@ struct config_class_hook : std::function<void(config_class*)>
     namespace category
 
 #define PERFKIT_SUBCATEGORY(category)                                                                   \
-    namespace category                                                                                  \
-    {                                                                                                   \
+    namespace category {                                                                                \
     static inline auto _perfkit_INTERNAL_CATNAME_BEFORE = &_perfkit_INTERNAL_CATNAME;                   \
     [[deprecated]] ::perfkit::config_registry& root_registry() { return _registry(); }                  \
     ::perfkit::config_registry& registry() { return _registry(); }                                      \
@@ -100,8 +96,7 @@ struct config_class_hook : std::function<void(config_class*)>
                                    __VA_ARGS__)
 
 #define PERFKIT_DECLARE_SUBCATEGORY(hierarchy)                  \
-    namespace hierarchy                                         \
-    {                                                           \
+    namespace hierarchy {                                       \
     ::std::string _perfkit_INTERNAL_CATNAME_2();                \
     [[deprecated]] ::perfkit::config_registry& root_registry(); \
     ::perfkit::config_registry& registry();                     \
@@ -109,8 +104,7 @@ struct config_class_hook : std::function<void(config_class*)>
     namespace hierarchy
 
 #define PERFKIT_DECLARE_CATEGORY(hierarchy)    \
-    namespace hierarchy                        \
-    {                                          \
+    namespace hierarchy {                      \
     ::std::string _perfkit_INTERNAL_CATNAME(); \
     ::perfkit::config_registry& _registry();   \
     ::perfkit::config_registry& registry();    \

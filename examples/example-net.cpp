@@ -23,8 +23,7 @@ int main(void)
     bool running = true;
     term->add_command(
             "quit",
-            [&]
-            {
+            [&] {
                 running = false;
             });
 

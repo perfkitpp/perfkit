@@ -4,8 +4,7 @@
 #include <nlohmann/json.hpp>
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
 
-namespace perfkit::terminal::net::outgoing
-{
+namespace perfkit::terminal::net::outgoing {
 struct session_reset
 {
     constexpr static char ROUTE[] = "update:epoch";
@@ -107,8 +106,7 @@ struct suggest_command
 
 }  // namespace perfkit::terminal::net::outgoing
 
-namespace perfkit::terminal::net::incoming
-{
+namespace perfkit::terminal::net::incoming {
 struct push_command
 {
     constexpr static char ROUTE[] = "cmd:push_command";

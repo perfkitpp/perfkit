@@ -6,8 +6,7 @@
 #include "perfkit/traces.h"
 #include "range/v3/algorithm.hpp"
 
-namespace perfkit_ftxui
-{
+namespace perfkit_ftxui {
 using namespace ftxui;
 using namespace perfkit;
 
@@ -23,11 +22,10 @@ class tracer_instance_browser : public ComponentBase
             opts.style_unchecked = "";
 
             opts.on_change
-                    = [this]
-            {
-                if (_is_fetching && _container->ChildCount() == 1) { _container->Add(_outer); }
-                if (!_is_fetching && _container->ChildCount() == 2) { _container->ChildAt(1)->Detach(); }
-            };
+                    = [this] {
+                          if (_is_fetching && _container->ChildCount() == 1) { _container->Add(_outer); }
+                          if (!_is_fetching && _container->ChildCount() == 2) { _container->ChildAt(1)->Detach(); }
+                      };
 
             _title = Checkbox(_target->name(), &_is_fetching, opts);
         }
@@ -105,8 +103,7 @@ class tracer_instance_browser : public ComponentBase
                 : _owner(owner)
         {
             CheckboxOption opts;
-            opts.on_change = [this]
-            { _do_refresh(); };
+            opts.on_change       = [this] { _do_refresh(); };
             opts.style_checked   = "<";
             opts.style_unchecked = "|";
 

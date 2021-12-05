@@ -42,15 +42,13 @@ perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
     auto ptr = std::make_shared<worker_info_t>();
 
     ptr->thrd_loop = std::thread{
-            [screen, root_component, flag = &ptr->_alive]
-            {
+            [screen, root_component, flag = &ptr->_alive] {
                 screen->Loop(root_component);
                 flag->store(false, std::memory_order_relaxed);  // for when screen turned off first ...
             }};
 
     ptr->thrd_poll = std::thread{
-            [screen, flag = &ptr->_alive, poll_interval]
-            {
+            [screen, flag = &ptr->_alive, poll_interval] {
                 using clock_ty                   = std::chrono::steady_clock;
                 clock_ty::time_point next_wakeup = {};
 
@@ -67,8 +65,7 @@ perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
     return ptr;
 }
 
-namespace
-{
+namespace {
 class EventCatcher : public ftxui::ComponentBase
 {
    public:
@@ -107,8 +104,7 @@ ftxui::Component perfkit_ftxui::event_dispatcher(ftxui::Component c, const Event
             std::make_shared<EventCatcher>(c, evt_type));
 }
 
-namespace
-{
+namespace {
 using namespace ftxui;
 
 class atomic_string_queue : public perfkit_ftxui::string_queue
@@ -121,8 +117,7 @@ class atomic_string_queue : public perfkit_ftxui::string_queue
 
         std::string result;
         return _cvar.wait_for(_, milliseconds,
-                              [&result, this]
-                              {
+                              [&result, this] {
                                   if (_queue.empty()) { return false; }
                                   result = _pop();
                                   return true;
@@ -152,10 +147,8 @@ class atomic_string_queue : public perfkit_ftxui::string_queue
 };
 }  // namespace
 
-namespace perfkit
-{
-namespace
-{
+namespace perfkit {
+namespace {
 class _inputbox : public ComponentBase
 {
    public:
@@ -166,9 +159,8 @@ class _inputbox : public ComponentBase
 
         InputOption opts;
         opts.cursor_position = &_cpos;
-        opts.on_enter        = [this]
-        { _on_enter(); };
-        _box = Input(&_cmd, prompt, opts);
+        opts.on_enter        = [this] { _on_enter(); };
+        _box                 = Input(&_cmd, prompt, opts);
 
         Add(_box);
     }
@@ -219,23 +211,20 @@ ftxui::Component perfkit_ftxui::PRESET(
     auto resize_context = std::make_shared<int>(30);
     auto components     = ResizableSplitLeft(cfg, trace, resize_context.get());
 
-    components = CatchEvent(components, [components](Event evt)
-                            {
-                                if (evt == EVENT_POLL)
-                                {
-                                    for (size_t j = 0; j < components->ChildAt(0)->ChildCount(); ++j)
-                                    {
-                                        components->ChildAt(0)->ChildAt(j)->OnEvent(evt);
-                                    }
-                                }
-                                return false;
-                            });
+    components = CatchEvent(components, [components](Event evt) {
+        if (evt == EVENT_POLL)
+        {
+            for (size_t j = 0; j < components->ChildAt(0)->ChildCount(); ++j)
+            {
+                components->ChildAt(0)->ChildAt(j)->OnEvent(evt);
+            }
+        }
+        return false;
+    });
 
     components = Container::Vertical({
-            Renderer(cmd, [cmd]
-                     { return window(text("< command >"), hbox(text(" "), cmd->Render(), text(" "))); }),
-            Renderer(components, [components]
-                     { return window(text("< monitor >"), components->Render()) | flex; }),
+            Renderer(cmd, [cmd] { return window(text("< command >"), hbox(text(" "), cmd->Render(), text(" "))); }),
+            Renderer(components, [components] { return window(text("< monitor >"), components->Render()) | flex; }),
     });
 
     return event_dispatcher(components);

@@ -17,8 +17,7 @@
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/perfkit.h"
 
-namespace perfkit::detail
-{
+namespace perfkit::detail {
 auto _all_repos()
 {
     static config_registry::container _inst;
@@ -84,8 +83,7 @@ auto perfkit::config_registry::bk_enumerate_registries(bool filter_complete) noe
 
         auto ptrs = views::all(*all)
                   | views::transform(
-                            [](auto&& o)
-                            {
+                            [](auto&& o) {
                                 return o.second.lock();
                             });
 
@@ -97,8 +95,7 @@ auto perfkit::config_registry::bk_enumerate_registries(bool filter_complete) noe
         {
             auto filtered = ptrs
                           | views::filter(
-                                    [](auto&& sp)
-                                    {
+                                    [](auto&& sp) {
                                         return sp->_initially_updated();
                                     });
 
@@ -122,8 +119,7 @@ auto perfkit::config_registry::bk_find_reg(std::string_view name) noexcept
     return ptr;
 }
 
-namespace perfkit::configs::_io
-{
+namespace perfkit::configs::_io {
 auto _loaded()
 {
     static json _all;
@@ -181,7 +177,7 @@ static auto import_export_reenter_lock()
     return std::unique_lock{mt};
 }
 
-void perfkit::configs::import_from(const json& data)
+void perfkit::configs::import_from(json const& data)
 {
     if (not data.is_object())
         throw std::logic_error{"imported json must be object!"};
@@ -197,7 +193,7 @@ void perfkit::configs::import_from(const json& data)
     }
 
     auto registries = config_registry::bk_enumerate_registries();
-    for (const auto& registry : registries)
+    for (auto const& registry : registries)
     {
         auto it = data.find(registry->name());
         if (it == data.end()) { continue; }
@@ -210,7 +206,7 @@ void perfkit::config_registry::export_to(nlohmann::json* category)
 {
     category->clear();
 
-    for (const auto& [full_key, config] : bk_all())
+    for (auto const& [full_key, config] : bk_all())
     {
         if (config->can_export())
             category->emplace(config->display_key(), config->serialize());
@@ -241,7 +237,7 @@ perfkit::json perfkit::configs::export_all()
         current      = *js;
     }
 
-    for (const auto& rg : regs)
+    for (auto const& rg : regs)
     {
         // if there's no target currently, export as template
         bool do_export = not current.contains(rg->name());
@@ -263,8 +259,7 @@ perfkit::json perfkit::configs::export_all()
     return current;
 }
 
-namespace perfkit::detail
-{
+namespace perfkit::detail {
 static auto _cvars()
 {
     static std::condition_variable cvar;
@@ -293,8 +288,7 @@ bool perfkit::configs::wait_any_change(std::chrono::milliseconds timeout, uint64
     out_fence && (fence_org = *out_fence);
 
     auto valid = cvar->wait_for(
-            lock, timeout, [&, fence = fence]
-            { return fence_org != *fence; });
+            lock, timeout, [&, fence = fence] { return fence_org != *fence; });
 
     out_fence && (*out_fence = *fence);
     return valid;
@@ -391,8 +385,7 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o)
             using namespace ranges;
             bindings.emplace_back(
                     o->display_key()
-                    | views::transform([](auto c)
-                                       { return c == '|' ? '.' : c; })
+                    | views::transform([](auto c) { return c == '|' ? '.' : c; })
                     | to<std::string>());
         }
 
@@ -502,7 +495,7 @@ perfkit::detail::config_base::config_base(
     _split_categories(_display_key, _categories);
 }
 
-bool perfkit::detail::config_base::_try_deserialize(const nlohmann::json& value)
+bool perfkit::detail::config_base::_try_deserialize(nlohmann::json const& value)
 {
     if (_deserialize(value, _raw))
     {

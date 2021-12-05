@@ -1,8 +1,7 @@
 #pragma once
 #include "window.hpp"
 
-namespace perfkit::gui::imgui
-{
+namespace perfkit::gui::imgui {
 /**
  * graphics context
  *

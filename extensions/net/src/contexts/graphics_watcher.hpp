@@ -5,8 +5,7 @@
 #pragma once
 #include "if_watcher.hpp"
 
-namespace perfkit::terminal::net::context
-{
+namespace perfkit::terminal::net::context {
 class graphics_watcher : public if_watcher
 {
    public:

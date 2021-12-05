@@ -7,8 +7,7 @@
 
 #include <perfkit/fwd.hpp>
 
-namespace perfkit
-{
+namespace perfkit {
 
 using logger_ptr = std::shared_ptr<spdlog::logger>;
 logger_ptr share_logger(std::string const& name);

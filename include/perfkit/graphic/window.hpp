@@ -9,12 +9,10 @@
 
 #include "buffer.hpp"
 
-namespace perfkit
-{
+namespace perfkit {
 using window_ptr = std::shared_ptr<gui::instance>;
 
-namespace gui
-{
+namespace gui {
 /** Modal result */
 enum class modal_result
 {
@@ -24,8 +22,7 @@ enum class modal_result
     refresh,
 };
 
-namespace events
-{
+namespace events {
 struct arg_mouse
 {
 };
@@ -106,8 +103,7 @@ class instance
     {
         auto result = modal_result::refresh;
         while (result == modal_result::refresh)
-            this->render([&](graphic* f)
-                         { render_fn(f, &result); });
+            this->render([&](graphic* f) { render_fn(f, &result); });
 
         return result;
     }

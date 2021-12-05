@@ -19,12 +19,10 @@
 #include "perfkit/common/macros.hxx"
 #include "perfkit/common/spinlock.hxx"
 
-namespace perfkit
-{
+namespace perfkit {
 using json = nlohmann::json;
 
-namespace detail
-{
+namespace detail {
 class config_base;
 }
 
@@ -34,8 +32,7 @@ using config_wptr       = std::weak_ptr<detail::config_base>;
 using std::shared_ptr;
 using std::weak_ptr;
 
-namespace detail
-{
+namespace detail {
 /**
  * basic config class
  *
@@ -119,8 +116,7 @@ class config_base
 /**
  *
  */
-namespace configs
-{
+namespace configs {
 CPPH_UNIQUE_KEY_TYPE(schema_hash_t);
 
 // clang-format off
@@ -137,7 +133,7 @@ flag_binding_table& _flags() noexcept;
 void parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
 void parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
 
-void import_from(const json& data);
+void import_from(json const& data);
 json export_all();
 
 bool import_file(std::string_view path);
@@ -212,8 +208,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     std::atomic_bool _initial_update_done{false};
 };
 
-namespace _attr_flag
-{
+namespace _attr_flag {
 enum ty : uint64_t
 {
     has_min      = 0x01 << 0,
@@ -302,11 +297,10 @@ class _config_factory
         else
         {
             _data.validate =
-                    [fn = std::forward<Callable_>(v)](Ty_& s)
-            {
-                fn(s);
-                return true;
-            };
+                    [fn = std::forward<Callable_>(v)](Ty_& s) {
+                        fn(s);
+                        return true;
+                    };
         }
         return _added<_attr_flag::has_validate>();
     }
@@ -399,11 +393,10 @@ class config
             _config_attrib_data<Ty_> attribute) noexcept
             : _owner(&repo), _value(std::forward<Ty_>(default_value))
     {
-        std::string env  = std::move(attribute.env_name);
+        std::string env = std::move(attribute.env_name);
 
         // define serializer
-        detail::config_base::serializer fn_d = [this](nlohmann::json& out, const void* in)
-        {
+        detail::config_base::serializer fn_d = [this](nlohmann::json& out, void const* in) {
             out = *(Ty_*)in;
         };
 
@@ -458,48 +451,47 @@ class config
 
         // setup marshaller / de-marshaller with given rule of attribute
         detail::config_base::deserializer fn_m = [attrib = std::move(attribute)]  //
-                (const nlohmann::json& in, void* out)
-        {
-            try
-            {
-                Ty_ parsed;
+                (nlohmann::json const& in, void* out) {
+                    try
+                    {
+                        Ty_ parsed;
 
-                bool okay = true;
+                        bool okay = true;
 
-                _config_attrib_data<Ty_> const& attr = attrib;
-                nlohmann::from_json(in, parsed);
+                        _config_attrib_data<Ty_> const& attr = attrib;
+                        nlohmann::from_json(in, parsed);
 
-                if constexpr (Attr_::flag & _attr_flag::has_min)
-                {
-                    parsed = std::max<Ty_>(*attr.min, parsed);
-                }
-                if constexpr (Attr_::flag & _attr_flag::has_max)
-                {
-                    parsed = std::min<Ty_>(*attr.max, parsed);
-                }
-                if constexpr (Attr_::flag & _attr_flag::has_one_of)
-                {
-                    if (attr->oneof.find(parsed) == attr->oneof.end())
+                        if constexpr (Attr_::flag & _attr_flag::has_min)
+                        {
+                            parsed = std::max<Ty_>(*attr.min, parsed);
+                        }
+                        if constexpr (Attr_::flag & _attr_flag::has_max)
+                        {
+                            parsed = std::min<Ty_>(*attr.max, parsed);
+                        }
+                        if constexpr (Attr_::flag & _attr_flag::has_one_of)
+                        {
+                            if (attr->oneof.find(parsed) == attr->oneof.end())
+                                return false;
+                        }
+                        if constexpr (Attr_::flag & _attr_flag::has_verify)
+                        {
+                            if (not attr.verify(parsed))
+                                return false;
+                        }
+                        if constexpr (Attr_::flag & _attr_flag::has_validate)
+                        {
+                            okay |= attr.validate(parsed);  // value should be validated
+                        }
+
+                        *(Ty_*)out = parsed;
+                        return okay;
+                    }
+                    catch (std::exception&)
+                    {
                         return false;
-                }
-                if constexpr (Attr_::flag & _attr_flag::has_verify)
-                {
-                    if (not attr.verify(parsed))
-                        return false;
-                }
-                if constexpr (Attr_::flag & _attr_flag::has_validate)
-                {
-                    okay |= attr.validate(parsed);  // value should be validated
-                }
-
-                *(Ty_*)out = parsed;
-                return okay;
-            }
-            catch (std::exception&)
-            {
-                return false;
-            }
-        };
+                    }
+                };
 
         // instantiate config instance
         _opt = std::make_shared<detail::config_base>(
@@ -529,7 +521,7 @@ class config
             }
     }
 
-    config(const config&) noexcept = delete;
+    config(config const&) noexcept = delete;
     config(config&&) noexcept      = default;
 
     /**
@@ -566,8 +558,7 @@ class config
     Ty_ _value;
 };
 
-namespace configs
-{
+namespace configs {
 class watcher
 {
    public:

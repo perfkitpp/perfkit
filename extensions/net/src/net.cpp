@@ -9,8 +9,7 @@ perfkit::terminal_ptr perfkit::terminal::net::create(const struct terminal_init_
     return std::make_shared<net::terminal>(info);
 }
 
-namespace perfkit::terminal::net::detail
-{
+namespace perfkit::terminal::net::detail {
 PERFKIT_T_CATEGORY(
         terminal_profile,
 

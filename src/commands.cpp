@@ -16,8 +16,7 @@
 #include "perfkit/perfkit.h"
 #include "spdlog/fmt/bundled/ranges.h"
 
-namespace
-{
+namespace {
 using std::lock_guard;
 using std::unique_lock;
 
@@ -166,12 +165,11 @@ bool perfkit::commands::registry::node::alias(
     return true;
 }
 
-namespace
-{
+namespace {
 template <typename Rng_>
 bool check_unique_prefix(std::string_view cmp, Rng_&& candidates)
 {
-    for (const auto& candidate : candidates)
+    for (auto const& candidate : candidates)
     {
         if (cmp.size() > candidate.size()) { continue; }   // not consider.
         if (candidate.size() == cmp.size()) { continue; }  // maybe same, or not considerable.
@@ -236,8 +234,7 @@ std::string perfkit::commands::registry::node::suggest(
     //
     // note: maps are already sorted, thus one don't need to iterate all elements, but
     // simply find lower bound then iterate until meet one doesn't start with compared.
-    auto filter_starts_with = [&](auto&& map, auto& compare)
-    {
+    auto filter_starts_with = [&](auto&& map, auto& compare) {
         for (auto it = map.lower_bound(compare);
              it != map.end() && it->first.find(compare) == 0;
              ++it)
@@ -405,7 +402,7 @@ void perfkit::commands::tokenize_by_argv_rule(
 
 bool perfkit::commands::registry::invoke_command(std::string command)
 {
-    for (const auto& [_, hook] : _invoke_hooks)
+    for (auto const& [_, hook] : _invoke_hooks)
     {
         if (!hook(command)) { return false; }
     }
@@ -484,7 +481,7 @@ std::string perfkit::commands::registry::suggest(
     }
 
     std::string suggest;
-    for (const auto& suggest_src : suggests)
+    for (auto const& suggest_src : suggests)
     {
         suggest = suggest_src;
 

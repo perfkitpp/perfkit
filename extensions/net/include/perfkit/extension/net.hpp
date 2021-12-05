@@ -1,8 +1,7 @@
 #pragma once
 #include "perfkit/terminal.h"
 
-namespace perfkit::terminal::net
-{
+namespace perfkit::terminal::net {
 /**
  * Create net client session instance
  *

@@ -10,13 +10,11 @@
 #include "perfkit/detail/fwd.hpp"
 #include "perfkit/terminal.h"
 
-namespace ftxui
-{
+namespace ftxui {
 class ScreenInteractive;
 };
 
-namespace perfkit_ftxui
-{
+namespace perfkit_ftxui {
 /**
  * Custom subscription event handler
  */

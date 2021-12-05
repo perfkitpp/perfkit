@@ -11,8 +11,7 @@
 #include "perfkit/detail/configs.hpp"
 #include "perfkit/extension/net-internals/messages.hpp"
 
-namespace perfkit::terminal::net::context
-{
+namespace perfkit::terminal::net::context {
 using namespace std::literals;
 
 using config_key_t = basic_key<class LABEL_config_key_t>;

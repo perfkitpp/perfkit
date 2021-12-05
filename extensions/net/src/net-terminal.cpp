@@ -117,8 +117,7 @@ void perfkit::terminal::net::terminal::_on_push_command(perfkit::terminal::net::
 
 void perfkit::terminal::net::terminal::_exec()
 {
-    auto is_dirty = [&]
-    {
+    auto is_dirty = [&] {
         return _dirty;
     };
 

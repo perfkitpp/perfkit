@@ -17,8 +17,7 @@
 #include "perfkit/extension/net-internals/messages.hpp"
 #include "utils.hpp"
 
-namespace perfkit::terminal::net
-{
+namespace perfkit::terminal::net {
 using namespace std::literals;
 
 class terminal : public if_terminal

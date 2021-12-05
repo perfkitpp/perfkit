@@ -26,8 +26,7 @@ void test_class::start()
 {
     _loop_active.store(true);
     _worker = std::thread{
-            [&]()
-            {
+            [&]() {
                 CPPH_INFO("worker thread created.");
 
                 while (_loop_active.load())

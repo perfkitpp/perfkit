@@ -16,12 +16,10 @@
 #include "perfkit/common/array_view.hxx"
 #include "perfkit/common/spinlock.hxx"
 
-namespace fmt
-{
+namespace fmt {
 }
 
-namespace perfkit
-{
+namespace perfkit {
 class tracer_future_result;
 class tracer;
 
@@ -38,8 +36,7 @@ struct trace_variant_type
     using variant::variant;
 };
 
-namespace _trace
-{
+namespace _trace {
 struct trace
 {
     std::optional<clock_type::duration> as_timer() const noexcept

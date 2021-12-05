@@ -8,8 +8,7 @@
 
 #include "basic_dispatcher_impl.hpp"
 
-namespace perfkit::terminal::net::detail
-{
+namespace perfkit::terminal::net::detail {
 struct server_mode_dispatcher_init_info
 {
     std::string bind_addr = "0.0.0.0";
@@ -53,8 +52,7 @@ class server_mode_dispatcher : public basic_dispatcher_impl
 
             void operator()(asio::error_code const& ec)
             {
-                auto CPPH_LOGGER = [this]
-                { return self->CPPH_LOGGER(); };
+                auto CPPH_LOGGER = [this] { return self->CPPH_LOGGER(); };
 
                 if (ec)
                 {

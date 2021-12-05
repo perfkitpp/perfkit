@@ -59,7 +59,8 @@ std::optional<std::string> basic_interactive_terminal::fetch_command(millisecond
         {
             std::this_thread::sleep_for(10ms);
         }
-    } while (steady_clock::now() < until);
+    }
+    while (steady_clock::now() < until);
 
     return entered;
 }
@@ -92,17 +93,16 @@ perfkit::basic_interactive_terminal::fetch_command(
 {
     if (!_cmd.valid())
     {
-        _cmd = std::async([this]() -> std::string
-                          {
-                              _register_autocomplete();
-                              auto c_str = linenoise(_prompt.c_str());
-                              _unregister_autocomplete();
+        _cmd = std::async([this]() -> std::string {
+            _register_autocomplete();
+            auto c_str = linenoise(_prompt.c_str());
+            _unregister_autocomplete();
 
-                              std::string retval;
-                              if (c_str) { retval = c_str, free(c_str); }
+            std::string retval;
+            if (c_str) { retval = c_str, free(c_str); }
 
-                              return retval;
-                          });
+            return retval;
+        });
     }
 
     if (auto _ = std::unique_lock{_cmd_queue_lock}; !_cmd_queued.empty())
@@ -159,8 +159,7 @@ basic_interactive_terminal::basic_interactive_terminal()
 
     _registry.root()->add_subcommand(
             "history",
-            [this](auto &&) -> bool
-            {
+            [this](auto &&) -> bool {
                 auto pivot = _cmd_counter - _cmd_history.size();
 
                 for (const auto &item : _cmd_history)
@@ -172,8 +171,7 @@ basic_interactive_terminal::basic_interactive_terminal()
             });
 
     _registry.add_invoke_hook(
-            [this](std::string &s)
-            {
+            [this](std::string &s) {
                 if (s.empty()) { return false; }
                 if (s[0] == '!')
                 {
@@ -199,8 +197,7 @@ basic_interactive_terminal::basic_interactive_terminal()
                     else if (!tok.empty())
                     {
                         auto it = std::find_if(_cmd_history.rbegin(), _cmd_history.rend(),
-                                               [&, tok](auto &&ss)
-                                               {
+                                               [&, tok](auto &&ss) {
                                                    return ss.find(tok) == 0;  // if contains !...
                                                });
 
@@ -255,8 +252,7 @@ void basic_interactive_terminal::_register_autocomplete()
         std::this_thread::sleep_for(10ms);
     }
 
-    auto completion = [](const char *buf, linenoiseCompletions *lc) -> int
-    {
+    auto completion = [](char const *buf, linenoiseCompletions *lc) -> int {
         int position = 0;
 
         auto rg = locked_command_registry.load()->root();

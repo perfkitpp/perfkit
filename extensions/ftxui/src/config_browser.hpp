@@ -13,13 +13,11 @@
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
 
-namespace perfkit
-{
+namespace perfkit {
 std::shared_ptr<spdlog::logger> glog();
 }
 
-namespace perfkit_ftxui
-{
+namespace perfkit_ftxui {
 using namespace perfkit;
 using namespace ftxui;
 namespace views = ranges::views;
@@ -76,8 +74,7 @@ class config_node_builder
     {
         if (_content)
         {
-            return [ptr = _content, js = nlohmann::json{}]() mutable
-            {
+            return [ptr = _content, js = nlohmann::json{}]() mutable {
                 ptr->serialize(js);
 
                 switch (js.type())
@@ -107,9 +104,8 @@ class config_node_builder
         else
         {
             auto cnt = count();
-            return [cnt]
-            { return ftxui::color(Color::GrayDark,
-                                  text(fmt::format("{} item{}", cnt, cnt > 1 ? "s" : ""))); };
+            return [cnt] { return ftxui::color(Color::GrayDark,
+                                               text(fmt::format("{} item{}", cnt, cnt > 1 ? "s" : ""))); };
         }
     }
 
@@ -125,14 +121,12 @@ class config_node_builder
         else if (!_subnodes.empty())
         {
             auto subnode_ptr = _subnodes
-                             | views::transform([](auto&& c)
-                                                { return &c; })
+                             | views::transform([](auto&& c) { return &c; })
                              | ranges::to_vector;
 
             // for same category hierarchy, compare with full key string.
             ranges::sort(subnode_ptr,
-                         [](auto&& a, auto&& b)
-                         {
+                         [](auto&& a, auto&& b) {
                              return a->second._reference_key < b->second._reference_key;
                          });
 
@@ -157,12 +151,10 @@ class config_node_builder
                     opts.style_unchecked = "";
                 }
 
-                static auto is_active = [](auto&& container)
-                {
+                static auto is_active = [](auto&& container) {
                     return container->ChildCount() == 2;
                 };
-                static auto fold_or_unfold = [](auto&& container, auto&& child, bool en, auto&& state)
-                {
+                static auto fold_or_unfold = [](auto&& container, auto&& child, bool en, auto&& state) {
                     if (!en && is_active(container)) { container->ChildAt(1)->Detach(); }
                     if (en && !is_active(container))
                     {
@@ -178,16 +170,13 @@ class config_node_builder
                 auto node_content    = snode->second.build(fold_fn);
                 auto subnode_fold_fn = *fold_fn;
 
-                opts.on_change = [node_content, label_cont, state_boolean]
-                {
+                opts.on_change = [node_content, label_cont, state_boolean] {
                     fold_or_unfold(label_cont, node_content, !is_active(label_cont), state_boolean);
                 };
-                *fold_fn = [node_content, label_cont, state_boolean](bool b)
-                {
+                *fold_fn = [node_content, label_cont, state_boolean](bool b) {
                     fold_or_unfold(label_cont, node_content, b, state_boolean);
                 };
-                *fold_fn_all = [parent_fold, fold_fn, subnode_fold_fn, fn_all = *fold_fn_all](bool b)
-                {
+                *fold_fn_all = [parent_fold, fold_fn, subnode_fold_fn, fn_all = *fold_fn_all](bool b) {
                     subnode_fold_fn && (subnode_fold_fn(b), 1);
                     fn_all(b);
                     (*fold_fn)(b);
@@ -197,8 +186,7 @@ class config_node_builder
                 auto label = Checkbox(snode->first, state_boolean.get(), std::move(opts));
                 label
                         = CatchEvent(label,
-                                     [fold_fn_all](Event const& evt) -> bool
-                                     {
+                                     [fold_fn_all](Event const& evt) -> bool {
                                          if (evt == Event::Backspace)
                                          {
                                              (*fold_fn_all)(false);
@@ -207,22 +195,19 @@ class config_node_builder
                                      });
 
                 label_cont->Add(Renderer(label, [label, deco = snode->second.decorator(),
-                                                 is_content = snode->second.is_content()]
-                                         {
-                                             auto label_render = label->Render();
-                                             if (is_content) { label_render = ftxui::color(Color::Cyan, label_render); }
-                                             return hbox(label_render | flex_grow, filler(), text(" "), deco() | flex_shrink);
-                                         }));
+                                                 is_content = snode->second.is_content()] {
+                    auto label_render = label->Render();
+                    if (is_content) { label_render = ftxui::color(Color::Cyan, label_render); }
+                    return hbox(label_render | flex_grow, filler(), text(" "), deco() | flex_shrink);
+                }));
 
                 subnodes->Add(
-                        Renderer(label_cont, [label_cont]
-                                 { return hbox(text("  "), label_cont->Render() | flex); }));
+                        Renderer(label_cont, [label_cont] { return hbox(text("  "), label_cont->Render() | flex); }));
             }
 
             parent_fold && (*parent_fold = *fold_fn_all, 1);
             return Renderer(subnodes,
-                            [subnodes]
-                            {
+                            [subnodes] {
                                 return (subnodes->Render() | xflex);
                             });
         }
@@ -256,8 +241,7 @@ class config_node_builder
                         auto inner = Renderer(inner_value,
                                               [this,
                                                key = text(fmt::format("\"{}\":", it.key())),
-                                               inner_value]
-                                              {
+                                               inner_value] {
                                                   return hbox(
                                                                  ftxui::color(Color::Yellow, key),
                                                                  text(" {"), inner_value->Render(), text("}"))
@@ -267,8 +251,7 @@ class config_node_builder
                         outer->Add(inner);
                     }
 
-                    return Renderer(outer, [outer]
-                                    { return outer->Render() | flex; });
+                    return Renderer(outer, [outer] { return outer->Render() | flex; });
                 }
 
                 case nlohmann::detail::value_t::array:
@@ -282,16 +265,14 @@ class config_node_builder
                         auto inner = Renderer(inner_value,
                                               [this,
                                                key = text(fmt::format("[{}]:", i)),
-                                               inner_value]
-                                              {
+                                               inner_value] {
                                                   return hbox(
                                                           ftxui::color(Color::Violet, key),
                                                           text(" {"), inner_value->Render(), text("}"));
                                               });
                         outer->Add(inner);
                     }
-                    return Renderer(outer, [outer]
-                                    { return outer->Render() | flex; });
+                    return Renderer(outer, [outer] { return outer->Render() | flex; });
                 }
 
                 case nlohmann::detail::value_t::string:
@@ -322,8 +303,7 @@ class config_node_builder
                     InputOption opt;
                     opt.cursor_position = 1 << 20;
 
-                    opt.on_enter = [pwstr, this, obj]
-                    {
+                    opt.on_enter = [pwstr, this, obj] {
                         double value = 0;
                         auto str     = ftxui::to_string(*pwstr);
 
@@ -360,17 +340,15 @@ class config_node_builder
         Component inner;
         auto proto     = _content->serialize();
         auto ptr       = std::make_shared<_json_editor_builder>();
-        ptr->on_change = [cfg, ptr]
-        { cfg->request_modify(ptr->rootobj); };
-        ptr->cfg     = cfg;
-        ptr->rootobj = proto;
+        ptr->on_change = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
+        ptr->cfg       = cfg;
+        ptr->rootobj   = proto;
 
         ptr->allow_schema_modification = false;
 
         inner = Container::Vertical({ptr->_iter(&ptr->rootobj)});
         inner = CatchEvent(inner,
-                           [inner, ptr](Event evt)
-                           {
+                           [inner, ptr](Event evt) {
                                if (evt == Event::F5)
                                {
                                    ptr->rootobj = ptr->cfg->serialize();
@@ -379,11 +357,9 @@ class config_node_builder
                                }
                                return false;
                            });
-        inner = Renderer(inner, [inner]
-                         { return inner->Render() | flex; });
+        inner = Renderer(inner, [inner] { return inner->Render() | flex; });
 
-        return Renderer(inner, [inner]
-                        { return vbox(hbox(text(" "), inner->Render()), ftxui::color(Color::Cyan, separator())) | flex; });
+        return Renderer(inner, [inner] { return vbox(hbox(text(" "), inner->Render()), ftxui::color(Color::Cyan, separator())) | flex; });
     }
 
    private:
@@ -417,8 +393,7 @@ class config_browser : public ftxui::ComponentBase
         auto built = root.build();
         _container = Renderer(
                 built,
-                [built]
-                {
+                [built] {
                     return hbox(built->Render() | xflex | yframe, text("  "));
                 });
     }

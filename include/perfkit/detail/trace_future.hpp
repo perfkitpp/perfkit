@@ -7,8 +7,7 @@
 
 #include "tracer.hpp"
 
-namespace perfkit
-{
+namespace perfkit {
 class tracer_future_result : public std::shared_future<tracer::async_trace_result>
 {
     using shared_future::shared_future;

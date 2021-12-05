@@ -1,8 +1,7 @@
 #pragma once
 #include <perfkit/common/hasher.hxx>
 
-namespace perfkit::gui
-{
+namespace perfkit::gui {
 using mesh3d_key = basic_key<class LABEL_mesh3d_key>;
 using image_key  = basic_key<class LABEL_mesh3d_key>;
 

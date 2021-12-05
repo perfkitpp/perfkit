@@ -10,13 +10,11 @@
 #include <perfkit/common/event.hxx>
 #include <perfkit/extension/net.hpp>
 
-namespace perfkit::terminal::net::detail
-{
+namespace perfkit::terminal::net::detail {
 class basic_dispatcher_impl;
 }
 
-namespace perfkit::terminal::net
-{
+namespace perfkit::terminal::net {
 class dispatcher
 {
     using impl_ptr          = std::unique_ptr<detail::basic_dispatcher_impl>;
@@ -35,8 +33,7 @@ class dispatcher
         // TODO: change parser as SAX parser one with reflection, to minimize heap usage
         _register_recv(
                 MsgTy_::ROUTE,
-                [fn = std::forward<HandlerFn_>(handler)](recv_archive_type const& message)
-                {
+                [fn = std::forward<HandlerFn_>(handler)](recv_archive_type const& message) {
                     try
                     {
                         fn(message.get<MsgTy_>());
@@ -55,8 +52,7 @@ class dispatcher
         // TODO: change serializer to use builder, which doesn't need to be marshaled into
         //        json object to be dumped to string.
         _send(MsgTy_::ROUTE, ++_fence, &message,
-              [](send_archive_type* archive, void const* data)
-              {
+              [](send_archive_type* archive, void const* data) {
                   *archive = *(MsgTy_ const*)data;
               });
     }
@@ -64,8 +60,7 @@ class dispatcher
     void send_raw(std::string_view route, send_archive_type&& archive)
     {
         _send(route, ++_fence, &archive,
-              [](send_archive_type* arch, const void* data)
-              {
+              [](send_archive_type* arch, const void* data) {
                   std::swap(*arch, *(send_archive_type*)data);
               });
     }

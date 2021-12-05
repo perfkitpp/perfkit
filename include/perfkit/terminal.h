@@ -8,10 +8,8 @@
 #include "perfkit/common/array_view.hxx"
 #include "perfkit/detail/termcolor.hxx"
 
-namespace perfkit
-{
-namespace commands
-{
+namespace perfkit {
+namespace commands {
 class registry;
 }
 
@@ -88,8 +86,7 @@ class if_terminal
     }
 };
 
-namespace terminal
-{
+namespace terminal {
 /**
  * Register basic commands
  *

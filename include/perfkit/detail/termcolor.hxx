@@ -1,8 +1,7 @@
 #pragma once
 #include <algorithm>
 
-namespace perfkit
-{
+namespace perfkit {
 enum class termcolors;
 
 /** Color info */
