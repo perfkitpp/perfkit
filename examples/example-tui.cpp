@@ -10,11 +10,11 @@
 using namespace ftxui;
 
 perfkit::tracer traces[] = {
-        {  0, "root (1)"},
-        {  1,    "A (2)"},
-        { 31,    "B (4)"},
-        {-51,    "C (0)"},
-        { 14,    "D (3)"},
+        {0, "root (1)"},
+        {1, "A (2)"},
+        {31, "B (4)"},
+        {-51, "C (0)"},
+        {14, "D (3)"},
 };
 
 int main(int argc, char const* argv[])

@@ -3,7 +3,7 @@ Language: Cpp
 # BasedOnStyle:  Google
 AccessModifierOffset: -1
 AlignAfterOpenBracket: Align
-AlignArrayOfStructures: Right
+# AlignArrayOfStructures: Right
 AlignConsecutiveMacros: true
 AlignConsecutiveAssignments: true
 AlignConsecutiveBitFields: true
@@ -128,7 +128,7 @@ PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 200
 PenaltyIndentedWhitespace: 0
 PointerAlignment: Left
-QualifierAlignment: Right
+# QualifierAlignment: Right
 RawStringFormats:
   - Language: Cpp
     Delimiters:

@@ -191,8 +191,7 @@ auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::
     auto _{lock_tracer_repo()};
     SPDLOG_DEBUG("creating tracer {}", name);
     std::shared_ptr<tracer> entity{
-            new tracer{order, name}
-    };
+            new tracer{order, name}};
     entity->_self_weak = entity;
 
     auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
