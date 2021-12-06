@@ -177,10 +177,10 @@ static auto import_export_reenter_lock()
     return std::unique_lock{mt};
 }
 
-void perfkit::configs::import_from(json const& data)
+bool perfkit::configs::import_from(json const& data)
 {
     if (not data.is_object())
-        throw std::logic_error{"imported json must be object!"};
+        return false;
 
     auto _l{import_export_reenter_lock()};
     (void)_l;
@@ -200,6 +200,8 @@ void perfkit::configs::import_from(json const& data)
 
         _io::queue_changes(registry, *it);
     }
+
+    return true;
 }
 
 void perfkit::config_registry::export_to(nlohmann::json* category)

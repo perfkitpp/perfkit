@@ -133,7 +133,7 @@ flag_binding_table& _flags() noexcept;
 void parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
 void parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
 
-void import_from(json const& data);
+bool import_from(json const& data);
 json export_all();
 
 bool import_file(std::string_view path);
