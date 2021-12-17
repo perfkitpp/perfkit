@@ -323,8 +323,7 @@ bool perfkit::configs::import_file(std::string_view path)
         auto js = json::parse(std::istream_iterator<char>{fs}, std::istream_iterator<char>{});
         if (js.is_object())
         {
-            import_from(js);
-            return true;
+            return import_from(js);
         }
         else
         {
