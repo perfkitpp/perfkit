@@ -19,6 +19,7 @@
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/macros.hxx"
 #include "perfkit/common/spinlock.hxx"
+#include "perfkit/common/template_utils.hxx"
 
 namespace perfkit {
 using json = nlohmann::json;
@@ -264,16 +265,17 @@ class _config_factory
 
    public:
     auto& description(std::string&& s) { return _data.description = std::move(s), *this; }
+
     auto& min(Ty_ v)
     {
         static_assert(not(Flags_ & _attr_flag::has_one_of));
-        return _data.min = v, _added<_attr_flag::has_min>();
+        return _data.min = std::move(v), _added<_attr_flag::has_min>();
     }
 
     auto& max(Ty_ v)
     {
         static_assert(not(Flags_ & _attr_flag::has_one_of));
-        return _data.max = v, _added<_attr_flag::has_max>();
+        return _data.max = std::move(v), _added<_attr_flag::has_max>();
     }
 
     /** value should be one of given entities */
@@ -476,11 +478,13 @@ class config
 
                         if constexpr (Flags_ & _attr_flag::has_min)
                         {
-                            parsed = std::max<Ty_>(*attr.min, parsed);
+                            if constexpr (has_binary_op_v<std::less<>, Ty_>)
+                                parsed = std::max<Ty_>(*attr.min, parsed);
                         }
                         if constexpr (Flags_ & _attr_flag::has_max)
                         {
-                            parsed = std::min<Ty_>(*attr.max, parsed);
+                            if constexpr (has_binary_op_v<std::less<>, Ty_>)
+                                parsed = std::min<Ty_>(*attr.max, parsed);
                         }
                         if constexpr (Flags_ & _attr_flag::has_one_of)
                         {

@@ -48,9 +48,17 @@ PERFKIT_T_CATEGORY(
         PERFKIT_T_SUBCATEGORY(
                 subconfigs,
 
-                PERFKIT_T_CONFIGURE(custom_struct, test_config_structure{}).confirm();
+                PERFKIT_T_CONFIGURE(custom_struct, test_config_structure{})
+                        .min({0, 0, 0., false, "ola olala!"})
+                        .max({251, 311, 0., false, "vl vl!!"})
+                        .confirm();
 
         );
+
+        PERFKIT_T_CONFIGURE(custom_struct, test_config_structure{})
+                .min({0, 0, 0., false, "ola olala!"})
+                .max({251, 311, 0., false, "vl vl!!"})
+                .confirm();
 
 );
 
