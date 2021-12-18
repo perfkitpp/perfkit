@@ -36,6 +36,8 @@ int main(void)
 
     while (running)
     {
+        conf_global::update();
+
         auto cmd = term->fetch_command(1s);
         if (not cmd || cmd->empty())
             continue;
