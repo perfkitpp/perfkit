@@ -16,6 +16,8 @@ PERFKIT_CATEGORY(conf_global)
 
 int main(void)
 {
+    spdlog::set_level(spdlog::level::debug);
+
     test_class test1{"test1"};
     test_class test2{"test2"};
     test_class test3{"test3"};

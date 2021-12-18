@@ -66,6 +66,7 @@ class terminal : public if_terminal
     void _char_handler(char c);
     void _on_push_command(incoming::push_command&& s);
     void _on_configure(incoming::configure_entity&& s);
+    void _on_suggest_request(incoming::suggest_command&& s);
     void _on_any_connection(int n_conn);
     void _on_no_connection();
 

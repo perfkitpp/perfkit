@@ -8,8 +8,9 @@
 #include "perfkit/common/macros.hxx"
 #include "perfkit/common/zip.hxx"
 #include "perfkit/detail/base.hpp"
+#include "perfkit/detail/logging.hpp"
 
-#define CPPH_LOGGER() perfkit::glog()
+#define CPPH_LOGGER() perfkit::terminal::net::detail::nglog()
 
 #if __unix__
 #    include <poll.h>
@@ -104,7 +105,7 @@ static struct redirection_context_t
         dup2(_fd_pout[1], STDOUT_FILENO);
         dup2(_fd_perr[1], STDERR_FILENO);
 
-        spdlog::info("stdout, stderr redirected to pipe {}, {}", _fd_pout[1], _fd_perr[1]);
+        CPPH_INFO("stdout, stderr redirected to pipe {}, {}", _fd_pout[1], _fd_perr[1]);
 
         _active = true;
         _worker = std::thread(
@@ -130,7 +131,7 @@ static struct redirection_context_t
                         }
                         else if (n_sig < 0)
                         {
-                            spdlog::error("::poll() error! ({}) {}", errno, strerror(errno));
+                            CPPH_ERROR("::poll() error! ({}) {}", errno, strerror(errno));
                             continue;
                         }
 
@@ -154,7 +155,7 @@ static struct redirection_context_t
         return;
 
     ANY_ERROR:
-        spdlog::error("failed to redirect stdstream");
+        CPPH_ERROR("failed to redirect stdstream");
         rollback();
     }
 
@@ -173,6 +174,12 @@ void perfkit::terminal::net::detail::input_redirect(std::function<void(char)> in
 void perfkit::terminal::net::detail::input_rollback()
 {
     g_redirect.rollback();
+}
+
+std::shared_ptr<spdlog::logger> perfkit::terminal::net::detail::nglog()
+{
+    static auto logger = perfkit::share_logger("PERFKIT:NET");
+    return logger;
 }
 
 #endif

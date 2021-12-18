@@ -1,5 +1,7 @@
 #include "net-terminal.hpp"
 
+#include "perfkit/common/algorithm.hxx"
+
 extern "C" int gethostname(char*, size_t);
 
 perfkit::terminal::net::terminal::terminal(
@@ -42,6 +44,7 @@ perfkit::terminal::net::terminal::terminal(
     // register handlers
     _io.on_recv<incoming::push_command>(CPPH_BIND(_on_push_command));
     _io.on_recv<incoming::configure_entity>(CPPH_BIND(_on_configure));
+    _io.on_recv<incoming::suggest_command>(CPPH_BIND(_on_suggest_request));
 
     // launch asynchronous IO thread.
     _io.launch();
@@ -126,6 +129,23 @@ void perfkit::terminal::net::terminal::_on_configure(
                 entity.config_key,
                 std::move(entity.value));
     }
+}
+
+void perfkit::terminal::net::terminal::_on_suggest_request(
+        perfkit::terminal::net::incoming::suggest_command&& s)
+{
+    std::vector<std::string> candidates;
+    auto nextstr = _commands.suggest(s.command, &candidates);
+
+    outgoing::suggest_command cmd;
+    cmd.new_command = std::move(nextstr);
+    cmd.reply_to    = s.reply_to;
+    perfkit::transform(
+            candidates,
+            std::front_inserter(cmd.candidates),
+            [](auto& s) { return std::move(s); });
+
+    _io.send(cmd);
 }
 
 void perfkit::terminal::net::terminal::_exec()

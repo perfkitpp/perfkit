@@ -10,9 +10,13 @@
 #include <nlohmann/detail/conversions/from_json.hpp>
 #include <perfkit/common/assert.hxx>
 #include <perfkit/common/hasher.hxx>
+#include <perfkit/common/macros.hxx>
+#include <perfkit/detail/base.hpp>
 #include <perfkit/detail/trace_future.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
+
+#define CPPH_LOGGER() perfkit::glog()
 
 using namespace std::literals;
 using namespace perfkit;
@@ -189,7 +193,7 @@ void tracer::async_fetch_request(tracer::future_result* out)
 auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer>
 {
     auto _{lock_tracer_repo()};
-    SPDLOG_DEBUG("creating tracer {}", name);
+    CPPH_DEBUG("creating tracer {}", name);
     std::shared_ptr<tracer> entity{
             new tracer{order, name}};
     entity->_self_weak = entity;
@@ -206,17 +210,17 @@ perfkit::tracer::~tracer() noexcept
     };
 
     auto _{lock_tracer_repo()};
-    SPDLOG_DEBUG("destroying tracer {}", _name);
+    CPPH_DEBUG("destroying tracer {}", _name);
     auto it = std::find_if(_all().begin(), _all().end(),
                            [&](auto&& wptr) { return equivalent(wptr, _self_weak); });
     if (it != _all().end())
     {
         _all().erase(it);
-        SPDLOG_DEBUG("erasing tracer from all {}", _name);
+        CPPH_DEBUG("erasing tracer from all {}", _name);
     }
     else
     {
-        SPDLOG_DEBUG("logic error: tracer invalid! {}", _name);
+        CPPH_DEBUG("logic error: tracer invalid! {}", _name);
     }
 }
 

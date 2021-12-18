@@ -4,8 +4,14 @@
 
 #include "config_watcher.hpp"
 
+#include <spdlog/spdlog.h>
+
+#include "../utils.hpp"
 #include "perfkit/common/algorithm.hxx"
 #include "perfkit/common/template_utils.hxx"
+#include "perfkit/detail/base.hpp"
+
+#define CPPH_LOGGER() detail::nglog()
 
 using namespace perfkit::terminal::net::context;
 
@@ -26,9 +32,15 @@ void config_watcher::update()
         auto* watches = &_cache.regs;
 
         // discard obsolete registries
-        watches->erase(
-                perfkit::remove_if(*watches, [](auto&& e) { return e.expired(); }),
-                watches->end());
+        auto it_erase = perfkit::remove_if(*watches, [](auto&& e) { return e.expired(); });
+        CPPH_DEBUG("watching: {} entities", watches->size());
+        CPPH_DEBUG("enumerated: {} entities", regs.size());
+
+        if (it_erase != watches->end())
+        {
+            CPPH_DEBUG("{} registries disposed from last update", watches->end() - it_erase);
+            watches->erase(it_erase, watches->end());
+        }
 
         sort(regs, [](auto&& a, auto&& b) { return a.owner_before(b); });
 
@@ -47,8 +59,11 @@ void config_watcher::update()
 
         for (auto& diff : diffs)
         {
+            CPPH_DEBUG("publishing new config registry {}", diff->name());
             _publish_registry(&*diff);
         }
+
+        CPPH_DEBUG("{} config registries are newly published.", diffs.size());
     }
 
     // check for indivisual config's updates
