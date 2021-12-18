@@ -23,6 +23,7 @@
 #include <perfkit/extension/net.hpp>
 #include <perfkit/logging.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/stopwatch.h>
 
 namespace perfkit::terminal::net::detail {
 using namespace std::literals;
@@ -183,8 +184,12 @@ class basic_dispatcher_impl
         archive["fence"] = fence;
         payload(&archive["payload"], userobj);
 
-        while (not _n_sending.unique())
+        spdlog::stopwatch timeout;
+        while (not _n_sending.unique() && timeout.elapsed() < 2s)
             std::this_thread::yield();
+
+        if (timeout.elapsed() > 2s)
+            return;  // just timeout.
 
         auto lc{std::lock_guard{_mtx_modify}};
 
