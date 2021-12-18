@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 #include <nlohmann/json.hpp>
@@ -263,12 +264,22 @@ class _config_factory
 
    public:
     auto& description(std::string&& s) { return _data.description = std::move(s), *this; }
-    auto& min(Ty_ v) { return _data.min = v, _added<_attr_flag::has_min>(); }
-    auto& max(Ty_ v) { return _data.max = v, _added<_attr_flag::has_max>(); }
+    auto& min(Ty_ v)
+    {
+        static_assert(not(Flags_ & _attr_flag::has_one_of));
+        return _data.min = v, _added<_attr_flag::has_min>();
+    }
+
+    auto& max(Ty_ v)
+    {
+        static_assert(not(Flags_ & _attr_flag::has_one_of));
+        return _data.max = v, _added<_attr_flag::has_max>();
+    }
 
     /** value should be one of given entities */
     auto& one_of(std::initializer_list<Ty_> v)
     {
+        static_assert(not(Flags_ & (_attr_flag::has_max | _attr_flag::has_min)));
         _data.one_of.emplace();
         _data.one_of->insert(v.begin(), v.end());
         return _added<_attr_flag::has_one_of>();
@@ -357,6 +368,7 @@ class _config_factory
     auto confirm() noexcept
     {
         return config<Ty_>{
+                std::integral_constant<uint64_t, Flags_>{},
                 *_pinfo->dispatcher,
                 std::move(_pinfo->full_key),
                 std::forward<Ty_>(_pinfo->default_value),
@@ -385,8 +397,9 @@ class config
 {
    public:
    public:
-    template <typename Attr_ = _config_factory<Ty_>>
+    template <uint64_t Flags_>
     config(
+            std::integral_constant<uint64_t, Flags_>,
             config_registry& repo,
             std::string full_key,
             Ty_&& default_value,
@@ -406,19 +419,19 @@ class config
 
         js_attrib["description"] = attribute.description;
 
-        if constexpr (Attr_::flag & _attr_flag::has_min)
+        if constexpr (Flags_ & _attr_flag::has_min)
         {
             js_attrib["min"] = *attribute.min;
         }
-        if constexpr (Attr_::flag & _attr_flag::has_max)
+        if constexpr (Flags_ & _attr_flag::has_max)
         {
             js_attrib["max"] = *attribute.max;
         }
-        if constexpr (Attr_::flag & _attr_flag::has_one_of)
+        if constexpr (Flags_ & _attr_flag::has_one_of)
         {
-            js_attrib["oneof"] = *attribute.oneof;
+            js_attrib["oneof"] = *attribute.one_of;
         }
-        if constexpr (Attr_::flag & _attr_flag::has_validate)
+        if constexpr (Flags_ & _attr_flag::has_validate)
         {
             js_attrib["has_custom_validator"] = true;
         }
@@ -461,25 +474,25 @@ class config
                         _config_attrib_data<Ty_> const& attr = attrib;
                         nlohmann::from_json(in, parsed);
 
-                        if constexpr (Attr_::flag & _attr_flag::has_min)
+                        if constexpr (Flags_ & _attr_flag::has_min)
                         {
                             parsed = std::max<Ty_>(*attr.min, parsed);
                         }
-                        if constexpr (Attr_::flag & _attr_flag::has_max)
+                        if constexpr (Flags_ & _attr_flag::has_max)
                         {
                             parsed = std::min<Ty_>(*attr.max, parsed);
                         }
-                        if constexpr (Attr_::flag & _attr_flag::has_one_of)
+                        if constexpr (Flags_ & _attr_flag::has_one_of)
                         {
-                            if (attr->oneof.find(parsed) == attr->oneof.end())
+                            if (attr.one_of->find(parsed) == attr.one_of->end())
                                 return false;
                         }
-                        if constexpr (Attr_::flag & _attr_flag::has_verify)
+                        if constexpr (Flags_ & _attr_flag::has_verify)
                         {
                             if (not attr.verify(parsed))
                                 return false;
                         }
-                        if constexpr (Attr_::flag & _attr_flag::has_validate)
+                        if constexpr (Flags_ & _attr_flag::has_validate)
                         {
                             okay |= attr.validate(parsed);  // value should be validated
                         }

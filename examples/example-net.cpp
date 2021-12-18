@@ -7,6 +7,13 @@
 
 using namespace std::literals;
 
+PERFKIT_CATEGORY(conf_global)
+{
+    PERFKIT_CONFIGURE(some_selectible, "hello")
+            .one_of({"hello", "my name", "is john"})
+            .confirm();
+}
+
 int main(void)
 {
     test_class test1{"test1"};
