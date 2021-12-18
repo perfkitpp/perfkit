@@ -102,6 +102,9 @@ struct suggest_command
     int64_t reply_to;
     std::string new_command;
     std::forward_list<std::string> candidates;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            suggest_command, reply_to, new_command, candidates);
 };
 
 }  // namespace perfkit::terminal::net::outgoing
@@ -148,6 +151,5 @@ struct configure_entity
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             configure_entity, class_key, content);
 };
-
 
 }  // namespace perfkit::terminal::net::incoming
