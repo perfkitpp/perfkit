@@ -429,7 +429,7 @@ class config
         }
         if constexpr (Flags_ & _attr_flag::has_one_of)
         {
-            js_attrib["oneof"] = *attribute.one_of;
+            js_attrib["one_of"] = *attribute.one_of;
         }
         if constexpr (Flags_ & _attr_flag::has_validate)
         {
