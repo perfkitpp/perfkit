@@ -159,7 +159,7 @@ _4 SYS_DECLARE_MATERIAL:
   B 0-7: hash64; key
   B 8-15: hash64; albedo texture key, F32_BGR
   B 16-23: hash64; normal texture key, F32_3
-  B 24-31: hash64; specular texture key, F32_1
+  B 24-31: hash64; metalic texture key, F32_1
   B 32-40: hash64; roughness texture key, F32_1
   B 41-47: hash64; opacity texture key, F32_1
   B 48-55: FLAG64

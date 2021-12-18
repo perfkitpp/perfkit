@@ -124,5 +124,30 @@ struct suggest_command
     int64_t reply_to;
     int16_t position;
     std::string command;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            suggest_command, reply_to, position, command);
 };
+
+struct configure_entity
+{
+    constexpr static char ROUTE[] = "cmd:configure";
+
+    struct entity_scheme
+    {
+        uint64_t config_key;
+        nlohmann::json value;
+
+        CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+                entity_scheme, config_key, value);
+    };
+
+    std::string class_key;
+    std::list<entity_scheme> content;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            configure_entity, class_key, content);
+};
+
+
 }  // namespace perfkit::terminal::net::incoming

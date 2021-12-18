@@ -198,7 +198,7 @@ entity_scheme:
   value: any; new value
 ```
 
-### *cmd:configure*
+### *cmd:configure_entity*
 
 ```yaml
 parameter:
@@ -237,7 +237,8 @@ node_scheme:
   name: string
   trace_key: hash64; unique key in trace class scope
   subscribe: boolean; if subscribing this node
-  children?: list<node_scheme>; if folded, field itself is skipped. 
+  value: oneof [int64|double|string|timestamp|boolean];
+  children?: list<node_scheme>; if folded, field will be empty. 
 ```
 
 ### *cmd:control_trace*

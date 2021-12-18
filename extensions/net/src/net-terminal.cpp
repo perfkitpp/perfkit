@@ -41,6 +41,7 @@ perfkit::terminal::net::terminal::terminal(
 
     // register handlers
     _io.on_recv<incoming::push_command>(CPPH_BIND(_on_push_command));
+    _io.on_recv<incoming::configure_entity>(CPPH_BIND(_on_configure));
 
     // launch asynchronous IO thread.
     _io.launch();
@@ -110,17 +111,25 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
     }
 }
 
-void perfkit::terminal::net::terminal::_on_push_command(perfkit::terminal::net::incoming::push_command&& s)
+void perfkit::terminal::net::terminal::_on_push_command(
+        perfkit::terminal::net::incoming::push_command&& s)
 {
     push_command(s.command);
 }
 
+void perfkit::terminal::net::terminal::_on_configure(
+        perfkit::terminal::net::incoming::configure_entity&& s)
+{
+    for (auto& entity : s.content)
+    {
+        _context.configs.update_entity(
+                entity.config_key,
+                std::move(entity.value));
+    }
+}
+
 void perfkit::terminal::net::terminal::_exec()
 {
-    auto is_dirty = [&] {
-        return _dirty;
-    };
-
     // initial state binding
     _worker_state = CPPH_BIND(_worker_idle);
 
@@ -132,7 +141,7 @@ void perfkit::terminal::net::terminal::_exec()
 
         // wait for any event
         std::unique_lock lc{_mtx_worker};
-        _cvar_worker.wait(lc, is_dirty);
+        _cvar_worker.wait(lc, [&] { return _dirty; });
         _dirty = false;
     }
 }
