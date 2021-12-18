@@ -252,178 +252,30 @@ parameter:
   subscribe?: boolean; whether to subscribe or not a trace node
 ```
 
-### *update:window_list*
+## Windowing
 
-이미지 리스트 업데이트.
-
-> modality == true이면 창을 강제로 팝업시키거나, 혹은 반짝거리게끔 구현 ...
-
-```yaml
-payload:
-  content: list<window_meta_scheme>
-
-image_meta_scheme:
-  name: string; name of window
-  window_key: string; unique string key of window
-  modality: boolean; true if window is waiting for user interaction
-  size: int16[2]; canvas size
-```
+[참조:Windowing](./windowing.md)
 
 ### *cmd:window_control*
 
-윈도우 제어. 반복된 open 요청은 무시되며, close 요청은 한 번에 승인(멀티 유저 인터페이스를 위함)
+```yaml
+parameter:
+  key: string; target window or image name
+  watch: bool; enable or disable
+```
+
+### *update:draw_call*
+
+모든 종류의 드로우 콜
 
 ```yaml
 parameter:
-  guid:
-  window_key: string; target window to manipulate
-  operation?: string one-of [open|close|yes|no]; 'yes' and 'no' are for modality, that are treated as simple 'close'
-    on non-modal windows
-  resize?: int16[2]; fill this field if canvas resize is required.
-  camera_3d?: camera_scheme; request new camera status if needed. this can be ignored/overwritten from server side.
-    by explicitly calling 'buffer->ignore_client_camera_control'
-    position: float[3]
-    rotation: float[3]
-    hfov: float;
-
-
+   count: int32; number of draw calls
+   commands: byte[]; packed bytes of draw calls
 ```
 
-### *update:window_resource*
+드로우 콜에 대해서는 위의 [Windowing](windowing.md) 문서 참조
 
-리소스 업데이트. 윈도우가 open 상태인 동안에만 유효하며, close 호출 후 다시 open 시 전체 리소스가 전부 재송신된다.
-
-> 멀티 클라이언트 구현 시, 명시적으로 open 하지 않은 윈도우에 대해서도 세션 데이터를 유지해야 함!
-
-```yaml
-payload:
-  window_key: string; key of the target window where the resources will be stored.
-  textures?: list<texture_scheme>
-  meshes?: list<mesh_scheme>
-  materials?: list<material_scheme>
-  fonts?: list<font_scheme>
-  lights?: list<light_scheme>
-  deleted_resources?: list<hash64>; list of deleted resource keys
-
-mesh_scheme:
-  resource_key: hash64; resource key of this
-  vertices: list<vertex_scheme>
-  indices: list<int16>
-
-vertex_scheme[]: # array
-  0: float[3]; vertex coordinate
-  1: fixed_16/15f[3]; vertex normal
-  2: fixed_16/15f[2]|byte[4]; uv0 or vertex color
-  # maybe uv1?
-
-texture_scheme:
-  resource_key: hash64; resource key of this. resource key 0 has special meaning - screen buffer.
-  offset?: int16[2]; offset of bytes target. if this field is specified, this texture data
-    will refresh portion of existing image. otherwise, any different-sized
-    or different-typed texture should overwrite existing resources
-  size: int16[2]; texture resolution
-  channels: int8; number of channels (texel dimension)
-  type: string one-of [INT8|INT32|FLOAT32]; type per channel
-  encoding?: string; texture encoding type - RAW, BMP, JPEG, PNG, MPEG, H264 ...
-  bytes?: binary; encoded image stream. if empty, an empty texture will be generated in client side.
-
-material_scheme:
-  diffuse?: hash64; resource key to texture (RGBA)
-  normal?: hash64; resource key to texture (RGB)
-  emmisive?: hash64; resource key to texture (MONO)
-  attributes: set<string> [wireframe|flag_names...];
-
-font_scheme:
-  font_family: string;
-  default_size: float; font default size
-  weight: int16; font weight, 1000 as default
-
-light_scheme:
-  type: string one-of [point|spot|ambient]; type of light
-  position: float[3];
-  rotation?: float[3];
-  range0: float; light range. ambient light is not affected.
-  range1: float2; second light range. ambient light is not affected.
-  texture?: hash64; light texture.
-
-
-```
-
-### *update:window_draw_call*
-
-그리기 요청.
-
-```yaml
-payload:
-  window_key: string; target window
-  content: list<draw_call_scheme>
-  camera_3d?: camera_scheme; same as above.
-
-draw_call_scheme[]:
-  0: hash64; target texture resource. 0 if draw call targets screen buffer.
-  1: byte; draw call type
-  2: from [1]; draw call content
-    (0=>x02): CANVAS_RESIZE; event dispatched on canvas resize
-      0. int16[2]; previous size
-      1. int16[2]; new size
-
-    (1=>x10): 2D_BITBLT; copy image to target 2d space
-      0: hash64; resource key to texture
-      1?: int16[2][2]; src image rectangle. if not specified, the whole image will be used.
-      2: int16[2]; dst image pivot
-
-    (1=>x11): 2D_STRETCHBLT
-      0: hash64; resource key to texture
-      1: int16[2][2]; dst image rect
-      2?: int16[2][2]; src image rect, if not specified, the whole image will be used.
-
-    (1=>x21): 2D_LINES
-      0: byte[4]; color
-      1: list<int16[2]>; points to connect
-      2: fixed_16/8f; thickness of line
-
-    (1=>x22): 2d_POLYGON
-      0: byte[4]; color
-      1: list<int16[2]>; points to connect. last point recurses to initial point
-        to make closed shape.
-      2: boolean; true if filled.
-
-    (1=>x23): 2D_ELLIPSE
-      0: byte[4]; color
-      1: int16[2][2]; rectangle (x, y, w, h)
-      2: boolean; true if filled
-
-    (1=>x24): 2D_TEXT
-      0: byte[4]; color
-      1: int16[2]; pivot position
-      2: hash64; resource key to font
-      3: string; content
-      4: fixed_16/12f; font scale
-
-    (1=>x30): 3D_OBJECT
-      1: hash64; resource key to mesh
-      2?: hash64; resource key to material. if not specified, mesh will be rendered as wireframe.
-      3: float[3]; position
-      4: float[3]; rotation
-      5: float[3]; scale
-
-    (1=>x40): 3D_DEBUG_LINES
-      1: byte[4]; color
-      2: list<float[3]>; points to connect
-
-    (1=>x41): 3D_DEBUG_SPHERE
-      1: byte[4]; color
-      2: float[3]; point
-      3: float; radius
-      4: boolean; is_filled
-
-    (1=>x42): 3D_DEBUG_CUBE
-      1: byte[4]; color
-      2: float[3][2]; AABB
-      3: boolean; is_filled
-
-
-```
 
 ### *cmd:window_interact*
 
@@ -475,8 +327,6 @@ event_scheme[]:
     (0=>xD0): EVT_TOUCH_DOWN
     (0=>xD1): EVT_TOUCH_MOVE
     (0=>xD2): EVT_TOUCH_UP
-
-
 
 
 ```
