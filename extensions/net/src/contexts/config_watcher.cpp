@@ -33,8 +33,8 @@ void config_watcher::update()
 
         // discard obsolete registries
         auto it_erase = perfkit::remove_if(*watches, [](auto&& e) { return e.expired(); });
-        CPPH_DEBUG("watching: {} entities", watches->size());
-        CPPH_DEBUG("enumerated: {} entities", regs.size());
+        CPPH_TRACE("watching: {} entities", watches->size());
+        CPPH_TRACE("enumerated: {} entities", regs.size());
 
         if (it_erase != watches->end())
         {
@@ -43,6 +43,7 @@ void config_watcher::update()
         }
 
         sort(regs, [](auto&& a, auto&& b) { return a.owner_before(b); });
+        sort(*watches, [](auto&& a, auto&& b) { return a.owner_before(b); });
 
         std::vector<std::shared_ptr<config_registry>> diffs;
         diffs.reserve(regs.size());
@@ -52,7 +53,7 @@ void config_watcher::update()
                 watches->begin(), watches->end(),
                 std::back_inserter(diffs),
                 [](auto&& a, auto&& b) {
-                    return ptr_equals(a, b);
+                    return a.owner_before(b);
                 });
 
         watches->assign(regs.begin(), regs.end());
@@ -63,7 +64,7 @@ void config_watcher::update()
             _publish_registry(&*diff);
         }
 
-        CPPH_DEBUG("{} config registries are newly published.", diffs.size());
+        CPPH_TRACE("{} config registries are newly published.", diffs.size());
     }
 
     // check for indivisual config's updates
@@ -185,12 +186,12 @@ void config_watcher::update_entity(
     auto& ents = _cache.entities;
 
     auto it = perfkit::find_if(ents, [&](auto&& ent) { return ent.id.value == key; });
-
     if (it == ents.end())
         return;
 
     if (auto config = it->config.lock())
     {
+        CPPH_TRACE("updating config entity {}:{}", it->class_name, config->display_key());
         config->request_modify(std::move(value));
     }
 }
