@@ -181,6 +181,20 @@ void perfkit::terminal::net::terminal::_exec()
         _cvar_worker.wait(lc, [&] { return _dirty; });
         _dirty = false;
     }
+
+    CPPH_INFO("stopping watchers ...");
+    context::if_watcher* watchers[]
+            = {
+                    &_context.configs,
+                    &_context.traces,
+                    &_context.graphics,
+            };
+
+    for (auto* watcher : watchers)
+    {
+        watcher->stop();
+    }
+    CPPH_INFO("exiting worker thread ...");
 }
 
 void perfkit::terminal::net::terminal::_worker_idle()

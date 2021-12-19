@@ -97,7 +97,7 @@ class terminal : public if_terminal
     void _worker_cleanup() {}
 
    private:
-    static spdlog::logger* CPPH_LOGGER() { return &*glog(); }
+    static spdlog::logger* CPPH_LOGGER() { return &*detail::nglog(); }
 
    private:
     outgoing::session_reset _init_msg;

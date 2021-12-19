@@ -55,11 +55,15 @@ void perfkit::terminal::net::context::trace_watcher::update()
                          life   = std::weak_ptr{_event_lifespan},
                          tracer = std::weak_ptr{diff}]  //
                         (tracer::fetched_traces const& traces) {
-                            if (life.expired())
+                            if (auto _ = life.lock())
+                            {
+                                _dispatch_fetched_trace(tracer, traces);
+                                return true;
+                            }
+                            else
+                            {
                                 return false;
-
-                            _dispatch_fetched_trace(tracer, traces);
-                            return true;
+                            }
                         };
             }
 
