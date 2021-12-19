@@ -164,7 +164,7 @@ class basic_dispatcher_impl
             void const* userobj,
             void (*payload)(send_archive_type*, void const*))
     {
-        if (false && _disconnect_timer())
+        if (false && _disconnect_timer.check())
         {  // iterate each socket, and disconnect obsolete ones.
             std::forward_list<socket_id_t> expired;
 
@@ -536,7 +536,7 @@ class basic_dispatcher_impl
 
     void _tick_perf()
     {
-        if (_perf_timer())
+        if (_perf_timer.check())
         {
             _perf_in_rate  = _perf_bytes_in / _perf_timer.delta().count();
             _perf_out_rate = _perf_bytes_out / _perf_timer.delta().count();

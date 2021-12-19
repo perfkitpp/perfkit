@@ -9,6 +9,7 @@
 #include "../utils.hpp"
 #include "perfkit/common/algorithm.hxx"
 #include "perfkit/common/macros.hxx"
+#include "perfkit/common/template_utils.hxx"
 #include "perfkit/extension/net-internals/messages.hpp"
 
 #define CPPH_LOGGER() perfkit::terminal::net::detail::nglog()
@@ -38,12 +39,14 @@ void perfkit::terminal::net::context::trace_watcher::update()
 
     if (_tmr_enumerate.check())
     {
+        auto& watching = _watching;
+
         auto all = perfkit::tracer::all();
         std::vector<std::shared_ptr<tracer>> diffs;
         diffs.reserve(all.size());
 
         perfkit::set_difference2(
-                all, _watching, std::back_inserter(diffs),
+                all, watching, std::back_inserter(diffs),
                 [](auto&& a, auto&& b) { return a.owner_before(b); });
 
         if (not diffs.empty())
@@ -54,10 +57,10 @@ void perfkit::terminal::net::context::trace_watcher::update()
                         [this,
                          life   = std::weak_ptr{_event_lifespan},
                          tracer = std::weak_ptr{diff}]  //
-                        (tracer::fetched_traces const& traces) {
+                        (tracer::fetched_traces const& traces) mutable {
                             if (auto _ = life.lock())
                             {
-                                _dispatch_fetched_trace(tracer, traces);
+                                _dispatch_fetched_trace(std::move(tracer), traces);
                                 return true;
                             }
                             else
@@ -68,7 +71,14 @@ void perfkit::terminal::net::context::trace_watcher::update()
             }
 
             CPPH_DEBUG("trace list changed. publishing {} tracer names ...", diffs.size());
-            _watching.assign(all.begin(), all.end());
+            watching.assign(all.begin(), all.end());
+
+            auto table = _signal_table.lock();
+            perfkit::transform(
+                    all, std::inserter(*table, table->end()),
+                    [](decltype(all[0])& item) {
+                        return std::make_pair(item->name(), std::weak_ptr{item});
+                    });
 
             outgoing::trace_class_list list;
             perfkit::transform(
@@ -92,7 +102,7 @@ void perfkit::terminal::net::context::trace_watcher::_dispatch_fetched_trace(
     io->dispatch(
             [this,
              buf     = std::move(buf),
-             wtracer = tracer,
+             wtracer = std::move(tracer),
              life    = std::weak_ptr{_event_lifespan}]  //
             () mutable {
                 auto locked = life.lock();
@@ -103,28 +113,150 @@ void perfkit::terminal::net::context::trace_watcher::_dispatch_fetched_trace(
                 if (not tracer)
                     return;
 
-                outgoing::traces trc;
-                trc.class_name = tracer->name();
+                _dispatcher_fn(tracer, *buf);
+            });
+}
 
-                std::vector<decltype(trc.root)*> stack;
-                stack.emplace_back(&trc.root);
+static void dump_trace(
+        perfkit::tracer::trace const& v,
+        perfkit::terminal::net::outgoing::traces::node_scheme* node)
+{
+    node->trace_key   = v.unique_id().value;
+    node->name        = v.hierarchy.back();
+    node->folded      = v.folded();
+    node->subscribing = v.subscribing();
 
-                // build trace tree
-                for (auto trace : *buf)
+    auto visitor =
+            [&](auto& value) {
+                using namespace perfkit::terminal::net::outgoing;
+                using type = std::remove_const_t<std::remove_reference_t<decltype(value)>>;
+
+                if constexpr (std::is_same_v<type, nullptr_t>)
                 {
-                    auto pnode       = stack.back();
-                    pnode->name      = trace.hierarchy.back();
-                    pnode->trace_key = trace.unique_id().value;
-
-                    auto key = trace.unique_id();
-                    if (auto [it, is_new] = _nodes.try_emplace(key); is_new)
-                    {
-                        auto* item   = &it->second;
-                        item->subscr = std::shared_ptr<std::atomic_bool>(
-                                tracer, trace._bk_p_subscribed());
-                        item->fold = std::shared_ptr<std::atomic_bool>(
-                                tracer, trace._bk_p_folded());
-                    }
+                    node->value_type = TRACE_VALUE_NULLPTR;
+                    node->value      = "";
                 }
+                else if constexpr (std::is_same_v<type, perfkit::tracer::clock_type::duration>)
+                {
+                    node->value_type = TRACE_VALUE_DURATION_USEC;
+                    node->value      = std::to_string(
+                                 std::chrono::duration_cast<std::chrono::microseconds>(value)
+                                         .count());
+                }
+                else if constexpr (std::is_same_v<type, int64_t>)
+                {
+                    node->value_type = TRACE_VALUE_INTEGER;
+                    node->value      = std::to_string(value);
+                }
+                else if constexpr (std::is_same_v<type, double>)
+                {
+                    node->value_type = TRACE_VALUE_FLOATING_POINT;
+                    node->value      = std::to_string(value);
+                }
+                else if constexpr (std::is_same_v<type, std::string>)
+                {
+                    node->value_type = TRACE_VALUE_STRING;
+                    node->value      = value;
+                }
+                else if constexpr (std::is_same_v<type, bool>)
+                {
+                    node->value_type = TRACE_VALUE_BOOLEAN;
+                    node->value      = value ? "true" : "false";
+                }
+            };
+
+    std::visit(visitor, v.data);
+}
+
+void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
+        const std::shared_ptr<perfkit::tracer>& tracer, const perfkit::tracer::fetched_traces& traces)
+{
+    outgoing::traces trc;
+    trc.class_name = tracer->name();
+
+    std::vector<decltype(&trc.root)> stack;
+    std::vector<decltype(traces.data())> hierarchy;
+
+    stack.reserve(10);
+    hierarchy.reserve(10);
+
+    stack.emplace_back(&trc.root);
+    hierarchy.emplace_back(traces.data());
+
+    // first case(root) is special
+    ::dump_trace(traces[0], &trc.root);
+
+    // build trace tree
+    for (auto const& trace : make_iterable(traces.begin() + 1, traces.end()))
+    {
+        assert(stack.size() == hierarchy.size());
+
+        auto key = trace.unique_id();
+        if (auto [it, is_new] = _nodes.try_emplace(key); is_new)
+        {
+            auto* item   = &it->second;
+            item->subscr = std::shared_ptr<std::atomic_bool>(
+                    tracer, trace._bk_p_subscribed());
+            item->fold = std::shared_ptr<std::atomic_bool>(
+                    tracer, trace._bk_p_folded());
+        }
+
+        while (not hierarchy.empty()
+               && trace.parent_unique_order != hierarchy.back()->parent_unique_order)
+        {  // pop all non-relatives
+            hierarchy.pop_back();
+            stack.pop_back();
+        }
+
+        auto parent = stack.back();
+        hierarchy.push_back(&trace);
+        stack.emplace_back(&parent->children.emplace_back());
+
+        ::dump_trace(*hierarchy.back(), stack.back());
+    }
+
+    io->send(trc);
+}
+
+void perfkit::terminal::net::context::trace_watcher::signal(std::string_view class_name)
+{
+    auto lock = _signal_table.lock();
+
+    auto it = lock->find(class_name);
+    if (it == lock->end())
+        return;
+
+    auto tracer = it->second.lock();
+    if (not tracer)
+        return;
+
+    tracer->request_fetch_data();
+}
+
+void perfkit::terminal::net::context::trace_watcher::tweak(
+        uint64_t key, const bool* subscr, const bool* fold)
+{
+    std::optional<bool> osubs, ofold;
+    if (subscr) { osubs = *subscr; }
+    if (fold) { ofold = *fold; }
+
+    io->dispatch(
+            [this, key, osubs, ofold, wlife = std::weak_ptr{_event_lifespan}]  //
+            {
+                auto alive = wlife.lock();
+                if (not alive)
+                    return;
+
+                auto it = _nodes.find({key});
+                if (it == _nodes.end())
+                    return;
+
+                if (osubs)
+                    if (auto psubs = it->second.subscr.lock())
+                        *psubs = *osubs;
+
+                if (ofold)
+                    if (auto pfold = it->second.fold.lock())
+                        *pfold = *ofold;
             });
 }

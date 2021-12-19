@@ -241,12 +241,12 @@ node_scheme:
   subscribe: boolean; if subscribing this node
   folded: boolean; true if folded.
   value_type: int8; type of value
-    V0: NULLPTR
-    V1: DURATION_USEC (64bit)
-    V2: BOOLEAN
-    V3: INTEGER
-    V4: FLOATING_POINT
-    V5: STRING
+    -0: NULLPTR
+    -1: DURATION_USEC (64bit)
+    -2: INTEGER
+    -3: FLOATING_POINT
+    -4: STRING
+    -5: BOOLEAN
   value: string; parsing method is determined by type value
   children: list<node_scheme>; 
 ```

@@ -117,6 +117,16 @@ struct trace_class_list
             trace_class_list, content);
 };
 
+enum trace_value_type
+{
+    TRACE_VALUE_NULLPTR,
+    TRACE_VALUE_DURATION_USEC,
+    TRACE_VALUE_INTEGER,
+    TRACE_VALUE_FLOATING_POINT,
+    TRACE_VALUE_STRING,
+    TRACE_VALUE_BOOLEAN,
+};
+
 struct traces
 {
     constexpr static char ROUTE[] = "update:traces";
@@ -128,6 +138,7 @@ struct traces
         bool subscribing;
         bool folded;
         std::string value;
+        int value_type;
         std::list<node_scheme> children;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
