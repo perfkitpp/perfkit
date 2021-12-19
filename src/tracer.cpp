@@ -95,7 +95,7 @@ tracer_proxy tracer::fork(std::string const& n, size_t interval)
 
 bool tracer::_deliver_previous_result()
 {  // perform queued sort-merge operation
-    if (not _pending_fetch)
+    if (not _pending_fetch.exchange(false))
         return false;
 
     if (on_fetch.empty())

@@ -19,6 +19,7 @@
 #include <perfkit/common/event.hxx>
 #include <perfkit/common/hasher.hxx>
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
+#include <perfkit/common/memory/pool.hxx>
 #include <perfkit/common/timer.hxx>
 #include <perfkit/extension/net.hpp>
 #include <perfkit/logging.h>
@@ -184,30 +185,25 @@ class basic_dispatcher_impl
         archive["fence"] = fence;
         payload(&archive["payload"], userobj);
 
-        spdlog::stopwatch timeout;
-        while (not _n_sending.unique() && timeout.elapsed() < 2s)
-            std::this_thread::yield();
-
-        if (timeout.elapsed() > 2s)
-            return;  // just timeout.
-
         auto lc{std::lock_guard{_mtx_modify}};
 
-        _bf_send.clear();
-        _bf_send.resize(8);
-        nlohmann::json::to_msgpack(archive, {_bf_send});
+        auto buffer = _send_pool.checkout();
+        buffer->clear();
+        buffer->resize(8);
+        nlohmann::json::to_msgpack(archive, {*buffer});
 
-        _bf_send[0]         = 'o';
-        _bf_send[1]         = '`';
-        _bf_send[2]         = 'P';
-        _bf_send[3]         = '%';
-        *(int*)&_bf_send[4] = _bf_send.size() - 8;
+        (*buffer)[0]         = 'o';
+        (*buffer)[1]         = '`';
+        (*buffer)[2]         = 'P';
+        (*buffer)[3]         = '%';
+        *(int*)&(*buffer)[4] = buffer->size() - 8;
 
         for (auto sock : _sockets_active)
         {
+            auto pbuf = &*buffer;
             asio::async_write(
-                    *sock, asio::const_buffer{_bf_send.data(), _bf_send.size()},
-                    [this, refcnt = _n_sending](auto&&, auto&& n) { _perf_out(n); });
+                    *sock, asio::const_buffer{pbuf->data(), pbuf->size()},
+                    [this, buffer = std::move(buffer)](auto&&, auto&& n) { _perf_out(n); });
         }
     }
 
@@ -235,7 +231,6 @@ class basic_dispatcher_impl
     virtual void cleanup() {}
 
    protected:  // deriving classes may call this
-
     // 구현부에서 호출. 새로운 client endpoint 생성 시 호출. 서버 accept 소켓 등은 해당 안 됨!
     void notify_new_connection(socket_id_t id, std::unique_ptr<tcp::socket> socket)
     {
@@ -587,6 +582,7 @@ class basic_dispatcher_impl
     std::atomic_bool _alive{false};
     std::thread _io_worker;
 
+    pool<std::string> _send_pool;
     poll_timer _perf_timer{1s};
     poll_timer _disconnect_timer{3s};
     size_t _perf_bytes_out = 0;
@@ -599,9 +595,6 @@ class basic_dispatcher_impl
 
     std::map<std::string, std::function<bool(recv_archive_type const& parameter)>>
             _recv_routes;
-
-    std::vector<uint8_t> _bf_send;
-    std::shared_ptr<void> _n_sending = std::make_shared<nullptr_t>();
 
     logger_ptr _logger = share_logger("PERFKIT:NET");
 };

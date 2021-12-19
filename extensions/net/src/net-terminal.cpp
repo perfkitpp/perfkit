@@ -180,7 +180,7 @@ void perfkit::terminal::net::terminal::_exec()
 
         // wait for any event
         std::unique_lock lc{_mtx_worker};
-        _cvar_worker.wait(lc, [&] { return _dirty; });
+        _cvar_worker.wait_for(lc, 3s, [&] { return _dirty; });
         _dirty = false;
     }
 

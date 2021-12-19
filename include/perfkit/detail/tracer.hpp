@@ -273,7 +273,7 @@ class tracer : public std::enable_shared_from_this<tracer>
      */
     void request_fetch_data();
 
-    auto name() const noexcept { return _name; }
+    auto& name() const noexcept { return _name; }
     auto order() const noexcept { return _occurrence_order; }
 
    private:

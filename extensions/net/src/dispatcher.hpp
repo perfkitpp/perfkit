@@ -58,6 +58,7 @@ class dispatcher
     }
 
     void dispatch(perfkit::function<void()>);
+    void post(perfkit::function<void()>);
 
     std::pair<int, int> bandwidth_io() const noexcept;
 

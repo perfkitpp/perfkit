@@ -57,10 +57,10 @@ void perfkit::terminal::net::context::trace_watcher::update()
                         [this,
                          life   = std::weak_ptr{_event_lifespan},
                          tracer = std::weak_ptr{diff}]  //
-                        (tracer::fetched_traces const& traces) mutable {
+                        (tracer::fetched_traces const& traces) {
                             if (auto _ = life.lock())
                             {
-                                _dispatch_fetched_trace(std::move(tracer), traces);
+                                _dispatch_fetched_trace(tracer, traces);
                                 return true;
                             }
                             else
@@ -171,6 +171,8 @@ static void dump_trace(
 void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
         const std::shared_ptr<perfkit::tracer>& tracer, const perfkit::tracer::fetched_traces& traces)
 {
+    stopwatch sw;
+
     outgoing::traces trc;
     trc.class_name = tracer->name();
 
@@ -201,11 +203,13 @@ void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
                     tracer, trace._bk_p_folded());
         }
 
-        while (not hierarchy.empty()
-               && trace.parent_unique_order != hierarchy.back()->parent_unique_order)
+        while (trace.parent_unique_order != hierarchy.back()->unique_order)
         {  // pop all non-relatives
             hierarchy.pop_back();
             stack.pop_back();
+
+            assert(not stack.empty());
+            assert(not hierarchy.empty());
         }
 
         auto parent = stack.back();
@@ -230,6 +234,7 @@ void perfkit::terminal::net::context::trace_watcher::signal(std::string_view cla
     if (not tracer)
         return;
 
+    CPPH_TRACE("trace signal to {}", class_name);
     tracer->request_fetch_data();
 }
 
