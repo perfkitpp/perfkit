@@ -45,6 +45,8 @@ perfkit::terminal::net::terminal::terminal(
     _io.on_recv<incoming::push_command>(CPPH_BIND(_on_push_command));
     _io.on_recv<incoming::configure_entity>(CPPH_BIND(_on_configure));
     _io.on_recv<incoming::suggest_command>(CPPH_BIND(_on_suggest_request));
+    _io.on_recv<incoming::control_trace>(CPPH_BIND(_on_trace_tweak));
+    _io.on_recv<incoming::signal_fetch_traces>(CPPH_BIND(_on_trace_signal));
 
     // launch asynchronous IO thread.
     _io.launch();
