@@ -14,13 +14,13 @@
 #include <vector>
 
 #include "perfkit/common/array_view.hxx"
+#include "perfkit/common/event.hxx"
 #include "perfkit/common/spinlock.hxx"
 
 namespace fmt {
 }
 
 namespace perfkit {
-class tracer_future_result;
 class tracer;
 
 using clock_type = std::chrono::steady_clock;
@@ -217,29 +217,7 @@ class tracer
     static_assert(std::is_nothrow_move_assignable_v<_trace::trace>);
     static_assert(std::is_nothrow_move_constructible_v<_trace::trace>);
 
-   private:
    public:
-    struct async_trace_result
-    {
-       public:
-        std::pair<
-                std::unique_lock<std::mutex>,
-                std::shared_ptr<fetched_traces>>
-        acquire() const noexcept
-        {
-            return std::make_pair(std::unique_lock{*_mtx_access}, _data);
-        }
-
-        void copy_sorted(fetched_traces& out) const noexcept;
-
-       private:
-        friend class tracer;
-        std::shared_ptr<std::mutex> _mtx_access;
-        std::shared_ptr<fetched_traces> _data;
-    };
-
-    using future_result = tracer_future_result;
-
     /**
      * Registers new memory block to global storage.
      *
@@ -255,6 +233,9 @@ class tracer
    public:
     static auto create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer>;
     static std::vector<std::shared_ptr<tracer>> all() noexcept;
+
+   public:
+    event<fetched_traces const&> on_fetch;
 
    public:
     /**
@@ -282,9 +263,8 @@ class tracer
 
     /**
      * Reserves for async data sort
-     * @return empty optional when there's any already queued operation.
      */
-    void async_fetch_request(tracer::future_result* out);
+    void request_fetch_data();
 
     auto name() const noexcept { return _name; }
     auto order() const noexcept { return _occurrence_order; }
@@ -321,8 +301,7 @@ class tracer
     size_t _interval_counter = 0;
 
     int _order_active = 0;  // temporary variable for single iteration
-
-    mutable std::mutex _sort_merge_lock;
+    std::atomic_bool _pending_fetch;
     fetched_traces _local_reused_memory;
 
     int _occurrence_order;

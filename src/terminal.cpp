@@ -4,6 +4,7 @@
 #include "perfkit/terminal.h"
 
 #include <filesystem>
+#include <future>
 #include <regex>
 
 #include <range/v3/algorithm.hpp>
@@ -16,7 +17,6 @@
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/commands.hpp"
 #include "perfkit/detail/configs.hpp"
-#include "perfkit/detail/trace_future.hpp"
 #include "perfkit/detail/tracer.hpp"
 
 using namespace std::literals;
@@ -271,14 +271,21 @@ class _trace_manip
    private:
     void _async_request(std::shared_ptr<tracer> ref, std::string pattern, std::optional<bool> setter)
     {
-        tracer::future_result fut;
-        ref->async_fetch_request(&fut);
+        std::promise<perfkit::tracer::fetched_traces> promise;
+        auto fut          = promise.get_future();
+        auto valid_marker = std::make_shared<nullptr_t>();
 
-        if (fut.valid() == false)
-        {
-            SPDLOG_LOGGER_ERROR(glog(), "tracer '{}' returned invalid fetch request result.", ref->name());
-            return;
-        }
+        ref->on_fetch
+                += [promise = &promise,
+                    valid   = std::weak_ptr{valid_marker}]  //
+                (auto const& traces) {
+                    if (not valid.expired())
+                        promise->set_value(traces);
+
+                    return false;
+                };
+
+        ref->request_fetch_data();
 
         if (fut.wait_for(3s) == std::future_status::timeout)
         {
@@ -286,8 +293,7 @@ class _trace_manip
             return;
         }
 
-        tracer::fetched_traces result;
-        fut.get().copy_sorted(result);
+        tracer::fetched_traces result = fut.get();
 
         using namespace ranges;
         std::regex match{pattern};
@@ -301,7 +307,7 @@ class _trace_manip
             auto hierarchy = item.hierarchy.subspan(0, item.hierarchy.size() - 1);
 
             full_key.clear();
-            for (auto c : item.hierarchy | views::join(".")) { full_key += c; }
+            for (auto c : item.hierarchy | views::join("."sv)) { full_key += c; }
 
             if (not std::regex_match(full_key, match)) { continue; }
             if (setter) { item.subscribe(*setter); }
@@ -311,7 +317,9 @@ class _trace_manip
             {
                 current_hierarchy = hierarchy;
                 hierarchy_key.clear();
-                for (auto c : hierarchy | views::join(".")) { hierarchy_key += c; }
+                for (auto c : hierarchy | views::join("."sv))
+                    hierarchy_key += c;
+
                 if (not hierarchy_key.empty()) { hierarchy_key += '.'; }
             }
 
@@ -322,7 +330,7 @@ class _trace_manip
             }
             else
             {
-                output << "{:{}}{}"_fmt % "" % hierarchy_key.size() % item.key;
+                output << "{0:{1}}{2}"_fmt % "" % hierarchy_key.size() % item.key;
             }
 
             item.dump_data(data_str);
