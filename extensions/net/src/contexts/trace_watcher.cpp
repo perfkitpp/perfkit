@@ -12,6 +12,7 @@ void perfkit::terminal::net::context::trace_watcher::start()
 void perfkit::terminal::net::context::trace_watcher::stop()
 {
     if_watcher::stop();
+    io;
 }
 
 void perfkit::terminal::net::context::trace_watcher::update()

@@ -8,12 +8,14 @@
 #include <variant>
 
 #include <nlohmann/detail/conversions/from_json.hpp>
-#include <perfkit/common/assert.hxx>
-#include <perfkit/common/hasher.hxx>
-#include <perfkit/common/macros.hxx>
-#include <perfkit/detail/base.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
+
+#include "perfkit/common/assert.hxx"
+#include "perfkit/common/hasher.hxx"
+#include "perfkit/common/macros.hxx"
+#include "perfkit/common/template_utils.hxx"
+#include "perfkit/detail/base.hpp"
 
 #define CPPH_LOGGER() perfkit::glog()
 
@@ -117,13 +119,8 @@ bool tracer::_deliver_previous_result()
         this->_local_reused_memory.emplace_back(entity.body);
     }
 
-    auto self_ptr = this->_self_weak.lock();
-
-    if (not on_fetch.empty())
-    {
-        sort_messages_by_rule(_local_reused_memory);
-        on_fetch.invoke(_local_reused_memory);
-    }
+    sort_messages_by_rule(_local_reused_memory);
+    on_fetch.invoke(_local_reused_memory);
 
     this->_fence_latest = this->_fence_active;
     return true;
@@ -180,7 +177,6 @@ auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::
     CPPH_DEBUG("creating tracer {}", name);
     std::shared_ptr<tracer> entity{
             new tracer{order, name}};
-    entity->_self_weak = entity;
 
     auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
     _all().insert(it_insert, entity);
@@ -189,14 +185,13 @@ auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::
 
 perfkit::tracer::~tracer() noexcept
 {
-    static auto equivalent = [](auto&& p1, auto&& p2) {
-        return p1.lock() == p2.lock();
-    };
-
     auto _{lock_tracer_repo()};
     CPPH_DEBUG("destroying tracer {}", _name);
     auto it = std::find_if(_all().begin(), _all().end(),
-                           [&](auto&& wptr) { return equivalent(wptr, _self_weak); });
+                           [&](auto&& wptr) {
+                               return perfkit::ptr_equals(wptr, weak_from_this());
+                           });
+
     if (it != _all().end())
     {
         _all().erase(it);

@@ -204,7 +204,7 @@ class tracer_proxy
     clock_type::time_point _epoch_if_required = {};
 };
 
-class tracer
+class tracer : public std::enable_shared_from_this<tracer>
 {
    public:
     using clock_type     = perfkit::clock_type;
@@ -307,7 +307,6 @@ class tracer
     int _occurrence_order;
     std::string const _name;
 
-    std::weak_ptr<tracer> _self_weak;
     std::vector<_entity_ty const*> _stack;
 };
 

@@ -23,6 +23,6 @@ class trace_watcher : public if_watcher
     void _monitor_once();
 
    private:
-    thread::worker _worker_monitor;
+    std::shared_ptr<int> _event_lifespan;
 };
 }  // namespace perfkit::terminal::net::context

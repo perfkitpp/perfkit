@@ -224,6 +224,8 @@ class basic_dispatcher_impl
     perfkit::event<int> on_new_connection;
     perfkit::event<> on_no_connection;
 
+    auto* io() { return &_io; }
+
    protected:
     // 워커 스레드에서, io_context가 초기화될 때마다 호출.
     // 구현에 따라, 서버 소켓을 바인딩하거나, 서버에 연결하는 등의 용도로 사용.
@@ -233,7 +235,6 @@ class basic_dispatcher_impl
     virtual void cleanup() {}
 
    protected:  // deriving classes may call this
-    auto* io() { return &_io; }
 
     // 구현부에서 호출. 새로운 client endpoint 생성 시 호출. 서버 accept 소켓 등은 해당 안 됨!
     void notify_new_connection(socket_id_t id, std::unique_ptr<tcp::socket> socket)
