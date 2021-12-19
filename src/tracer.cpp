@@ -46,6 +46,7 @@ tracer::_entity_ty* tracer::_fork_branch(
         data.hierarchy.push_back(data.key_buffer);
         data.body.hierarchy    = data.hierarchy;
         data.body.unique_order = _table.size();
+        parent && (data.body.parent_unique_order = parent->body.unique_order);
     }
 
     data.parent            = parent;

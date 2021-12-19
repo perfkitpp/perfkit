@@ -15,6 +15,7 @@
 
 #include "perfkit/common/array_view.hxx"
 #include "perfkit/common/event.hxx"
+#include "perfkit/common/hasher.hxx"
 #include "perfkit/common/spinlock.hxx"
 
 namespace fmt {
@@ -36,6 +37,8 @@ struct trace_variant_type
     using variant::variant;
 };
 
+using trace_key_t = basic_key<class tracer>;
+
 namespace _trace {
 struct trace
 {
@@ -54,6 +57,14 @@ struct trace
         _is_folded->store(folded, std::memory_order_relaxed);
     }
 
+    trace_key_t unique_id() const noexcept
+    {
+        return trace_key_t::create(_is_subscribed);
+    }
+
+    auto _bk_p_subscribed() const noexcept { return _is_subscribed; }
+    auto _bk_p_folded() const noexcept { return _is_folded; }
+
     bool subscribing() const noexcept { return _is_subscribed->load(std::memory_order_relaxed); }
     bool folded() const noexcept { return _is_folded->load(std::memory_order_relaxed); }
 
@@ -63,9 +74,10 @@ struct trace
     std::string_view key;
     uint64_t hash;
 
-    size_t fence        = 0;
-    size_t unique_order = 0;
-    int active_order    = 0;
+    size_t fence               = 0;
+    size_t unique_order        = 0;
+    size_t parent_unique_order = ~size_t{};
+    int active_order           = 0;
     array_view<std::string_view> hierarchy;
 
     trace_variant_type data;

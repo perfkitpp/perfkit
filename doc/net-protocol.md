@@ -240,7 +240,14 @@ node_scheme:
   trace_key: hash64; unique key in trace class scope
   subscribe: boolean; if subscribing this node
   folded: boolean; true if folded.
-  value: oneof [int64|double|string|timestamp|boolean];
+  value_type: int8; type of value
+    V0: NULLPTR
+    V1: DURATION_USEC (64bit)
+    V2: BOOLEAN
+    V3: INTEGER
+    V4: FLOATING_POINT
+    V5: STRING
+  value: string; parsing method is determined by type value
   children: list<node_scheme>; 
 ```
 

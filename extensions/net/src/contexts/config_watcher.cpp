@@ -20,14 +20,14 @@ void config_watcher::update()
     if (not _has_update)
         return;
 
-    if (not _min_interval())
+    if (not _min_interval.check())
         return;  // prevent too frequent update request
 
     // clear dirty flag
     _has_update = false;
 
     // check for new registries
-    if (_tmr_config_registry())
+    if (_tmr_config_registry.check())
     {
         auto regs     = perfkit::config_registry::bk_enumerate_registries(true);
         auto* watches = &_cache.regs;

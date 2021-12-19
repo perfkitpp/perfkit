@@ -71,6 +71,8 @@ class terminal : public if_terminal
     void _on_configure(incoming::configure_entity&& s);
     void _on_suggest_request(incoming::suggest_command&& s);
     void _on_any_connection(int n_conn);
+    void _on_trace_signal(incoming::signal_fetch_traces&& s);
+    void _on_trace_tweak(incoming::control_trace&& s);
     void _on_no_connection();
 
     void _touch_worker()

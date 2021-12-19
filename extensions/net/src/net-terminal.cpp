@@ -148,6 +148,23 @@ void perfkit::terminal::net::terminal::_on_suggest_request(
     _io.send(cmd);
 }
 
+void perfkit::terminal::net::terminal::_on_trace_signal(
+        perfkit::terminal::net::incoming::signal_fetch_traces&& s)
+{
+    for (auto& sig : s.targets)
+    {
+        _context.traces.signal(sig);
+    }
+}
+
+void perfkit::terminal::net::terminal::_on_trace_tweak(incoming::control_trace&& s)
+{
+    _context.traces.tweak(
+            s.trace_key,
+            s.subscribe ? &*s.subscribe : nullptr,
+            s.fold ? &*s.fold : nullptr);
+}
+
 void perfkit::terminal::net::terminal::_exec()
 {
     // initial state binding

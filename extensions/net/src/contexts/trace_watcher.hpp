@@ -3,12 +3,15 @@
 //
 
 #pragma once
-#include <perfkit/common/thread/worker.hxx>
-#include <perfkit/traces.h>
-
 #include "if_watcher.hpp"
+#include "perfkit/common/memory/pool.hxx"
+#include "perfkit/common/thread/worker.hxx"
+#include "perfkit/common/timer.hxx"
+#include "perfkit/traces.h"
 
 namespace perfkit::terminal::net::context {
+using namespace std::literals;
+
 class trace_watcher : public if_watcher
 {
    public:
@@ -17,12 +20,25 @@ class trace_watcher : public if_watcher
     void update() override;
 
    public:
-    void signal(std::string_view);
+    void signal(std::string_view) {}
+    void tweak(uint64_t key, bool const* subscr, bool const* fold) {}
 
    private:
-    void _monitor_once();
+    void _dispatch_fetched_trace(std::weak_ptr<perfkit::tracer> tracer, tracer::fetched_traces const&);
 
    private:
-    std::shared_ptr<int> _event_lifespan;
+    struct _trace_node
+    {
+        std::weak_ptr<std::atomic_bool> subscr;
+        std::weak_ptr<std::atomic_bool> fold;
+    };
+
+   private:
+    std::shared_ptr<nullptr_t> _event_lifespan;
+    std::vector<std::weak_ptr<tracer>> _watching;
+    pool<perfkit::tracer::fetched_traces> _pool_traces;
+
+    std::unordered_map<trace_key_t, _trace_node> _nodes;
+    poll_timer _tmr_enumerate{3s};
 };
 }  // namespace perfkit::terminal::net::context

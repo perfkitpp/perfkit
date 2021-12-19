@@ -127,7 +127,7 @@ struct traces
         uint64_t trace_key;
         bool subscribing;
         bool folded;
-        nlohmann::json value;
+        std::string value;
         std::list<node_scheme> children;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
