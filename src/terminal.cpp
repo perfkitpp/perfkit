@@ -224,7 +224,14 @@ class _trace_manip
             }
             else if (r_wait == std::future_status::ready)
             {
-                _async.get();
+                try
+                {
+                    _async.get();
+                }
+                catch (std::regex_error& e)
+                {
+                    SPDLOG_LOGGER_WARN(glog(), "regex error on trace filter: {}", e.what());
+                }
             }
             else
             {
