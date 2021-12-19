@@ -25,8 +25,9 @@ void perfkit::terminal::net::context::trace_watcher::stop()
     if_watcher::stop();
     _watching.clear();
 
-    while (not _event_lifespan.unique())
-        std::this_thread::yield();  // flush pending async oprs
+    if (_event_lifespan)
+        while (not _event_lifespan.unique())
+            std::this_thread::yield();  // flush pending async oprs
 
     _event_lifespan.reset();
 }
@@ -43,7 +44,7 @@ void perfkit::terminal::net::context::trace_watcher::update()
 
         perfkit::set_difference2(
                 all, _watching, std::back_inserter(diffs),
-                [](auto&& a, auto&& b) { return ptr_equals(a, b); });
+                [](auto&& a, auto&& b) { return a.owner_before(b); });
 
         if (not diffs.empty())
         {
@@ -62,7 +63,7 @@ void perfkit::terminal::net::context::trace_watcher::update()
                         };
             }
 
-            CPPH_DEBUG("trace list changed. publishing {} tracer names ...");
+            CPPH_DEBUG("trace list changed. publishing {} tracer names ...", diffs.size());
             _watching.assign(all.begin(), all.end());
 
             outgoing::trace_class_list list;
@@ -107,8 +108,8 @@ void perfkit::terminal::net::context::trace_watcher::_dispatch_fetched_trace(
                 // build trace tree
                 for (auto trace : *buf)
                 {
-                    auto pnode  = stack.back();
-                    pnode->name = trace.hierarchy.back();
+                    auto pnode       = stack.back();
+                    pnode->name      = trace.hierarchy.back();
                     pnode->trace_key = trace.unique_id().value;
 
                     auto key = trace.unique_id();
