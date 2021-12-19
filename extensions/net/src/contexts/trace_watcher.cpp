@@ -172,6 +172,7 @@ void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
         const std::shared_ptr<perfkit::tracer>& tracer, const perfkit::tracer::fetched_traces& traces)
 {
     stopwatch sw;
+    CPPH_TRACE("dispatching {} traces from {}", traces.size(), tracer->name());
 
     outgoing::traces trc;
     trc.class_name = tracer->name();
@@ -220,6 +221,7 @@ void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
     }
 
     io->send(trc);
+    CPPH_TRACE("elapsed: {} sec", sw.elapsed().count());
 }
 
 void perfkit::terminal::net::context::trace_watcher::signal(std::string_view class_name)
