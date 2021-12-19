@@ -173,7 +173,7 @@ category_scheme:
   name: string
   subcategories: list<category_scheme>
   entities: list<entity_scheme>
-  
+
 entity_scheme:
   name: string
   config_key: hash64; a unique key in a config class scope
@@ -204,10 +204,12 @@ entity_scheme:
 parameter:
   class_key: string; name of config class
   content: list<entity_scheme>; same as above
-     
+
 entity_scheme: <same as above>
 ```
+
 1
+
 ### *update:trace_class_list*
 
 추가/제거된 트레이스 클래스가 있을 때, 전체 리스트를 다시 보냄
@@ -237,8 +239,9 @@ node_scheme:
   name: string
   trace_key: hash64; unique key in trace class scope
   subscribe: boolean; if subscribing this node
+  folded: boolean; true if folded.
   value: oneof [int64|double|string|timestamp|boolean];
-  children?: list<node_scheme>; if folded, field will be empty. 
+  children: list<node_scheme>; 
 ```
 
 ### *cmd:control_trace*
@@ -271,12 +274,11 @@ parameter:
 
 ```yaml
 parameter:
-   count: int32; number of draw calls
-   commands: byte[]; packed bytes of draw calls
+  count: int32; number of draw calls
+  commands: byte[]; packed bytes of draw calls
 ```
 
 드로우 콜에 대해서는 위의 [Windowing](windowing.md) 문서 참조
-
 
 ### *cmd:window_interact*
 

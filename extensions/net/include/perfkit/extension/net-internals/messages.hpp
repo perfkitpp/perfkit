@@ -107,6 +107,40 @@ struct suggest_command
             suggest_command, reply_to, new_command, candidates);
 };
 
+struct trace_class_list
+{
+    constexpr static char ROUTE[] = "update:trace_class_list";
+
+    std::forward_list<std::string> content;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            trace_class_list, content);
+};
+
+struct traces
+{
+    constexpr static char ROUTE[] = "update:traces";
+
+    struct node_scheme
+    {
+        std::string name;
+        uint64_t trace_key;
+        bool subscribing;
+        bool folded;
+        nlohmann::json value;
+        std::list<node_scheme> children;
+
+        CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+                node_scheme, name, trace_key, subscribing, folded, value, children);
+    };
+
+    std::string class_name;
+    node_scheme root;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            traces, class_name, root);
+};
+
 }  // namespace perfkit::terminal::net::outgoing
 
 namespace perfkit::terminal::net::incoming {
@@ -150,6 +184,26 @@ struct configure_entity
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             configure_entity, class_key, content);
+};
+
+struct signal_fetch_traces
+{
+    constexpr static char ROUTE[] = "cmd:signal_fetch_traces";
+    std::list<std::string> targets;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(signal_fetch_traces, targets);
+};
+
+struct control_trace
+{
+    constexpr static char ROUTE[] = "cmd:control_trace";
+    std::string class_name;
+    uint64_t trace_key;
+    std::optional<bool> fold;
+    std::optional<bool> subscribe;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            control_trace, class_name, trace_key, fold, subscribe);
 };
 
 }  // namespace perfkit::terminal::net::incoming
