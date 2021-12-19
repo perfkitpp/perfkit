@@ -34,6 +34,7 @@ class config_watcher : public if_watcher
     std::atomic_bool _has_update = false;
     uint64_t _fence_value        = 0;
     poll_timer _min_interval{50ms};
+    poll_timer _tmr_config_registry{3s};
     spinlock _mtx_entities;
 
     struct _entity_context

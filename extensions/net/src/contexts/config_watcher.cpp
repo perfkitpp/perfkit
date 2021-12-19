@@ -27,6 +27,7 @@ void config_watcher::update()
     _has_update = false;
 
     // check for new registries
+    if (_tmr_config_registry())
     {
         auto regs     = perfkit::config_registry::bk_enumerate_registries(true);
         auto* watches = &_cache.regs;
@@ -176,6 +177,7 @@ void config_watcher::start()
 {
     // launch watchdog thread
     _worker.repeat(CPPH_BIND(_watchdog_once));
+    _tmr_config_registry.invalidate();
     _has_update = true;
 }
 
