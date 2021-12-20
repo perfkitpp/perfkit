@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <asio/dispatch.hpp>
+#include <asio/post.hpp>
 #include <perfkit/common/assert.hxx>
 
 #include "basic_dispatcher_impl.hpp"
@@ -71,4 +73,14 @@ std::pair<int, int> perfkit::terminal::net::dispatcher::bandwidth_io() const noe
 void perfkit::terminal::net::dispatcher::launch()
 {
     self->launch();
+}
+
+void perfkit::terminal::net::dispatcher::dispatch(perfkit::function<void()> fn)
+{
+    asio::dispatch(*self->io(), std::move(fn));
+}
+
+void perfkit::terminal::net::dispatcher::post(perfkit::function<void()> fn)
+{
+    asio::post(*self->io(), std::move(fn));
 }

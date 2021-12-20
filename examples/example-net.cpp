@@ -7,8 +7,17 @@
 
 using namespace std::literals;
 
+PERFKIT_CATEGORY(conf_global)
+{
+    PERFKIT_CONFIGURE(some_selectible, "hello")
+            .one_of({"hello", "my name", "is john"})
+            .confirm();
+}
+
 int main(void)
 {
+    spdlog::set_level(spdlog::level::debug);
+
     test_class test1{"test1"};
     test_class test2{"test2"};
     test_class test3{"test3"};
@@ -29,6 +38,8 @@ int main(void)
 
     while (running)
     {
+        conf_global::update();
+
         auto cmd = term->fetch_command(1s);
         if (not cmd || cmd->empty())
             continue;

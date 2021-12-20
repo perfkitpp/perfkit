@@ -52,6 +52,10 @@ perfkit::terminal_ptr perfkit::terminal::net::create(std::string config_profile_
     cfg->update();
 
     terminal_init_info init{*cfg.session_name};
+    auto CPPH_LOGGER = [] { return detail::nglog(); };
+
+    CPPH_INFO("creating network session: {}", *cfg.session_name);
+
     // init.description; TODO: find description from description path
     // init.auth; TODO: parse auth
 
@@ -76,6 +80,8 @@ perfkit::terminal_ptr perfkit::terminal::net::create(std::string config_profile_
             info.id              = id;
             info.password        = pw;
             info.readonly_access = not is_admin;
+
+            CPPH_INFO("adding {} auth {}", info.readonly_access ? "readonly" : "admin", info.id);
         }
         catch (std::out_of_range& ec)
         {
@@ -87,6 +93,7 @@ perfkit::terminal_ptr perfkit::terminal::net::create(std::string config_profile_
     *cfg.has_relay_server
             ? init.relay_to(*cfg.ipaddr, *cfg.port)
             : init.serve(*cfg.ipaddr, *cfg.port);
+    CPPH_INFO("binding to {}:{}", *cfg.ipaddr, *cfg.port);
 
     return std::make_shared<net::terminal>(init);
 }

@@ -57,13 +57,8 @@ class dispatcher
               });
     }
 
-    void send_raw(std::string_view route, send_archive_type&& archive)
-    {
-        _send(route, ++_fence, &archive,
-              [](send_archive_type* arch, const void* data) {
-                  std::swap(*arch, *(send_archive_type*)data);
-              });
-    }
+    void dispatch(perfkit::function<void()>);
+    void post(perfkit::function<void()>);
 
     std::pair<int, int> bandwidth_io() const noexcept;
 

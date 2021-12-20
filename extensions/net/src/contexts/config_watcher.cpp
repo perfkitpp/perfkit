@@ -4,33 +4,41 @@
 
 #include "config_watcher.hpp"
 
+#include <spdlog/spdlog.h>
+
+#include "../utils.hpp"
 #include "perfkit/common/algorithm.hxx"
 #include "perfkit/common/template_utils.hxx"
+#include "perfkit/detail/base.hpp"
+
+#define CPPH_LOGGER() detail::nglog()
 
 using namespace perfkit::terminal::net::context;
 
 void config_watcher::update()
 {
-    if (not _has_update)
-        return;
-
-    if (not _min_interval())
+    if (not _min_interval.check())
         return;  // prevent too frequent update request
-
-    // clear dirty flag
-    _has_update = false;
-
+    
     // check for new registries
+    if (_tmr_config_registry.check())
     {
         auto regs     = perfkit::config_registry::bk_enumerate_registries(true);
         auto* watches = &_cache.regs;
 
         // discard obsolete registries
-        watches->erase(
-                perfkit::remove_if(*watches, [](auto&& e) { return e.expired(); }),
-                watches->end());
+        auto it_erase = perfkit::remove_if(*watches, [](auto&& e) { return e.expired(); });
+        CPPH_TRACE("watching: {} entities", watches->size());
+        CPPH_TRACE("enumerated: {} entities", regs.size());
+
+        if (it_erase != watches->end())
+        {
+            CPPH_DEBUG("{} registries disposed from last update", watches->end() - it_erase);
+            watches->erase(it_erase, watches->end());
+        }
 
         sort(regs, [](auto&& a, auto&& b) { return a.owner_before(b); });
+        sort(*watches, [](auto&& a, auto&& b) { return a.owner_before(b); });
 
         std::vector<std::shared_ptr<config_registry>> diffs;
         diffs.reserve(regs.size());
@@ -40,19 +48,25 @@ void config_watcher::update()
                 watches->begin(), watches->end(),
                 std::back_inserter(diffs),
                 [](auto&& a, auto&& b) {
-                    return ptr_equals(a, b);
+                    return a.owner_before(b);
                 });
 
         watches->assign(regs.begin(), regs.end());
 
         for (auto& diff : diffs)
         {
+            CPPH_DEBUG("publishing new config registry {}", diff->name());
             _publish_registry(&*diff);
         }
+
+        CPPH_TRACE("{} config registries are newly published.", diffs.size());
     }
 
     // check for indivisual config's updates
+    if (_has_update)
     {
+        _has_update = false;
+
         std::lock_guard lc{_mtx_entities};
         auto& ents = _cache.entities;
 
@@ -160,6 +174,7 @@ void config_watcher::start()
 {
     // launch watchdog thread
     _worker.repeat(CPPH_BIND(_watchdog_once));
+    _tmr_config_registry.invalidate();
     _has_update = true;
 }
 
@@ -170,12 +185,12 @@ void config_watcher::update_entity(
     auto& ents = _cache.entities;
 
     auto it = perfkit::find_if(ents, [&](auto&& ent) { return ent.id.value == key; });
-
     if (it == ents.end())
         return;
 
     if (auto config = it->config.lock())
     {
+        CPPH_TRACE("updating config entity {}:{}", it->class_name, config->display_key());
         config->request_modify(std::move(value));
     }
 }

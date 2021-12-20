@@ -1,5 +1,7 @@
 #include "net-terminal.hpp"
 
+#include "perfkit/common/algorithm.hxx"
+
 extern "C" int gethostname(char*, size_t);
 
 perfkit::terminal::net::terminal::terminal(
@@ -41,6 +43,10 @@ perfkit::terminal::net::terminal::terminal(
 
     // register handlers
     _io.on_recv<incoming::push_command>(CPPH_BIND(_on_push_command));
+    _io.on_recv<incoming::configure_entity>(CPPH_BIND(_on_configure));
+    _io.on_recv<incoming::suggest_command>(CPPH_BIND(_on_suggest_request));
+    _io.on_recv<incoming::control_trace>(CPPH_BIND(_on_trace_tweak));
+    _io.on_recv<incoming::signal_fetch_traces>(CPPH_BIND(_on_trace_signal));
 
     // launch asynchronous IO thread.
     _io.launch();
@@ -110,17 +116,59 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
     }
 }
 
-void perfkit::terminal::net::terminal::_on_push_command(perfkit::terminal::net::incoming::push_command&& s)
+void perfkit::terminal::net::terminal::_on_push_command(
+        perfkit::terminal::net::incoming::push_command&& s)
 {
     push_command(s.command);
 }
 
+void perfkit::terminal::net::terminal::_on_configure(
+        perfkit::terminal::net::incoming::configure_entity&& s)
+{
+    for (auto& entity : s.content)
+    {
+        _context.configs.update_entity(
+                entity.config_key,
+                std::move(entity.value));
+    }
+}
+
+void perfkit::terminal::net::terminal::_on_suggest_request(
+        perfkit::terminal::net::incoming::suggest_command&& s)
+{
+    std::vector<std::string> candidates;
+    auto nextstr = _commands.suggest(s.command, &candidates);
+
+    outgoing::suggest_command cmd;
+    cmd.new_command = std::move(nextstr);
+    cmd.reply_to    = s.reply_to;
+    perfkit::transform(
+            candidates,
+            std::front_inserter(cmd.candidates),
+            [](auto& s) { return std::move(s); });
+
+    _io.send(cmd);
+}
+
+void perfkit::terminal::net::terminal::_on_trace_signal(
+        perfkit::terminal::net::incoming::signal_fetch_traces&& s)
+{
+    for (auto& sig : s.targets)
+    {
+        _context.traces.signal(sig);
+    }
+}
+
+void perfkit::terminal::net::terminal::_on_trace_tweak(incoming::control_trace&& s)
+{
+    _context.traces.tweak(
+            s.trace_key,
+            s.subscribe ? &*s.subscribe : nullptr,
+            s.fold ? &*s.fold : nullptr);
+}
+
 void perfkit::terminal::net::terminal::_exec()
 {
-    auto is_dirty = [&] {
-        return _dirty;
-    };
-
     // initial state binding
     _worker_state = CPPH_BIND(_worker_idle);
 
@@ -132,9 +180,23 @@ void perfkit::terminal::net::terminal::_exec()
 
         // wait for any event
         std::unique_lock lc{_mtx_worker};
-        _cvar_worker.wait(lc, is_dirty);
+        _cvar_worker.wait_for(lc, 3s, [&] { return _dirty; });
         _dirty = false;
     }
+
+    CPPH_INFO("stopping watchers ...");
+    context::if_watcher* watchers[]
+            = {
+                    &_context.configs,
+                    &_context.traces,
+                    &_context.graphics,
+            };
+
+    for (auto* watcher : watchers)
+    {
+        watcher->stop();
+    }
+    CPPH_INFO("exiting worker thread ...");
 }
 
 void perfkit::terminal::net::terminal::_worker_idle()

@@ -54,6 +54,9 @@ class terminal : public if_terminal
     void write(std::string_view str, termcolor fg, termcolor bg) override
     {
         fwrite(str.data(), str.size(), 1, stdout);
+
+        if (str.find_last_of('\n') != ~size_t{})
+            fflush(stdout);
     }
 
     std::shared_ptr<spdlog::sinks::sink> sink() override
@@ -65,7 +68,11 @@ class terminal : public if_terminal
     void _user_command_fetch_fn();
     void _char_handler(char c);
     void _on_push_command(incoming::push_command&& s);
+    void _on_configure(incoming::configure_entity&& s);
+    void _on_suggest_request(incoming::suggest_command&& s);
     void _on_any_connection(int n_conn);
+    void _on_trace_signal(incoming::signal_fetch_traces&& s);
+    void _on_trace_tweak(incoming::control_trace&& s);
     void _on_no_connection();
 
     void _touch_worker()
@@ -90,7 +97,7 @@ class terminal : public if_terminal
     void _worker_cleanup() {}
 
    private:
-    static spdlog::logger* CPPH_LOGGER() { return &*glog(); }
+    static spdlog::logger* CPPH_LOGGER() { return &*detail::nglog(); }
 
    private:
     outgoing::session_reset _init_msg;

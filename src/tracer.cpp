@@ -8,19 +8,22 @@
 #include <variant>
 
 #include <nlohmann/detail/conversions/from_json.hpp>
-#include <perfkit/common/assert.hxx>
-#include <perfkit/common/hasher.hxx>
-#include <perfkit/detail/trace_future.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
+
+#include "perfkit/common/assert.hxx"
+#include "perfkit/common/hasher.hxx"
+#include "perfkit/common/macros.hxx"
+#include "perfkit/common/template_utils.hxx"
+#include "perfkit/detail/base.hpp"
+
+#define CPPH_LOGGER() perfkit::glog()
 
 using namespace std::literals;
 using namespace perfkit;
 
 struct tracer::_impl
 {
-    std::optional<std::promise<async_trace_result>> msg_promise;
-    tracer_future_result msg_future;
 };
 
 tracer::_entity_ty* tracer::_fork_branch(
@@ -43,6 +46,7 @@ tracer::_entity_ty* tracer::_fork_branch(
         data.hierarchy.push_back(data.key_buffer);
         data.body.hierarchy    = data.hierarchy;
         data.body.unique_order = _table.size();
+        parent && (data.body.parent_unique_order = parent->body.unique_order);
     }
 
     data.parent            = parent;
@@ -71,7 +75,7 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top)
 tracer_proxy tracer::fork(std::string const& n, size_t interval)
 {
     if (_fence_active > _fence_latest)  // only when update exist...
-        std::unique_lock{_sort_merge_lock}, _deliver_previous_result();
+        _deliver_previous_result();
 
     if (interval > 1 && ++_interval_counter < interval)
         return {};  // if fork interval is set ...
@@ -91,10 +95,11 @@ tracer_proxy tracer::fork(std::string const& n, size_t interval)
 
 bool tracer::_deliver_previous_result()
 {  // perform queued sort-merge operation
-    if (not self->msg_promise)
+    if (not _pending_fetch.exchange(false))
         return false;
 
-    auto& promise = *this->self->msg_promise;
+    if (on_fetch.empty())
+        return false;
 
     // copies all messages and put them to cache buffer to prevent memory reallocation
     // if any entity is folded, skip all of its subtree
@@ -115,15 +120,8 @@ bool tracer::_deliver_previous_result()
         this->_local_reused_memory.emplace_back(entity.body);
     }
 
-    auto self_ptr = this->_self_weak.lock();
-
-    async_trace_result rs = {};
-    rs._mtx_access        = decltype(rs._mtx_access){self_ptr, &this->_sort_merge_lock};
-    rs._data              = decltype(rs._data){self_ptr, &this->_local_reused_memory};
-    promise.set_value(rs);
-
-    this->self->msg_future  = {};
-    this->self->msg_promise = {};
+    sort_messages_by_rule(_local_reused_memory);
+    on_fetch.invoke(_local_reused_memory);
 
     this->_fence_latest = this->_fence_active;
     return true;
@@ -169,30 +167,17 @@ std::vector<std::shared_ptr<tracer>> tracer::all() noexcept
            }();
 }
 
-void tracer::async_fetch_request(tracer::future_result* out)
+void perfkit::tracer::request_fetch_data()
 {
-    auto _lck = std::unique_lock{_sort_merge_lock};
-
-    // if there's already queued merge operation, share future once more.
-    if (self->msg_promise)
-    {
-        *out = self->msg_future;
-        return;
-    }
-
-    // if not, queue new promise and make its future shared.
-    self->msg_promise.emplace();
-    self->msg_future = std::shared_future(self->msg_promise->get_future());
-    *out             = self->msg_future;
+    _pending_fetch = true;
 }
 
 auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer>
 {
     auto _{lock_tracer_repo()};
-    SPDLOG_DEBUG("creating tracer {}", name);
+    CPPH_DEBUG("creating tracer {}", name);
     std::shared_ptr<tracer> entity{
             new tracer{order, name}};
-    entity->_self_weak = entity;
 
     auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
     _all().insert(it_insert, entity);
@@ -201,22 +186,21 @@ auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::
 
 perfkit::tracer::~tracer() noexcept
 {
-    static auto equivalent = [](auto&& p1, auto&& p2) {
-        return p1.lock() == p2.lock();
-    };
-
     auto _{lock_tracer_repo()};
-    SPDLOG_DEBUG("destroying tracer {}", _name);
+    CPPH_DEBUG("destroying tracer {}", _name);
     auto it = std::find_if(_all().begin(), _all().end(),
-                           [&](auto&& wptr) { return equivalent(wptr, _self_weak); });
+                           [&](auto&& wptr) {
+                               return perfkit::ptr_equals(wptr, weak_from_this());
+                           });
+
     if (it != _all().end())
     {
         _all().erase(it);
-        SPDLOG_DEBUG("erasing tracer from all {}", _name);
+        CPPH_DEBUG("erasing tracer from all {}", _name);
     }
     else
     {
-        SPDLOG_DEBUG("logic error: tracer invalid! {}", _name);
+        CPPH_DEBUG("logic error: tracer invalid! {}", _name);
     }
 }
 
@@ -245,7 +229,7 @@ tracer_proxy perfkit::tracer::branch(std::string_view name)
     px._owner = this;
     px._ref   = _fork_branch(_stack.back(), name, false);
     return px;
-};
+}
 
 tracer::proxy tracer::proxy::branch(std::string_view n) noexcept
 {
@@ -299,15 +283,6 @@ tracer_proxy& tracer_proxy::switch_to_timer(std::string_view name)
     _epoch_if_required = clock_type::now();
 
     return *this;
-}
-
-void tracer::async_trace_result::copy_sorted(fetched_traces& out) const noexcept
-{
-    {
-        auto [lck, ptr] = acquire();
-        out             = *ptr;
-    }
-    sort_messages_by_rule(out);
 }
 
 namespace {

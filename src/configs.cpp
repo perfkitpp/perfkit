@@ -15,7 +15,10 @@
 
 #include "perfkit/common/format.hxx"
 #include "perfkit/common/hasher.hxx"
+#include "perfkit/common/macros.hxx"
 #include "perfkit/perfkit.h"
+
+#define CPPH_LOGGER() perfkit::glog()
 
 namespace perfkit::detail {
 auto _all_repos()
@@ -32,6 +35,7 @@ auto perfkit::config_registry::create(std::string name, std::type_info const* sc
         -> shared_ptr<config_registry>
 {
     auto [all, _] = detail::_all_repos();
+    CPPH_DEBUG("Creating new config registry {}", name);
 
     auto rg_ptr           = new config_registry{std::move(name)};
     rg_ptr->_schema_class = schema;
@@ -41,7 +45,6 @@ auto perfkit::config_registry::create(std::string name, std::type_info const* sc
 
     if (not is_new) { throw std::logic_error{"CONFIG REGISTRY NAME MUST BE UNIQUE!!!"}; }
 
-    glog()->debug("Creating new config registry {}", name);
     return rg;
 }
 
@@ -67,7 +70,7 @@ auto perfkit::config_registry::share(std::string_view name, std::type_info const
 
 perfkit::config_registry::~config_registry() noexcept
 {
-    glog()->debug("destroying config registry {}", name());
+    CPPH_DEBUG("destroying config registry {}", name());
 
     auto [all, _] = detail::_all_repos();
     all->erase(all->find(name()));
@@ -141,7 +144,7 @@ void queue_changes(shared_ptr<config_registry> rg, json patch)
 {
     if (glog()->should_log(spdlog::level::debug))
     {
-        glog()->debug("applying changes to category '{}', content: {}\n", rg->name(), patch.dump(2));
+        CPPH_DEBUG("applying changes to category '{}', content: {}\n", rg->name(), patch.dump(2));
     }
 
     // apply all update
@@ -150,14 +153,14 @@ void queue_changes(shared_ptr<config_registry> rg, json patch)
         auto full_key = rg->bk_find_key(disp_key);
         if (full_key.empty())
         {
-            glog()->warn("key {} does not exist on category {}", disp_key, rg->name());
+            CPPH_WARN("key {} does not exist on category {}", disp_key, rg->name());
             continue;
         }
 
         auto it = rg->bk_all().find(full_key);
         if (it == rg->bk_all().end())
         {
-            glog()->critical(
+            CPPH_CRITICAL(
                     "rg: {}, disp key: {}, full_key: {}, is not valid.",
                     rg->name(), disp_key, full_key);
             continue;
@@ -229,7 +232,7 @@ perfkit::json perfkit::configs::export_all()
     // 2. Merge configuration list into existing loaded cache, then return it.
     auto regs = config_registry::bk_enumerate_registries();
 
-    glog()->trace("exporting {} config repositories ...", regs.size());
+    CPPH_TRACE("exporting {} config repositories ...", regs.size());
     json exported;
 
     // merge onto existing (will not affect existing cache)
@@ -300,7 +303,7 @@ bool perfkit::config_registry::update()
 {
     if (not _initial_update_done.load(std::memory_order_consume))
     {
-        glog()->debug("registry '{}' instantiated after loading configurations", name());
+        CPPH_DEBUG("registry '{}' instantiated after loading configurations", name());
 
         auto patch = configs::_io::fetch_changes(name());
         if (not patch.empty())
@@ -310,6 +313,7 @@ bool perfkit::config_registry::update()
 
         // exporting configs only allowed after first update.
         _initial_update_done.store(true, std::memory_order_release);
+        detail::notify_config_update_any();
     }
 
     if (std::unique_lock _l{_update_lock})
@@ -328,7 +332,7 @@ bool perfkit::config_registry::update()
 
             if (!r_desrl)
             {
-                glog()->error("parse failed: '{}' <- {}", ptr->display_key(), ptr->_cached_serialized.dump());
+                CPPH_ERROR("parse failed: '{}' <- {}", ptr->display_key(), ptr->_cached_serialized.dump());
                 ptr->_serialize(ptr->_cached_serialized, ptr->_raw);  // roll back
             }
             else
@@ -350,7 +354,7 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o)
 {
     if (_initially_updated())
     {
-        glog()->critical(
+        CPPH_CRITICAL(
                 "putting new configuration '{}' after first update of registry '{}'...",
                 o->display_key(), name());
         throw std::logic_error{""};
