@@ -109,7 +109,7 @@ bool tracer::_deliver_previous_result()
     {
         bool folded = false;
         for (auto parent = entity.parent; parent; parent = parent->parent)
-            if (parent->is_folded)
+            if (parent->is_folded.load(std::memory_order_relaxed))
             {
                 folded = true;
                 break;
