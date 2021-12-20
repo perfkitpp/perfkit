@@ -17,15 +17,9 @@ using namespace perfkit::terminal::net::context;
 
 void config_watcher::update()
 {
-    if (not _has_update)
-        return;
-
     if (not _min_interval.check())
         return;  // prevent too frequent update request
-
-    // clear dirty flag
-    _has_update = false;
-
+    
     // check for new registries
     if (_tmr_config_registry.check())
     {
@@ -69,7 +63,10 @@ void config_watcher::update()
     }
 
     // check for indivisual config's updates
+    if (_has_update)
     {
+        _has_update = false;
+
         std::lock_guard lc{_mtx_entities};
         auto& ents = _cache.entities;
 

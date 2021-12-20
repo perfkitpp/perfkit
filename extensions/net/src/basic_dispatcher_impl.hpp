@@ -109,13 +109,14 @@ class basic_dispatcher_impl
                 [&] {
                     while (_alive)
                     {
+                        _io.restart();
+                        refresh();
+
+                        CPPH_INFO("running io context ...");
+                        _io.run(), CPPH_INFO("IO CONTEXT STOPPED");
+
                         try
                         {
-                            _io.restart();
-                            refresh();
-
-                            CPPH_INFO("running io context ...");
-                            _io.run(), CPPH_INFO("IO CONTEXT STOPPED");
                         }
                         catch (asio::system_error& e)
                         {
@@ -269,7 +270,6 @@ class basic_dispatcher_impl
             }
 
             auto* socket = &*it->second.socket;
-            auto ep      = socket->remote_endpoint();
 
             socket->close();
             auto it_active = perfkit::find(_sockets_active, socket);
@@ -277,8 +277,7 @@ class basic_dispatcher_impl
                 _sockets_active.erase(it_active);
             _connections.erase(it);
 
-            CPPH_INFO("--> socket {} ({}:{}) disconnected.",
-                      id.value, ep.address().to_string(), ep.port());
+            CPPH_INFO("--> socket {} disconnected.", id.value);
 
             zero_connection = _sockets_active.empty();
         }
