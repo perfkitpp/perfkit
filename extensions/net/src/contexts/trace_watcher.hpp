@@ -26,7 +26,7 @@ class trace_watcher : public if_watcher
 
    private:
     void _dispatch_fetched_trace(std::weak_ptr<perfkit::tracer> tracer, tracer::fetched_traces const&);
-    void _dispatcher_fn(const std::shared_ptr<perfkit::tracer>& tracer, tracer::fetched_traces const& traces);
+    void _dispatcher_fn(const std::shared_ptr<perfkit::tracer>& tracer, tracer::fetched_traces& traces);
 
    private:
     struct _trace_node

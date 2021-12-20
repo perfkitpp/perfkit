@@ -69,11 +69,12 @@ struct trace
     std::string_view key;
     uint64_t hash;
 
-    size_t fence               = 0;
-    size_t unique_order        = 0;
-    size_t parent_unique_order = ~size_t{};
-    int active_order           = 0;
+    size_t fence        = 0;
+    size_t unique_order = 0;
+    int active_order    = 0;
     array_view<std::string_view> hierarchy;
+    trace const* owner_node = nullptr;
+    trace const* self_node  = nullptr;
 
     trace_variant_type data;
 

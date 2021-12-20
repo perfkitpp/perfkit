@@ -169,16 +169,17 @@ static void dump_trace(
 }
 
 void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
-        const std::shared_ptr<perfkit::tracer>& tracer, const perfkit::tracer::fetched_traces& traces)
+        const std::shared_ptr<perfkit::tracer>& tracer, perfkit::tracer::fetched_traces& traces)
 {
     stopwatch sw;
     CPPH_TRACE("dispatching {} traces from {}", traces.size(), tracer->name());
+    perfkit::sort_messages_by_rule(traces);
 
     outgoing::traces trc;
     trc.class_name = tracer->name();
 
     std::vector<decltype(&trc.root)> stack;
-    std::vector<decltype(traces.data())> hierarchy;
+    std::vector<perfkit::tracer::trace const*> hierarchy;
 
     stack.reserve(10);
     hierarchy.reserve(10);
@@ -188,6 +189,9 @@ void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
 
     // first case(root) is special
     ::dump_trace(traces[0], &trc.root);
+    trc.root.is_fresh = true;
+
+    auto fence = traces[0].fence;
 
     // build trace tree
     for (auto const& trace : make_iterable(traces.begin() + 1, traces.end()))
@@ -204,7 +208,7 @@ void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
                     tracer, trace._bk_p_folded());
         }
 
-        while (trace.parent_unique_order != hierarchy.back()->unique_order)
+        while (trace.owner_node != hierarchy.back()->self_node)
         {  // pop all non-relatives
             hierarchy.pop_back();
             stack.pop_back();
@@ -218,6 +222,7 @@ void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
         stack.emplace_back(&parent->children.emplace_back());
 
         ::dump_trace(*hierarchy.back(), stack.back());
+        stack.back()->is_fresh = fence == hierarchy.back()->fence;
     }
 
     io->send(trc);

@@ -135,6 +135,7 @@ struct traces
     {
         std::string name;
         uint64_t trace_key;
+        bool is_fresh;
         bool subscribing;
         bool folded;
         std::string value;
@@ -142,7 +143,8 @@ struct traces
         std::list<node_scheme> children;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
-                node_scheme, name, trace_key, subscribing, folded, value, value_type, children);
+                node_scheme, name, trace_key, is_fresh,
+                subscribing, folded, value, value_type, children);
     };
 
     std::string class_name;

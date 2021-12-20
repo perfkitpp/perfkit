@@ -37,6 +37,7 @@ tracer::_entity_ty* tracer::_fork_branch(
     if (is_new)
     {
         data.key_buffer          = std::string(name);
+        data.body.self_node      = &data.body;
         data.body.hash           = hash;
         data.body.key            = data.key_buffer;
         data.body._is_subscribed = &data.is_subscribed;
@@ -46,7 +47,7 @@ tracer::_entity_ty* tracer::_fork_branch(
         data.hierarchy.push_back(data.key_buffer);
         data.body.hierarchy    = data.hierarchy;
         data.body.unique_order = _table.size();
-        parent && (data.body.parent_unique_order = parent->body.unique_order);
+        parent && (data.body.owner_node = &parent->body);
     }
 
     data.parent            = parent;
@@ -120,7 +121,6 @@ bool tracer::_deliver_previous_result()
         this->_local_reused_memory.emplace_back(entity.body);
     }
 
-    sort_messages_by_rule(_local_reused_memory);
     on_fetch.invoke(_local_reused_memory);
 
     this->_fence_latest = this->_fence_active;
@@ -294,14 +294,14 @@ enum class hierarchy_compare_result
     equal
 };
 
-auto compare_hierarchy(array_view<std::string_view> a, array_view<std::string_view> b)
+hierarchy_compare_result
+compare_hierarchy(array_view<std::string_view> a, array_view<std::string_view> b)
 {
     size_t num_equals = 0;
 
     for (size_t i = 0, n_max = std::min(a.size(), b.size()); i < n_max; ++i)
     {
-        auto r_cmp = a[i].compare(b[i]);
-        if (r_cmp != 0) { break; }
+        if (a[i] != b[i]) { break; }
         ++num_equals;
     }
 
@@ -326,33 +326,49 @@ auto compare_hierarchy(array_view<std::string_view> a, array_view<std::string_vi
     }
 }
 
+bool compare_hierarchy_2(tracer::trace const& a, tracer::trace const& b)
+{
+    if (a.owner_node == nullptr)
+        return true;
+    if (b.owner_node == nullptr)
+        return false;
+
+    // -- 두 노드의 가장 공통의 조상을 찾는다.
+
+    // 더 낮은 계층의 노드를 끌어올린다.
+    tracer::trace const *higher, *lower;
+    std::tie(higher, lower) = std::minmax(
+            a.self_node, b.self_node,
+            [](auto&& k1, auto&& k2) {
+                return k1->hierarchy.size() < k2->hierarchy.size();
+            });
+
+    auto const a_is_higher = higher == a.self_node;
+    while (lower->hierarchy.size() > higher->hierarchy.size())
+        lower = lower->owner_node;
+
+    // 만약 한 노드가 다른 노드를 포함한다면 ...
+    if (higher == lower)
+        return a_is_higher;
+
+    // 조상이 같아질 때까지 팝 업
+    while (higher->owner_node != lower->owner_node)
+    {
+        higher = higher->owner_node;
+        lower  = lower->owner_node;
+    }
+
+    // 조상이 같다면, unique_index(절대 등장 순서)를 비교한다.
+    auto alpha = a_is_higher ? higher : lower;
+    auto beta  = a_is_higher ? lower : higher;
+
+    return alpha->unique_order < beta->unique_order;
+}
 }  // namespace
 
 void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept
 {
-    std::sort(
-            msg.begin(), msg.end(),
-            [](tracer::trace const& a, tracer::trace const& b) {
-                auto r_hcmp = compare_hierarchy(a.hierarchy, b.hierarchy);
-                if (r_hcmp == hierarchy_compare_result::equal)
-                {
-                    return a.unique_order < b.unique_order;
-                }
-                if (r_hcmp == hierarchy_compare_result::irrelevant)
-                {
-                    return a.unique_order < b.unique_order;
-                }
-                if (r_hcmp == hierarchy_compare_result::a_contains_b)
-                {
-                    return false;
-                }
-                if (r_hcmp == hierarchy_compare_result::b_contains_a)
-                {
-                    return true;
-                }
-
-                throw;
-            });
+    std::sort(msg.begin(), msg.end(), compare_hierarchy_2);
 }
 
 void tracer::trace::dump_data(std::string& s) const
