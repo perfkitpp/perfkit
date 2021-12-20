@@ -142,7 +142,7 @@ struct traces
         std::list<node_scheme> children;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
-                node_scheme, name, trace_key, subscribing, folded, value, children);
+                node_scheme, name, trace_key, subscribing, folded, value, value_type, children);
     };
 
     std::string class_name;
