@@ -109,14 +109,13 @@ class basic_dispatcher_impl
                 [&] {
                     while (_alive)
                     {
-                        _io.restart();
-                        refresh();
-
-                        CPPH_INFO("running io context ...");
-                        _io.run(), CPPH_INFO("IO CONTEXT STOPPED");
-
                         try
                         {
+                            _io.restart();
+                            refresh();
+
+                            CPPH_INFO("running io context ...");
+                            _io.run(), CPPH_INFO("IO CONTEXT STOPPED");
                         }
                         catch (asio::system_error& e)
                         {
