@@ -194,7 +194,7 @@ void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
     auto fence = traces[0].fence;
 
     // build trace tree
-    for (auto const& trace : make_iterable(traces.begin() + 1, traces.end()))
+    for (auto const& trace : traces)
     {
         assert(stack.size() == hierarchy.size());
 
@@ -207,6 +207,9 @@ void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
             item->fold = std::shared_ptr<std::atomic_bool>(
                     tracer, trace._bk_p_folded());
         }
+
+        if (&trace == &traces[0])
+            continue;
 
         while (trace.owner_node != hierarchy.back()->self_node)
         {  // pop all non-relatives
