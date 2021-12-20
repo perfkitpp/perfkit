@@ -35,6 +35,7 @@ auto perfkit::config_registry::create(std::string name, std::type_info const* sc
         -> shared_ptr<config_registry>
 {
     auto [all, _] = detail::_all_repos();
+    CPPH_DEBUG("Creating new config registry {}", name);
 
     auto rg_ptr           = new config_registry{std::move(name)};
     rg_ptr->_schema_class = schema;
@@ -44,7 +45,6 @@ auto perfkit::config_registry::create(std::string name, std::type_info const* sc
 
     if (not is_new) { throw std::logic_error{"CONFIG REGISTRY NAME MUST BE UNIQUE!!!"}; }
 
-    CPPH_DEBUG("Creating new config registry {}", name);
     return rg;
 }
 
@@ -313,6 +313,7 @@ bool perfkit::config_registry::update()
 
         // exporting configs only allowed after first update.
         _initial_update_done.store(true, std::memory_order_release);
+        detail::notify_config_update_any();
     }
 
     if (std::unique_lock _l{_update_lock})
