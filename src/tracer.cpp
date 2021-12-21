@@ -62,11 +62,14 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top)
 {
     // --> 계층은 전역으로 관리되면 안 됨 ... 각각의 프록시가 관리해야함!!
     // Hierarchy 각각의 데이터 엔티티 기반으로 관리되게 ... _hierarchy_hash 관련 기능 싹 갈아엎기
-
     auto hash = hasher::FNV_OFFSET_BASE;
     if (parent)
     {
         hash = parent->body.hash;
+    }
+    else
+    {
+        return hash;  // parent==nullptr -> root trace. always return same hash.
     }
 
     for (auto c : top) { hash = hasher::fnv1a_byte(c, hash); }
@@ -94,7 +97,7 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
     prx._ref               = _fork_branch(nullptr, n, false);
     prx._epoch_if_required = clock_type::now();
 
-    tracer_proxy total_timer       = timer("__interval__");
+    tracer_proxy total_timer       = branch("__Time_Since_Last_Iteration");
     total_timer._epoch_if_required = last_fork;
 
     return prx;

@@ -251,6 +251,11 @@ class tracer : public std::enable_shared_from_this<tracer>
      * @details
      *    fork() will increase sequence number by 1,
      *
+     * @param n
+     *    Initial name of root trace. Only the first invocation has effect.
+     * @param interval
+     *    If specified, fork only occurs when every [interval]th invocation
+     *
      * @return
      */
     tracer_proxy fork(std::string_view n = "all", size_t interval = 0);
