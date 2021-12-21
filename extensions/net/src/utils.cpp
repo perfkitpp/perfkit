@@ -191,6 +191,18 @@ void perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
 {
     perfkit::stopwatch trace;
 
+    static double uptime     = 0.;
+    static double delta_time = 0.;
+    {
+        futils::file_ptr ptr{fopen("/proc/uptime", "r")};
+
+        double now;
+        fscanf(&*ptr, "%lf", &now);
+
+        delta_time = now - uptime;
+        uptime     = now;
+    }
+
     struct _all
     {
         int64_t user   = 0;
@@ -203,10 +215,21 @@ void perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
 
         void fill(proc_stat_t* out) const noexcept
         {
-            auto total   = user + nice + system + idle + wait + hi + si;
-            auto userm   = double(user + nice) / total;
-            auto idlem   = double(idle) / total;
-            auto systemm = 1. - (idlem + userm);
+            static int64_t prev_total, prev_user, prev_nice, prev_idle;
+
+            auto total       = user + nice + system + idle + wait + hi + si;
+            auto total_delta = total - prev_total;
+            auto user_delta  = user + nice - prev_user - prev_nice;
+            auto idle_delta  = idle - prev_idle;
+
+            auto divider = total_delta / delta_time;
+            auto userm   = double(user_delta) / divider;
+            auto systemm = double(total_delta - user_delta - idle_delta) / divider;
+
+            prev_user  = user;
+            prev_nice  = nice;
+            prev_idle  = idle;
+            prev_total = total;
 
             out->cpu_usage_total_user   = userm;
             out->cpu_usage_total_system = systemm;
@@ -252,18 +275,23 @@ void perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
                   });
 
         static const auto sysclock{sysconf(_SC_CLK_TCK)};
+        static int64_t prev_utime, prev_stime;
+
         auto sysclockf = double(sysclock);
         auto utime     = get_at(14);
         auto stime     = get_at(15);
         auto num_thrd  = get_at(20);
         auto vsize     = get_at(23);
-        auto rss       = get_at(24);
+        auto rss       = get_at(24) * sysconf(_SC_PAGESIZE);
 
-        ostat->cpu_usage_self_user   = utime / sysclockf;
-        ostat->cpu_usage_self_system = stime / sysclockf;
+        ostat->cpu_usage_self_user   = ((utime - prev_utime) / delta_time / sysclockf);
+        ostat->cpu_usage_self_system = ((stime - prev_stime) / delta_time / sysclockf);
         ostat->num_threads           = num_thrd;
         ostat->memory_usage_virtual  = vsize;
         ostat->memory_usage_resident = rss;
+
+        prev_utime = utime;
+        prev_stime = stime;
     }
 }
 
