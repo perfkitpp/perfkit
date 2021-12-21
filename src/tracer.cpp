@@ -142,7 +142,7 @@ struct message_block_sorter
     int n;
     friend bool operator<(std::weak_ptr<tracer> ptr, message_block_sorter s)
     {
-        return s.n > ptr.lock()->order();
+        return s.n < ptr.lock()->order();
     }
 };
 }  // namespace
