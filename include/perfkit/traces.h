@@ -10,6 +10,10 @@
     auto INTERNAL_PERFKIT_TRACER_CONCAT(INTERNAL_PERFKIT_ROOT_TRACE, __LINE__) \
             = TracerPtr->fork(__func__)
 
+#define PERFKIT_TRACE_FUNCTION(TracerPtr)                                      \
+    auto INTERNAL_PERFKIT_TRACER_CONCAT(INTERNAL_PERFKIT_ROOT_TRACE, __LINE__) \
+            = TracerPtr->timer(__func__)
+
 #define PERFKIT_TRACE_SCOPE(TracerPtr, Name)     auto Name = TracerPtr->timer(#Name)
 #define PERFKIT_TRACE_BLOCK(TracerPtr, Name)     if (PERFKIT_TRACE_SCOPE(TracerPtr, Name); true)
 #define PERFKIT_TRACE_EXPR(TracerPtr, ValueExpr) TracerPtr->branch(#ValueExpr) = (ValueExpr);
