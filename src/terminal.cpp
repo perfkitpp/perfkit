@@ -359,7 +359,6 @@ void initialize_with_basic_commands(if_terminal* ref)
 {
     register_logging_manip_command(ref);
     register_trace_manip_command(ref);
-    register_conffile_io_commands(ref);
     register_config_manip_command(ref);
 }
 
