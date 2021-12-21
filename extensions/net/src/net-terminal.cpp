@@ -105,13 +105,22 @@ void perfkit::terminal::net::terminal::_on_any_connection(int n_conn)
 
 void perfkit::terminal::net::terminal::_user_command_fetch_fn()
 {
+    perfkit::poll_timer tmr{500ms};
+
     while (_active)
     {
-        auto str = detail::try_fetch_input(500);
+        auto wait = std::chrono::duration_cast<decltype(1ms)>(tmr.remaining());
+        auto str  = detail::try_fetch_input(wait.count());
 
         if (not str.empty())
         {
             _command_queue.emplace(std::move(str));
+        }
+
+        if (tmr.check())
+        {
+            detail::proc_stat_t stat = {};
+            fetch_proc_stat(&stat);
         }
     }
 }

@@ -1,11 +1,16 @@
 #include "utils.hpp"
 
+#include <charconv>
+#include <csignal>
 #include <thread>
 
 #include <spdlog/spdlog.h>
 
+#include "perfkit/common/assert.hxx"
 #include "perfkit/common/counter.hxx"
+#include "perfkit/common/futils.hxx"
 #include "perfkit/common/macros.hxx"
+#include "perfkit/common/timer.hxx"
 #include "perfkit/common/zip.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/logging.hpp"
@@ -180,6 +185,86 @@ std::shared_ptr<spdlog::logger> perfkit::terminal::net::detail::nglog()
 {
     static auto logger = perfkit::share_logger("PERFKIT:NET");
     return logger;
+}
+
+void perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t* ostat)
+{
+    perfkit::stopwatch trace;
+
+    struct _all
+    {
+        int64_t user   = 0;
+        int64_t system = 0;
+        int64_t nice   = 0;
+        int64_t idle   = 0;
+        int64_t wait   = 0;
+        int64_t hi     = 0;
+        int64_t si     = 0;
+
+        void fill(proc_stat_t* out) const noexcept
+        {
+            auto total   = user + nice + system + idle + wait + hi + si;
+            auto userm   = double(user + nice) / total;
+            auto idlem   = double(idle) / total;
+            auto systemm = 1. - (idlem + userm);
+
+            out->cpu_usage_total_user   = userm;
+            out->cpu_usage_total_system = systemm;
+        }
+    };
+
+    {  // retrieve system
+        auto [buffer, size] = futils::readin("/proc/stat");
+        auto content        = std::string_view(buffer.get(), size);
+        char cpubuf[4];
+
+        _all all;
+        sscanf(buffer.get(),
+               "%s %ld %ld %ld %ld %ld %ld %ld 0",
+               cpubuf,
+               &all.user, &all.nice, &all.system, &all.idle,
+               &all.wait, &all.hi, &all.si);
+
+        all.fill(ostat);
+    }
+
+    {  // retrieve self
+
+        auto [buffer, size] = futils::readin("/proc/self/stat");
+        auto content        = std::string_view(buffer.get(), size);
+
+        content    = content.substr(content.find_last_of(')') + 2);
+        int cursor = 3;
+
+        auto get_at
+                = ([&](int destination) -> int64_t {
+                      assert(destination >= cursor);
+
+                      for (; cursor < destination; ++cursor)
+                          content = content.substr(content.find_first_of(' ') + 1);
+
+                      auto begin = content.data();
+                      auto end   = begin + content.find_first_of(' ');
+                      int64_t retval;
+
+                      std::from_chars(begin, end, retval);
+                      return retval;
+                  });
+
+        static const auto sysclock{sysconf(_SC_CLK_TCK)};
+        auto sysclockf = double(sysclock);
+        auto utime     = get_at(14);
+        auto stime     = get_at(15);
+        auto num_thrd  = get_at(20);
+        auto vsize     = get_at(23);
+        auto rss       = get_at(24);
+
+        ostat->cpu_usage_self_user   = utime / sysclockf;
+        ostat->cpu_usage_self_system = stime / sysclockf;
+        ostat->num_threads           = num_thrd;
+        ostat->memory_usage_virtual  = vsize;
+        ostat->memory_usage_resident = rss;
+    }
 }
 
 #endif

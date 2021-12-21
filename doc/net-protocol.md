@@ -149,10 +149,17 @@ payload:
 
 ```yaml
 payload:
-  cpu_usage: double; cpu usage percentage. can exceeds 100% if program utilizes more than 1 core
-  memory_usage: int64; number of bytes occupied by this process.
-  bw_out: int32; average number of bytes read in from socket
-  bw_in: int32; average number of bytes write out to socket
+  cpu_usage_total_user: float; cpu usage in normalized range
+  cpu_usage_total_system: float; cpu usage in normalized range
+  cpu_usage_self_user: float; cpu usage in normalized range
+  cpu_usage_self_system: float; cpu usage in normalized range
+
+  memory_usage_virtual: int64; memory usage in bytes
+  memory_usage_resident: int64; memory usage in bytes
+  num_threads: int16; number of created threads
+
+  bw_out: int64; network io rate per second
+  bw_in: int64; network io rate per second
 ```
 
 ### *update:shell_output*

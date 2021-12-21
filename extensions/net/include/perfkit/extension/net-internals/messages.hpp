@@ -24,13 +24,29 @@ struct session_state
 {
     constexpr static char ROUTE[] = "update:session_state";
 
-    double cpu_usage;
-    int64_t memory_usage;
+    double cpu_usage_total_user;
+    double cpu_usage_total_system;
+    double cpu_usage_self_user;
+    double cpu_usage_self_system;
+
+    int64_t memory_usage_virtual;
+    int64_t memory_usage_resident;
+    int32_t num_threads;
+
     int32_t bw_out;
     int32_t bw_in;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
-            session_state, cpu_usage, memory_usage, bw_out, bw_in);
+            session_state,
+            cpu_usage_total_user,
+            cpu_usage_total_system,
+            cpu_usage_self_user,
+            cpu_usage_self_system,
+            memory_usage_virtual,
+            memory_usage_resident,
+            num_threads,
+            bw_out,
+            bw_in);
 };
 
 struct shell_output
