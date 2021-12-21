@@ -29,6 +29,9 @@ struct tracer::_impl
 tracer::_entity_ty* tracer::_fork_branch(
         _entity_ty const* parent, std::string_view name, bool initial_subscribe_state)
 {
+    if (std::this_thread::get_id() != _working_thread_id)
+        throw std::logic_error{"branching cannot occur on different thread from fork()ed one!"};
+
     auto hash = _hash_active(parent, name);
 
     auto [it, is_new] = _table.try_emplace(hash);
@@ -86,6 +89,9 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
 
     if (interval > 1 && ++_interval_counter < interval)
         return {};  // if fork interval is set ...
+
+    // Store current thread id
+    _working_thread_id = std::this_thread::get_id();
 
     // init new iteration
     ++_fence_active;

@@ -321,6 +321,8 @@ class tracer : public std::enable_shared_from_this<tracer>
 
     std::vector<_entity_ty const*> _stack;
     clock_type::time_point _last_fork;
+
+    std::thread::id _working_thread_id = {};
 };
 
 using tracer_ptr  = std::shared_ptr<tracer>;
