@@ -29,6 +29,9 @@ struct tracer::_impl
 tracer::_entity_ty* tracer::_fork_branch(
         _entity_ty const* parent, std::string_view name, bool initial_subscribe_state)
 {
+    if (std::this_thread::get_id() != _working_thread_id)
+        throw std::logic_error{"branching cannot occur on different thread from fork()ed one!"};
+
     auto hash = _hash_active(parent, name);
 
     auto [it, is_new] = _table.try_emplace(hash);
@@ -62,24 +65,33 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top)
 {
     // --> 계층은 전역으로 관리되면 안 됨 ... 각각의 프록시가 관리해야함!!
     // Hierarchy 각각의 데이터 엔티티 기반으로 관리되게 ... _hierarchy_hash 관련 기능 싹 갈아엎기
-
     auto hash = hasher::FNV_OFFSET_BASE;
     if (parent)
     {
         hash = parent->body.hash;
+    }
+    else
+    {
+        return hash;  // parent==nullptr -> root trace. always return same hash.
     }
 
     for (auto c : top) { hash = hasher::fnv1a_byte(c, hash); }
     return hash;
 }
 
-tracer_proxy tracer::fork(std::string const& n, size_t interval)
+tracer_proxy tracer::fork(std::string_view n, size_t interval)
 {
+    auto last_fork = _last_fork;
+    _last_fork     = clock_type::now();
+
     if (_fence_active > _fence_latest)  // only when update exist...
         _deliver_previous_result();
 
     if (interval > 1 && ++_interval_counter < interval)
         return {};  // if fork interval is set ...
+
+    // Store current thread id
+    _working_thread_id = std::this_thread::get_id();
 
     // init new iteration
     ++_fence_active;
@@ -90,6 +102,9 @@ tracer_proxy tracer::fork(std::string const& n, size_t interval)
     prx._owner             = this;
     prx._ref               = _fork_branch(nullptr, n, false);
     prx._epoch_if_required = clock_type::now();
+
+    tracer_proxy total_timer       = branch("__Time_Since_Last_Iteration");
+    total_timer._epoch_if_required = last_fork;
 
     return prx;
 }
@@ -133,7 +148,7 @@ struct message_block_sorter
     int n;
     friend bool operator<(std::weak_ptr<tracer> ptr, message_block_sorter s)
     {
-        return s.n > ptr.lock()->order();
+        return s.n < ptr.lock()->order();
     }
 };
 }  // namespace

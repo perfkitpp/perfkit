@@ -5,6 +5,7 @@
 
 namespace perfkit::_configs_internal {
 std::string INDEXER_STR(int order);
+std::string INDEXER_STR2(int order);
 
 //// no use anymore ... leaving just for reference
 // template <typename TypeName_>
@@ -120,7 +121,10 @@ struct config_class_hook : std::function<void(config_class*)>
    private:                                                           \
     using _internal_super = ClassName;                                \
     std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG; \
-    static std::string _category_name() { return ""; }                \
+    static std::string _category_name()                               \
+    {                                                                 \
+        return "";                                                    \
+    }                                                                 \
                                                                       \
     std::shared_ptr<perfkit::config_registry> _rg() noexcept override \
     {                                                                 \
@@ -130,25 +134,27 @@ struct config_class_hook : std::function<void(config_class*)>
    public:                                                            \
     ::perfkit::config_registry* operator->() { return _perfkit_INTERNAL_RG.get(); }
 
-#define INTERNAL_PERFKIT_T_SUBCATEGORY_body(varname)               \
-   private:                                                        \
-    static std::string _category_name()                            \
-    {                                                              \
-        return _category_prev_##varname() + #varname "|";          \
-    }                                                              \
-                                                                   \
-    ::perfkit::config_registry* _perfkit_INTERNAL_RG;              \
-                                                                   \
-   public:                                                         \
-    template <typename TT_>                                        \
-    explicit varname##_(TT_* _super)                               \
-            : _perfkit_INTERNAL_RG(&*_super->_perfkit_INTERNAL_RG) \
-    {                                                              \
-    }                                                              \
-                                                                   \
-   private:                                                        \
-    using _internal_super = varname##_;                            \
-                                                                   \
+#define INTERNAL_PERFKIT_T_SUBCATEGORY_body(varname)                \
+   private:                                                         \
+    static std::string _category_name()                             \
+    {                                                               \
+        return _category_prev_##varname()                           \
+             + ::perfkit::_configs_internal::INDEXER_STR2(__LINE__) \
+             + #varname "|";                                        \
+    }                                                               \
+                                                                    \
+    ::perfkit::config_registry* _perfkit_INTERNAL_RG;               \
+                                                                    \
+   public:                                                          \
+    template <typename TT_>                                         \
+    explicit varname##_(TT_* _super)                                \
+            : _perfkit_INTERNAL_RG(&*_super->_perfkit_INTERNAL_RG)  \
+    {                                                               \
+    }                                                               \
+                                                                    \
+   private:                                                         \
+    using _internal_super = varname##_;                             \
+                                                                    \
    public:
 
 #define PERFKIT_T_CATEGORY(varname, ...)                                             \
@@ -170,12 +176,14 @@ struct config_class_hook : std::function<void(config_class*)>
         __VA_ARGS__;                                                           \
     } varname{this};
 
-#define PERFKIT_T_CONFIGURE(ConfigName, ...)           \
-    ::perfkit::config<                                 \
-            ::perfkit::_cvt_ty<decltype(__VA_ARGS__)>> \
-            ConfigName = ::perfkit::configure(         \
-                    *_perfkit_INTERNAL_RG,             \
-                    _category_name() + #ConfigName,    \
+#define PERFKIT_T_CONFIGURE(ConfigName, ...)                                       \
+    ::perfkit::config<                                                             \
+            ::perfkit::_cvt_ty<decltype(__VA_ARGS__)>>                             \
+            ConfigName = ::perfkit::configure(                                     \
+                    *_perfkit_INTERNAL_RG,                                         \
+                    _category_name()                                               \
+                            + ::perfkit::_configs_internal::INDEXER_STR2(__LINE__) \
+                            + #ConfigName,                                         \
                     __VA_ARGS__)
 
 #define PERFKIT_T_EXPAND_CATEGORY(varname, ...)          \

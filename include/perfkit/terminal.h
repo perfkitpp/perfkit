@@ -36,6 +36,11 @@ class if_terminal
     virtual commands::registry* commands() = 0;
 
     /**
+     * Invoke command
+     */
+    virtual void invoke_command(std::string s);
+
+    /**
      * Consume single command from user command input queue.
      *
      * @param timeout seconds to wait until receive command.
