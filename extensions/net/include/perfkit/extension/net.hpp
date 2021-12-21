@@ -23,7 +23,7 @@ terminal_ptr create(struct terminal_init_info const& info);
  *      - PERFKIT_NET_IPADDR
  *      - PERFKIT_NET_PORT
  */
-terminal_ptr create(std::string config_profile_name);
+terminal_ptr create(std::string config_profile_name = "__NETTERM%%");
 
 enum class operation_mode
 {

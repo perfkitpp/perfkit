@@ -8,14 +8,17 @@
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/map.hpp>
-#include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 
 #include "perfkit/common/format.hxx"
+#include "perfkit/common/macros.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/configs.hpp"
 
 // TODO: change to store flag variables itself, and iterate all available configs everytime
 //        apply_flags() request is delivered, to handle config class instances correctly.
+
+#define CPPH_LOGGER() perfkit::glog()
 
 void perfkit::configs::parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined)
 {
@@ -99,6 +102,8 @@ class value_parse : public if_state
 
         try
         {
+            CPPH_TRACE("parsing flag {} ... -> {}", tok, _conf->default_value().type_name());
+
             if (_conf->default_value().is_string())
             {
                 std::string data;
@@ -314,7 +319,7 @@ bool perfkit::configs::import_file(std::string_view path)
     std::ifstream fs{std::string{path}};
     if (not fs.is_open())
     {
-        glog()->error("config load failed: file '{}' does not exist", path);
+        CPPH_ERROR("config load failed: file '{}' does not exist", path);
         return false;
     }
 
@@ -327,12 +332,12 @@ bool perfkit::configs::import_file(std::string_view path)
         }
         else
         {
-            glog()->error("config load failed: file '{}' is not a json object!", path);
+            CPPH_ERROR("config load failed: file '{}' is not a json object!", path);
         }
     }
     catch (json::parse_error& e)
     {
-        glog()->error(
+        CPPH_ERROR(
                 "config load failed: file '{}' is not valid json: (error at {}) {}",
                 path, e.byte, e.what());
     }
@@ -345,7 +350,7 @@ bool perfkit::configs::export_to(std::string_view path)
     std::ofstream fs{std::string{path}};
     if (not fs.is_open())
     {
-        glog()->error("config export failed: not valid file path: {}", path);
+        CPPH_ERROR("config export failed: not valid file path: {}", path);
         return false;
     }
 
