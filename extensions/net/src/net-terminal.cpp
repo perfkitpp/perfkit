@@ -130,7 +130,7 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
                             stat.cpu_usage_self_user,
                             stat.cpu_usage_self_system,
                             stat.memory_usage_virtual,
-                            stat.memory_usage_resident,
+                            stat.memory_usage_resident ,
                             stat.num_threads,
                             out, in};
 
