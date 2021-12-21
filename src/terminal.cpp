@@ -496,3 +496,9 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd)
 }
 
 }  // namespace perfkit::terminal
+
+void perfkit::if_terminal::invoke_command(std::string s)
+{
+    commands()->invoke_command(std::move(s));
+}
+// namespace perfkit::terminal
