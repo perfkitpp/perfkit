@@ -352,6 +352,8 @@ bool perfkit::config_registry::update()
 
 void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o)
 {
+    CPPH_TRACE("new config: {} ({})", o->full_key(), o->display_key());
+
     if (_initially_updated())
     {
         CPPH_CRITICAL(

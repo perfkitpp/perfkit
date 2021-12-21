@@ -12,10 +12,15 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/stdout_sinks.h"
 #include "spdlog/spdlog.h"
+#include "perfkit/configs.h"
 
 std::string perfkit::_configs_internal::INDEXER_STR(int order)
 {
     return fmt::format("{:->5}", order);
+}
+std::string perfkit::_configs_internal::INDEXER_STR2(int order)
+{
+    return fmt::format("+{:->5}|", order);
 }
 
 std::shared_ptr<spdlog::logger> perfkit::glog()
