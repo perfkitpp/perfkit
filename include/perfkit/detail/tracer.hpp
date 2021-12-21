@@ -315,6 +315,7 @@ class tracer : public std::enable_shared_from_this<tracer>
     std::string const _name;
 
     std::vector<_entity_ty const*> _stack;
+    clock_type::time_point _last_fork;
 };
 
 using tracer_ptr  = std::shared_ptr<tracer>;

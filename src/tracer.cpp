@@ -75,6 +75,9 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top)
 
 tracer_proxy tracer::fork(std::string const& n, size_t interval)
 {
+    auto last_fork = _last_fork;
+    _last_fork     = clock_type::now();
+
     if (_fence_active > _fence_latest)  // only when update exist...
         _deliver_previous_result();
 
@@ -90,6 +93,9 @@ tracer_proxy tracer::fork(std::string const& n, size_t interval)
     prx._owner             = this;
     prx._ref               = _fork_branch(nullptr, n, false);
     prx._epoch_if_required = clock_type::now();
+
+    tracer_proxy total_timer       = timer("__interval__");
+    total_timer._epoch_if_required = last_fork;
 
     return prx;
 }
