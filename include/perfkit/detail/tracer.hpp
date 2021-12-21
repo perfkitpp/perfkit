@@ -253,7 +253,7 @@ class tracer : public std::enable_shared_from_this<tracer>
      *
      * @return
      */
-    tracer_proxy fork(std::string const& n, size_t interval = 0);
+    tracer_proxy fork(std::string_view n = "all", size_t interval = 0);
 
     /**
      * Create new timer branch from the topmost trace stack

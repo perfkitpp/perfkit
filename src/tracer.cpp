@@ -73,7 +73,7 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top)
     return hash;
 }
 
-tracer_proxy tracer::fork(std::string const& n, size_t interval)
+tracer_proxy tracer::fork(std::string_view n, size_t interval)
 {
     auto last_fork = _last_fork;
     _last_fork     = clock_type::now();
