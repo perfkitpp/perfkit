@@ -201,6 +201,9 @@ class tracer_proxy
 
     bool is_valid() const noexcept { return _owner && _ref; }
 
+   public:
+    static tracer_proxy _bk_create_default() noexcept { return tracer_proxy{}; }
+
    private:
     friend class tracer;
     tracer_proxy() noexcept { (void)0; };
