@@ -187,112 +187,122 @@ std::shared_ptr<spdlog::logger> perfkit::terminal::net::detail::nglog()
     return logger;
 }
 
-void perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t* ostat)
+bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t* ostat)
 {
-    perfkit::stopwatch trace;
-
-    static double uptime     = 0.;
-    static double delta_time = 0.;
+    try
     {
-        futils::file_ptr ptr{fopen("/proc/uptime", "r")};
+        perfkit::stopwatch trace;
 
-        double now;
-        fscanf(&*ptr, "%lf", &now);
-
-        delta_time = now - uptime;
-        uptime     = now;
-    }
-
-    struct _all
-    {
-        int64_t user   = 0;
-        int64_t system = 0;
-        int64_t nice   = 0;
-        int64_t idle   = 0;
-        int64_t wait   = 0;
-        int64_t hi     = 0;
-        int64_t si     = 0;
-
-        void fill(proc_stat_t* out) const noexcept
+        static double uptime     = 0.;
+        static double delta_time = 0.;
         {
-            static int64_t prev_total, prev_user, prev_nice, prev_idle;
+            futils::file_ptr ptr{fopen("/proc/uptime", "r")};
 
-            auto total       = user + nice + system + idle + wait + hi + si;
-            auto total_delta = total - prev_total;
-            auto user_delta  = user + nice - prev_user - prev_nice;
-            auto idle_delta  = idle - prev_idle;
+            double now;
+            fscanf(&*ptr, "%lf", &now);
 
-            auto divider = total_delta / delta_time;
-            auto userm   = double(user_delta) / divider;
-            auto systemm = double(total_delta - user_delta - idle_delta) / divider;
-
-            prev_user  = user;
-            prev_nice  = nice;
-            prev_idle  = idle;
-            prev_total = total;
-
-            out->cpu_usage_total_user   = userm;
-            out->cpu_usage_total_system = systemm;
+            delta_time = now - uptime;
+            uptime     = now;
         }
-    };
 
-    {  // retrieve system
-        auto [buffer, size] = futils::readin("/proc/stat");
-        auto content        = std::string_view(buffer.get(), size);
-        char cpubuf[4];
+        struct _all
+        {
+            int64_t user   = 0;
+            int64_t system = 0;
+            int64_t nice   = 0;
+            int64_t idle   = 0;
+            int64_t wait   = 0;
+            int64_t hi     = 0;
+            int64_t si     = 0;
 
-        _all all;
-        sscanf(buffer.get(),
-               "%s %ld %ld %ld %ld %ld %ld %ld 0",
-               cpubuf,
-               &all.user, &all.nice, &all.system, &all.idle,
-               &all.wait, &all.hi, &all.si);
+            void fill(proc_stat_t* out) const noexcept
+            {
+                static int64_t prev_total, prev_user, prev_nice, prev_idle;
 
-        all.fill(ostat);
+                auto total       = user + nice + system + idle + wait + hi + si;
+                auto total_delta = total - prev_total;
+                auto user_delta  = user + nice - prev_user - prev_nice;
+                auto idle_delta  = idle - prev_idle;
+
+                auto divider = total_delta / delta_time;
+                auto userm   = double(user_delta) / divider;
+                auto systemm = double(total_delta - user_delta - idle_delta) / divider;
+
+                prev_user  = user;
+                prev_nice  = nice;
+                prev_idle  = idle;
+                prev_total = total;
+
+                out->cpu_usage_total_user   = userm;
+                out->cpu_usage_total_system = systemm;
+            }
+        };
+
+        {  // retrieve system
+            auto [buffer, size] = futils::readin("/proc/stat");
+            auto content        = std::string_view(buffer.get(), size);
+            char cpubuf[4];
+
+            _all all;
+            sscanf(buffer.get(),
+                   "%s %ld %ld %ld %ld %ld %ld %ld 0",
+                   cpubuf,
+                   &all.user, &all.nice, &all.system, &all.idle,
+                   &all.wait, &all.hi, &all.si);
+
+            all.fill(ostat);
+        }
+
+        {  // retrieve self
+
+            auto [buffer, size] = futils::readin("/proc/self/stat");
+            auto content        = std::string_view(buffer.get(), size);
+
+            content    = content.substr(content.find_last_of(')') + 2);
+            int cursor = 3;
+
+            auto get_at
+                    = ([&](int destination) -> int64_t {
+                          assert(destination >= cursor);
+
+                          for (; cursor < destination; ++cursor)
+                              content = content.substr(content.find_first_of(' ') + 1);
+
+                          auto begin = content.data();
+                          auto end   = begin + content.find_first_of(' ');
+                          int64_t retval;
+
+                          std::from_chars(begin, end, retval);
+                          return retval;
+                      });
+
+            static const auto sysclock{sysconf(_SC_CLK_TCK)};
+            static int64_t prev_utime, prev_stime;
+
+            auto sysclockf = double(sysclock);
+            auto utime     = get_at(14);
+            auto stime     = get_at(15);
+            auto num_thrd  = get_at(20);
+            auto vsize     = get_at(23);
+            auto rss       = get_at(24) * sysconf(_SC_PAGESIZE);
+
+            ostat->cpu_usage_self_user   = ((utime - prev_utime) / delta_time / sysclockf);
+            ostat->cpu_usage_self_system = ((stime - prev_stime) / delta_time / sysclockf);
+            ostat->num_threads           = num_thrd;
+            ostat->memory_usage_virtual  = vsize;
+            ostat->memory_usage_resident = rss;
+
+            prev_utime = utime;
+            prev_stime = stime;
+        }
+    }
+    catch (futils::file_read_error& e)
+    {
+        CPPH_ERROR("failed to read /proc/");
+        return false;
     }
 
-    {  // retrieve self
-
-        auto [buffer, size] = futils::readin("/proc/self/stat");
-        auto content        = std::string_view(buffer.get(), size);
-
-        content    = content.substr(content.find_last_of(')') + 2);
-        int cursor = 3;
-
-        auto get_at
-                = ([&](int destination) -> int64_t {
-                      assert(destination >= cursor);
-
-                      for (; cursor < destination; ++cursor)
-                          content = content.substr(content.find_first_of(' ') + 1);
-
-                      auto begin = content.data();
-                      auto end   = begin + content.find_first_of(' ');
-                      int64_t retval;
-
-                      std::from_chars(begin, end, retval);
-                      return retval;
-                  });
-
-        static const auto sysclock{sysconf(_SC_CLK_TCK)};
-        static int64_t prev_utime, prev_stime;
-
-        auto sysclockf = double(sysclock);
-        auto utime     = get_at(14);
-        auto stime     = get_at(15);
-        auto num_thrd  = get_at(20);
-        auto vsize     = get_at(23);
-        auto rss       = get_at(24) * sysconf(_SC_PAGESIZE);
-
-        ostat->cpu_usage_self_user   = ((utime - prev_utime) / delta_time / sysclockf);
-        ostat->cpu_usage_self_system = ((stime - prev_stime) / delta_time / sysclockf);
-        ostat->num_threads           = num_thrd;
-        ostat->memory_usage_virtual  = vsize;
-        ostat->memory_usage_resident = rss;
-
-        prev_utime = utime;
-        prev_stime = stime;
-    }
+    return true;
 }
 
 #endif

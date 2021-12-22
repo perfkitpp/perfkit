@@ -23,7 +23,7 @@ struct proc_stat_t
     int32_t num_threads;
 };
 
-void fetch_proc_stat(proc_stat_t* ostat);
+bool fetch_proc_stat(proc_stat_t* ostat);
 
 void input_redirect(std::function<void(char)> inserter);
 void input_rollback();

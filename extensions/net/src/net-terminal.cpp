@@ -106,6 +106,7 @@ void perfkit::terminal::net::terminal::_on_any_connection(int n_conn)
 void perfkit::terminal::net::terminal::_user_command_fetch_fn()
 {
     perfkit::poll_timer tmr{500ms};
+    detail::proc_stat_t stat = {};
 
     while (_active)
     {
@@ -117,11 +118,8 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
             _command_queue.emplace(std::move(str));
         }
 
-        if (tmr.check())
+        if (tmr.check() && fetch_proc_stat(&stat))
         {
-            detail::proc_stat_t stat = {};
-            fetch_proc_stat(&stat);
-
             auto [in, out]        = _io.num_bytes_in_out();
             auto delta_in         = in - _bytes_io_prev.first;
             auto delta_out        = out - _bytes_io_prev.second;
