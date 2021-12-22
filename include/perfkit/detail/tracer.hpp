@@ -274,6 +274,17 @@ class tracer : public std::enable_shared_from_this<tracer>
     tracer_proxy branch(std::string_view name);
 
     /**
+     * Create branch with value
+     */
+    template <typename ValTy_>
+    tracer_proxy branch(std::string_view name, ValTy_&& val)
+    {
+        auto br = branch(name);
+        br      = std::forward<ValTy_>(val);
+        return br;
+    }
+
+    /**
      * Reserves for async data sort
      */
     void request_fetch_data();

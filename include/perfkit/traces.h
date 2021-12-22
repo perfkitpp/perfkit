@@ -17,3 +17,11 @@
 #define PERFKIT_TRACE_SCOPE(TracerPtr, Name)     auto Name = TracerPtr->timer(#Name)
 #define PERFKIT_TRACE_BLOCK(TracerPtr, Name)     if (PERFKIT_TRACE_SCOPE(TracerPtr, Name); true)
 #define PERFKIT_TRACE_EXPR(TracerPtr, ValueExpr) TracerPtr->branch(#ValueExpr) = (ValueExpr);
+
+#define PERFKIT_TRACE_SEQ_BEGIN(TracerPtr, Name)               \
+    auto INTERNAL_PERFKIT_SEQ_TRACE = TracerPtr->timer(#Name); \
+    auto &Name                      = INTERNAL_PERFKIT_SEQ_TRACE
+
+#define PERFKIT_TRACE_SEQ_NEXT(Name)                   \
+    INTERNAL_PERFKIT_SEQ_TRACE.switch_to_timer(#Name); \
+    auto &Name = INTERNAL_PERFKIT_SEQ_TRACE
