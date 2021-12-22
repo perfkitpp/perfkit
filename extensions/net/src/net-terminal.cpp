@@ -122,7 +122,13 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
             detail::proc_stat_t stat = {};
             fetch_proc_stat(&stat);
 
-            auto [in, out] = _io.bandwidth_io();
+            auto [in, out] = _io.num_bytes_in_out();
+            auto delta_in  = in - _bytes_io_prev.first;
+            auto delta_out = out - _bytes_io_prev.second;
+            auto dt        = tmr.delta().count();
+            int in_rate    = delta_in / dt;
+            int out_rate   = delta_out / dt;
+
             outgoing::session_state message
                     = {
                             stat.cpu_usage_total_user,
@@ -130,9 +136,9 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
                             stat.cpu_usage_self_user,
                             stat.cpu_usage_self_system,
                             stat.memory_usage_virtual,
-                            stat.memory_usage_resident ,
+                            stat.memory_usage_resident,
                             stat.num_threads,
-                            out, in};
+                            out_rate, in_rate};
 
             _io.send(message);
         }

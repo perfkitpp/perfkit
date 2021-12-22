@@ -123,6 +123,9 @@ class terminal : public if_terminal
     volatile bool _dirty;
     std::atomic_bool _new_connection_exist;
 
+    std::pair<size_t, size_t> _bytes_io_prev;
+    perfkit::stopwatch _bytes_io_counter;
+
     struct _context_t
     {
         context::config_watcher configs;

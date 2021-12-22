@@ -60,7 +60,8 @@ class dispatcher
     void dispatch(perfkit::function<void()>);
     void post(perfkit::function<void()>);
 
-    std::pair<int, int> bandwidth_io() const noexcept;
+    std::pair<size_t, size_t>
+    num_bytes_in_out() const noexcept;
 
     perfkit::event<int>& on_new_connection();
     perfkit::event<>& on_no_connection();

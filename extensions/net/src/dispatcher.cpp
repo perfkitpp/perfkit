@@ -65,9 +65,9 @@ perfkit::event<int>& perfkit::terminal::net::dispatcher::on_new_connection()
     return self->on_new_connection;
 }
 
-std::pair<int, int> perfkit::terminal::net::dispatcher::bandwidth_io() const noexcept
+std::pair<size_t, size_t> perfkit::terminal::net::dispatcher::num_bytes_in_out() const noexcept
 {
-    return std::make_pair(self->in_rate(), self->out_rate());
+    return std::make_pair(self->bytes_in(), self->bytes_out());
 }
 
 void perfkit::terminal::net::dispatcher::launch()

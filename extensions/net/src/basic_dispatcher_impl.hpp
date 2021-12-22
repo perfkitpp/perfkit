@@ -207,14 +207,14 @@ class basic_dispatcher_impl
         }
     }
 
-    size_t out_rate() const noexcept
+    size_t bytes_out() const noexcept
     {
-        return _perf_out_rate;
+        return _perf_bytes_out;
     }
 
-    size_t in_rate() const noexcept
+    size_t bytes_in() const noexcept
     {
-        return _perf_in_rate;
+        return _perf_bytes_in;
     }
 
     perfkit::event<int> on_new_connection;
@@ -527,26 +527,13 @@ class basic_dispatcher_impl
                 });
     }
 
-    void _tick_perf()
-    {
-        if (_perf_timer.check())
-        {
-            _perf_in_rate  = _perf_bytes_in / _perf_timer.delta().count();
-            _perf_out_rate = _perf_bytes_out / _perf_timer.delta().count();
-
-            _perf_bytes_in = _perf_bytes_out = 0;
-        }
-    }
-
     void _perf_in(size_t n)
     {
-        _tick_perf();
         _perf_bytes_in += n;
     }
 
     void _perf_out(size_t n)
     {
-        _tick_perf();
         _perf_bytes_out += n;
     }
 
@@ -585,8 +572,6 @@ class basic_dispatcher_impl
     poll_timer _disconnect_timer{3s};
     size_t _perf_bytes_out = 0;
     size_t _perf_bytes_in  = 0;
-    size_t _perf_out_rate  = 0;
-    size_t _perf_in_rate   = 0;
 
     std::string _token;      // login token to compare with.
     std::mutex _mtx_modify;  // locks when modification (socket add/remove) occurs.
