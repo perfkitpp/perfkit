@@ -28,7 +28,10 @@
     if (PERFKIT_TRACE_SCOPE(Name); true)
 
 #define PERFKIT_TRACE_EXPR(ValueExpr) \
-    INTERNAL_PERFKIT_ACTIVE_TRACER->branch(#ValueExpr) = (ValueExpr)
+    INTERNAL_PERFKIT_ACTIVE_TRACER->branch(#ValueExpr, (ValueExpr))
+
+#define PERFKIT_TRACE_DATA(Name, ValueExpr) \
+    auto Name = INTERNAL_PERFKIT_ACTIVE_TRACER->branch(#Name, (ValueExpr))
 
 #define PERFKIT_TRACE_SEQUENCE(Name)                                               \
     if (not INTERNAL_PERFKIT_SEQ_TRACE.is_valid())                                 \
