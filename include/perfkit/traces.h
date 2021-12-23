@@ -32,8 +32,8 @@
 #define PERFKIT_TRACE_EXPR(ValueExpr) \
     INTERNAL_PERFKIT_ACTIVE_TRACER->branch(#ValueExpr, (ValueExpr))
 
-#define PERFKIT_TRACE_DATA(String, ValueExpr) \
-    INTERNAL_PERFKIT_ACTIVE_TRACER->branch(String, (ValueExpr))
+#define PERFKIT_TRACE_DATA(...) \
+    INTERNAL_PERFKIT_ACTIVE_TRACER->branch(__VA_ARGS__)
 
 #define PERFKIT_TRACE_BRANCH(String) \
     INTERNAL_PERFKIT_ACTIVE_TRACER->branch(String)
