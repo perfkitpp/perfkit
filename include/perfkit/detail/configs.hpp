@@ -287,6 +287,15 @@ class _config_factory
         return _added<_attr_flag::has_one_of>();
     }
 
+    template <typename Range_>
+    auto& one_of(Range_ const& r)
+    {
+        static_assert(not(Flags_ & (_attr_flag::has_max | _attr_flag::has_min)));
+        _data.one_of.emplace();
+        _data.one_of->insert(std::begin(r), std::end(r));
+        return _added<_attr_flag::has_one_of>();
+    }
+
     /**
      * Hidden elements, usually won't appear on
      */
