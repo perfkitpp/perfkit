@@ -103,8 +103,11 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
     prx._ref               = _fork_branch(nullptr, n, false);
     prx._epoch_if_required = clock_type::now();
 
-    tracer_proxy total_timer       = branch("__Time_Since_Last_Iteration");
-    total_timer._epoch_if_required = last_fork;
+    tracer_proxy total = branch("[[internals]]");
+    total._epoch_if_required = last_fork;
+    branch("sequence", _fence_active);
+    branch("branches", _table.size());
+    branch("interval", interval);
 
     return prx;
 }

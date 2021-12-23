@@ -33,6 +33,9 @@
 #define PERFKIT_TRACE_DATA(String, ValueExpr) \
     INTERNAL_PERFKIT_ACTIVE_TRACER->branch(String, (ValueExpr))
 
+#define PERFKIT_TRACE_BRANCH(String) \
+    INTERNAL_PERFKIT_ACTIVE_TRACER->branch(String)
+
 #define PERFKIT_TRACE_SEQUENCE(Name)                                               \
     if (not INTERNAL_PERFKIT_SEQ_TRACE.is_valid())                                 \
     {                                                                              \
