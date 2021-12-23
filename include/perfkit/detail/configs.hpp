@@ -430,19 +430,19 @@ class config
 
         js_attrib["description"] = attribute.description;
 
-        if constexpr (Flags_ & _attr_flag::has_min)
+        if constexpr (!!(Flags_ & _attr_flag::has_min))
         {
             js_attrib["min"] = *attribute.min;
         }
-        if constexpr (Flags_ & _attr_flag::has_max)
+        if constexpr (!!(Flags_ & _attr_flag::has_max))
         {
             js_attrib["max"] = *attribute.max;
         }
-        if constexpr (Flags_ & _attr_flag::has_one_of)
+        if constexpr (!!(Flags_ & _attr_flag::has_one_of))
         {
             js_attrib["one_of"] = *attribute.one_of;
         }
-        if constexpr (Flags_ & _attr_flag::has_validate)
+        if constexpr (!!(Flags_ & _attr_flag::has_validate))
         {
             js_attrib["has_custom_validator"] = true;
         }
@@ -485,27 +485,27 @@ class config
                         _config_attrib_data<Ty_> const& attr = attrib;
                         nlohmann::from_json(in, parsed);
 
-                        if constexpr (Flags_ & _attr_flag::has_min)
+                        if constexpr (!!(Flags_ & _attr_flag::has_min))
                         {
                             if constexpr (has_binary_op_v<std::less<>, Ty_>)
                                 parsed = std::max<Ty_>(*attr.min, parsed);
                         }
-                        if constexpr (Flags_ & _attr_flag::has_max)
+                        if constexpr (!!(Flags_ & _attr_flag::has_max))
                         {
                             if constexpr (has_binary_op_v<std::less<>, Ty_>)
                                 parsed = std::min<Ty_>(*attr.max, parsed);
                         }
-                        if constexpr (Flags_ & _attr_flag::has_one_of)
+                        if constexpr (!!(Flags_ & _attr_flag::has_one_of))
                         {
                             if (attr.one_of->find(parsed) == attr.one_of->end())
                                 return false;
                         }
-                        if constexpr (Flags_ & _attr_flag::has_verify)
+                        if constexpr (!!(Flags_ & _attr_flag::has_verify))
                         {
                             if (not attr.verify(parsed))
                                 return false;
                         }
-                        if constexpr (Flags_ & _attr_flag::has_validate)
+                        if constexpr (!!(Flags_ & _attr_flag::has_validate))
                         {
                             okay |= attr.validate(parsed);  // value should be validated
                         }

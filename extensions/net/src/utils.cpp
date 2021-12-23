@@ -17,6 +17,12 @@
 
 #define CPPH_LOGGER() perfkit::terminal::net::detail::nglog()
 
+std::shared_ptr<spdlog::logger> perfkit::terminal::net::detail::nglog()
+{
+    static auto logger = perfkit::share_logger("PERFKIT:NET");
+    return logger;
+}
+
 #if __unix__
 #    include <poll.h>
 #    include <sys/ioctl.h>
@@ -181,12 +187,6 @@ void perfkit::terminal::net::detail::input_rollback()
     g_redirect.rollback();
 }
 
-std::shared_ptr<spdlog::logger> perfkit::terminal::net::detail::nglog()
-{
-    static auto logger = perfkit::share_logger("PERFKIT:NET");
-    return logger;
-}
-
 bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t* ostat)
 {
     try
@@ -303,6 +303,60 @@ bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
     }
 
     return true;
+}
+
+#elif _WIN32
+#    include <iostream>
+
+#    include <Windows.h>
+
+std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
+{
+    DWORD oldMode;
+    HANDLE hConsole = GetStdHandle(STD_INPUT_HANDLE);
+    GetConsoleMode(hConsole, &oldMode);
+
+    auto newMode = oldMode & ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT);
+    SetConsoleMode(hConsole, newMode);
+
+    FlushConsoleInputBuffer(hConsole);
+
+    try
+    {
+        DWORD result = WaitForSingleObject(hConsole, 330);
+
+        std::string rval;
+
+        if (result == WAIT_OBJECT_0)
+        {
+            std::getline(std::cin, rval);
+        }
+        else
+        {
+            ;  // timeout ...
+        }
+
+        SetConsoleMode(hConsole, oldMode);
+        return rval;
+    }
+    catch (std::exception &e)
+    {
+        SetConsoleMode(hConsole, oldMode);
+        throw e;
+    }
+}
+
+bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t *ostat)
+{
+    return false;
+}
+
+void perfkit::terminal::net::detail::input_redirect(std::function<void(char)> inserter)
+{
+}
+
+void perfkit::terminal::net::detail::input_rollback()
+{
 }
 
 #endif

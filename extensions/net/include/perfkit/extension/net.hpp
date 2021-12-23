@@ -1,4 +1,6 @@
 #pragma once
+#include <vector>
+
 #include "perfkit/terminal.h"
 
 namespace perfkit::terminal::net {

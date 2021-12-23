@@ -11,6 +11,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
+#include "perfkit/common/algorithm/base64.hxx"
 #include "perfkit/common/assert.hxx"
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/macros.hxx"
@@ -21,10 +22,6 @@
 
 using namespace std::literals;
 using namespace perfkit;
-
-struct tracer::_impl
-{
-};
 
 tracer::_entity_ty* tracer::_fork_branch(
         _entity_ty const* parent, std::string_view name, bool initial_subscribe_state)
@@ -103,11 +100,15 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
     prx._ref               = _fork_branch(nullptr, n, false);
     prx._epoch_if_required = clock_type::now();
 
-    tracer_proxy total       = branch("[[internals]]");
-    total._epoch_if_required = last_fork;
+    auto thrd_hash = std::hash<std::thread::id>{}(_working_thread_id);
+    char buf[perfkit::base64::encoded_size(sizeof thrd_hash)];
+    perfkit::base64::encode_one(thrd_hash, buf);
+    tracer_proxy total
+            = branch("[[internals]]", std::string_view{buf, sizeof buf});
+    branch("age")._epoch_if_required      = _birth;
+    branch("interval")._epoch_if_required = last_fork;
     branch("sequence", _fence_active);
     branch("branches", _table.size());
-    branch("interval", interval);
 
     return prx;
 }
@@ -162,7 +163,7 @@ static auto lock_tracer_repo = [] {
 };
 
 tracer::tracer(int order, std::string_view name) noexcept
-        : self(new _impl), _occurrence_order(order), _name(name)
+        : _occurrence_order(order), _name(name)
 {
 }
 

@@ -307,15 +307,6 @@ class tracer : public std::enable_shared_from_this<tracer>
    private:
     friend class tracer_proxy;
 
-    // 고려사항
-    // 1. consumer가 오랫동안 안 읽어갈수도 있음 -> 매번 메모리 비우고 할당하기 = 낭비
-    //    (e.g. 1초에 1000번 iteration ... 10번만 read ... 너무 큰 낭비다)
-    //    따라서 항상 데이터 할당은 기존 데이터에 덮는 식으로 이루어져야.
-    // 2. 프록시 생성 시 문자열 할당 최소화되어야 함. (가능한 룩업 한 번으로 끝내기)
-    // 3.
-    struct _impl;
-    std::unique_ptr<_impl> self;
-
     // 0. fork가 호출되면 시퀀스 번호가 1 증가
     // 1. 새로운 문자열로 프록시 최초 생성 시 고정 슬롯 할당.
     // 2. 프록시가 데이터 넣을 때마다(타이머는 소멸 시) 데이터 블록의 백 버퍼 맵에 이름-값 쌍 할당
@@ -335,6 +326,7 @@ class tracer : public std::enable_shared_from_this<tracer>
 
     std::vector<_entity_ty const*> _stack;
     clock_type::time_point _last_fork;
+    clock_type::time_point _birth = clock_type::now();
 
     std::thread::id _working_thread_id = {};
 };
