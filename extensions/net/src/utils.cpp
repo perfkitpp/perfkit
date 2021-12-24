@@ -11,6 +11,7 @@
 #include "perfkit/common/futils.hxx"
 #include "perfkit/common/macros.hxx"
 #include "perfkit/common/timer.hxx"
+#include "perfkit/common/utility/ownership.hxx"
 #include "perfkit/common/zip.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/logging.hpp"
@@ -305,10 +306,24 @@ bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
     return true;
 }
 
+void perfkit::terminal::net::detail::write(const char* buffer, size_t n)
+{
+    fwrite(buffer, 1, n, stdout);
+}
+
 #elif _WIN32
 #    include <iostream>
 
+#    include <spdlog/sinks/base_sink.h>
+
+#    include "perfkit/common/algorithm.hxx"
+
+#    define NOMINMAX
 #    include <Windows.h>
+
+#    define STDIN_FILENO  0
+#    define STDOUT_FILENO 1
+#    define STDERR_FILENO 2
 
 std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
 {
@@ -351,12 +366,82 @@ bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
     return false;
 }
 
+//! \see https://stackoverflow.com/questions/54094127/redirecting-stdout-in-win32-does-not-redirect-stdout
+//! \see https://www.asawicki.info/news_1326_redirecting_standard_io_to_windows_console
+class redirect_context_t : public spdlog::sinks::base_sink<std::mutex>
+{
+   public:
+    redirect_context_t(std::function<void(char)> inserter)
+            : _inserter(std::move(inserter))
+    {
+    }
+
+   protected:
+    void sink_it_(const spdlog::details::log_msg &msg) override
+    {
+        spdlog::memory_buf_t formatted;
+        formatter_->format(msg, formatted);
+
+        for (auto c : formatted)
+            _inserter(c);
+    }
+
+    void flush_() override
+    {
+        ;
+    }
+
+   public:
+    void operator()(char const *buf, size_t n)
+    {
+        for (size_t i = 0; i < n; ++i)
+        {
+            _inserter(buf[i]);
+        }
+    }
+
+   private:
+    std::function<void(char)> _inserter;
+};
+
+static std::shared_ptr<redirect_context_t> inserter_sink;
+
 void perfkit::terminal::net::detail::input_redirect(std::function<void(char)> inserter)
 {
+    assert_(not inserter_sink);
+
+    inserter_sink            = std::make_shared<redirect_context_t>(std::move(inserter));
+    auto default_logger_sink = spdlog::default_logger()->sinks().front();
+
+    spdlog::details::registry::instance()
+            .apply_all([&](std::shared_ptr<spdlog::logger> logger) {
+                if (logger->sinks().size() == 1 && logger->sinks().front() == default_logger_sink)
+                {
+                    logger->sinks().push_back(inserter_sink);
+                }
+            });
 }
 
 void perfkit::terminal::net::detail::input_rollback()
 {
+    spdlog::details::registry::instance()
+            .apply_all([&](std::shared_ptr<spdlog::logger> logger) {
+                auto &sinks = logger->sinks();
+                auto it     = perfkit::find(sinks, inserter_sink);
+
+                if (it != sinks.end())
+                    sinks.erase(it);
+            });
+
+    inserter_sink.reset();
+}
+
+void perfkit::terminal::net::detail::write(const char *buffer, size_t n)
+{
+    fwrite(buffer, 1, n, stdout);
+
+    if (inserter_sink)
+        (*inserter_sink)(buffer, n);
 }
 
 #endif

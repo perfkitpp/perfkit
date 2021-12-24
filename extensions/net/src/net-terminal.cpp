@@ -63,7 +63,7 @@ void perfkit::terminal::net::terminal::_char_handler(char c)
     {
         _shell_buffered.content += c;
 
-        if (c == '\n')
+        if (c == '\n' || (c == '\r' && _shell_buffered.content.size() > 1))
         {
             // send buffer as message
             _io.send(_shell_buffered);

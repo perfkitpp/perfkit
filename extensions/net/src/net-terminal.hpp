@@ -53,10 +53,7 @@ class terminal : public if_terminal
 
     void write(std::string_view str, termcolor fg, termcolor bg) override
     {
-        fwrite(str.data(), str.size(), 1, stdout);
-
-        if (str.find_last_of('\n') != ~size_t{})
-            fflush(stdout);
+        detail::write(str.data(), str.size());
     }
 
     std::shared_ptr<spdlog::sinks::sink> sink() override
