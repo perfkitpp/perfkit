@@ -408,6 +408,7 @@ bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
     }
 
     {
+        static const auto num_cores = std::thread::hardware_concurrency();
         static int64_t kernelTimePrev, userTimePrev;
         FILETIME kernelTime, userTime, _unused;
         if (not GetProcessTimes(GetCurrentProcess(), &_unused, &_unused, &kernelTime, &userTime))
@@ -419,8 +420,8 @@ bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
         auto deltaKernel = FileTimeToInt64(kernelTime) - kernelTimePrev;
         auto deltaUser   = FileTimeToInt64(userTime) - userTimePrev;
 
-        ostat->cpu_usage_self_system = deltaKernel / totalDeltaTicks;
-        ostat->cpu_usage_self_user   = deltaUser / totalDeltaTicks;
+        ostat->cpu_usage_self_system = deltaKernel / totalDeltaTicks * num_cores;
+        ostat->cpu_usage_self_user   = deltaUser / totalDeltaTicks * num_cores;
 
         kernelTimePrev = FileTimeToInt64(kernelTime);
         userTimePrev   = FileTimeToInt64(userTime);
