@@ -242,6 +242,7 @@ class tracer : public std::enable_shared_from_this<tracer>
 
    public:
     static auto create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer>;
+    static auto create(std::string_view name) noexcept { return create(0, name); }
     static std::vector<std::shared_ptr<tracer>> all() noexcept;
 
    public:
