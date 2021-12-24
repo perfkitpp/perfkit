@@ -314,6 +314,11 @@ void perfkit::terminal::net::detail::write(const char* buffer, size_t n)
 #elif _WIN32
 #    include <iostream>
 
+#    define NOMINMAX
+#    include <Windows.h>
+//
+#    include <Psapi.h>
+#    include <TlHelp32.h>
 #    include <conio.h>
 #    include <spdlog/sinks/base_sink.h>
 
@@ -360,9 +365,99 @@ std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
     return return_string;
 }
 
+static unsigned long long FileTimeToInt64(const FILETIME &ft) { return (((unsigned long long)(ft.dwHighDateTime)) << 32) | ((unsigned long long)ft.dwLowDateTime); }
+
 bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t *ostat)
 {
-    return false;
+    {  // Retrieve memory usage
+        PROCESS_MEMORY_COUNTERS pmc;
+        auto result = GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof pmc);
+
+        if (not result)
+        {
+            CPPH_WARN("GetProcessMemoryInfo() FAILED");
+            return false;
+        }
+
+        ostat->memory_usage_virtual  = pmc.PagefileUsage + pmc.QuotaNonPagedPoolUsage + pmc.QuotaPagedPoolUsage;
+        ostat->memory_usage_resident = pmc.WorkingSetSize;
+    }
+
+    double totalDeltaTicks;
+
+    {  // Retrieve global CPU usage
+        static int64_t idleTimePrev, kernelTimePrev, userTimePrev;
+        FILETIME idleTime, kernelTime, userTime;
+        if (not GetSystemTimes(&idleTime, &kernelTime, &userTime))
+        {
+            CPPH_WARN("GetSystemTimes() FAILED");
+            return false;
+        }
+
+        auto deltaIdle   = FileTimeToInt64(idleTime) - idleTimePrev;
+        auto deltaKernel = FileTimeToInt64(kernelTime) - kernelTimePrev;
+        auto deltaUser   = FileTimeToInt64(userTime) - userTimePrev;
+
+        totalDeltaTicks               = deltaIdle + deltaKernel + deltaUser;
+        ostat->cpu_usage_total_system = deltaKernel / totalDeltaTicks;
+        ostat->cpu_usage_total_user   = deltaUser / totalDeltaTicks;
+
+        idleTimePrev   = FileTimeToInt64(idleTime);
+        kernelTimePrev = FileTimeToInt64(kernelTime);
+        userTimePrev   = FileTimeToInt64(userTime);
+    }
+
+    {
+        static int64_t kernelTimePrev, userTimePrev;
+        FILETIME kernelTime, userTime, _unused;
+        if (not GetProcessTimes(GetCurrentProcess(), &_unused, &_unused, &kernelTime, &userTime))
+        {
+            CPPH_WARN("GetProcessTimes() FAILED");
+            return false;
+        }
+
+        auto deltaKernel = FileTimeToInt64(kernelTime) - kernelTimePrev;
+        auto deltaUser   = FileTimeToInt64(userTime) - userTimePrev;
+
+        ostat->cpu_usage_self_system = deltaKernel / totalDeltaTicks;
+        ostat->cpu_usage_self_user   = deltaUser / totalDeltaTicks;
+
+        kernelTimePrev = FileTimeToInt64(kernelTime);
+        userTimePrev   = FileTimeToInt64(userTime);
+    }
+
+    static perfkit::poll_timer thread_count_timer{5s};
+    static size_t num_threads;
+
+    if (thread_count_timer.check())
+    {
+        size_t nThread = 0;
+        HANDLE h       = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        auto PID       = GetProcessId(GetCurrentProcess());
+        if (h != INVALID_HANDLE_VALUE)
+        {
+            THREADENTRY32 te;
+            te.dwSize = sizeof(te);
+            if (Thread32First(h, &te))
+            {
+                do {
+                    if (te.th32OwnerProcessID == PID)
+                    {
+                        ++nThread;
+                    }
+                    te.dwSize = sizeof(te);
+                }
+                while (Thread32Next(h, &te));
+            }
+            CloseHandle(h);
+        }
+
+        num_threads = nThread;
+    }
+
+    ostat->num_threads = num_threads;
+
+    return true;
 }
 
 //! \see https://stackoverflow.com/questions/54094127/redirecting-stdout-in-win32-does-not-redirect-stdout
