@@ -19,17 +19,18 @@ void config_watcher::update()
 {
     if (not _min_interval.check())
         return;  // prevent too frequent update request
-    
+
     // check for new registries
     if (_tmr_config_registry.check())
     {
         auto regs     = perfkit::config_registry::bk_enumerate_registries(true);
         auto* watches = &_cache.regs;
 
-        // discard obsolete registries
-        auto it_erase = perfkit::remove_if(*watches, [](auto&& e) { return e.expired(); });
         CPPH_TRACE("watching: {} entities", watches->size());
         CPPH_TRACE("enumerated: {} entities", regs.size());
+
+        // discard obsolete registries
+        auto it_erase = perfkit::remove_if(*watches, [](auto&& e) { return e.expired(); });
 
         if (it_erase != watches->end())
         {
@@ -128,6 +129,9 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
 
     for (auto& [_, config] : all)
     {
+        if (config->is_hidden())
+            continue;  // dont' publish hidden ones
+
         auto* entity         = &ents->emplace_back();
         entity->class_name   = rg->name();
         entity->id           = config_key_t::create(&*config);
