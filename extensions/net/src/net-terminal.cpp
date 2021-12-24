@@ -29,6 +29,10 @@ perfkit::terminal::net::terminal::terminal(
                 + std::to_string(_init_msg.epoch);
     }
 
+    // set command queue capacity
+    // some kind of applications may not fetch command.
+    _command_queue.set_capacity(128);
+
     // redirect stdout
     if (init.advanced.redirect_terminal)
         detail::input_redirect(CPPH_BIND(_char_handler));
