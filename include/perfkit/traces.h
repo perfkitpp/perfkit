@@ -13,9 +13,9 @@
     auto INTERNAL_PERFKIT_ACTIVE_TRACER = &*TracerPtr; \
     auto INTERNAL_PERFKIT_SEQ_TRACE     = ::perfkit::tracer_proxy::create_default()
 
-#define PERFKIT_TRACE(TracerPtr)                                               \
+#define PERFKIT_TRACE(TracerPtr, ...)                                               \
     auto INTERNAL_PERFKIT_TRACER_CONCAT(INTERNAL_PERFKIT_ROOT_TRACE, __LINE__) \
-            = TracerPtr->fork(__func__);                                       \
+            = TracerPtr->fork(__func__, ##__VA_ARGS__);                                       \
     PERFKIT_TRACE_DECLARE(TracerPtr)
 
 #define PERFKIT_TRACE_FUNCTION(TracerPtr)                                      \
