@@ -314,51 +314,50 @@ void perfkit::terminal::net::detail::write(const char* buffer, size_t n)
 #elif _WIN32
 #    include <iostream>
 
+#    include <conio.h>
 #    include <spdlog/sinks/base_sink.h>
 
 #    include "perfkit/common/algorithm.hxx"
 
-#    define NOMINMAX
-#    include <Windows.h>
-
-#    define STDIN_FILENO  0
-#    define STDOUT_FILENO 1
-#    define STDERR_FILENO 2
+using namespace std::literals;
 
 std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
 {
-    DWORD oldMode;
-    HANDLE hConsole = GetStdHandle(STD_INPUT_HANDLE);
-    GetConsoleMode(hConsole, &oldMode);
+    static std::string buffer;
 
-    auto newMode = oldMode & ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT);
-    SetConsoleMode(hConsole, newMode);
+    std::string return_string;
+    auto now   = [] { return std::chrono::steady_clock::now(); };
+    auto until = 1ms * ms_to_wait + now();
 
-    FlushConsoleInputBuffer(hConsole);
-
-    try
+    while (now() < until)
     {
-        DWORD result = WaitForSingleObject(hConsole, 330);
-
-        std::string rval;
-
-        if (result == WAIT_OBJECT_0)
+        if (_kbhit())
         {
-            std::getline(std::cin, rval);
-        }
-        else
-        {
-            ;  // timeout ...
+            auto ch = _getch();
+
+            if (ch == '\r')
+            {
+                ch = '\n';
+            }
+            else
+            {
+                buffer += (char)ch;
+            }
+
+            putc(ch, stdout);
+            if (ch == '\n')
+            {
+                return_string = buffer;
+                buffer.clear();
+
+                break;
+            }
         }
 
-        SetConsoleMode(hConsole, oldMode);
-        return rval;
+        std::this_thread::sleep_for(10ms);
     }
-    catch (std::exception &e)
-    {
-        SetConsoleMode(hConsole, oldMode);
-        throw e;
-    }
+
+    return return_string;
 }
 
 bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t *ostat)
@@ -410,16 +409,22 @@ void perfkit::terminal::net::detail::input_redirect(std::function<void(char)> in
 {
     assert_(not inserter_sink);
 
+    CPPH_INFO("Redirecting all registered loggers");
+
     inserter_sink            = std::make_shared<redirect_context_t>(std::move(inserter));
     auto default_logger_sink = spdlog::default_logger()->sinks().front();
 
+    size_t n_redirected = 0;
     spdlog::details::registry::instance()
             .apply_all([&](std::shared_ptr<spdlog::logger> logger) {
                 if (logger->sinks().size() == 1 && logger->sinks().front() == default_logger_sink)
                 {
                     logger->sinks().push_back(inserter_sink);
+                    ++n_redirected;
                 }
             });
+
+    CPPH_INFO("{} loggers redirected.", n_redirected);
 }
 
 void perfkit::terminal::net::detail::input_rollback()
@@ -432,6 +437,17 @@ void perfkit::terminal::net::detail::input_rollback()
                 if (it != sinks.end())
                     sinks.erase(it);
             });
+
+    if (inserter_sink.use_count() != 1)
+    {
+        CPPH_WARN(
+                "inserter_sink is cached elsewhere, {} references left.",
+                inserter_sink.use_count());
+    }
+    else
+    {
+        CPPH_INFO("input rollbacked.");
+    }
 
     inserter_sink.reset();
 }
