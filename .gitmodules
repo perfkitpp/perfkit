@@ -1,3 +1,0 @@
-[submodule "third/cpph/perfkit/common"]
-	path = third/cpph/perfkit/common
-	url = git@github.com:perfkitpp/cppheaders.git
