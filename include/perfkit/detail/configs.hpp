@@ -479,11 +479,14 @@ class config
                     try
                     {
                         Ty_ parsed;
-
                         bool okay = true;
 
                         _config_attrib_data<Ty_> const& attr = attrib;
-                        nlohmann::from_json(in, parsed);
+
+                        if constexpr (std::is_same_v<nlohmann::json, Ty_>)
+                            parsed = in;
+                        else
+                            nlohmann::from_json(in, parsed);
 
                         if constexpr (!!(Flags_ & _attr_flag::has_min))
                         {
@@ -510,7 +513,7 @@ class config
                             okay |= attr.validate(parsed);  // value should be validated
                         }
 
-                        *(Ty_*)out = parsed;
+                        *(Ty_*)out = std::move(parsed);
                         return okay;
                     }
                     catch (std::exception&)
@@ -610,9 +613,18 @@ class watcher
 };
 }  // namespace configs
 
+//! \see https://stackoverflow.com/questions/24855160/how-to-tell-if-a-c-template-type-is-c-style-string
+template <class T>
+struct is_c_str
+        : std::integral_constant<
+                  bool,
+                  std::is_same<char const*, typename std::decay<T>::type>::value || std::is_same<char*, typename std::decay<T>::type>::value>
+{
+};
+
 template <typename Ty_>
 using _cvt_ty = std::conditional_t<
-        std::is_convertible_v<Ty_, std::string>,
+        is_c_str<Ty_>::value,
         std::string,
         std::remove_reference_t<Ty_>>;
 
