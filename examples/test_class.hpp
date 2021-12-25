@@ -8,6 +8,20 @@
 #include <perfkit/logging.h>
 #include <perfkit/traces.h>
 
+struct test_config_structure_nested
+{
+    int x            = 0;
+    int y            = 0;
+    double z         = 0;
+    bool flag        = false;
+    std::string path = "ola";
+    std::list<test_config_structure_nested> list;
+
+    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
+            test_config_structure_nested,
+            x, y, z, flag, path, list);
+};
+
 struct test_config_structure
 {
     int x            = 0;
@@ -16,9 +30,11 @@ struct test_config_structure
     bool flag        = false;
     std::string path = "ola";
 
+    test_config_structure_nested nested = {test_config_structure_nested{}};
+
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             test_config_structure,
-            x, y, z, flag, path);
+            x, y, z, flag, path, nested);
 };
 
 PERFKIT_T_CATEGORY(
