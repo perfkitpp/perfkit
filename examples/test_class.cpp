@@ -10,8 +10,22 @@ PERFKIT_CATEGORY(test_global_category)
 {
     PERFKIT_CONFIGURE(int_config, 1).confirm();
     PERFKIT_CONFIGURE(double_config, .1).confirm();
-    PERFKIT_CONFIGURE(bool_config, false).confirm();
-    PERFKIT_CONFIGURE(string_config, "dfle").confirm();
+    PERFKIT_CONFIGURE(bool_config, false)
+            .description(
+                    "장문의 한글 설명: 역사를 그들에게 보이는 쓸쓸하랴? 크고 석가는 얼음이 인생에 수 소리다."
+                    "이것은 할지니, 실로 것이다. 목숨이 고행을 때까지 것이다. 이상 못하다 대중을 인생에 "
+                    "그들은 피가 따뜻한 되려니와, 이것이다. 든 부패를 영락과 이 우는 수 거선의 안고, 운다. "
+                    "있는 눈에 위하여 끓는다. 안고, 노년에게서 수 있는 운다. 군영과 타오르고 이 철환하였는가?"
+                    " 우리는 밥을 스며들어 이는 속에 사막이다. 이것은 이상, 천자만홍이 자신과 이 불러 가지에 이상은 때문이다."
+                    "투명하되 할지니, 사라지지 그들의 하여도 이 그들에게 인생에 쓸쓸하랴? 미묘한 남는 간에 "
+                    "뛰노는 힘있다. 심장은 끝까지 하는 수 위하여 것이다.")
+            .confirm();
+
+    PERFKIT_CONFIGURE(kr_str, "한글 문자열").confirm();
+
+    PERFKIT_CONFIGURE(string_config, "dfle")
+            .description("한글 설명")
+            .confirm();
 
     PERFKIT_SUBCATEGORY(class_control)
     {
@@ -48,6 +62,8 @@ void test_class::start()
                         tr1["integer"] = _cfg.t_int.ref();
                         tr1["double"]  = _cfg.t_double.value();
                         tr1["str"]     = _cfg.t_string.value();
+
+                        spdlog::info("한글 로그");
                     }
 
                     auto tr1       = trc.timer("tree-1");
