@@ -12,14 +12,10 @@ perfkit::terminal_ptr perfkit::terminal::net::create(const struct terminal_init_
 
 perfkit::terminal_ptr perfkit::terminal::net::create(profile const& cfg)
 {
-    // TODO: parse auth info
     terminal_init_info init{*cfg.session_name};
     auto CPPH_LOGGER = [] { return detail::nglog(); };
 
     CPPH_INFO("creating network session: {}", *cfg.session_name);
-
-    // init.description; TODO: find description from description path
-    // init.auth; TODO: parse auth
 
     for (std::string_view auth = *cfg.auth; not auth.empty();)
     {
@@ -52,10 +48,17 @@ perfkit::terminal_ptr perfkit::terminal::net::create(profile const& cfg)
     }
 
     init.description = cfg.session_description.ref();
-    *cfg.has_relay_server
-            ? init.relay_to(*cfg.ipaddr, *cfg.port)
-            : init.serve(*cfg.ipaddr, *cfg.port);
-    CPPH_INFO("binding to {}:{}", *cfg.ipaddr, *cfg.port);
+
+    if (*cfg.has_relay_server)
+    {
+        init.relay_to(*cfg.ipaddr, *cfg.port);
+        CPPH_INFO("connecting to relay server {}:{}", *cfg.ipaddr, *cfg.port);
+    }
+    else
+    {
+        init.serve(*cfg.ipaddr, *cfg.port);
+        CPPH_INFO("server binding to {}:{}", *cfg.ipaddr, *cfg.port);
+    }
 
     return std::make_shared<net::terminal>(init);
 }
