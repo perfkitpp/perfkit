@@ -31,6 +31,7 @@ option(perfkit_BUILD_FTXUI_EXTENSION "" OFF)
 option(perfkit_BUILD_NET_CLIENT "" ON)
 option(perfkit_BUILD_NET "" ON)
 option(perfkit_BUILD_CLI "" ON)
+option(perfkit_BUILD_GRAPHICS "" ON)
 option(perfkit_USE_BUNDLED_JSON "" ON)
 option(perfkit_USE_BUNDLED_ASIO "" ON)
 option(perfkit_BUILD_EXAMPLES "" OFF)
@@ -65,14 +66,20 @@ if (perfkit_USE_BUNDLED_ASIO OR perfkit_BUILD_NET_CLIENT)
     add_subdirectory(third/asio-1.20.0)
 endif ()
 
+# NET depends on graphics module
+if (perfkit_BUILD_NET OR perfkit_BUILD_GRAPHICS)
+    message("[${PROJECT_NAME}]: Configuring graphics extension ... ")
+    add_subdirectory(extensions/graphics)
+endif ()
+
 if (perfkit_BUILD_NET_CLIENT OR perfkit_BUILD_NET)
-    message("[${PROJECT_NAME}]: Configuring NET CLIENT extension ...")
+    message("[${PROJECT_NAME}]: Configuring NET extension ...")
     add_subdirectory(extensions/net)
 endif ()
 
 if (perfkit_BUILD_CLI)
     message("[${PROJECT_NAME}]: Configuring CLI extension ...")
-    add_subdirectory(extensions/cli/)
+    add_subdirectory(extensions/cli)
 
     if (UNIX)
         target_sources(
