@@ -39,7 +39,7 @@ option(perfkit_BUILD_CPPHEADERS_TEST "" ON)
 
 if (perfkit_BUILD_CPPHEADERS_TEST)
     message("[${PROJECT_NAME}]: Configuring imported cppheaders tests ...")
-    add_subdirectory(include/perfkit/common/tests)
+    add_subdirectory(third/cpph/include/perfkit/common/tests)
 endif ()
 
 # JSON Bundling
@@ -153,6 +153,7 @@ target_link_libraries(
 
         PUBLIC
         spdlog::spdlog
+        perfkit::cpph
 
         PRIVATE
         range-v3::range-v3
