@@ -29,6 +29,8 @@
 //
 
 #pragma once
+#include <list>
+
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
 #include <perfkit/configs.h>
 #include <perfkit/logging.h>

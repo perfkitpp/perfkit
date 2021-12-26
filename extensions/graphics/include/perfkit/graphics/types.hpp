@@ -23,4 +23,43 @@
  *
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
+#pragma once
+#include "fwd.hpp"
+#include "perfkit/common/functional.hxx"
+#include "perfkit/common/math/matrix.hxx"
+#include "perfkit/common/math/rectangle.hxx"
 
+namespace perfkit::graphics {
+using point2    = math::vec2i;
+using size2     = math::vec2i;
+using rectangle = math::rectangle;
+
+enum class pixel_format
+{
+    mono,    // 8-bit mono color
+    f_mono,  // 32-bit floating point mono color
+    rgb,     // 24-bit rgb color
+    f_rgb,   // 96-bit rgb color
+    rgba,    // 32-bit rgb color
+    f_rgba,  // 128-bit rgb color
+};
+
+enum class modal_result
+{
+    unavailable,  // couldn't pop up modal due to system issue.
+    closed,       // user closed or pressed okay button in okay modal.
+    yes,          // user pressed yes
+    no,           // user pressed no
+};
+
+enum class modal_type
+{
+    okay,          // simply show okey button
+    yes_no,        // show yes/no button. closing modal will be treated as 'no'.
+    yes_no_abort,  // show yes/no/abort button. closing modal will be treated as 'closed'
+};
+
+using window_proc_fn  = perfkit::function<void(window_context*)>;
+using texture_draw_fn = perfkit::function<void(texture_draw_context*)>;
+
+}  // namespace perfkit::graphics

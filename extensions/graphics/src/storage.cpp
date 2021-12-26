@@ -29,3 +29,9 @@
 //
 
 #include "perfkit/graphics/storage.hpp"
+
+#include "perfkit/graphics/detail/handle_registry.hpp"
+
+perfkit::graphics::storage::storage()
+{
+}

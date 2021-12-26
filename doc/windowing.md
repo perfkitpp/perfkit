@@ -145,7 +145,7 @@ _2 SYS_RASTERIZE_FONT:
   B 10-13: float; font size
   B 14-15: FLAG16
     F-0: FLAG_ITALIC
-  B 16-M: list<int32[2]>; rasterize range
+  B 16-M: int32[]; rasterize range
   B M-N: string-sz; font-family
 
 _3 SYS_UPLOAD_MESH:

@@ -26,8 +26,27 @@
 
 #pragma once
 #include "fwd.hpp"
+#include "handle.hpp"
+#include "types.hpp"
+#include "perfkit/common/functional.hxx"
 
 namespace perfkit::graphics {
-// 리소스 선언 API
-// -
-}
+/**
+ * 새 그래픽스 저장소를 생성합니다.
+ */
+storage_ptr create_storage();
+
+/**
+ * 새 전역 저장소를 지정합니다.
+ *
+ * @param storage
+ */
+void set_global_storage(storage_ptr storage = create_storage());
+
+/**
+ * 현재 전역 저장소를 획득합니다.
+ *
+ * @return
+ */
+storage_ptr get_global_storage();
+}  // namespace perfkit::graphics

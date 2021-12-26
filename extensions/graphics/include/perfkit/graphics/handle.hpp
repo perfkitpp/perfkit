@@ -23,17 +23,70 @@
  *
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
-
 #pragma once
-#include <memory>
+#include <cstddef>
+#include <cstdint>
+#include <stdexcept>
+
+#include "fwd.hpp"
 
 namespace perfkit::graphics {
-class storage;
-using storage_ptr = std::shared_ptr<storage>;
+enum class resource_type : uint8_t
+{
+    invalid,
+    texture,
+    window,
+    mesh,
+    material,
+    MAX_,
+};
 
-class texture_draw_context;
-class window_context;
+struct handle_data
+{
+   public:
+    bool is_valid() const noexcept
+    {
+        return resource_type::invalid < _type && _type < resource_type::MAX_;
+    }
 
-enum class pixel_format;
-enum class window_process_result;
+    operator bool() const noexcept
+    {
+        return is_valid();
+    }
+
+   public:
+    resource_type _type = {};
+
+    uint8_t _padding = {};
+
+    uint16_t _index = {};
+    uint32_t _hash  = {};
+};
+
+/**
+ * @tparam Label_ Only used for type identification
+ */
+template <resource_type Resource_>
+struct _handle_base : handle_data
+{
+    static constexpr auto type = Resource_;
+
+    static _handle_base from(handle_data data)
+    {
+        if (not data)
+            throw std::logic_error("invalid type!");
+
+        if (type != data._type)
+            throw std::logic_error("type mismatch!");
+
+        return *(_handle_base*)&data;
+    }
+};
+
+static_assert(sizeof _handle_base<resource_type::invalid>{} == 8);
+
+using texture_handle  = _handle_base<resource_type::texture>;
+using window_handle   = _handle_base<resource_type::window>;
+using mesh_handle     = _handle_base<resource_type::mesh>;
+using material_handle = _handle_base<resource_type::material>;
 }  // namespace perfkit::graphics
