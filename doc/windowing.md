@@ -14,8 +14,8 @@ using namespace perfkit::graphics;
 
 // 임의의 버퍼를 업로드.
 // force_lossless가 지정되지 않으면 손실 압축으로 대역폭 줄임.
-// draw(..., [](...){ ctx->upload(...); }); 의 짧은 버전.
-upload(
+// draw(..., [](...){ ctx->draw(...); }); 의 짧은 버전.
+draw(
         texture::key::create("base_buffer"),
         {
             my_data, // must be contiguous, and size of (my_width*my_height*channels(my_texture_format))
@@ -34,7 +34,7 @@ upload(
 
 // 임의의 3D Mesh를 업로드.
 // 폴리곤 세트 및 
-upload(
+draw(
         mesh::create("my_mesh"),
         std::vector<vertex_3d>{},
         std::vector<int16>{});

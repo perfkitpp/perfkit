@@ -25,15 +25,3 @@
  ******************************************************************************/
 
 #pragma once
-#include <memory>
-
-namespace perfkit::graphics {
-class storage;
-using storage_ptr = std::shared_ptr<storage>;
-
-class dc;   // draw context for texture
-class wdc;  // window draw context
-
-enum class pixel_format;
-enum class window_process_result;
-}  // namespace perfkit::graphics

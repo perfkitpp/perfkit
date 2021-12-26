@@ -25,6 +25,7 @@
  ******************************************************************************/
 #pragma once
 #include "fwd.hpp"
+#include "handle.hpp"
 #include "perfkit/common/functional.hxx"
 #include "perfkit/common/math/matrix.hxx"
 #include "perfkit/common/math/rectangle.hxx"
@@ -50,6 +51,7 @@ enum class modal_result
     closed,       // user closed or pressed okay button in okay modal.
     yes,          // user pressed yes
     no,           // user pressed no
+    expired,      // 'modal_expired' exception is thrown during iteration.
 };
 
 enum class modal_type
@@ -59,7 +61,54 @@ enum class modal_type
     yes_no_abort,  // show yes/no/abort button. closing modal will be treated as 'closed'
 };
 
-using window_proc_fn  = perfkit::function<void(window_context*)>;
-using texture_draw_fn = perfkit::function<void(texture_draw_context*)>;
+using window_proc_fn  = perfkit::function<void(wdc*)>;
+using texture_draw_fn = perfkit::function<void(dc*)>;
+
+struct modal_expired : std::exception
+{
+};
+
+/**
+ * Generic vertex for material based mesh rendering
+ */
+struct vertex3_0
+{
+    math::vec3f position;
+    math::vec2f uv0;
+};
+
+/**
+ * Vertex for debug instance rendering
+ */
+struct vertex3_1
+{
+    math::vec3f position;
+    math::vec3f normal;
+    math::vec4b albedo;  // rgba order
+    math::vec4b emission;
+};
+
+/**
+ * Vertex for screen draw (especially for ImGUI forwarding)
+ */
+struct vertex2_0
+{
+    math::vec2f position;
+    math::vec2f uv0;
+};
+
+/**
+ * Material definition
+ */
+struct material
+{
+    texture_handle albedo   = {};    // f_rgb
+    texture_handle normal   = {};    // f_rgb
+    texture_handle metalic  = {};    // f_mono
+    texture_handle rouhness = {};    // f_mono
+    texture_handle opacity  = {};    // f_mono
+    texture_handle emissive = {};    // f_rgb
+    bool binary_alpha       = true;  // if set true, alpha channel will work as simple mask.
+};
 
 }  // namespace perfkit::graphics

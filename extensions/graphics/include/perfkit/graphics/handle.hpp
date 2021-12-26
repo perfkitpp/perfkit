@@ -55,6 +55,11 @@ struct handle_data
     }
 
    public:
+    uint16_t index() const noexcept { return _index; }
+    uint32_t hash() const noexcept { return _hash; }
+    uint8_t resource_index() const noexcept { return (uint8_t)_type - 1; }
+
+   public:
     resource_type _type = {};
 
     uint8_t _padding = {};

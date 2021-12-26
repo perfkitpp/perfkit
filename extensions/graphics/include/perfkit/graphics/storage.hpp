@@ -44,6 +44,7 @@ class storage : std::enable_shared_from_this<storage>
 {
    public:
     storage();
+    ~storage();
 
    public:
     /**
@@ -60,9 +61,11 @@ class storage : std::enable_shared_from_this<storage>
      * Creates new texture.
      *
      * @param key
+     * @param lossless If set false, texture will be compressed in lossy format. \n
+     *                 Set true if data integrity is necessary.
      * @return invalid handle if key is duplicated.
      */
-    texture_handle create_texture(std::string key);
+    texture_handle create_texture(std::string key, bool lossless = false);
 
     /**
      * Creates new window.
@@ -82,69 +85,84 @@ class storage : std::enable_shared_from_this<storage>
 
    public:
     /**
-     * Request texture upload
+     * Upload texture. Update texture will be deferred until remote client request or,
+     *  any dependency occurrence.
      *
      * @param handle
-     * @param size
-     * @param buffer
-     * @param buflen
-     * @param lossless
+     * @param size buffer size. Size can vary, however, frequent size change may cause \n
+     *              performance hit.
+     * @param format pixel format.
+     * @param base_buffer Initial data to copy into created texture. Once specified,
+     *                     clear() function call with no arguments to dc will redraw
+     *                     this buffer to render target. \n
+     *                    Total data length is calculated from 'size' and 'format'.
+     * @param draw_fn Generates draw command for given texture(render target). Once
+     *                 called, previous draw commands which were not flushed yet will be
+     *                 purged.
      */
-    void upload(
+    void draw(
             texture_handle handle,
             size2 size, pixel_format format,
-            void const* buffer = nullptr,
-            bool lossless      = false);
+            void const* base_buffer        = nullptr,
+            texture_draw_fn const& draw_fn = perfkit::default_function);
 
     /**
-     * Upload texture only if possible.
+     * Uploads texture only if possible. It'll not store any data into storage unless there's
+     *  active dependency or request. Only its metadata(size and format) will be retained in
+     *  the storage and remote client's context. \n
+     * Due to the way this works, remote client will experience black or garbage texture for
+     *  first few frames, or forever if try_draw would not be called again. \n
      *
      * @param handle
      * @param size
      * @param format
-     * @param buffer
+     * @param base_buffer
      * @param lossless
+     * @param draw_fn
      * @return
      */
-    bool try_upload(
+    bool try_draw(
             texture_handle handle,
             size2 size, pixel_format format,
-            void const* buffer = nullptr,
-            bool lossless      = false);
+            void const* base_buffer        = nullptr,
+            texture_draw_fn const& draw_fn = perfkit::default_function);
 
     /**
-     * Show window once.\n
-     * Size of the window will be determined by remote system.
+     * Show window once. Size of the window will be determined by remote system. \n
+     * From successful call to this function, window data is always cached in server storage,
+     *  thus it can transfer window data as fast as possible on user's subscribe request.
      *
      * @param handle
      * @param wnd_proc
      */
     void show(
             window_handle handle,
-            window_proc_fn wnd_proc);
+            window_proc_fn const& wnd_proc);
 
     /**
-     * Show window only if possible.
+     * Show window only if possible. User will see empty window until you call this function
+     *  again and corresponding data is transferred to the remote client.
      *
      * @param handle
      * @param wnd_proc
      */
-    void try_show(
+    bool try_show(
             window_handle handle,
-            window_proc_fn wnd_proc);
+            window_proc_fn const& wnd_proc);
 
     /**
      * Modal window until user closes the window. \n
-     * If
+     * This function never return control unless user closes modal, or modal_expired
+     *  exception is thrown during iteration.
      *
      * @param handle
      * @param type
      * @param wnd_proc
      */
-    void modal(
-            window_handle handle,
-            modal_type type,
-            window_proc_fn wnd_proc);
+    modal_result
+    modal(window_handle handle,
+          modal_type type,
+          window_proc_fn const& wnd_proc);
 
    public:
     /**
@@ -158,23 +176,30 @@ class storage : std::enable_shared_from_this<storage>
     void _bk_stop_session();
 
     /**
-     * Reset all internal update/cache context. \n
+     * Reset all internal update/cache/subscription context. \n
      * Next call to \ref _bk_retrieve_updates will return overall information
      */
     void _bk_reset_caches();
 
     /**
-     * Retrive updated draw call binaries.
+     * Retrive updated draw call binaries. Internally swaps vector reference. (not copy) \n
+     * Blocks connection until any valid update issued or _stop_session is called.
      */
-    void _bk_retrieve_updates(std::vector<char>* out);
+    void _bk_retrieve_updates(std::string* out);
 
     /**
      * Change subscription state of given resource.
      */
     void _bk_change_subscription_state(handle_data const& key, bool new_state);
 
+    /**
+     * Commit event structure. \n
+     * Internally swaps reference
+     */
+    void _bk_commit_events(std::string* in);
+
    private:
     class impl;
-    std::unique_ptr<storage> self;
+    std::unique_ptr<impl> self;
 };
 }  // namespace perfkit::graphics

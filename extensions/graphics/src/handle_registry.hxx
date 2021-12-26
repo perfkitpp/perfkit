@@ -30,7 +30,7 @@
 
 #include <assert.h>
 
-#include "../handle.hpp"
+#include "perfkit/graphics/types.hpp"
 
 namespace perfkit::graphics::detail {
 using std::array;
@@ -102,7 +102,7 @@ class handle_registry
 
     void checkin(handle_data const& data)
     {
-        slot& slot = _slots.at(to_index(data._type));
+        slot& slot = _slots.at(data.resource_index());
 
         auto node = &slot.keys.at(data._index);
         assert(node->hash_gen == data._hash);
