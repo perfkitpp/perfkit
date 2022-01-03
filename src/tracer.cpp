@@ -251,7 +251,11 @@ perfkit::tracer::~tracer() noexcept
 
 void perfkit::tracer::_try_pop(_trace::_entity_ty const* body)
 {
-    assert_(not _stack.empty());
+    if (_stack.empty())
+    {
+        CPPH_WARN("Stack was empty!");
+        return;
+    }
 
     size_t i = _stack.size();
     while (--i != ~size_t{} && _stack[i] != body)
