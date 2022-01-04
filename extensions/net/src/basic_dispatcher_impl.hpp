@@ -224,12 +224,15 @@ class basic_dispatcher_impl
         (*buffer)[3]         = '%';
         *(int*)&(*buffer)[4] = buffer->size() - 8;
 
+        auto shared_buffer = std::make_shared<decltype(buffer)>(std::move(buffer));
+        auto pbuf          = &**shared_buffer;
+
         for (auto sock : _sockets_active)
         {
-            auto pbuf = &*buffer;
+            // Share buffer ownership, for
             asio::async_write(
                     *sock, asio::const_buffer{pbuf->data(), pbuf->size()},
-                    [this, buffer = std::move(buffer)](auto&&, auto&& n) { _perf_out(n); });
+                    [this, shared_buffer](auto&&, auto&& n) { _perf_out(n); });
         }
     }
 
