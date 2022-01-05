@@ -118,6 +118,14 @@ struct terminal_init_info
         // TODO.
     }
 
+    /**
+     * Generate auth info from given auth string.
+     * Auth string should be form of <ID>:<PW>:<ACCESS>[;<ID>:<PW>:<ACCESS>[;...]]
+     *
+     * @param authstr
+     */
+    void parse_auth(std::string_view authstr) {}
+
    private:
     friend class dispatcher;  // internal use
     operation_mode _mode = operation_mode::invalid;
