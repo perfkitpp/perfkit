@@ -26,24 +26,24 @@
 
 #include "perfkit/extension/net.hpp"
 
+#include <perfkit/common/algorithm/base64.hxx>
 #include <perfkit/configs.h>
 #include <perfkit/extension/netconf.h>
 
 #include "net-terminal.hpp"
+#include "picosha2.h"
 
 perfkit::terminal_ptr perfkit::terminal::net::create(const struct terminal_init_info& info)
 {
     return std::make_shared<net::terminal>(info);
 }
 
-perfkit::terminal_ptr perfkit::terminal::net::create(profile const& cfg)
+namespace perfkit::terminal::net {
+static void parse_auth(std::string_view auth, std::vector<auth_info>* out)
 {
-    terminal_init_info init{*cfg.session_name};
     auto CPPH_LOGGER = [] { return detail::nglog(); };
 
-    CPPH_INFO("creating network session: {}", *cfg.session_name);
-
-    for (std::string_view auth = *cfg.auth; not auth.empty();)
+    for (; not auth.empty();)
     {
         auto token = auth.substr(0, auth.find_first_of(';'));
         auth       = auth.substr(token.size() + (token.size() < auth.size()));
@@ -58,13 +58,20 @@ perfkit::terminal_ptr perfkit::terminal::net::create(profile const& cfg)
             auto pw     = token.substr(0, token.find_first_of(':'));
             auto access = token.substr(pw.size() + 1);
 
-            bool is_admin = access.find_first_of("wW");
+            bool is_admin = access.find_first_of("wW") == 0;
 
-            auto& info           = init.auths.emplace_back();
+            auto& info           = out->emplace_back();
             info.id              = id;
-            info.password        = pw;
             info.readonly_access = not is_admin;
 
+            // parse password as sha256
+            std::array<char, 32> array;
+            picosha2::hash256(pw, array);
+
+            std::array<char, perfkit::base64::encoded_size(sizeof(array))> b64hash;
+            perfkit::base64::encode(array, b64hash.begin());
+
+            info.password.assign(b64hash.begin(), b64hash.end());
             CPPH_INFO("adding {} auth {}", info.readonly_access ? "readonly" : "admin", info.id);
         }
         catch (std::out_of_range& ec)
@@ -72,11 +79,21 @@ perfkit::terminal_ptr perfkit::terminal::net::create(profile const& cfg)
             glog()->error("auth format error: <ID>:<PW>:<ACCESS>[;<ID>:<PW>:<ACCESS>[;...]]");
         }
     }
+}
+}  // namespace perfkit::terminal::net
 
+perfkit::terminal_ptr perfkit::terminal::net::create(profile const& cfg)
+{
+    terminal_init_info init{*cfg.session_name};
+    auto CPPH_LOGGER = [] { return detail::nglog(); };
+
+    CPPH_INFO("creating network session: {}", *cfg.session_name);
     init.description = cfg.session_description.ref();
 
     if (*cfg.has_relay_server)
     {
+        parse_auth(cfg.auth.ref(), &init.auths);
+
         init.relay_to(*cfg.ipaddr, *cfg.port);
         CPPH_INFO("connecting to relay server {}:{}", *cfg.ipaddr, *cfg.port);
     }
@@ -94,4 +111,9 @@ perfkit::terminal_ptr perfkit::terminal::net::create(std::string config_profile_
     profile cfg{std::move(config_profile_name)};
     cfg->update();
     return create(cfg);
+}
+
+void perfkit::terminal::net::terminal_init_info::parse_auth(std::string_view authstr)
+{
+    net::parse_auth(authstr, &auths);
 }

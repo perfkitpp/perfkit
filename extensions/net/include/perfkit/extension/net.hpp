@@ -46,7 +46,7 @@ terminal_ptr create(struct terminal_init_info const& info);
  *      You can configure terminal initialization parameters by following environment variables
  *      - PERFKIT_NET_SESSION_NAME
  *      - PERFKIT_NET_AUTH
- *          <ID>:<PW>:<ACCESS>[;<ID>:<PW>:<ACCESS>[;...]]
+ *          <ID>:<PW>:<ACCESS(R/W)>[;<ID>:<PW>:<ACCESS>[;...]]
  *      - PERFKIT_NET_USE_RELAY_SERVER
  *      - PERFKIT_NET_IPADDR
  *      - PERFKIT_NET_PORT
@@ -120,11 +120,11 @@ struct terminal_init_info
 
     /**
      * Generate auth info from given auth string.
-     * Auth string should be form of <ID>:<PW>:<ACCESS>[;<ID>:<PW>:<ACCESS>[;...]]
+     * Auth string should be form of <ID>:<PW>:<ACCESS(R/W)>[;<ID>:<PW>:<ACCESS>[;...]]
      *
      * @param authstr
      */
-    void parse_auth(std::string_view authstr) {}
+    void parse_auth(std::string_view authstr);
 
    private:
     friend class dispatcher;  // internal use

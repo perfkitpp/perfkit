@@ -1,5 +1,6 @@
 #pragma once
 #include "net.hpp"
+#include "perfkit/configs.h"
 
 PERFKIT_CATEGORY(perfkit::terminal::net::flags)
 {

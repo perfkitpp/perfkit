@@ -120,11 +120,14 @@ class basic_dispatcher_impl
     explicit basic_dispatcher_impl(init_info s)
             : _cfg(std::move(s))
     {
-        // TODO: configure auth
-        //         1. generate tokens from id, pw
-        //         2. clear pw of auth_info
-        //         3. emplace auth_info to auth, using token as key.
-        //         4. clear _cfg.auth vector
+        for (auto& auth : _cfg.auth)
+        {
+            CPPH_INFO(
+                    "Registering {} Account: {}",
+                    auth.readonly_access ? "readonly" : "admin", auth.id);
+
+            _auth.try_emplace(auth.id, auth);
+        }
     }
 
    public:
@@ -409,12 +412,15 @@ class basic_dispatcher_impl
                 if (message.route != "auth:login")
                     throw std::exception{};
 
-                auto& id_str = message.parameter.at("id").get_ref<std::string&>();
-                auto& auth   = _auth.at(id_str);
+                using binary_t = nlohmann::json::binary_t;
+                auto& id_str   = message.parameter.at("id").get_ref<std::string&>();
+                auto& auth     = _auth.at(id_str);
 
-                CPPH_INFO("login attempt to id {}");
+                CPPH_INFO("login attempt to id {}", id_str);
 
-                if (auth.password != message.parameter.at("pw").get_ref<std::string&>())
+                auto passwd = &message.parameter.at("pw").get_ref<std::string&>();
+
+                if (not perfkit::equal2(auth.password, *passwd))
                     throw std::runtime_error("password mismatch");
 
                 auth_id         = auth.id;
@@ -423,7 +429,7 @@ class basic_dispatcher_impl
             }
             catch (std::exception& e)
             {
-                CPPH_ERROR("failed to parse login message: {}", _strview(ctx->rdbuf, n_read));
+                CPPH_ERROR("login failed: {}", e.what());
             }
         }
 
