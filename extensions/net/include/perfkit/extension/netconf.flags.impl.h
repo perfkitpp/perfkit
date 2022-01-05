@@ -1,8 +1,7 @@
 #pragma once
 #include "net.hpp"
 
-namespace perfkit::terminal::net {
-PERFKIT_CATEGORY(flags)
+PERFKIT_CATEGORY(perfkit::terminal::net::flags)
 {
     PERFKIT_CONFIGURE(name, "default")
             .transient()
@@ -23,6 +22,7 @@ PERFKIT_CATEGORY(flags)
             .confirm();
 }
 
+namespace perfkit::terminal::net {
 /**
  * Intentionally declared non-inline function, as this header must be included only for once. \n
  * Before calling this function, command line arguments must be parsed
