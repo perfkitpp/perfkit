@@ -80,6 +80,9 @@ perfkit::terminal::net::terminal::terminal(
 
     // launch asynchronous IO thread.
     _io.launch();
+
+    // add command for dropping all connections
+    _commands.root()->add_subcommand("term-drop-all-connection", [this] { _io.close_all(); });
 }
 
 void perfkit::terminal::net::terminal::_char_handler(char c)

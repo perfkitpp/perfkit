@@ -194,20 +194,6 @@ class basic_dispatcher_impl
             void const* userobj,
             void (*payload)(send_archive_type*, void const*))
     {
-        if (false && _disconnect_timer.check())
-        {  // iterate each socket, and disconnect obsolete ones.
-            std::forward_list<socket_id_t> expired;
-
-            lock_guard{_mtx_modify}, [&] {
-                for (auto& [key, ctx] : _connections)
-                    if (steady_clock::now() - ctx.recv_latest > 5s)
-                        expired.push_front(key);
-            }();
-
-            for (auto key : expired)
-                close(key, "no-activity");
-        }
-
         // iterate all active sockets and push payload
         send_archive_type archive;
         archive["route"] = route;
@@ -254,6 +240,20 @@ class basic_dispatcher_impl
 
     auto* io() { return &_io; }
 
+    void close_all()
+    {
+        std::vector<socket_id_t> keys;
+
+        {
+            lock_guard _{_mtx_modify};
+            keys.resize(_connections.size());
+
+            perfkit::transform(_connections, keys.begin(), [](auto& e) { return e.first; });
+        }
+
+        for (auto key : keys) { close(key, "closing all connections"); }
+    }
+
    protected:
     // 워커 스레드에서, io_context가 초기화될 때마다 호출.
     // 구현에 따라, 서버 소켓을 바인딩하거나, 서버에 연결하는 등의 용도로 사용.
@@ -287,7 +287,6 @@ class basic_dispatcher_impl
     void close(socket_id_t id, std::string_view why)
     {
         CPPH_INFO("disconnecting socket {} for '{}'", id.value, why);
-
         bool zero_connection = false;
 
         {
@@ -604,7 +603,6 @@ class basic_dispatcher_impl
 
     pool<std::string> _send_pool;
     poll_timer _perf_timer{1s};
-    poll_timer _disconnect_timer{3s};
     size_t _perf_bytes_out = 0;
     size_t _perf_bytes_in  = 0;
 

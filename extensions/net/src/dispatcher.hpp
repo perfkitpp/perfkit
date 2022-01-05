@@ -85,6 +85,7 @@ class dispatcher
 
     void dispatch(perfkit::function<void()>);
     void post(perfkit::function<void()>);
+    void close_all();
 
     std::pair<size_t, size_t>
     num_bytes_in_out() const noexcept;

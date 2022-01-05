@@ -110,3 +110,8 @@ void perfkit::terminal::net::dispatcher::post(perfkit::function<void()> fn)
 {
     asio::post(*self->io(), std::move(fn));
 }
+
+void perfkit::terminal::net::dispatcher::close_all()
+{
+    self->close_all();
+}
