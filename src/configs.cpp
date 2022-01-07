@@ -288,6 +288,11 @@ perfkit::json perfkit::configs::export_all()
     return current;
 }
 
+perfkit::event<perfkit::config_registry*>& perfkit::configs::on_new_config_registry()
+{
+    return singleton<perfkit::event<perfkit::config_registry*>>::get();
+}
+
 namespace perfkit::detail {
 static auto _cvars()
 {

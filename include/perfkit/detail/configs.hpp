@@ -40,6 +40,7 @@
 #include <nlohmann/json.hpp>
 
 #include "perfkit/common/array_view.hxx"
+#include "perfkit/common/event.hxx"
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/macros.hxx"
 #include "perfkit/common/spinlock.hxx"
@@ -166,7 +167,9 @@ bool import_file(std::string_view path);
 bool export_to(std::string_view path);
 
 /** wait until any configuration update is applied. */
-bool wait_any_change(std::chrono::milliseconds timeout, uint64_t* out_fence);
+perfkit::event<perfkit::config_registry*>&
+on_new_config_registry();
+
 }  // namespace configs
 
 /**
