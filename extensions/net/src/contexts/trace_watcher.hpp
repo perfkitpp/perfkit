@@ -39,19 +39,6 @@ using namespace std::literals;
 
 class trace_watcher : public if_watcher
 {
-   public:
-    void start() override;
-    void stop() override;
-    void update() override;
-
-   public:
-    void signal(std::string_view);
-    void tweak(uint64_t key, bool const* subscr, bool const* fold);
-
-   private:
-    void _dispatch_fetched_trace(std::weak_ptr<perfkit::tracer> tracer, tracer::fetched_traces const&);
-    void _dispatcher_fn(const std::shared_ptr<perfkit::tracer>& tracer, tracer::fetched_traces& traces);
-
    private:
     struct _trace_node
     {
@@ -60,13 +47,32 @@ class trace_watcher : public if_watcher
     };
 
    private:
-    std::shared_ptr<nullptr_t> _event_lifespan;
-    std::vector<std::weak_ptr<tracer>> _watching;
-    locked<std::map<std::string, std::weak_ptr<tracer>, std::less<>>> _signal_table;
+    perfkit::shared_null _event_lifespan;
+    locked<std::map<std::string, std::weak_ptr<tracer>, std::less<>>> _tracers;
 
     pool<perfkit::tracer::fetched_traces> _pool_traces;
 
     std::unordered_map<trace_key_t, _trace_node> _nodes;
     poll_timer _tmr_enumerate{1s};
+
+   public:
+    void start() override;
+    void stop() override;
+
+   public:
+    void signal(std::string_view);
+    void tweak(uint64_t key, bool const* subscr, bool const* fold);
+
+   private:
+    void _dispatch_fetched_trace(std::weak_ptr<perfkit::tracer> tracer, tracer::fetched_traces const&);
+    void _dispatcher_impl_on_io(const std::shared_ptr<perfkit::tracer>& tracer, tracer::fetched_traces& traces);
+
+    void _on_new_tracer(perfkit::tracer* tracer);
+    void _on_new_tracer_impl(decltype(_tracers)::value_type*, perfkit::tracer* tracer);
+    void _publish_tracer_list(decltype(_tracers)::value_type*);
+
+    void _on_destroy_tracer(perfkit::tracer* tracer);
+
+    void _gc_nodes_impl_on_io();
 };
 }  // namespace perfkit::terminal::net::context

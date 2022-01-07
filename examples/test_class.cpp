@@ -106,8 +106,13 @@ void test_class::start()
                     if (auto branch = trc.branch("reload"))
                     {
                         branch.unsubscribe();
-                        _tracer.reset();
-                        _tracer = perfkit::tracer::create(1024, _id);
+                        _tracer.reset(), _tracer = perfkit::tracer::create(1024, _id);
+                        CPPH_INFO("Reloading tracer 1");
+
+                        _tracer.reset(), _tracer = perfkit::tracer::create(1024, _id);
+                        CPPH_INFO("Reloading tracer 2 ... wait for 3s");
+
+                        std::this_thread::sleep_for(3s);
                     }
                 }
 

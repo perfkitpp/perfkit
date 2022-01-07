@@ -34,92 +34,48 @@
 #include "perfkit/common/algorithm.hxx"
 #include "perfkit/common/macros.hxx"
 #include "perfkit/common/template_utils.hxx"
+#include "perfkit/common/thread/utility.hxx"
 #include "perfkit/extension/net-internals/messages.hpp"
 
 #define CPPH_LOGGER() perfkit::terminal::net::detail::nglog()
 
-void perfkit::terminal::net::context::trace_watcher::start()
+using namespace perfkit::terminal::net::context;
+
+void trace_watcher::start()
 {
     if_watcher::start();
     _tmr_enumerate.invalidate();
-    _event_lifespan = std::make_shared<nullptr_t>();
+    _event_lifespan = perfkit::make_null();
+    _tracers.lock()->clear();
+
+    io->dispatch(
+            perfkit::bind_front_weak(
+                    _event_lifespan,
+                    [this, all = perfkit::tracer::all()] {
+                        auto table = _tracers.lock();
+
+                        // initial event proc
+                        for (auto& tracer : all)
+                            _on_new_tracer_impl(&*table, &*tracer);
+
+                        _publish_tracer_list(&*table);
+                    }));
+
+    perfkit::tracer::on_new_tracer()
+            .add_weak(_event_lifespan, CPPH_BIND(_on_new_tracer));
 }
 
-void perfkit::terminal::net::context::trace_watcher::stop()
+void trace_watcher::stop()
 {
     if_watcher::stop();
-    _watching.clear();
 
-    if (_event_lifespan)
-        while (_event_lifespan.use_count() > 1)
-            std::this_thread::yield();  // flush pending async oprs
-
+    perfkit::wait_pointer_unique(_event_lifespan);
     _event_lifespan.reset();
+
+    _tracers.lock()->clear();
 }
 
-void perfkit::terminal::net::context::trace_watcher::update()
-{
-    if_watcher::update();
-
-    if (_tmr_enumerate.check())
-    {
-        // FIXME: invalid operation on watching object is expired
-        // TODO : Implement GC of _nodes, when there's any deletion
-        // TODO : Change polling to event subscription
-        auto& watching = _watching;
-
-        auto all = perfkit::tracer::all();
-        std::vector<std::shared_ptr<tracer>> diffs;
-        diffs.reserve(all.size());
-
-        perfkit::set_difference2(
-                all, watching, std::back_inserter(diffs),
-                [](auto&& a, auto&& b) { return a.owner_before(b); });
-
-        if (not diffs.empty())
-        {
-            for (auto& diff : diffs)
-            {
-                diff->on_fetch +=
-                        [this,
-                         life   = std::weak_ptr{_event_lifespan},
-                         tracer = std::weak_ptr{diff}]  //
-                        (tracer::fetched_traces const& traces) {
-                            if (auto _ = life.lock())
-                            {
-                                _dispatch_fetched_trace(tracer, traces);
-                                return true;
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        };
-            }
-
-            CPPH_DEBUG("trace list changed. publishing {} tracer names ...", diffs.size());
-            watching.assign(all.begin(), all.end());
-
-            auto table = _signal_table.lock();
-            perfkit::transform(
-                    all, std::inserter(*table, table->end()),
-                    [](decltype(all[0])& item) {
-                        return std::make_pair(item->name(), std::weak_ptr{item});
-                    });
-
-            outgoing::trace_class_list list;
-            perfkit::transform(
-                    all, std::front_inserter(list.content),
-                    [](decltype(all[0])& s) {
-                        return std::make_pair(s->name(), perfkit::hasher::fnv1a_64(&*s));
-                    });
-
-            io->send(list);
-        }
-    }
-}
-
-void perfkit::terminal::net::context::trace_watcher::_dispatch_fetched_trace(
+void trace_watcher::_dispatch_fetched_trace(
         std::weak_ptr<perfkit::tracer> tracer,
         perfkit::tracer::fetched_traces const& traces)
 {
@@ -140,7 +96,7 @@ void perfkit::terminal::net::context::trace_watcher::_dispatch_fetched_trace(
                 if (not tracer)
                     return;
 
-                _dispatcher_fn(tracer, *buf);
+                _dispatcher_impl_on_io(tracer, *buf);
             });
 }
 
@@ -195,7 +151,7 @@ static void dump_trace(
     std::visit(visitor, v.data);
 }
 
-void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
+void trace_watcher::_dispatcher_impl_on_io(
         const std::shared_ptr<perfkit::tracer>& tracer, perfkit::tracer::fetched_traces& traces)
 {
     stopwatch sw;
@@ -259,9 +215,9 @@ void perfkit::terminal::net::context::trace_watcher::_dispatcher_fn(
     CPPH_TRACE("elapsed: {} sec", sw.elapsed().count());
 }
 
-void perfkit::terminal::net::context::trace_watcher::signal(std::string_view class_name)
+void trace_watcher::signal(std::string_view class_name)
 {
-    auto lock = _signal_table.lock();
+    auto lock = _tracers.lock();
 
     auto it = lock->find(class_name);
     if (it == lock->end())
@@ -275,7 +231,7 @@ void perfkit::terminal::net::context::trace_watcher::signal(std::string_view cla
     tracer->request_fetch_data();
 }
 
-void perfkit::terminal::net::context::trace_watcher::tweak(
+void trace_watcher::tweak(
         uint64_t key, const bool* subscr, const bool* fold)
 {
     std::optional<bool> osubs, ofold;
@@ -301,4 +257,68 @@ void perfkit::terminal::net::context::trace_watcher::tweak(
                     if (auto pfold = it->second.fold.lock())
                         *pfold = *ofold;
             });
+}
+
+void trace_watcher::_on_new_tracer(perfkit::tracer* tracer)
+{
+    auto weak  = tracer->weak_from_this();
+    auto table = _tracers.lock();
+
+    _on_new_tracer_impl(&*table, tracer);
+    _publish_tracer_list(&*table);
+}
+
+void trace_watcher::_on_new_tracer_impl(
+        decltype(_tracers)::value_type* table, perfkit::tracer* tracer)
+{
+    // replae existing instance
+    (*table)[tracer->name()] = tracer->shared_from_this();
+
+    // register destroy event
+    tracer->on_destroy
+            .add_weak(_event_lifespan, CPPH_BIND(_on_destroy_tracer));
+
+    // register update event
+    tracer->on_fetch.add_weak(
+            _event_lifespan,
+            bind_front(&trace_watcher::_dispatch_fetched_trace,
+                       this, tracer->weak_from_this()));
+}
+
+void trace_watcher::_on_destroy_tracer(perfkit::tracer* tracer)
+{
+    // Erase from list
+    _tracers.use(
+            [&](decltype(_tracers)::value_type& v) {
+                v.erase(tracer->name());
+            });
+
+    // queue GC
+    io->post(perfkit::bind_front_weak(_event_lifespan, CPPH_BIND(_gc_nodes_impl_on_io)));
+}
+
+void trace_watcher::_publish_tracer_list(decltype(_tracers)::value_type* table)
+{
+    outgoing::trace_class_list message;
+
+    for (auto [name, wptr] : *table)
+    {
+        auto sptr = wptr.lock();
+        if (not sptr)
+        {
+            CPPH_WARN("tracer {} expired incorrectly!", name);
+            continue;
+        }
+
+        auto arg    = &message.content.emplace_front();
+        arg->first  = name;
+        arg->second = perfkit::hasher::fnv1a_64(&*sptr);
+    }
+
+    io->send(message);
+}
+
+void trace_watcher::_gc_nodes_impl_on_io()
+{
+    perfkit::erase_if_each(_nodes, [](auto&& v) { return v.second.fold.expired(); });
 }

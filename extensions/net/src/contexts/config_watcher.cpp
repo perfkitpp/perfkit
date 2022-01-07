@@ -97,7 +97,7 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
     io->send(message);
 
     // Subscribe changes
-    rg->on_update.add_auto_expire(
+    rg->on_update.add_weak(
             _watcher_lifecycle,
             [this](perfkit::config_registry* rg,
                    perfkit::array_view<perfkit::detail::config_base*> updates) {
@@ -111,7 +111,7 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
                 notify_change();
             });
 
-    rg->on_destroy.add_auto_expire(
+    rg->on_destroy.add_weak(
             _watcher_lifecycle,
             [this](perfkit::config_registry* rg) {
                 std::vector<int64_t> keys_all;
@@ -142,7 +142,7 @@ void config_watcher::start()
     _ioc.reset(), _ioc = std::make_unique<asio::io_context>();
     _watcher_lifecycle = perfkit::make_null();
 
-    perfkit::configs::on_new_config_registry().add_auto_expire(
+    perfkit::configs::on_new_config_registry().add_weak(
             _watcher_lifecycle,
             [this](perfkit::config_registry* ptr) {
                 asio::post(
