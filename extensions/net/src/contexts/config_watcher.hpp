@@ -61,6 +61,8 @@ class config_watcher : public if_watcher
 
    private:
     void _publish_registry(config_registry* rg);
+    void _on_update(std::weak_ptr<config_registry> rg, std::vector<perfkit::detail::config_base*> args);
+    void _on_unregister(std::vector<config_key_t> keys);
 
    private:
     thread::worker _worker;

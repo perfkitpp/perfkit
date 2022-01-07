@@ -28,6 +28,9 @@
 
 #include "config_watcher.hpp"
 
+#include <range/v3/range/conversion.hpp>
+#include <range/v3/view/map.hpp>
+#include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
 
 #include "../utils.hpp"
@@ -41,6 +44,7 @@
 #define CPPH_LOGGER() detail::nglog()
 
 using namespace perfkit::terminal::net::context;
+namespace views = ranges::views;
 
 config_watcher::config_watcher()  = default;
 config_watcher::~config_watcher() = default;
@@ -49,14 +53,6 @@ void config_watcher::update()
 {
     _ioc->restart();
     _ioc->run();
-
-    // check for indivisual config's updates
-    std::map<std::string_view, outgoing::config_entity> updates;
-
-    for (auto& [_, message] : updates)
-    {
-        io->send(message);
-    }
 }
 
 void config_watcher::_publish_registry(perfkit::config_registry* rg)
@@ -107,7 +103,12 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
                    perfkit::array_view<perfkit::detail::config_base*> updates) {
                 auto wptr = rg->weak_from_this();
 
-                // TODO: apply updates .. as long as wptr alive, pointers can be accessed safely
+                // apply updates .. as long as wptr alive, pointers can be accessed safely
+                auto buffer   = std::vector(updates.begin(), updates.end());
+                auto function = perfkit::bind_front(&config_watcher::_on_update, this, wptr, std::move(buffer));
+                asio::post(*_ioc, std::move(function));
+
+                notify_change();
             });
 
     rg->on_destroy.add_auto_expire(
@@ -116,6 +117,16 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
                 std::vector<int64_t> keys_all;
 
                 // TODO: retrive all keys from rg, and delete them from confmap
+                auto keys = rg->bk_all()
+                          | views::values
+                          | views::transform([](auto& p) { return config_key_t::hash(&*p); })
+                          | ranges::to_vector;
+
+                auto function = perfkit::bind_front(
+                        &config_watcher::_on_unregister, this, std::move(keys));
+                asio::post(*_ioc, std::move(function));
+
+                notify_change();
             });
 }
 
@@ -148,4 +159,48 @@ void config_watcher::start()
 
 void config_watcher::update_entity(uint64_t key, nlohmann::json&& value)
 {
+    auto function_in_main_thread =
+            [this, key, value = std::move(value)]() mutable {
+                auto it = _cache.confmap.find(config_key_t{key});
+                if (it == _cache.confmap.end()) { return; }
+
+                auto conf = it->second.lock();
+                if (not conf)
+                {
+                    CPPH_DEBUG("Ghost entity found for key {}", key);
+                    _cache.confmap.erase(it);
+                    return;
+                }
+
+                conf->request_modify(std::move(value));
+            };
+
+    asio::post(*_ioc, std::move(function_in_main_thread));
+    notify_change();
+}
+
+void config_watcher::_on_update(
+        std::weak_ptr<config_registry> wrg,
+        std::vector<perfkit::detail::config_base*> args)
+{
+    auto rg = wrg.lock();
+    if (not rg) { return; }
+
+    // check for indivisual config's updates
+    outgoing::config_entity message;
+    message.class_key = rg->name();
+
+    for (auto arg : args)
+    {
+        auto* p       = &message.content.emplace_front();
+        p->config_key = config_key_t::hash(&*arg).value;
+        p->value      = arg->serialize();
+    }
+
+    io->send(message);
+}
+
+void config_watcher::_on_unregister(std::vector<config_key_t> keys)
+{
+    for (auto key : keys) { _cache.confmap.erase(key); }
 }

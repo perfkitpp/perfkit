@@ -121,7 +121,7 @@ struct config_entity
 
     struct entity_scheme
     {
-        uint64_t config_key;
+        uint64_t config_key = {};
         nlohmann::json value;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
