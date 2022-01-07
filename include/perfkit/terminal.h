@@ -100,6 +100,12 @@ class if_terminal
     virtual bool get(std::string_view key, std::string_view* out) { return false; };
     virtual bool get(std::string_view key, double* out) { return false; };
 
+    /**
+     *
+     * @return number of processed commands
+     */
+    size_t invoke_queued_commands(milliseconds timeout = {});
+
    private:
     using cmd_args_view       = array_view<std::string_view>;
     using cmd_invoke_function = std::function<bool(cmd_args_view full_tokens)>;

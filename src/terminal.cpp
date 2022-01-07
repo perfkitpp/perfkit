@@ -530,4 +530,22 @@ void perfkit::if_terminal::_add_subcommand(
 {
     commands()->root()->add_subcommand(std::move(name), std::move(handler));
 }
+
+size_t perfkit::if_terminal::invoke_queued_commands(std::chrono::milliseconds timeout)
+{
+    auto now   = [] { return std::chrono::steady_clock::now(); };
+    auto until = now() + timeout;
+
+    size_t n_proc = 0;
+    do {
+        auto cmd = fetch_command(timeout);
+        if (not cmd || cmd->empty()) { continue; }
+
+        invoke_command(std::move(*cmd));
+        ++n_proc;
+    }
+    while (now() < until);
+
+    return n_proc;
+}
 // namespace perfkit::terminal
