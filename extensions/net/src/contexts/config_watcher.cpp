@@ -139,7 +139,7 @@ void config_watcher::stop()
 void config_watcher::start()
 {
     // launch watchdog thread
-    _ioc = std::make_unique<asio::io_context>();
+    _ioc.reset(), _ioc = std::make_unique<asio::io_context>();
 
     perfkit::configs::on_new_config_registry().add_auto_expire(
             _watcher_lifecycle,
@@ -154,6 +154,13 @@ void config_watcher::start()
                         });
 
                 notify_change();
+            });
+
+    // Register initial
+    asio::post(
+            *_ioc, [this] {
+                auto all_regs = perfkit::config_registry::bk_enumerate_registries(true);
+                for (auto& reg : all_regs) { _publish_registry(&*reg); }
             });
 }
 
