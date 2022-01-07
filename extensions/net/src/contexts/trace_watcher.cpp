@@ -51,7 +51,7 @@ void perfkit::terminal::net::context::trace_watcher::stop()
     _watching.clear();
 
     if (_event_lifespan)
-        while (not _event_lifespan.unique())
+        while (_event_lifespan.use_count() > 1)
             std::this_thread::yield();  // flush pending async oprs
 
     _event_lifespan.reset();
@@ -108,7 +108,7 @@ void perfkit::terminal::net::context::trace_watcher::update()
             perfkit::transform(
                     all, std::front_inserter(list.content),
                     [](decltype(all[0])& s) {
-                        return s->name();
+                        return std::make_pair(s->name(), perfkit::hasher::fnv1a_64(&*s));
                     });
 
             io->send(list);

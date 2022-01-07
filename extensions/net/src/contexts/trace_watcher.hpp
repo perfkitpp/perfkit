@@ -67,6 +67,6 @@ class trace_watcher : public if_watcher
     pool<perfkit::tracer::fetched_traces> _pool_traces;
 
     std::unordered_map<trace_key_t, _trace_node> _nodes;
-    poll_timer _tmr_enumerate{3s};
+    poll_timer _tmr_enumerate{1s};
 };
 }  // namespace perfkit::terminal::net::context

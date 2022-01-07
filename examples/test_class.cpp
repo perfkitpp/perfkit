@@ -102,6 +102,13 @@ void test_class::start()
                         tr2["double"]  = _cfg.t_double.value();
                         tr2["str"]     = _cfg.t_string.value();
                     }
+
+                    if (auto branch = trc.branch("reload"))
+                    {
+                        branch.unsubscribe();
+                        _tracer.reset();
+                        _tracer = perfkit::tracer::create(1024, _id);
+                    }
                 }
 
                 CPPH_INFO("disposing worker thread.");

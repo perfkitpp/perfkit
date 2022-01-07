@@ -24,6 +24,7 @@
 
 #pragma once
 #include <list>
+#include <tuple>
 
 #include <nlohmann/json.hpp>
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
@@ -151,7 +152,8 @@ struct trace_class_list
 {
     constexpr static char ROUTE[] = "update:trace_class_list";
 
-    std::forward_list<std::string> content;
+    // trace class name and its id
+    std::forward_list<std::pair<std::string, uint64_t>> content;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             trace_class_list, content);

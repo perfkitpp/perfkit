@@ -137,6 +137,12 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
     return prx;
 }
 
+event<perfkit::tracer*>& tracer::on_new_tracer()
+{
+    constexpr auto ff = [] {};
+    return singleton<event<perfkit::tracer*>, decltype(ff)>::get();
+}
+
 bool tracer::_deliver_previous_result()
 {  // perform queued sort-merge operation
     if (not _pending_fetch.exchange(false))
@@ -215,7 +221,7 @@ void perfkit::tracer::request_fetch_data()
     _pending_fetch = true;
 }
 
-auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer>
+auto perfkit::tracer::create(int order, std::string_view name) -> std::shared_ptr<tracer>
 {
     auto _{lock_tracer_repo()};
     CPPH_DEBUG("creating tracer {}", name);
@@ -223,12 +229,24 @@ auto perfkit::tracer::create(int order, std::string_view name) noexcept -> std::
             new tracer{order, name}};
 
     auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
+
+    if (it_insert != _all().end())
+    {
+        auto lck = it_insert->lock();
+        if (lck && lck->name() == name)
+            throw std::logic_error{"trace name duplicate!"};
+    }
+
     _all().insert(it_insert, entity);
+    on_new_tracer().invoke(&*entity);
+
     return entity;
 }
 
 perfkit::tracer::~tracer() noexcept
 {
+    on_destroy.invoke(this);
+
     auto _{lock_tracer_repo()};
     CPPH_DEBUG("destroying tracer {}", _name);
     auto it = std::find_if(_all().begin(), _all().end(),

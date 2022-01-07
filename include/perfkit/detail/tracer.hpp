@@ -77,7 +77,7 @@ struct trace
 
     trace_key_t unique_id() const noexcept
     {
-        return trace_key_t::create(_is_subscribed);
+        return trace_key_t::hash(_is_subscribed);
     }
 
     auto _bk_p_subscribed() const noexcept { return _is_subscribed; }
@@ -129,6 +129,9 @@ class tracer_proxy
 
     tracer_proxy branch(std::string_view n) noexcept;
     tracer_proxy timer(std::string_view n) noexcept;
+
+    void subscribe() noexcept { _ref ? (_ref->is_subscribed = true, (void)0) : (void)0; }
+    void unsubscribe() noexcept { _ref ? (_ref->is_subscribed = false, (void)0) : (void)0; }
 
     template <size_t N_>
     tracer_proxy operator[](char const (&s)[N_]) noexcept
@@ -238,6 +241,7 @@ class tracer_proxy
     clock_type::time_point _epoch_if_required = {};
 };
 
+
 class tracer : public std::enable_shared_from_this<tracer>
 {
    public:
@@ -265,11 +269,13 @@ class tracer : public std::enable_shared_from_this<tracer>
     ~tracer() noexcept;
 
    public:
-    static auto create(int order, std::string_view name) noexcept -> std::shared_ptr<tracer>;
-    static auto create(std::string_view name) noexcept { return create(0, name); }
+    static auto create(int order, std::string_view name) -> std::shared_ptr<tracer>;
+    static auto create(std::string_view name) { return create(0, name); }
     static std::vector<std::shared_ptr<tracer>> all() noexcept;
 
    public:
+    static event<tracer*>& on_new_tracer();
+    event<tracer*> on_destroy;
     event<fetched_traces const&> on_fetch;
 
    public:
