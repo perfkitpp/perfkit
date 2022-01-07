@@ -33,8 +33,7 @@
 #include <utility>
 
 #include <range/v3/range/conversion.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/transform.hpp>
+#include <range/v3/view.hpp>
 #include <spdlog/spdlog.h>
 
 #include "perfkit/common/format.hxx"
@@ -43,6 +42,8 @@
 #include "perfkit/perfkit.h"
 
 #define CPPH_LOGGER() perfkit::glog()
+
+namespace views = ranges::views;
 
 namespace perfkit::detail {
 auto _all_repos()
@@ -290,42 +291,8 @@ perfkit::json perfkit::configs::export_all()
 
 perfkit::event<perfkit::config_registry*>& perfkit::configs::on_new_config_registry()
 {
-    return singleton<perfkit::event<perfkit::config_registry*>>::get();
-}
-
-namespace perfkit::detail {
-static auto _cvars()
-{
-    static std::condition_variable cvar;
-    static std::mutex mtx;
-    static volatile uint64_t fence = 0;
-
-    return std::make_tuple(&cvar, &mtx, &fence);
-}
-
-static void notify_config_update_any()
-{
-    auto [cvar, mtx, fence] = _cvars();
-
-    std::lock_guard _{*mtx};
-    ++(*fence);
-    cvar->notify_all();
-}
-}  // namespace perfkit::detail
-
-bool perfkit::configs::wait_any_change(std::chrono::milliseconds timeout, uint64_t* out_fence)
-{
-    auto [cvar, mtx, fence] = detail::_cvars();
-
-    std::unique_lock lock{*mtx};
-    auto fence_org = *fence;
-    out_fence && (fence_org = *out_fence);
-
-    auto valid = cvar->wait_for(
-            lock, timeout, [&, fence = fence] { return fence_org != *fence; });
-
-    out_fence && (*out_fence = *fence);
-    return valid;
+    constexpr auto p = [] {};  // give uniqueness for this singleton
+    return singleton<perfkit::event<perfkit::config_registry*>, decltype(p)>::get();
 }
 
 bool perfkit::config_registry::update()
@@ -342,7 +309,8 @@ bool perfkit::config_registry::update()
 
         // exporting configs only allowed after first update.
         _initial_update_done.store(true, std::memory_order_release);
-        detail::notify_config_update_any();
+
+        configs::on_new_config_registry().invoke(this);
     }
 
     if (std::unique_lock _l{_update_lock})
@@ -372,8 +340,7 @@ bool perfkit::config_registry::update()
 
         _l.unlock();
 
-        if (has_valid_update)
-            detail::notify_config_update_any();
+        if (has_valid_update && not on_update.empty()) { on_update.invoke(update); }
     }
 
     return true;

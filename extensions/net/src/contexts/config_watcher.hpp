@@ -30,10 +30,16 @@
 
 #include "if_watcher.hpp"
 #include "perfkit/common/hasher.hxx"
+#include "perfkit/common/template_utils.hxx"
+#include "perfkit/common/thread/notify_queue.hxx"
 #include "perfkit/common/thread/worker.hxx"
 #include "perfkit/common/timer.hxx"
 #include "perfkit/detail/configs.hpp"
 #include "perfkit/extension/net-internals/messages.hpp"
+
+namespace asio {
+class io_context;
+}
 
 namespace perfkit::terminal::net::context {
 using namespace std::literals;
@@ -57,9 +63,9 @@ class config_watcher : public if_watcher
     thread::worker _worker;
     std::atomic_bool _has_update = false;
     uint64_t _fence_value        = 0;
-    poll_timer _min_interval{50ms};
-    poll_timer _tmr_config_registry{3s};
     spinlock _mtx_entities;
+
+    std::unique_ptr<asio::io_context> _ioc;
 
     struct _entity_context
     {

@@ -28,12 +28,16 @@
 
 #include "config_watcher.hpp"
 
+#include <asio/io_context.hpp>
 #include <spdlog/spdlog.h>
 
 #include "../utils.hpp"
 #include "perfkit/common/algorithm.hxx"
 #include "perfkit/common/template_utils.hxx"
 #include "perfkit/detail/base.hpp"
+
+//
+#include <asio/io_context.hpp>
 
 #define CPPH_LOGGER() detail::nglog()
 
@@ -136,7 +140,8 @@ void config_watcher::update()
 
 void config_watcher::_watchdog_once()
 {
-    auto has_update = perfkit::configs::wait_any_change(500ms, &_fence_value);
+    // auto has_update = perfkit::configs::wait_any_change(500ms, &_fence_value);
+    auto has_update = true;
     has_update && (_has_update.store(true), notify_change(), 0);
 }
 
@@ -202,8 +207,7 @@ void config_watcher::start()
 {
     // launch watchdog thread
     _worker.repeat(CPPH_BIND(_watchdog_once));
-    _tmr_config_registry.invalidate();
-    _has_update = true;
+    _ioc = std::make_unique<asio::io_context>();
 }
 
 void config_watcher::update_entity(
