@@ -63,6 +63,9 @@ void perfkit::terminal::net::context::trace_watcher::update()
 
     if (_tmr_enumerate.check())
     {
+        // FIXME: invalid operation on watching object is expired
+        // TODO : Implement GC of _nodes, when there's any deletion
+        // TODO : Change polling to event subscription
         auto& watching = _watching;
 
         auto all = perfkit::tracer::all();
