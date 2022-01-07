@@ -37,6 +37,7 @@ class tracer;
 class tracer_proxy;
 
 using tracer_ptr = std::shared_ptr<tracer>;
+using logger_ptr = std::shared_ptr<spdlog::logger>;
 
 struct config_class;
 struct config_class_hook;
