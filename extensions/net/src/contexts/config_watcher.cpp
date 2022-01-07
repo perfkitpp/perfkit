@@ -89,7 +89,7 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
         dst->name       = config->tokenized_display_key().back();
         dst->value      = config->serialize();
         dst->metadata   = config->attribute();
-        dst->config_key = config_key_t::hash(&*config);
+        dst->config_key = config_key_t::hash(&*config).value;
 
         _cache.confmap.try_emplace({dst->config_key}, config);
     }
@@ -140,6 +140,7 @@ void config_watcher::start()
 {
     // launch watchdog thread
     _ioc.reset(), _ioc = std::make_unique<asio::io_context>();
+    _watcher_lifecycle = perfkit::make_null();
 
     perfkit::configs::on_new_config_registry().add_auto_expire(
             _watcher_lifecycle,
