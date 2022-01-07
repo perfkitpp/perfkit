@@ -202,7 +202,8 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     auto const& bk_all() const noexcept { return _entities; }
     auto bk_schema_class() const noexcept { return _schema_class; }
     auto bk_schema_hash() const noexcept { return _schema_hash; }
-    perfkit::event<perfkit::array_view<detail::config_base*>> on_update;
+    perfkit::event<perfkit::config_registry*, perfkit::array_view<detail::config_base*>> on_update;
+    perfkit::event<perfkit::config_registry*> on_destroy;
 
    public:
     static auto bk_enumerate_registries(bool filter_complete = false) noexcept -> std::vector<std::shared_ptr<config_registry>>;

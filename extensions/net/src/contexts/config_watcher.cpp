@@ -28,144 +28,48 @@
 
 #include "config_watcher.hpp"
 
-#include <asio/io_context.hpp>
 #include <spdlog/spdlog.h>
 
 #include "../utils.hpp"
 #include "perfkit/common/algorithm.hxx"
 #include "perfkit/common/template_utils.hxx"
 #include "perfkit/detail/base.hpp"
-
 //
 #include <asio/io_context.hpp>
+#include <asio/post.hpp>
 
 #define CPPH_LOGGER() detail::nglog()
 
 using namespace perfkit::terminal::net::context;
 
+config_watcher::config_watcher()  = default;
+config_watcher::~config_watcher() = default;
+
 void config_watcher::update()
 {
-    if (not _min_interval.check())
-        return;  // prevent too frequent update request
-
-    // check for new registries
-    if (_tmr_config_registry.check())
-    {
-        auto regs     = perfkit::config_registry::bk_enumerate_registries(true);
-        auto* watches = &_cache.regs;
-
-        CPPH_TRACE("watching: {} entities", watches->size());
-        CPPH_TRACE("enumerated: {} entities", regs.size());
-
-        // discard obsolete registries
-        auto it_erase = perfkit::remove_if(*watches, [](auto&& e) { return e.expired(); });
-
-        if (it_erase != watches->end())
-        {
-            CPPH_DEBUG("{} registries disposed from last update", watches->end() - it_erase);
-            watches->erase(it_erase, watches->end());
-        }
-
-        sort(regs, [](auto&& a, auto&& b) { return a.owner_before(b); });
-        sort(*watches, [](auto&& a, auto&& b) { return a.owner_before(b); });
-
-        std::vector<std::shared_ptr<config_registry>> diffs;
-        diffs.reserve(regs.size());
-
-        std::set_difference(
-                regs.begin(), regs.end(),
-                watches->begin(), watches->end(),
-                std::back_inserter(diffs),
-                [](auto&& a, auto&& b) {
-                    return a.owner_before(b);
-                });
-
-        watches->assign(regs.begin(), regs.end());
-
-        for (auto& diff : diffs)
-        {
-            CPPH_DEBUG("publishing new config registry {}", diff->name());
-            _publish_registry(&*diff);
-        }
-
-        CPPH_TRACE("{} config registries are newly published.", diffs.size());
-    }
+    _ioc->restart();
+    _ioc->run();
 
     // check for indivisual config's updates
-    if (_has_update)
+    std::map<std::string_view, outgoing::config_entity> updates;
+
+    for (auto& [_, message] : updates)
     {
-        _has_update = false;
-
-        std::lock_guard lc{_mtx_entities};
-        auto& ents = _cache.entities;
-
-        std::map<std::string_view, outgoing::config_entity> updates;
-
-        for (auto it = ents.begin(); it != ents.end();)
-        {
-            if (auto config = it->config.lock(); not config)
-            {  // config is expired.
-                *it = ents.back();
-                ents.pop_back();
-            }
-            else
-            {
-                if (it->update_fence != config->num_modified())
-                {
-                    auto [it_msg, is_new] = updates.try_emplace(it->class_name);
-                    auto* dst             = &it_msg->second;
-
-                    if (is_new)
-                    {
-                        dst->class_key = it->class_name;
-                    }
-
-                    auto* elem       = &dst->content.emplace_front();
-                    elem->value      = config->serialize();
-                    elem->config_key = it->id.value;
-
-                    it->update_fence = config->num_modified();
-                }
-
-                ++it;
-            }
-        }
-
-        for (auto& [_, message] : updates)
-        {
-            io->send(message);
-        }
+        io->send(message);
     }
-}
-
-void config_watcher::_watchdog_once()
-{
-    // auto has_update = perfkit::configs::wait_any_change(500ms, &_fence_value);
-    auto has_update = true;
-    has_update && (_has_update.store(true), notify_change(), 0);
 }
 
 void config_watcher::_publish_registry(perfkit::config_registry* rg)
 {
     outgoing::new_config_class message;
-    std::lock_guard lc{_mtx_entities};
 
-    auto* ents = &_cache.entities;
-    auto& all  = rg->bk_all();
-
+    auto& all   = rg->bk_all();
     message.key = rg->name();
-    ents->reserve(ents->size() + all.size());
 
     for (auto& [_, config] : all)
     {
         if (config->is_hidden())
             continue;  // dont' publish hidden ones
-
-        auto* entity         = &ents->emplace_back();
-        entity->class_name   = rg->name();
-        entity->id           = config_key_t::create(&*config);
-        entity->config       = config;
-        entity->update_fence = config->num_modified();
 
         auto hierarchy = config->tokenized_display_key();
         auto* level    = &message.root;
@@ -189,12 +93,30 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
         dst->name       = config->tokenized_display_key().back();
         dst->value      = config->serialize();
         dst->metadata   = config->attribute();
-        dst->config_key = entity->id.value;
+        dst->config_key = config_key_t::hash(&*config);
+
+        _cache.confmap.try_emplace({dst->config_key}, config);
     }
 
     io->send(message);
 
-    // puts(nlohmann::json{message}.dump(2).c_str());
+    // Subscribe changes
+    rg->on_update.add_auto_expire(
+            _watcher_lifecycle,
+            [this](perfkit::config_registry* rg,
+                   perfkit::array_view<perfkit::detail::config_base*> updates) {
+                auto wptr = rg->weak_from_this();
+
+                // TODO: apply updates .. as long as wptr alive, pointers can be accessed safely
+            });
+
+    rg->on_destroy.add_auto_expire(
+            _watcher_lifecycle,
+            [this](perfkit::config_registry* rg) {
+                std::vector<int64_t> keys_all;
+
+                // TODO: retrive all keys from rg, and delete them from confmap
+            });
 }
 
 void config_watcher::stop()
@@ -206,23 +128,24 @@ void config_watcher::stop()
 void config_watcher::start()
 {
     // launch watchdog thread
-    _worker.repeat(CPPH_BIND(_watchdog_once));
     _ioc = std::make_unique<asio::io_context>();
+
+    perfkit::configs::on_new_config_registry().add_auto_expire(
+            _watcher_lifecycle,
+            [this](perfkit::config_registry* ptr) {
+                asio::post(
+                        *_ioc,
+                        [this, wptr = ptr->weak_from_this()] {
+                            if (auto rg = wptr.lock())
+                            {
+                                _publish_registry(&*rg);
+                            }
+                        });
+
+                notify_change();
+            });
 }
 
-void config_watcher::update_entity(
-        uint64_t key, nlohmann::json&& value)
+void config_watcher::update_entity(uint64_t key, nlohmann::json&& value)
 {
-    std::lock_guard lc{_mtx_entities};
-    auto& ents = _cache.entities;
-
-    auto it = perfkit::find_if(ents, [&](auto&& ent) { return ent.id.value == key; });
-    if (it == ents.end())
-        return;
-
-    if (auto config = it->config.lock())
-    {
-        CPPH_TRACE("updating config entity {}:{}", it->class_name, config->display_key());
-        config->request_modify(std::move(value));
-    }
 }

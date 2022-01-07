@@ -55,30 +55,23 @@ class config_watcher : public if_watcher
 
     void update_entity(uint64_t key, nlohmann::json&& value);
 
+   public:
+    config_watcher();
+    ~config_watcher() override;
+
    private:
-    void _watchdog_once();
     void _publish_registry(config_registry* rg);
 
    private:
     thread::worker _worker;
-    std::atomic_bool _has_update = false;
-    uint64_t _fence_value        = 0;
-    spinlock _mtx_entities;
 
     std::unique_ptr<asio::io_context> _ioc;
-
-    struct _entity_context
-    {
-        config_key_t id;
-        std::string_view class_name;
-        std::weak_ptr<perfkit::detail::config_base> config;
-        uint64_t update_fence = 0;
-    };
+    perfkit::shared_null _watcher_lifecycle;
 
     struct _cache_type
     {
         std::vector<std::weak_ptr<perfkit::config_registry>> regs;
-        std::vector<_entity_context> entities;
+        std::unordered_map<config_key_t, perfkit::config_wptr> confmap;
     } _cache;
 };
 

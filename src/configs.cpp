@@ -96,6 +96,7 @@ auto perfkit::config_registry::share(std::string_view name, std::type_info const
 perfkit::config_registry::~config_registry() noexcept
 {
     CPPH_DEBUG("destroying config registry {}", name());
+    on_destroy.invoke(this);
 
     auto [all, _] = detail::_all_repos();
     all->erase(all->find(name()));
@@ -340,7 +341,7 @@ bool perfkit::config_registry::update()
 
         _l.unlock();
 
-        if (has_valid_update && not on_update.empty()) { on_update.invoke(update); }
+        if (has_valid_update && not on_update.empty()) { on_update.invoke(this, update); }
     }
 
     return true;
