@@ -287,6 +287,7 @@ void trace_watcher::_on_new_tracer_impl(
 
 void trace_watcher::_on_destroy_tracer(perfkit::tracer* tracer)
 {
+    CPPH_DEBUG("destroying watch for tracer {} ...", tracer->name());
     // Erase from list
     _tracers.use(
             [&](decltype(_tracers)::value_type& v) {
@@ -295,6 +296,7 @@ void trace_watcher::_on_destroy_tracer(perfkit::tracer* tracer)
 
     // queue GC
     io->post(perfkit::bind_front_weak(_event_lifespan, CPPH_BIND(_gc_nodes_impl_on_io)));
+    CPPH_DEBUG("destroying watch for tracer {} ... done.", tracer->name());
 }
 
 void trace_watcher::_publish_tracer_list(decltype(_tracers)::value_type* table)

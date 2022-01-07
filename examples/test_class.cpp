@@ -113,6 +113,7 @@ void test_class::start()
                         CPPH_INFO("Reloading tracer 2 ... wait for 3s");
 
                         std::this_thread::sleep_for(3s);
+                        CPPH_INFO("Wait done. ");
                     }
                 }
 
