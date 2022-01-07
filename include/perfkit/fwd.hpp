@@ -23,6 +23,8 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include <memory>
+
 #include <spdlog/fwd.h>
 
 namespace perfkit {
@@ -33,6 +35,8 @@ class config_base;
 class config_registry;
 class tracer;
 class tracer_proxy;
+
+using tracer_ptr = std::shared_ptr<tracer>;
 
 struct config_class;
 struct config_class_hook;
