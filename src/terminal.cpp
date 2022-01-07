@@ -524,4 +524,10 @@ void perfkit::if_terminal::invoke_command(std::string s)
 {
     commands()->invoke_command(std::move(s));
 }
+
+void perfkit::if_terminal::_add_subcommand(
+        std::string name, perfkit::if_terminal::cmd_invoke_function handler)
+{
+    commands()->root()->add_subcommand(std::move(name), std::move(handler));
+}
 // namespace perfkit::terminal

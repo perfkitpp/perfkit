@@ -24,6 +24,7 @@
 
 #pragma once
 #include <chrono>
+#include <functional>
 #include <memory>
 #include <optional>
 
@@ -99,19 +100,42 @@ class if_terminal
     virtual bool get(std::string_view key, std::string_view* out) { return false; };
     virtual bool get(std::string_view key, double* out) { return false; };
 
+   private:
+    using cmd_args_view       = array_view<std::string_view>;
+    using cmd_invoke_function = std::function<bool(cmd_args_view full_tokens)>;
+
+    void _add_subcommand(std::string name, cmd_invoke_function handler);
+
+   public:
     /**
      * Helper utility
      */
-    template <typename FnHandler_,
-              typename FnSuggest_ = nullptr_t,
-              typename RgTy_      = commands::registry>
-    auto add_command(std::string name, FnHandler_&& handler = nullptr, FnSuggest_&& suggest = nullptr)
+    template <typename Fn_,
+              typename RgTy_ = commands::registry>
+    auto add_command(std::string name, Fn_&& handler = nullptr)
     {
-        RgTy_* cmd = commands();
-        return cmd->root()->add_subcommand(
-                name,
-                std::forward<FnHandler_>(handler),
-                std::forward<FnSuggest_>(suggest));
+        if constexpr (std::is_invocable_r_v<bool, Fn_, cmd_args_view>)
+        {
+            _add_subcommand(std::move(name), std::forward<Fn_>(handler));
+        }
+        else if constexpr (std::is_invocable_v<Fn_, cmd_args_view>)
+        {
+            _add_subcommand(
+                    std::move(name),
+                    [fn = std::forward<Fn_>(handler)](auto&& args) {
+                        fn(args);
+                        return true;
+                    });
+        }
+        else if constexpr (std::is_invocable_v<Fn_>)
+        {
+            _add_subcommand(
+                    std::move(name),
+                    [fn = std::forward<Fn_>(handler)](auto&& args) {
+                        fn();
+                        return true;
+                    });
+        }
     }
 };
 
