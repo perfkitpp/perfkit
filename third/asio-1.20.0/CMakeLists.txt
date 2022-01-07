@@ -78,5 +78,14 @@ if (NOT TARGET asio::standalone)
                     OpenSSL::SSL
             )
         endif ()
+
+        if (MSVC)
+            target_compile_definitions(
+                    ${PROJECT_NAME}
+
+                    PUBLIC
+                    _WIN32_WINNT=0x0601
+            )
+        endif ()
     endif ()
 endif ()
