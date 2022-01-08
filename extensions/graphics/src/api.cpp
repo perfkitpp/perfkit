@@ -23,4 +23,3 @@
 // project home: https://github.com/perfkitpp
 
 #include "perfkit/graphics/api.hpp"
-

@@ -241,7 +241,6 @@ class tracer_proxy
     clock_type::time_point _epoch_if_required = {};
 };
 
-
 class tracer : public std::enable_shared_from_this<tracer>
 {
    public:

@@ -31,15 +31,15 @@
 #define INTERNAL_PERFKIT_TRACER_CONCAT2(X, Y) X##Y
 #define INTERNAL_PERFKIT_TRACER_CONCAT(X, Y)  INTERNAL_PERFKIT_TRACER_CONCAT2(X, Y)
 
-#define PERFKIT_RVAR auto INTERNAL_PERFKIT_TRACER_CONCAT(INTERNAL_PERFKIT_RVAR_,__LINE__)
+#define PERFKIT_RVAR auto INTERNAL_PERFKIT_TRACER_CONCAT(INTERNAL_PERFKIT_RVAR_, __LINE__)
 
 #define PERFKIT_TRACE_DECLARE(TracerPtr)               \
     auto INTERNAL_PERFKIT_ACTIVE_TRACER = &*TracerPtr; \
     auto INTERNAL_PERFKIT_SEQ_TRACE     = ::perfkit::tracer_proxy::create_default()
 
-#define PERFKIT_TRACE(TracerPtr, ...)                                               \
+#define PERFKIT_TRACE(TracerPtr, ...)                                          \
     auto INTERNAL_PERFKIT_TRACER_CONCAT(INTERNAL_PERFKIT_ROOT_TRACE, __LINE__) \
-            = TracerPtr->fork(__func__, ##__VA_ARGS__);                                       \
+            = TracerPtr->fork(__func__, ##__VA_ARGS__);                        \
     PERFKIT_TRACE_DECLARE(TracerPtr)
 
 #define PERFKIT_TRACE_FUNCTION(TracerPtr)                                      \
@@ -71,4 +71,4 @@
     {                                                                              \
         INTERNAL_PERFKIT_SEQ_TRACE.switch_to_timer(#Name);                         \
     }                                                                              \
-    auto &Name = INTERNAL_PERFKIT_SEQ_TRACE
+    auto& Name = INTERNAL_PERFKIT_SEQ_TRACE

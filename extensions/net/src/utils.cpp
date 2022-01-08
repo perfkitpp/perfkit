@@ -389,9 +389,9 @@ std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
     return return_string;
 }
 
-static unsigned long long FileTimeToInt64(const FILETIME &ft) { return (((unsigned long long)(ft.dwHighDateTime)) << 32) | ((unsigned long long)ft.dwLowDateTime); }
+static unsigned long long FileTimeToInt64(const FILETIME& ft) { return (((unsigned long long)(ft.dwHighDateTime)) << 32) | ((unsigned long long)ft.dwLowDateTime); }
 
-bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t *ostat)
+bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t* ostat)
 {
     {  // Retrieve memory usage
         PROCESS_MEMORY_COUNTERS pmc;
@@ -496,7 +496,7 @@ class redirect_context_t : public spdlog::sinks::base_sink<std::mutex>
     }
 
    protected:
-    void sink_it_(const spdlog::details::log_msg &msg) override
+    void sink_it_(const spdlog::details::log_msg& msg) override
     {
         spdlog::memory_buf_t formatted;
         formatter_->format(msg, formatted);
@@ -511,7 +511,7 @@ class redirect_context_t : public spdlog::sinks::base_sink<std::mutex>
     }
 
    public:
-    void operator()(char const *buf, size_t n)
+    void operator()(char const* buf, size_t n)
     {
         for (size_t i = 0; i < n; ++i)
         {
@@ -551,7 +551,7 @@ void perfkit::terminal::net::detail::input_rollback()
 {
     spdlog::details::registry::instance()
             .apply_all([&](std::shared_ptr<spdlog::logger> logger) {
-                auto &sinks = logger->sinks();
+                auto& sinks = logger->sinks();
                 auto it     = perfkit::find(sinks, inserter_sink);
 
                 if (it != sinks.end())
@@ -572,7 +572,7 @@ void perfkit::terminal::net::detail::input_rollback()
     inserter_sink.reset();
 }
 
-void perfkit::terminal::net::detail::write(const char *buffer, size_t n)
+void perfkit::terminal::net::detail::write(const char* buffer, size_t n)
 {
     fwrite(buffer, 1, n, stdout);
 

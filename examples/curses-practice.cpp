@@ -30,12 +30,12 @@
 #include <curses.h>
 #include <unistd.h>
 
-static SCREEN *myscr;
+static SCREEN* myscr;
 
-WINDOW *create_newwin(int height, int width, int starty, int startx);
-void destroy_win(WINDOW *local_win);
+WINDOW* create_newwin(int height, int width, int starty, int startx);
+void destroy_win(WINDOW* local_win);
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     auto prev_stdout = stdout;
     auto prev_stderr = stderr;
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     myscr = newterm(nullptr, prev_stdout, prev_stderr);
     set_term(myscr);
 
-    WINDOW *my_win;
+    WINDOW* my_win;
     int startx, starty, width, height;
     int ch;
 
@@ -91,9 +91,9 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-WINDOW *create_newwin(int height, int width, int starty, int startx)
+WINDOW* create_newwin(int height, int width, int starty, int startx)
 {
-    WINDOW *local_win;
+    WINDOW* local_win;
 
     local_win = newwin(height, width, starty, startx);
     box(local_win, 0, 0); /* 0, 0 gives default characters
@@ -104,7 +104,7 @@ WINDOW *create_newwin(int height, int width, int starty, int startx)
     return local_win;
 }
 
-void destroy_win(WINDOW *local_win)
+void destroy_win(WINDOW* local_win)
 {
     /* box(local_win, ' ', ' '); : This won't produce the desired
      * result of erasing the window. It will leave it's four corners

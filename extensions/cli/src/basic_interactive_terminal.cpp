@@ -106,7 +106,7 @@ bool basic_interactive_terminal::set(std::string_view key, std::string_view valu
     return if_terminal::set(key, value);
 }
 
-bool basic_interactive_terminal::get(std::string_view key, double *out)
+bool basic_interactive_terminal::get(std::string_view key, double* out)
 {
     return if_terminal::get(key, out);
 }
@@ -170,7 +170,7 @@ basic_interactive_terminal::basic_interactive_terminal()
 {
     _sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     spdlog::set_pattern("%+\r");
-    char const *env_term = getenv("TERM");
+    char const* env_term = getenv("TERM");
     env_term == nullptr && (env_term = "<empty>");
 
     if (linenoiseIsUnsupportedTerm())
@@ -184,10 +184,10 @@ basic_interactive_terminal::basic_interactive_terminal()
 
     _registry.root()->add_subcommand(
             "history",
-            [this](auto &&) -> bool {
+            [this](auto&&) -> bool {
                 auto pivot = _cmd_counter - _cmd_history.size();
 
-                for (const auto &item : _cmd_history)
+                for (const auto& item : _cmd_history)
                 {
                     basic_interactive_terminal::write("{:5}  {}\n"_fmt(pivot++, item) / 0, {}, {});
                 }
@@ -196,7 +196,7 @@ basic_interactive_terminal::basic_interactive_terminal()
             });
 
     _registry.add_invoke_hook(
-            [this](std::string &s) {
+            [this](std::string& s) {
                 if (s.empty()) { return false; }
                 if (s[0] == '!')
                 {
@@ -222,7 +222,7 @@ basic_interactive_terminal::basic_interactive_terminal()
                     else if (!tok.empty())
                     {
                         auto it = std::find_if(_cmd_history.rbegin(), _cmd_history.rend(),
-                                               [&, tok](auto &&ss) {
+                                               [&, tok](auto&& ss) {
                                                    return ss.find(tok) == 0;  // if contains !...
                                                });
 
@@ -264,20 +264,20 @@ bool basic_interactive_terminal::set(std::string_view key, std::string_view valu
     return true;
 }
 
-static auto locked_command_registry = std::atomic<commands::registry *>{};
+static auto locked_command_registry = std::atomic<commands::registry*>{};
 
 void basic_interactive_terminal::_register_autocomplete()
 {
     if (linenoiseIsUnsupportedTerm()) { return; }
 
-    for (commands::registry *rg = nullptr;
+    for (commands::registry* rg = nullptr;
          !locked_command_registry.compare_exchange_strong(rg, commands());
          rg = nullptr)
     {
         std::this_thread::sleep_for(10ms);
     }
 
-    auto completion = [](char const *buf, linenoiseCompletions *lc) -> int {
+    auto completion = [](char const* buf, linenoiseCompletions* lc) -> int {
         int position = 0;
 
         auto rg = locked_command_registry.load()->root();
@@ -301,7 +301,7 @@ void basic_interactive_terminal::_register_autocomplete()
             if (target_token < tokens.size())
             {
                 // means matching was performed on existing token
-                auto const &tokofst = offsets[target_token];
+                auto const& tokofst = offsets[target_token];
 
                 position = tokofst.position;
                 if (position > 0 && buf[position - 1] == '"') { position -= 1; }
@@ -317,7 +317,7 @@ void basic_interactive_terminal::_register_autocomplete()
         }
 
         std::string suggest;
-        for (const auto &suggest_src : suggests)
+        for (const auto& suggest_src : suggests)
         {
             suggest = suggest_src;
 
@@ -377,7 +377,7 @@ void basic_interactive_terminal::write(std::string_view str, termcolor fg, termc
     if (has_cr_lf) { fflush(stdout); }
 }
 
-bool basic_interactive_terminal::get(std::string_view key, double *out)
+bool basic_interactive_terminal::get(std::string_view key, double* out)
 {
     if (key == "output-width")
     {
