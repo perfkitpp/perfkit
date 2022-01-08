@@ -104,7 +104,7 @@ void perfkit::terminal::net::terminal::_char_handler(char c)
 
     _shell_accumulated += c;
 
-    int constexpr NUM_MAX_BUF = 1 << 20;
+    int constexpr NUM_MAX_BUF = 1 << 16; // TODO: Resolve parsing error on too long buffer size
     if (_shell_accumulated.size() > NUM_MAX_BUF)
     {
         _shell_accumulated.erase(
