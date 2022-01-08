@@ -25,7 +25,7 @@
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/transform.hpp>
 
-#include "doctest.h"
+#include "perfkit/common/third/doctest.h"
 #include "perfkit/configs.h"
 #include "perfkit/detail/base.hpp"
 
