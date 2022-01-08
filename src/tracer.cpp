@@ -40,6 +40,7 @@
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/macros.hxx"
 #include "perfkit/common/template_utils.hxx"
+#include "perfkit/common/utility/singleton.hxx"
 #include "perfkit/detail/base.hpp"
 
 #define CPPH_LOGGER() perfkit::glog()
@@ -140,7 +141,7 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
 event<perfkit::tracer*>& tracer::on_new_tracer()
 {
     constexpr auto ff = [] {};
-    return singleton<event<perfkit::tracer*>, decltype(ff)>::get();
+    return singleton<event<perfkit::tracer*>, decltype(ff)>.get();
 }
 
 bool tracer::_deliver_previous_result()
