@@ -28,8 +28,9 @@
 
 #include "perfkit/terminal.h"
 
-#define CPPHEADERS_IMPLEMENT_ASSERTIONS
-#include <perfkit/common/assert.hxx>
+//! Perfkit defaultly enables backward library.
+#ifndef CPPHEADERS_ENABLE_BACKWARD
+#    define CPPHEADERS_ENABLE_BACKWARD 1
+#endif
 
-//
 #include <perfkit/common/__cpph__.inc>
