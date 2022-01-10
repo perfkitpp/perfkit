@@ -68,6 +68,7 @@ if (NOT TARGET asio::standalone)
             target_sources(
                     ${PROJECT_NAME}
 
+                    PUBLIC
                     src/asio_ssl.cpp
             )
 
