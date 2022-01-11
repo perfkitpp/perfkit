@@ -31,7 +31,7 @@
 #include <spdlog/spdlog.h>
 
 #include "../utils.hpp"
-#include "perfkit/common/algorithm.hxx"
+#include "perfkit/common/algorithm/std.hxx"
 #include "perfkit/common/macros.hxx"
 #include "perfkit/common/template_utils.hxx"
 #include "perfkit/common/thread/utility.hxx"

@@ -36,7 +36,7 @@
 #include <asio/read.hpp>
 #include <asio/write.hpp>
 #include <nlohmann/json.hpp>
-#include <perfkit/common/algorithm.hxx>
+#include <perfkit/common/algorithm/std.hxx>
 #include <perfkit/common/algorithm/base64.hxx>
 #include <perfkit/common/assert.hxx>
 #include <perfkit/common/dynamic_array.hxx>

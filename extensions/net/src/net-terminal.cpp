@@ -24,7 +24,7 @@
 
 #include "net-terminal.hpp"
 
-#include "perfkit/common/algorithm.hxx"
+#include "perfkit/common/algorithm/std.hxx"
 
 extern "C" int gethostname(char*, size_t);
 
