@@ -346,7 +346,7 @@ void perfkit::terminal::net::detail::write(const char* buffer, size_t n)
 #    include <conio.h>
 #    include <spdlog/sinks/base_sink.h>
 
-#    include "perfkit/common/algorithm.hxx"
+#    include "perfkit/common/algorithm/std.hxx"
 
 using namespace std::literals;
 
