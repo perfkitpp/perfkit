@@ -45,6 +45,7 @@
 #include "perfkit/common/macros.hxx"
 #include "perfkit/common/spinlock.hxx"
 #include "perfkit/common/template_utils.hxx"
+#include "perfkit/utils/config_watcher.hpp"
 
 namespace perfkit {
 using json = nlohmann::json;
@@ -617,29 +618,6 @@ class config
 };
 
 namespace configs {
-class watcher
-{
-   public:
-    template <typename ConfTy_>
-    bool check_dirty(ConfTy_ const& conf) const
-    {
-        return _check_update_and_consume(&conf.base());
-    }
-
-    template <typename ConfTy_>
-    bool check_dirty_safe(ConfTy_ const& conf) const
-    {
-        auto _{std::lock_guard{_lock}};
-        return _check_update_and_consume(&conf.base());
-    }
-
-   private:
-    bool _check_update_and_consume(detail::config_base* ptr) const;
-
-   public:
-    mutable std::unordered_map<detail::config_base*, uint64_t> _table;
-    mutable perfkit::spinlock _lock;
-};
 }  // namespace configs
 
 //! \see https://stackoverflow.com/questions/24855160/how-to-tell-if-a-c-template-type-is-c-style-string
