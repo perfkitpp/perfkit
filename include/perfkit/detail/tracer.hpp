@@ -119,6 +119,14 @@ struct _entity_ty
 };
 }  // namespace _trace
 
+template <typename Ty_, class = void>
+constexpr bool is_duration_v = false;
+
+template <typename Ty_>
+constexpr bool is_duration_v<
+        Ty_, std::void_t<decltype(std::chrono::duration_cast<clock_type::duration>(
+                     std::declval<Ty_>()))>> = true;
+
 class tracer_proxy
 {
    public:
@@ -198,9 +206,9 @@ class tracer_proxy
         {
             _string() = static_cast<std::string>(std::forward<Other_>(oty));
         }
-        else if constexpr (std::is_same_v<other_t, clock_type::duration>)
+        else if constexpr (is_duration_v<other_t>)
         {
-            _data() = std::forward<Other_>(oty);
+            _data() = std::chrono::duration_cast<clock_type::duration>(oty);
         }
         return *this;
     }
