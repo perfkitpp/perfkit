@@ -38,7 +38,6 @@
 #include <spdlog/spdlog.h>
 
 #include "perfkit/perfkit.h"
-#include "spdlog/fmt/bundled/ranges.h"
 
 namespace {
 using std::lock_guard;
@@ -337,7 +336,7 @@ bool perfkit::commands::registry::node::invoke(
         return _invoke(full_tokens);
     }
 
-    glog()->debug("command not found. all arguments: {}", full_tokens);
+    glog()->debug("command not found. all arguments:");
     return false;
 }
 
@@ -433,7 +432,7 @@ bool perfkit::commands::registry::invoke_command(std::string command)
 
     std::vector<std::string_view> tokens;
     tokenize_by_argv_rule(&command, tokens, nullptr);
-    glog()->trace("invoking as tokens: {}", tokens);
+    glog()->trace("invoking as tokens");
 
     return root()->invoke(tokens);
 }
