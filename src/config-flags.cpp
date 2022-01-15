@@ -323,12 +323,20 @@ void perfkit::configs::parse_args(
     initial_state->ignore_undefined = ignore_undefined;
     if_state* state                 = initial_state.get();
 
-    for (auto it = (*args).begin(); it != (*args).end(); ++it)
+    for (auto it = (*args).begin(); it != (*args).end();)
     {
         auto tok = *it;
 
         if (state == initial_state.get() && tok == "--") { break; }
-        if (state->invoke(tok, &state) && consume) { it = args->erase(it), --it; }
+
+        if (state->invoke(tok, &state) && consume)
+        {
+            it = args->erase(it);
+        }
+        else
+        {
+            ++it;
+        }
     }
 }
 
