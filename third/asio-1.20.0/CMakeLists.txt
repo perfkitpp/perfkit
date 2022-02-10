@@ -1,6 +1,6 @@
 project(asio-bundled)
 
-option(perfkit_ASIO_HEADERONLY OFF)
+option(perfkit_ASIO_HEADERONLY ON)
 
 if (NOT TARGET asio::standalone)
     if (perfkit_ASIO_HEADERONLY)
