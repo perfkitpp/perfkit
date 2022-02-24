@@ -118,7 +118,7 @@ if (LIBDW)
     target_compile_definitions(
             ${PROJECT_NAME}
 
-            PRIVATE
+            PUBLIC
             -DBACKWARD_HAS_DW=1
     )
 endif ()
