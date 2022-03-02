@@ -271,7 +271,8 @@ perfkit::json perfkit::configs::export_all()
 
     for (auto const& rg : regs)
     {
-        // if there's no target currently, export as template
+        // Always export configurations when target configuration is empty,
+        //  even if initial update of target category instance is not performed.
         bool do_export = not current.contains(rg->name());
 
         // if registry is updated after creation, export unconditionally.
@@ -307,6 +308,17 @@ bool perfkit::config_registry::update()
         if (not patch.empty())
         {
             configs::_io::queue_changes(shared_from_this(), std::move(patch));
+        }
+
+        // export initial configs.
+        // NOTE: This logic is required for the exceptional cases which silently discard
+        //   entities before exporting registry templates.
+        //  For example, if non-transient configuration registry instance is created inside of
+        //   function, and is not propagated outside of it, there's no chance to retrieve its
+        //   configuration template.
+        if (auto [ptr, _] = configs::_io::_loaded(); true)
+        {
+            this->export_to(&(*ptr)[name()]);
         }
 
         // exporting configs only allowed after first update.
