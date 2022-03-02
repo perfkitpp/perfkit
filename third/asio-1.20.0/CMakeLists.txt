@@ -1,92 +1,91 @@
-project(asio-bundled)
-
 option(perfkit_ASIO_HEADERONLY ON)
 
-if (NOT TARGET asio::standalone)
-    if (perfkit_ASIO_HEADERONLY)
-        add_library(${PROJECT_NAME} INTERFACE)
-        add_library(perfkit::net::asio ALIAS ${PROJECT_NAME})
+## ASIO HEADER ONLY
+project(asio-header-only)
 
-        if (NOT TARGET asio::standalone)
-            add_library(asio::standalone ALIAS ${PROJECT_NAME})
-        endif ()
+add_library(${PROJECT_NAME} INTERFACE)
+add_library(perfkit::asio-header-only ALIAS ${PROJECT_NAME})
 
-        target_include_directories(
-                ${PROJECT_NAME}
+target_include_directories(
+        ${PROJECT_NAME}
 
-                INTERFACE
-                include
-        )
+        INTERFACE
+        include
+)
 
-        target_compile_features(
-                ${PROJECT_NAME}
+target_compile_features(
+        ${PROJECT_NAME}
 
-                INTERFACE
-                cxx_std_17
-        )
-    else ()
-        add_library(
-                ${PROJECT_NAME}
+        INTERFACE
+        cxx_std_17
+)
 
-                STATIC
-                src/asio.cpp
-        )
+## ASIO STATIC
+project(asio-static)
 
-        add_library(
-                perfkit::net::asio ALIAS ${PROJECT_NAME}
-        )
+add_library(
+        ${PROJECT_NAME}
 
-        add_library(
-                asio::standalone ALIAS ${PROJECT_NAME}
-        )
+        STATIC
+        src/asio.cpp
+)
 
-        target_compile_definitions(
-                ${PROJECT_NAME}
+add_library(
+        perfkit::asio-static ALIAS ${PROJECT_NAME}
+)
 
-                PUBLIC
-                ASIO_SEPARATE_COMPILATION=1
-        )
+target_compile_definitions(
+        ${PROJECT_NAME}
 
-        target_include_directories(
-                ${PROJECT_NAME}
+        PUBLIC
+        ASIO_SEPARATE_COMPILATION=1
+)
 
-                PUBLIC
-                include
-        )
+target_include_directories(
+        ${PROJECT_NAME}
 
-        target_compile_features(
-                ${PROJECT_NAME}
+        PUBLIC
+        include
+)
 
-                PUBLIC
-                cxx_std_17
-        )
+target_compile_features(
+        ${PROJECT_NAME}
 
-        # Configure OpenSSl
-        find_package(OpenSSL)
+        PUBLIC
+        cxx_std_17
+)
 
-        if (OpenSSL_FOUND)
-            target_sources(
-                    ${PROJECT_NAME}
+# Configure OpenSSl
+find_package(OpenSSL)
 
-                    PUBLIC
-                    src/asio_ssl.cpp
-            )
+if (OpenSSL_FOUND)
+    target_sources(
+            ${PROJECT_NAME}
 
-            target_link_libraries(
-                    ${PROJECT_NAME}
+            PUBLIC
+            src/asio_ssl.cpp
+    )
 
-                    PUBLIC
-                    OpenSSL::SSL
-            )
-        endif ()
+    target_link_libraries(
+            ${PROJECT_NAME}
 
-        if (MSVC)
-            target_compile_definitions(
-                    ${PROJECT_NAME}
+            PUBLIC
+            OpenSSL::SSL
+    )
+endif ()
 
-                    PUBLIC
-                    _WIN32_WINNT=0x0601
-            )
-        endif ()
-    endif ()
+if (MSVC)
+    target_compile_definitions(
+            ${PROJECT_NAME}
+
+            PUBLIC
+            _WIN32_WINNT=0x0601
+    )
+endif ()
+
+## H/O or ..
+if (perfkit_ASIO_HEADERONLY)
+    add_library(perfkit::asio ALIAS asio-header-only)
+else()
+    add_library(perfkit::asio ALIAS asio-static)
 endif ()
