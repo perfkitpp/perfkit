@@ -300,7 +300,8 @@ perfkit::event<perfkit::config_registry*>& perfkit::configs::on_new_config_regis
 
 bool perfkit::config_registry::update()
 {
-    if (not _initial_update_done.load(std::memory_order_consume))
+    if (update_state expected = update_state::none;
+        _initial_update_state.compare_exchange_strong(expected, update_state::busy))
     {
         CPPH_DEBUG("registry '{}' instantiated after loading configurations", name());
 
@@ -322,14 +323,19 @@ bool perfkit::config_registry::update()
         }
 
         // exporting configs only allowed after first update.
-        _initial_update_done.store(true, std::memory_order_release);
+        _initial_update_state = update_state::ready;
 
         configs::on_new_config_registry().invoke(this);
     }
-
-    if (std::unique_lock _l{_update_lock})
+    else if (expected == update_state::busy)
     {
-        if (_pending_updates[0].empty()) { return false; }  // no update.
+        // wait until other thread's update process finish.
+        while (_initial_update_state != update_state::ready) { std::this_thread::yield(); }
+    }
+
+    {
+        lock_guard _lock_{_update_lock};
+        if (_pending_updates[0].empty()) { return false; }  // no update available.
 
         auto& update = _pending_updates[1];
 

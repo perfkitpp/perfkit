@@ -185,6 +185,30 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     using container         = std::map<std::string, weak_ptr<config_registry>, std::less<>>;
 
    private:
+    enum class update_state
+    {
+        none,
+        busy,
+        ready
+    };
+
+   private:
+    std::string _name;
+    config_table _entities;
+    string_view_table _disp_keymap;
+    std::vector<detail::config_base*> _pending_updates[2];
+    perfkit::spinlock _update_lock;
+
+    // this value is used for identifying config registry's schema type, as config registry's
+    //  layout never changes after updated once.
+    std::type_info const* _schema_class;
+    configs::schema_hash_t _schema_hash{hasher::FNV_OFFSET_BASE};
+
+    // since configurations can be loaded before registry instance loaded, this flag makes
+    //  the first update of registry to apply loaded configurations.
+    std::atomic<update_state> _initial_update_state{update_state::none};
+
+   private:
     explicit config_registry(std::string name);
 
    public:
@@ -221,23 +245,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
    public:
     void _put(std::shared_ptr<detail::config_base> o);
-    bool _initially_updated() const noexcept { return _initial_update_done.load(); }
-
-   private:
-    std::string _name;
-    config_table _entities;
-    string_view_table _disp_keymap;
-    std::vector<detail::config_base*> _pending_updates[2];
-    perfkit::spinlock _update_lock;
-
-    // this value is used for identifying config registry's schema type, as config registry's
-    //  layout never changes after updated once.
-    std::type_info const* _schema_class;
-    configs::schema_hash_t _schema_hash{hasher::FNV_OFFSET_BASE};
-
-    // since configurations can be loaded before registry instance loaded, this flag makes
-    //  the first update of registry to apply loaded configurations.
-    std::atomic_bool _initial_update_done{false};
+    bool _initially_updated() const noexcept { return _initial_update_state.load(); }
 };
 
 namespace _attr_flag {
