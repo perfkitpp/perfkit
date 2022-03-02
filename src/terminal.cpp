@@ -68,7 +68,7 @@ class _config_saveload_manager
         return perfkit::configs::export_to(path);
     }
 
-    void retrieve_filenames(args_view args, string_set& cands)
+    static void retrieve_filenames(args_view args, string_set& cands)
     {
         namespace fs = std::filesystem;
 
@@ -79,7 +79,7 @@ class _config_saveload_manager
         if (not is_directory(path)) { path = path.parent_path(); }
         if (path.empty()) { path = "./"; }
 
-        fs::directory_iterator it{path}, end{};
+        fs::directory_iterator it{fs::is_directory(path) ? path : path.parent_path()}, end{};
         std::transform(
                 it, end, std::inserter(cands, cands.end()),
                 [](auto&& p) {
