@@ -85,6 +85,7 @@ class _config_saveload_manager
                 [](auto&& p) {
                     fs::path path = p.path();
                     auto&& str    = path.string();
+                    std::replace(str.begin(), str.end(), '\\', '/');
 
                     return fs::is_directory(path) ? str.append("/") : str;
                 });

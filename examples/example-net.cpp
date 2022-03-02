@@ -52,6 +52,7 @@ int main(void)
 
     auto term = perfkit::terminal::net::create("__terminal");
     perfkit::terminal::initialize_with_basic_commands(&*term);
+    perfkit::terminal::register_conffile_io_commands(&*term);
 
     bool running = true;
     term->add_command(
