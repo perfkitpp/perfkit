@@ -196,7 +196,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     std::string _name;
     config_table _entities;
     string_view_table _disp_keymap;
-    std::vector<detail::config_base*> _pending_updates[2];
+    std::vector<detail::config_base*> _pending_updates;
     perfkit::spinlock _update_lock;
 
     // this value is used for identifying config registry's schema type, as config registry's
@@ -245,7 +245,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
    public:
     void _put(std::shared_ptr<detail::config_base> o);
-    bool _initially_updated() const noexcept { return _initial_update_state.load(); }
+    bool _initially_updated() const noexcept { return _initial_update_state == update_state::ready; }
 };
 
 namespace _attr_flag {

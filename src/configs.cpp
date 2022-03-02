@@ -333,17 +333,17 @@ bool perfkit::config_registry::update()
         while (_initial_update_state != update_state::ready) { std::this_thread::yield(); }
     }
 
+    bool has_valid_update = false;
+    std::optional<decltype(_pending_updates)> update;
+
     {
         lock_guard _lock_{_update_lock};
-        if (_pending_updates[0].empty()) { return false; }  // no update available.
+        if (_pending_updates.empty()) { return false; }  // no update available.
 
-        auto& update = _pending_updates[1];
+        update = _pending_updates;
+        _pending_updates.clear();
 
-        bool has_valid_update = false;
-        update                = _pending_updates[0];
-        _pending_updates[0].clear();
-
-        for (auto ptr : update)
+        for (auto ptr : *update)
         {
             auto r_desrl = ptr->_try_deserialize(ptr->_cached_serialized);
 
@@ -357,12 +357,9 @@ bool perfkit::config_registry::update()
                 has_valid_update |= true;
             }
         }
-
-        _l.unlock();
-
-        if (has_valid_update && not on_update.empty()) { on_update.invoke(this, update); }
     }
 
+    if (has_valid_update && not on_update.empty()) { on_update.invoke(this, *update); }
     return true;
 }
 
@@ -459,7 +456,7 @@ bool perfkit::config_registry::bk_queue_update_value(std::string_view full_key, 
     it->second->_fence_serialized  = ++it->second->_fence_modified;
 
     // push unique element
-    auto updates  = _pending_updates + 0;
+    auto updates  = &_pending_updates;
     auto conf_ptr = it->second.get();
     if (auto it_up = std::find(updates->begin(), updates->end(), conf_ptr);
         it_up == updates->end())
