@@ -37,11 +37,6 @@ option(perfkit_USE_BUNDLED_ASIO "" ON)
 option(perfkit_BUILD_EXAMPLES "" OFF)
 option(perfkit_BUILD_CPPHEADERS_TEST "" ON)
 
-if (perfkit_BUILD_CPPHEADERS_TEST)
-    message("[${PROJECT_NAME}]: Configuring imported cppheaders tests ...")
-    add_subdirectory(third/cpph/include/perfkit/common)
-endif ()
-
 # JSON Bundling
 if (perfkit_USE_BUNDLED_JSON)
     message("[${PROJECT_NAME}]: Using bundled json")
@@ -193,4 +188,9 @@ if (MSVC)
     )
 
     add_compile_options(/FIciso646)
+endif ()
+
+if (perfkit_BUILD_CPPHEADERS_TEST)
+    message("[${PROJECT_NAME}]: Configuring imported cppheaders tests ...")
+    add_subdirectory(third/cpph/include/perfkit/common)
 endif ()
