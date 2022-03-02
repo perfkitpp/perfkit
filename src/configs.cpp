@@ -340,10 +340,7 @@ bool perfkit::config_registry::update()
         lock_guard _lock_{_update_lock};
         if (_pending_updates.empty()) { return false; }  // no update available.
 
-        update = _pending_updates;
-        _pending_updates.clear();
-
-        for (auto ptr : *update)
+        for (auto ptr : _pending_updates)
         {
             auto r_desrl = ptr->_try_deserialize(ptr->_cached_serialized);
 
@@ -357,9 +354,13 @@ bool perfkit::config_registry::update()
                 has_valid_update |= true;
             }
         }
+
+        // Only when there's any monitoring event handler ...
+        if (not on_update.empty())
+            update = _pending_updates;
     }
 
-    if (has_valid_update && not on_update.empty()) { on_update.invoke(this, *update); }
+    if (has_valid_update && update) { on_update.invoke(this, *update); }
     return true;
 }
 
