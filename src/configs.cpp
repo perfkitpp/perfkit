@@ -360,10 +360,12 @@ bool perfkit::config_registry::update()
         // Only when there's any monitoring event handler ...
         if (not on_update.empty())
             update = _pending_updates;
+
+        _pending_updates.clear();
     }
 
     if (has_valid_update && update) { on_update.invoke(this, *update); }
-    return true;
+    return has_valid_update;
 }
 
 void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o)
