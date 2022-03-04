@@ -323,14 +323,16 @@ bool perfkit::config_registry::update()
         }
 
         // exporting configs only allowed after first update.
-        _initial_update_state = update_state::ready;
-
+        _initial_update_state.store(update_state::ready, std::memory_order_release);
         configs::on_new_config_registry().invoke(this);
     }
     else if (expected == update_state::busy)
     {
         // wait until other thread's update process finish.
-        while (_initial_update_state != update_state::ready) { std::this_thread::yield(); }
+        while (_initial_update_state.load(std::memory_order_acquire) != update_state::ready)
+        {
+            std::this_thread::yield();
+        }
     }
 
     bool has_valid_update = false;
