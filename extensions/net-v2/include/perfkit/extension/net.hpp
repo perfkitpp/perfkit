@@ -32,7 +32,7 @@ namespace perfkit::terminal::net {
 
 struct profile;
 
-perfkit::terminal_ptr create(profile const& cfg);
+perfkit::terminal_ptr create(std::string_view config_path, profile const& cfg);
 
 PERFKIT_T_CATEGORY(
         profile,

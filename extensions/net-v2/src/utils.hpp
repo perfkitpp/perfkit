@@ -31,7 +31,7 @@
 
 #include "perfkit/common/utility/inserter.hxx"
 
-namespace perfkit::terminal::net::detail {
+namespace perfkit::net::detail {
 std::string try_fetch_input(int ms_to_wait);
 std::shared_ptr<spdlog::logger> nglog();
 
@@ -53,4 +53,4 @@ void input_redirect(std::function<void(char)> inserter);
 void input_rollback();
 
 void write(char const* buffer, size_t n);
-}  // namespace perfkit::terminal::net::detail
+}  // namespace perfkit::net::detail

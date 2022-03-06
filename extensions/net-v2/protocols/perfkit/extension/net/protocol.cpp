@@ -29,3 +29,23 @@
 //
 
 #include "protocol.hpp"
+
+#include "perfkit/common/refl/object.hxx"
+
+namespace perfkit::net::message {
+CPPH_REFL_DEFINE_OBJECT_c(
+        session_state, (),
+        (cpu_usage_total_user, 0),
+        (cpu_usage_total_system, 1),
+        (cpu_usage_self_user, 2),
+        (cpu_usage_self_system, 3),
+        (memory_usage_virtual, 4),
+        (memory_usage_resident, 5),
+        (num_threads, 6),
+        (bw_out, 7),
+        (bw_in, 8));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        service::fetch_tty_result_t, (),
+        (fence, 0), (content, 1));
+}  // namespace perfkit::net::message

@@ -31,9 +31,9 @@
 #pragma once
 #include "perfkit/terminal.h"
 
-namespace perfkit::terminal::net {
+namespace perfkit::net {
 
-class net_terminal : public if_terminal
+class terminal : public if_terminal
 {
    public:
     std::optional<std::string> fetch_command(milliseconds timeout) override;

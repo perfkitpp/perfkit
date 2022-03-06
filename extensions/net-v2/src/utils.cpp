@@ -40,9 +40,9 @@
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/logging.hpp"
 
-#define CPPH_LOGGER() perfkit::terminal::net::detail::nglog()
+#define CPPH_LOGGER() perfkit::net::detail::nglog()
 
-std::shared_ptr<spdlog::logger> perfkit::terminal::net::detail::nglog()
+std::shared_ptr<spdlog::logger> perfkit::net::detail::nglog()
 {
     static auto logger = perfkit::share_logger("PERFKIT:NET");
     return logger;
@@ -53,7 +53,7 @@ std::shared_ptr<spdlog::logger> perfkit::terminal::net::detail::nglog()
 #    include <sys/ioctl.h>
 #    include <unistd.h>
 
-std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
+std::string perfkit::net::detail::try_fetch_input(int ms_to_wait)
 {
     pollfd pollee;
     pollee.fd      = STDIN_FILENO;
@@ -201,18 +201,18 @@ static struct redirection_context_t
     }
 } g_redirect;
 
-void perfkit::terminal::net::detail::input_redirect(std::function<void(char)> inserter)
+void perfkit::net::detail::input_redirect(std::function<void(char)> inserter)
 {
     g_redirect.rollback();
     g_redirect.redirect(std::move(inserter));
 }
 
-void perfkit::terminal::net::detail::input_rollback()
+void perfkit::net::detail::input_rollback()
 {
     g_redirect.rollback();
 }
 
-bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t* ostat)
+bool perfkit::net::detail::fetch_proc_stat(perfkit::net::detail::proc_stat_t* ostat)
 {
     try
     {
@@ -330,7 +330,7 @@ bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
     return true;
 }
 
-void perfkit::terminal::net::detail::write(const char* buffer, size_t n)
+void perfkit::net::detail::write(const char* buffer, size_t n)
 {
     fwrite(buffer, 1, n, stdout);
 }
@@ -350,7 +350,7 @@ void perfkit::terminal::net::detail::write(const char* buffer, size_t n)
 
 using namespace std::literals;
 
-std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
+std::string perfkit::net::detail::try_fetch_input(int ms_to_wait)
 {
     static std::string buffer;
 
@@ -391,7 +391,7 @@ std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
 
 static unsigned long long FileTimeToInt64(const FILETIME& ft) { return (((unsigned long long)(ft.dwHighDateTime)) << 32) | ((unsigned long long)ft.dwLowDateTime); }
 
-bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::detail::proc_stat_t* ostat)
+bool perfkit::net::detail::fetch_proc_stat(perfkit::net::detail::proc_stat_t* ostat)
 {
     {  // Retrieve memory usage
         PROCESS_MEMORY_COUNTERS pmc;
@@ -525,7 +525,7 @@ class redirect_context_t : public spdlog::sinks::base_sink<std::mutex>
 
 static std::shared_ptr<redirect_context_t> inserter_sink;
 
-void perfkit::terminal::net::detail::input_redirect(std::function<void(char)> inserter)
+void perfkit::net::detail::input_redirect(std::function<void(char)> inserter)
 {
     assert_(not inserter_sink);
 
@@ -547,7 +547,7 @@ void perfkit::terminal::net::detail::input_redirect(std::function<void(char)> in
     CPPH_INFO("{} loggers redirected.", n_redirected);
 }
 
-void perfkit::terminal::net::detail::input_rollback()
+void perfkit::net::detail::input_rollback()
 {
     spdlog::details::registry::instance()
             .apply_all([&](std::shared_ptr<spdlog::logger> logger) {
@@ -572,7 +572,7 @@ void perfkit::terminal::net::detail::input_rollback()
     inserter_sink.reset();
 }
 
-void perfkit::terminal::net::detail::write(const char* buffer, size_t n)
+void perfkit::net::detail::write(const char* buffer, size_t n)
 {
     fwrite(buffer, 1, n, stdout);
 
