@@ -101,16 +101,6 @@ void basic_interactive_terminal::push_command(std::string_view command)
     _cmd_queued.emplace_back(command);
 }
 
-bool basic_interactive_terminal::set(std::string_view key, std::string_view value)
-{
-    return if_terminal::set(key, value);
-}
-
-bool basic_interactive_terminal::get(std::string_view key, double* out)
-{
-    return if_terminal::get(key, out);
-}
-
 #elif __unix__ or __linux__
 std::optional<std::string>
 perfkit::basic_interactive_terminal::fetch_command(
@@ -247,23 +237,6 @@ basic_interactive_terminal::basic_interactive_terminal()
             });
 }
 
-bool basic_interactive_terminal::set(std::string_view key, std::string_view value)
-{
-    std::string v{key};
-    std::transform(v.begin(), v.end(), v.begin(), &tolower);
-
-    if (v == "prompt")
-    {
-        _prompt = value;
-    }
-    else
-    {
-        return false;
-    }
-
-    return true;
-}
-
 static auto locked_command_registry = std::atomic<commands::registry*>{};
 
 void basic_interactive_terminal::_register_autocomplete()
@@ -377,17 +350,4 @@ void basic_interactive_terminal::write(std::string_view str, termcolor fg, termc
     if (has_cr_lf) { fflush(stdout); }
 }
 
-bool basic_interactive_terminal::get(std::string_view key, double* out)
-{
-    if (key == "output-width")
-    {
-        *out = linenoiseNumTermCols + 1e-4;
-    }
-    else
-    {
-        return if_terminal::get(key, out);
-    }
-
-    return true;
-}
 #endif

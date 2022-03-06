@@ -80,11 +80,6 @@ class terminal : public if_terminal
         detail::write(str.data(), str.size());
     }
 
-    std::shared_ptr<spdlog::sinks::sink> sink() override
-    {
-        return spdlog::default_logger_raw()->sinks().front();
-    }
-
    private:
     void _user_command_fetch_fn();
     void _char_handler(char c);

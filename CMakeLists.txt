@@ -70,6 +70,7 @@ endif ()
 if (perfkit_BUILD_NET_CLIENT OR perfkit_BUILD_NET)
     message("[${PROJECT_NAME}]: Configuring NET extension ...")
     add_subdirectory(extensions/net)
+    add_subdirectory(extensions/net-v2)
 endif ()
 
 if (perfkit_BUILD_CLI)
