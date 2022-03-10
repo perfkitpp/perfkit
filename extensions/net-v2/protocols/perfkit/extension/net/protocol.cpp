@@ -32,6 +32,7 @@
 
 #include "perfkit/common/refl/container/binary.hxx"
 #include "perfkit/common/refl/container/list.hxx"
+#include "perfkit/common/refl/container/tuple.hxx"
 #include "perfkit/common/refl/object.hxx"
 
 namespace perfkit::net::message {
@@ -62,4 +63,8 @@ CPPH_REFL_DEFINE_OBJECT_c(
 CPPH_REFL_DEFINE_OBJECT_c(
         notify::config_update_t, (),
         (config_key, 1), (content_next, 2));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        service::suggest_result_t, (),
+        (replace_range, 1), (replaced_content, 2), (candidate_words, 3));
 }  // namespace perfkit::net::message

@@ -42,7 +42,7 @@ target_link_libraries(
         example-net
 
         PRIVATE
-        perfkit::net::core
+        perfkit::net-v2::core
 )
 
 # ======================================================================================================================

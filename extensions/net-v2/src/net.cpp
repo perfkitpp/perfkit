@@ -29,7 +29,7 @@
 #include "net_terminal.hpp"
 
 namespace perfkit::terminal::net {
-terminal_ptr create(std::string_view config_path, const profile& cfg)
+terminal_ptr create(const profile& cfg)
 {
     perfkit::net::terminal_info init;
     init.name        = cfg.session_name;
@@ -42,4 +42,9 @@ terminal_ptr create(std::string_view config_path, const profile& cfg)
 
     return term;
 }
+perfkit::terminal_ptr create(std::string config_name)
+{
+    return create(profile(std::move(config_name)));
+}
+
 }  // namespace perfkit::terminal::net
