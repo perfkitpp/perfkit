@@ -30,6 +30,8 @@
 
 #include "net_terminal.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include "perfkit/common/functional.hxx"
 #include "utils.hpp"
 
@@ -41,10 +43,34 @@ perfkit::net::terminal::terminal(perfkit::net::terminal_info info) noexcept
 void perfkit::net::terminal::_start_()
 {
     detail::input_redirect(bind_front(&terminal::_on_char_buf, this));
+
+    CPPH_INFO("Starting session [{}] ...", _info.name);
+    _worker.repeat(bind_front(&terminal::_worker_func, this));
+}
+
+void perfkit::net::terminal::_worker_func()
+{
+    if (not _acceptor.is_open())
+    {
+        using namespace asio::ip;
+        tcp::endpoint ep{make_address(_info.bind_ip), _info.bind_port};
+        CPPH_INFO("Binding acceptor to {}:{} ...", _info.bind_ip, _info.bind_port);
+    }
 }
 
 perfkit::net::terminal::~terminal()
 {
+    // Send stop signal to worker, and close acceptor not to receive foreign connections
+    _worker.stop();
+    _acceptor.close();
+
+    // Disconnect all remote clients
+    _rpc.disconnect_all();
+
+    // Wait all async
+    _worker.join();
+    _ioc.join();
+
     detail::input_rollback();
 }
 
@@ -64,7 +90,15 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
                    })
             .serve(service::fetch_tty,
                    [this](tty_output_t* out, int64_t fence) {
+                       // Returns requested range of bytes
+                       lock_guard _lc_{_tty_lock};
+                       out->fence = _tty_fence;
 
+                       fence      = std::clamp<int64_t>(fence, _tty_fence - _tty_buf.size(), _tty_fence);
+                       auto begin = _tty_buf.end() - (_tty_fence - fence);
+                       auto end   = _tty_buf.end();
+
+                       out->content.assign(begin, end);
                    });
 
     return service_desc;
@@ -87,11 +121,15 @@ void perfkit::net::terminal::write(std::string_view str)
 
 void perfkit::net::terminal::_on_char_buf(const char* data, size_t size)
 {
-    lock_guard _lc_{_tty_lock};
-    _tty.rotate_append(data, data + size);
-    _tty_fence += size;
+    {
+        lock_guard _lc_{_tty_lock};
+        _tty_buf.rotate_append(data, data + size);
+        _tty_fence += size;
+    }
 
-    _tty_membuf.content.assign(data, size);
-    _tty_membuf.fence = _tty_fence;
-    message::notify::tty(_rpc).notify_all(_tty_membuf);
+    _tty_obuf.use([&](message::tty_output_t& buf) {
+        buf.content.assign(data, size);
+        buf.fence = _tty_fence;
+        message::notify::tty(_rpc).notify_all(buf);
+    });
 }

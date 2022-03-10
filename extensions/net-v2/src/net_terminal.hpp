@@ -34,7 +34,9 @@
 
 #include "perfkit/common/circular_queue.hxx"
 #include "perfkit/common/refl/extension/msgpack-rpc.hxx"
+#include "perfkit/common/thread/locked.hxx"
 #include "perfkit/common/thread/notify_queue.hxx"
+#include "perfkit/common/thread/worker.hxx"
 #include "perfkit/detail/commands.hpp"
 #include "perfkit/extension/net/protocol.hpp"
 #include "perfkit/logging.h"
@@ -51,7 +53,7 @@ struct terminal_info
     string description;
 
     string bind_ip;
-    int bind_port;
+    uint16_t bind_port;
 
     // TODO: Authentication
 };
@@ -62,7 +64,7 @@ class terminal : public if_terminal
 
     // Thread pool
     asio::thread_pool _ioc{4};
-    std::thread _worker;
+    thread::worker _worker;
 
     // Basics
     commands::registry _cmd;
@@ -71,14 +73,17 @@ class terminal : public if_terminal
     // RPC connection context
     msgpack::rpc::context _rpc;
 
+    // Connection
+    asio::ip::tcp::acceptor _acceptor{_ioc};
+
     // Commands that are pending execution
     notify_queue<string> _pending_commands;
 
     // TTY
     spinlock _tty_lock;
-    circular_queue<char> _tty{2 << 20};
+    circular_queue<char> _tty_buf{2 << 20};
     int64_t _tty_fence = 0;
-    message::tty_output_t _tty_membuf;
+    locked<message::tty_output_t> _tty_obuf;
 
    public:
     explicit terminal(terminal_info info) noexcept;
@@ -87,6 +92,7 @@ class terminal : public if_terminal
 
    private:
     auto CPPH_LOGGER() const { return _logging.get(); }
+    void _worker_func();
     msgpack::rpc::service_info _build_service();
 
     void _on_char_buf(char const*, size_t);
