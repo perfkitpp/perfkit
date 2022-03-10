@@ -44,8 +44,10 @@
 
 namespace perfkit::net {
 using std::optional;
+using std::shared_ptr;
 using std::string;
 using std::string_view;
+using std::weak_ptr;
 
 struct terminal_info
 {
@@ -56,6 +58,21 @@ struct terminal_info
     uint16_t bind_port;
 
     // TODO: Authentication
+};
+
+class terminal_monitor : public msgpack::rpc::if_context_monitor
+{
+    perfkit::logger_ptr _logger;
+
+   public:
+    explicit terminal_monitor(const logger_ptr& logger) : _logger(logger) {}
+
+   public:
+    void on_new_session(const msgpack::rpc::session_profile& profile) noexcept override;
+    void on_dispose_session(const msgpack::rpc::session_profile& profile) noexcept override;
+
+   private:
+    auto CPPH_LOGGER() const { return &*_logger; }
 };
 
 class terminal : public if_terminal
@@ -71,6 +88,7 @@ class terminal : public if_terminal
     logger_ptr _logging = share_logger("PERFKIT:NET");
 
     // RPC connection context
+    shared_ptr<terminal_monitor> _rpc_monitor = std::make_shared<terminal_monitor>(_logging);
     msgpack::rpc::context _rpc;
 
     // Connection

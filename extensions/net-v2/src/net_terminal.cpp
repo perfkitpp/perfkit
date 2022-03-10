@@ -33,10 +33,13 @@
 #include <spdlog/spdlog.h>
 
 #include "perfkit/common/functional.hxx"
+#include "perfkit/common/refl/extension/msgpack-rpc/asio.hxx"
 #include "utils.hpp"
 
+using namespace std::literals;
+
 perfkit::net::terminal::terminal(perfkit::net::terminal_info info) noexcept
-        : _info(std::move(info)), _rpc(_build_service())
+        : _info(std::move(info)), _rpc(_build_service(), _rpc_monitor)
 {
 }
 
@@ -50,11 +53,38 @@ void perfkit::net::terminal::_start_()
 
 void perfkit::net::terminal::_worker_func()
 {
-    if (not _acceptor.is_open())
+    try
     {
-        using namespace asio::ip;
-        tcp::endpoint ep{make_address(_info.bind_ip), _info.bind_port};
-        CPPH_INFO("Binding acceptor to {}:{} ...", _info.bind_ip, _info.bind_port);
+        // If listening socket is not initialized yet, do initialize.
+        if (not _acceptor.is_open())
+        {
+            using namespace asio::ip;
+            tcp::endpoint ep{make_address(_info.bind_ip), _info.bind_port};
+            CPPH_INFO("accept>> Binding acceptor to {}:{} ...", _info.bind_ip, _info.bind_port);
+
+            _acceptor.open(ep.protocol());
+            _acceptor.set_option(asio::socket_base::reuse_address{true});
+            _acceptor.bind(ep);
+            CPPH_INFO("accept>> Bind successful. Starting listening ...");
+
+            msgpack::rpc::session_config config;
+            config.timeout         = 10s;
+            config.use_integer_key = true;
+
+            msgpack::rpc::asio_ex::open_acceptor(_rpc, config, _acceptor);
+            CPPH_INFO("accept>> Now listening ...");
+        }
+
+        std::this_thread::sleep_for(100ms);
+
+        // TODO:
+    }
+    catch (asio::system_error& ec)
+    {
+        CPPH_ERROR("Socket error! ({}): {}", ec.code().value(), ec.what());
+        CPPH_ERROR("Sleep for 3 seconds before retry ...");
+
+        std::this_thread::sleep_for(3s);
     }
 }
 
@@ -132,4 +162,16 @@ void perfkit::net::terminal::_on_char_buf(const char* data, size_t size)
         buf.fence = _tty_fence;
         message::notify::tty(_rpc).notify_all(buf);
     });
+}
+
+void perfkit::net::terminal_monitor::on_new_session(
+        const perfkit::msgpack::rpc::session_profile& profile) noexcept
+{
+    CPPH_INFO("session [{}]>> Connected", profile.peer_name);
+}
+
+void perfkit::net::terminal_monitor::on_dispose_session(
+        const perfkit::msgpack::rpc::session_profile& profile) noexcept
+{
+    CPPH_INFO("session [{}]>> Disconnecting ... ", profile.peer_name);
 }
