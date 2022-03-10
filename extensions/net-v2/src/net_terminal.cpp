@@ -115,8 +115,8 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
                        // TODO
                    })
             .serve(service::invoke_command,
-                   [this](string const& d) {
-                       this->push_command(d);
+                   [this](token_t token, string const& content) {
+                       this->push_command(content);
                    })
             .serve(service::fetch_tty,
                    [this](tty_output_t* out, int64_t fence) {

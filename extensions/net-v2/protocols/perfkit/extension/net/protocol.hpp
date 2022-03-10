@@ -42,7 +42,9 @@ namespace perfkit::net::message {
 using std::list;
 using std::string;
 using std::vector;
+
 using msgpack_archive_t = binary<string>;
+using token_t           = string;
 
 #define DEFINE_IFACE(Name, ...) \
     static inline const auto Name = msgpack::rpc::create_signature<__VA_ARGS__>(#Name);
@@ -142,9 +144,15 @@ struct service
     DEFINE_IFACE(fetch_tty, tty_output_t(int64_t fence));
 
     /**
+     * Authentications
+     */
+    DEFINE_IFACE(login, token_t(string));
+    DEFINE_IFACE(refresh_session, token_t(token_t));
+
+    /**
      * Invoke command
      */
-    DEFINE_IFACE(invoke_command, void(string));
+    DEFINE_IFACE(invoke_command, void(token_t, string));
 
     /**
      * Command suggest
