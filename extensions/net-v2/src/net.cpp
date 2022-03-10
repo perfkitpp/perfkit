@@ -25,3 +25,21 @@
  ******************************************************************************/
 
 #include "perfkit/extension/net.hpp"
+
+#include "net_terminal.hpp"
+
+namespace perfkit::terminal::net {
+terminal_ptr create(std::string_view config_path, const profile& cfg)
+{
+    perfkit::net::terminal_info init;
+    init.name        = cfg.session_name;
+    init.description = cfg.session_description;
+    init.bind_port   = cfg.bind_port;
+    init.bind_ip     = cfg.bind_address;
+
+    auto term = std::make_shared<perfkit::net::terminal>(std::move(init));
+    term->_start_();
+
+    return term;
+}
+}  // namespace perfkit::terminal::net

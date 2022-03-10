@@ -613,8 +613,9 @@ class config
     operator Ty_() const noexcept { return _copy(); }
 
     [[deprecated]] bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
+    [[deprecated]] void async_modify(Ty_ v) { commit(std::move(v)); }
     bool check_update() const { return _opt->consume_dirty(); }
-    void async_modify(Ty_ v) { _owner->bk_queue_update_value(_opt->full_key(), std::move(v)); }
+    void commit(Ty_ v) { _owner->bk_queue_update_value(_opt->full_key(), std::move(v)); }
 
     auto& base() const { return *_opt; }
 

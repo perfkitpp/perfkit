@@ -75,7 +75,7 @@ class terminal : public if_terminal
         _command_queue.emplace(command);
     }
 
-    void write(std::string_view str, termcolor fg, termcolor bg) override
+    void write(std::string_view str) override
     {
         detail::write(str.data(), str.size());
     }

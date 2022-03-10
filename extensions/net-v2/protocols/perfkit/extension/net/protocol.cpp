@@ -30,22 +30,36 @@
 
 #include "protocol.hpp"
 
+#include "perfkit/common/refl/container/binary.hxx"
+#include "perfkit/common/refl/container/list.hxx"
 #include "perfkit/common/refl/object.hxx"
 
 namespace perfkit::net::message {
 CPPH_REFL_DEFINE_OBJECT_c(
-        session_state, (),
-        (cpu_usage_total_user, 0),
-        (cpu_usage_total_system, 1),
-        (cpu_usage_self_user, 2),
-        (cpu_usage_self_system, 3),
-        (memory_usage_virtual, 4),
-        (memory_usage_resident, 5),
-        (num_threads, 6),
-        (bw_out, 7),
-        (bw_in, 8));
+        notify::session_state_t, (),
+        (cpu_usage_total_user, 1), (cpu_usage_total_system, 2),
+        (cpu_usage_self_user, 3), (cpu_usage_self_system, 4),
+        (memory_usage_virtual, 11), (memory_usage_resident, 12),
+        (num_threads, 21),
+        (bw_out, 31), (bw_in, 32));
 
 CPPH_REFL_DEFINE_OBJECT_c(
-        service::fetch_tty_result_t, (),
-        (fence, 0), (content, 1));
+        tty_output_t, (),
+        (fence, 1), (content, 2));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        config_entity_t, (),
+        (name, 1), (config_key, 2),
+        (description, 11),
+        (opt_min, 101), (opt_max, 102), (opt_one_of, 103));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        config_category_t, (),
+        (name, 1),
+        (subcategories, 2),
+        (entities, 3));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        notify::config_update_t, (),
+        (config_key, 1), (content_next, 2));
 }  // namespace perfkit::net::message

@@ -90,7 +90,7 @@ std::optional<std::string> basic_interactive_terminal::fetch_command(millisecond
     return entered;
 }
 
-void basic_interactive_terminal::write(std::string_view str, termcolor fg, termcolor bg)
+void basic_interactive_terminal::write(std::string_view str)
 {
     fwrite(str.data(), str.size(), 1, stdout);
 }
@@ -135,7 +135,7 @@ perfkit::basic_interactive_terminal::fetch_command(
     auto cmd = _cmd.get();
     if (cmd.empty() && !_cmd_history.empty())
     {
-        write("!{}\n"_fmt % _cmd_history.back() / 0, {}, {});
+        write("!{}\n"_fmt % _cmd_history.back() / 0);
         cmd = _cmd_history.back();
     }
     else if (cmd.empty())
@@ -179,7 +179,7 @@ basic_interactive_terminal::basic_interactive_terminal()
 
                 for (const auto& item : _cmd_history)
                 {
-                    basic_interactive_terminal::write("{:5}  {}\n"_fmt(pivot++, item) / 0, {}, {});
+                    basic_interactive_terminal::write("{:5}  {}\n"_fmt(pivot++, item) / 0);
                 }
 
                 return true;
@@ -229,7 +229,7 @@ basic_interactive_terminal::basic_interactive_terminal()
                         _cmd_history.rotate(s);
                     }
 
-                    basic_interactive_terminal::write("!{}\n"_fmt(s) / 0, {}, {});
+                    basic_interactive_terminal::write("!{}\n"_fmt(s) / 0);
                 }
 
                 linenoiseHistoryAdd(s.c_str());
@@ -330,7 +330,7 @@ void basic_interactive_terminal::push_command(std::string_view command)
     _cmd_queued.emplace_back(command);
 }
 
-void basic_interactive_terminal::write(std::string_view str, termcolor fg, termcolor bg)
+void basic_interactive_terminal::write(std::string_view str)
 {
     bool has_cr_lf = false;
     for (auto ch : str)

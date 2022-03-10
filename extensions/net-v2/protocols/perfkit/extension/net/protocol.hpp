@@ -29,66 +29,137 @@
 //
 
 #pragma once
+#include <list>
+
 #include "perfkit/common/refl/core.hxx"
-#include "perfkit/common/refl/extension/msgpack-rpc/stub.hxx"
+#include "perfkit/common/refl/extension/msgpack-rpc/signature.hxx"
 
 namespace perfkit::msgpack::rpc {
 class context;
 }
 
 namespace perfkit::net::message {
+using std::list;
 using std::string;
 using std::vector;
+using msgpack_archive_t = binary<string>;
 
-#define DEFINE_STUB(Name, ...) \
+#define DEFINE_IFACE(Name, ...) \
     static inline const auto Name = msgpack::rpc::create_signature<__VA_ARGS__>(#Name);
 
-struct session_state
+/**
+ * Shell output descriptor
+ */
+struct tty_output_t
 {
     CPPH_REFL_DECLARE_c;
 
-    bool va;
+    int64_t fence = 0;
+    string content;
+};
 
-    double cpu_usage_total_user;
-    double cpu_usage_total_system;
-    double cpu_usage_self_user;
-    double cpu_usage_self_system;
+/**
+ * Configuration descriptor
+ */
+struct config_entity_t
+{
+    CPPH_REFL_DECLARE_c;
 
-    int64_t memory_usage_virtual;
-    int64_t memory_usage_resident;
-    int32_t num_threads;
+    string name;
+    uint64_t config_key;
 
-    int32_t bw_out;
-    int32_t bw_in;
+    string description;
+
+    msgpack_archive_t opt_min;
+    msgpack_archive_t opt_max;
+    msgpack_archive_t opt_one_of;
+};
+
+struct config_category_t
+{
+    CPPH_REFL_DECLARE_c;
+
+    string name;
+    std::list<config_category_t> subcategories;
+    std::list<config_entity_t> entities;
 };
 
 //
 // SHELL
 //
-class notify
+struct notify
 {
-    //! Shell content output
-    DEFINE_STUB(tty, void(int64_t fence, string const& content));
+    /**
+     * Shell content output on every flush
+     */
+    DEFINE_IFACE(tty, void(tty_output_t));
 
-    //! Configs update
-
-    //! Trace update
-
-    //!
-};
-
-class service
-{
-    struct fetch_tty_result_t
+    /**
+     * Periodically publishes session state
+     */
+    struct session_state_t
     {
         CPPH_REFL_DECLARE_c;
 
-        int64_t fence = 0;
-        string content;
+        double cpu_usage_total_user;
+        double cpu_usage_total_system;
+        double cpu_usage_self_user;
+        double cpu_usage_self_system;
+
+        int64_t memory_usage_virtual;
+        int64_t memory_usage_resident;
+        int32_t num_threads;
+
+        int32_t bw_out;
+        int32_t bw_in;
     };
 
-    DEFINE_STUB(fetch_tty, fetch_tty_result_t(int64_t fence));
+    DEFINE_IFACE(session_state, void(session_state_t));
+
+    /**
+     * Notification on configuration class creation
+     */
+
+    /**
+     * Configuration update notifies
+     */
+    struct config_update_t
+    {
+        CPPH_REFL_DECLARE_c;
+
+        uint64_t config_key;
+        msgpack_archive_t content_next;  // msgpack data chunk for supporting 'any'
+    };
+
+    DEFINE_IFACE(config_update, vector<config_update_t>(void));
 };
 
-#undef DEFINE_STUB
+struct service
+{
+    /**
+     * Requests tty output from since given fence value
+     */
+    DEFINE_IFACE(fetch_tty, tty_output_t(int64_t fence));
+
+    /**
+     * Invoke command
+     */
+    DEFINE_IFACE(invoke_command, void(string));
+
+    /**
+     * Command suggest
+     */
+    struct suggest_result_t
+    {
+        CPPH_REFL_DECLARE_c;
+
+        std::pair<int, int> replace_range;
+        string replaced_content;
+        vector<string> candidate_words;
+    };
+
+    DEFINE_IFACE(suggest, suggest_result_t(string command, int cursor));
+};
+
+#undef DEFINE_IFACE
 }  // namespace perfkit::net::message

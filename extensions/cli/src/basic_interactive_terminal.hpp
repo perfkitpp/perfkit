@@ -43,7 +43,7 @@ class basic_interactive_terminal : public if_terminal
    public:
     commands::registry* commands() override { return &_registry; }
     std::optional<std::string> fetch_command(milliseconds timeout) override;
-    void write(std::string_view str, termcolor fg, termcolor bg) override;
+    void write(std::string_view str) override;
     void push_command(std::string_view command) override;
 
    private:

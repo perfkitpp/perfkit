@@ -49,7 +49,7 @@ struct proc_stat_t
 
 bool fetch_proc_stat(proc_stat_t* ostat);
 
-void input_redirect(std::function<void(char)> inserter);
+void input_redirect(std::function<void(char const*, size_t)> inserter);
 void input_rollback();
 
 void write(char const* buffer, size_t n);

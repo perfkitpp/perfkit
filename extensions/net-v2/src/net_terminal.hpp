@@ -29,16 +29,73 @@
 //
 
 #pragma once
+#include <asio/ip/tcp.hpp>
+#include <asio/thread_pool.hpp>
+
+#include "perfkit/common/circular_queue.hxx"
+#include "perfkit/common/refl/extension/msgpack-rpc.hxx"
+#include "perfkit/common/thread/notify_queue.hxx"
+#include "perfkit/detail/commands.hpp"
+#include "perfkit/extension/net/protocol.hpp"
+#include "perfkit/logging.h"
 #include "perfkit/terminal.h"
 
 namespace perfkit::net {
+using std::optional;
+using std::string;
+using std::string_view;
+
+struct terminal_info
+{
+    string name;
+    string description;
+
+    string bind_ip;
+    int bind_port;
+
+    // TODO: Authentication
+};
 
 class terminal : public if_terminal
 {
+    terminal_info _info;
+
+    // Thread pool
+    asio::thread_pool _ioc{4};
+    std::thread _worker;
+
+    // Basics
+    commands::registry _cmd;
+    logger_ptr _logging = share_logger("PERFKIT:NET");
+
+    // RPC connection context
+    msgpack::rpc::context _rpc;
+
+    // Commands that are pending execution
+    notify_queue<string> _pending_commands;
+
+    // TTY
+    spinlock _tty_lock;
+    circular_queue<char> _tty{2 << 20};
+    int64_t _tty_fence = 0;
+    message::tty_output_t _tty_membuf;
+
    public:
-    std::optional<std::string> fetch_command(milliseconds timeout) override;
-    void push_command(std::string_view command) override;
-    void write(std::string_view str, termcolor fg, termcolor bg) override;
+    explicit terminal(terminal_info info) noexcept;
+    void _start_();
+    ~terminal();
+
+   private:
+    auto CPPH_LOGGER() const { return _logging.get(); }
+    msgpack::rpc::service_info _build_service();
+
+    void _on_char_buf(char const*, size_t);
+
+   public:
+    optional<string> fetch_command(milliseconds timeout) override;
+    void push_command(string_view command) override;
+    void write(string_view str) override;
+    commands::registry* commands() override { return &_cmd; }
 };
 
-}  // namespace perfkit::terminal::net
+}  // namespace perfkit::net

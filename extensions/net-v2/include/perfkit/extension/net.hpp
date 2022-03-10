@@ -49,18 +49,13 @@ PERFKIT_T_CATEGORY(
                 .env("PERFKIT_NET_AUTH")
                 .confirm();
 
-        PERFKIT_T_CONFIGURE(has_relay_server, false)
-                .env("PERFKIT_NET_USE_RELAY_SERVER")
-                .confirm();
-
-        PERFKIT_T_CONFIGURE(ipaddr, "0.0.0.0")
+        PERFKIT_T_CONFIGURE(bind_address, "0.0.0.0")
                 .env("PERFKIT_NET_IPADDR")
                 .confirm();
 
-        PERFKIT_T_CONFIGURE(port, 15572)
+        PERFKIT_T_CONFIGURE(bind_port, 15572)
                 .env("PERFKIT_NET_PORT")
                 .confirm();
-
 );
 
 }  // namespace perfkit::terminal::net

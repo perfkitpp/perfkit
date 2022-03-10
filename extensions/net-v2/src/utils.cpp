@@ -127,7 +127,7 @@ static struct redirection_context_t
         }
     }
 
-    void redirect(std::function<void(char)> fn)
+    void redirect(std::function<void(char const*, size_t)> fn)
     {
         _fd_org_stdout = dup(STDOUT_FILENO);
         _fd_org_stderr = dup(STDERR_FILENO);
@@ -180,10 +180,7 @@ static struct redirection_context_t
                             auto n_read  = ::read(pfd->fd, buffer, std::size(buffer));
                             auto n_write = ::write(*fd, buffer, n_read);
 
-                            for (auto c : perfkit::make_iterable(buffer, buffer + n_read))
-                            {
-                                fn(c);
-                            }
+                            fn(buffer, n_read);
                         }
                     }
                 });
@@ -201,7 +198,7 @@ static struct redirection_context_t
     }
 } g_redirect;
 
-void perfkit::net::detail::input_redirect(std::function<void(char)> inserter)
+void perfkit::net::detail::input_redirect(std::function<void(char const*, size_t)> inserter)
 {
     g_redirect.rollback();
     g_redirect.redirect(std::move(inserter));
@@ -490,7 +487,7 @@ bool perfkit::net::detail::fetch_proc_stat(perfkit::net::detail::proc_stat_t* os
 class redirect_context_t : public spdlog::sinks::base_sink<std::mutex>
 {
    public:
-    redirect_context_t(std::function<void(char)> inserter)
+    redirect_context_t(std::function<void(char const*, size_t)> inserter)
             : _inserter(std::move(inserter))
     {
     }
@@ -501,8 +498,7 @@ class redirect_context_t : public spdlog::sinks::base_sink<std::mutex>
         spdlog::memory_buf_t formatted;
         formatter_->format(msg, formatted);
 
-        for (auto c : formatted)
-            _inserter(c);
+        _inserter(formatted.data(), formatted.size());
     }
 
     void flush_() override
@@ -513,19 +509,16 @@ class redirect_context_t : public spdlog::sinks::base_sink<std::mutex>
    public:
     void operator()(char const* buf, size_t n)
     {
-        for (size_t i = 0; i < n; ++i)
-        {
-            _inserter(buf[i]);
-        }
+        _inserter(buf, n);
     }
 
    private:
-    std::function<void(char)> _inserter;
+    std::function<void(char const*, size_t)> _inserter;
 };
 
 static std::shared_ptr<redirect_context_t> inserter_sink;
 
-void perfkit::net::detail::input_redirect(std::function<void(char)> inserter)
+void perfkit::net::detail::input_redirect(std::function<void(char const*, size_t)> inserter)
 {
     assert_(not inserter_sink);
 

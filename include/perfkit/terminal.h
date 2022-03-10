@@ -50,7 +50,7 @@ struct termination : std::exception
 /**
  * Provides common user interface functionality for control purpose
  */
-class if_terminal
+class if_terminal : public std::enable_shared_from_this<if_terminal>
 {
    public:
     /**
@@ -83,7 +83,7 @@ class if_terminal
     /**
      * Output string to terminal
      */
-    virtual void write(std::string_view str, termcolor fg = termcolor{0}, termcolor bg = termcolors::black) = 0;
+    virtual void write(std::string_view str) = 0;
 
     /**
      *
