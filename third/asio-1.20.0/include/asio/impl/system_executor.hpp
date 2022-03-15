@@ -50,17 +50,10 @@ basic_system_executor<Blocking, Relationship, Allocator>::do_execute(
   detail::non_const_lvalue<Function> f2(f);
 
 #if !defined(ASIO_NO_EXCEPTIONS)
-  try
-  {
 #endif// !defined(ASIO_NO_EXCEPTIONS)
     detail::fenced_block b(detail::fenced_block::full);
     asio_handler_invoke_helpers::invoke(f2.value, f2.value);
 #if !defined(ASIO_NO_EXCEPTIONS)
-  }
-  catch (...)
-  {
-    std::terminate();
-  }
 #endif// !defined(ASIO_NO_EXCEPTIONS)
 }
 
