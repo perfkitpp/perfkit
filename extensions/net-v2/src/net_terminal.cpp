@@ -129,7 +129,9 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
                        auto end   = _tty_buf.end();
 
                        out->content.assign(begin, end);
-                   });
+                   })
+            .serve(service::heartbeat,
+                   []() {});
 
     return service_desc;
 }

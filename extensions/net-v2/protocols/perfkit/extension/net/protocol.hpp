@@ -139,6 +139,11 @@ struct notify
 struct service
 {
     /**
+     * Query if server is alive
+     */
+    DEFINE_IFACE(heartbeat, void(void));
+
+    /**
      * Requests tty output from since given fence value
      */
     DEFINE_IFACE(fetch_tty, tty_output_t(int64_t fence));

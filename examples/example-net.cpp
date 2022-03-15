@@ -54,12 +54,25 @@ int main(void)
     perfkit::terminal::initialize_with_basic_commands(&*term);
     perfkit::terminal::register_conffile_io_commands(&*term);
 
-    bool running = true;
+    volatile bool running = true;
     term->add_command(
             "quit",
             [&] {
                 running = false;
             });
+
+    std::thread thr{
+            [&] {
+                for (;;)
+                {
+                    char buf[2048];
+                    auto n               = fgets(buf, sizeof buf, stdin);
+                    buf[strlen(buf) - 1] = 0;
+
+                    if (not running) { return; }
+                    term->push_command(buf);
+                }
+            }};
 
     while (running)
     {
