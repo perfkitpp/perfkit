@@ -131,7 +131,7 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
                        out->content.assign(begin, end);
                    })
             .serve(service::heartbeat,
-                   []() {});
+                   [this] { CPPH_INFO("HEARTBEAT!"); });
 
     return service_desc;
 }

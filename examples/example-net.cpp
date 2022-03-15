@@ -85,4 +85,6 @@ int main(void)
         spdlog::info("command: [{}]", *cmd);
         term->commands()->invoke_command(*cmd);
     }
+
+    thr.join();
 }
