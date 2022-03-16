@@ -152,15 +152,14 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
             _bytes_io_prev.second = out;
 
             outgoing::session_state message
-                    = {
-                            stat.cpu_usage_total_user,
-                            stat.cpu_usage_total_system,
-                            stat.cpu_usage_self_user,
-                            stat.cpu_usage_self_system,
-                            stat.memory_usage_virtual,
-                            stat.memory_usage_resident,
-                            stat.num_threads,
-                            out_rate, in_rate};
+                    = {stat.cpu_usage_total_user,
+                       stat.cpu_usage_total_system,
+                       stat.cpu_usage_self_user,
+                       stat.cpu_usage_self_system,
+                       stat.memory_usage_virtual,
+                       stat.memory_usage_resident,
+                       stat.num_threads,
+                       out_rate, in_rate};
 
             _io.send(message);
         }

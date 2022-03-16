@@ -37,12 +37,17 @@
 
 namespace perfkit::net::message {
 CPPH_REFL_DEFINE_OBJECT_c(
-        notify::session_state_t, (),
+        service::session_status_t, (),
         (cpu_usage_total_user, 1), (cpu_usage_total_system, 2),
         (cpu_usage_self_user, 3), (cpu_usage_self_system, 4),
         (memory_usage_virtual, 11), (memory_usage_resident, 12),
         (num_threads, 21),
         (bw_out, 31), (bw_in, 32));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        service::session_info_t, (),
+        (name, 1), (hostname, 2), (keystr, 3),
+        (epoch, 4), (description, 5), (num_cores, 6));
 
 CPPH_REFL_DEFINE_OBJECT_c(
         tty_output_t, (),

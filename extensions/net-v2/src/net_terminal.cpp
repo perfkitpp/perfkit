@@ -41,6 +41,24 @@ using namespace std::literals;
 perfkit::net::terminal::terminal(perfkit::net::terminal_info info) noexcept
         : _info(std::move(info)), _rpc(_build_service(), _rpc_monitor)
 {
+    using namespace std::chrono;
+    _session_info.epoch = duration_cast<milliseconds>(
+                                  steady_clock::now().time_since_epoch())
+                                  .count();
+    _session_info.name        = _info.name;
+    _session_info.description = _info.description;
+    _session_info.num_cores   = std::thread::hardware_concurrency();
+
+    // key string generation
+    char hostname[65];
+    gethostname(hostname, std::size(hostname));
+
+    _session_info.hostname = hostname;
+    _session_info.keystr
+            = _session_info.hostname + ';'
+            + std::to_string(_session_info.num_cores) + ';'
+            + _session_info.name + ';'
+            + std::to_string(_session_info.epoch);
 }
 
 void perfkit::net::terminal::_start_()
@@ -127,7 +145,11 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
                        out->content.assign(begin, end);
                    })
             .serve(service::heartbeat,
-                   [this] { CPPH_INFO("HEARTBEAT!"); });
+                   [this] { CPPH_INFO("HEARTBEAT!"); })
+            .serve(service::session_info,
+                   [this](perfkit::net::message::service::session_info_t* rv) {
+                       *rv = _session_info;
+                   });
 
     return service_desc;
 }

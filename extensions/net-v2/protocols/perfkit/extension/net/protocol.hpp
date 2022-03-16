@@ -97,9 +97,58 @@ struct notify
     DEFINE_IFACE(tty, void(tty_output_t));
 
     /**
-     * Periodically publishes session state
+     * Notification on configuration class creation
      */
-    struct session_state_t
+
+    /**
+     * Configuration update notifies
+     */
+    struct config_update_t
+    {
+        CPPH_REFL_DECLARE_c;
+
+        uint64_t          config_key;
+        msgpack_archive_t content_next;  // msgpack data chunk for supporting 'any'
+    };
+
+    DEFINE_IFACE(config_update, vector<config_update_t>(void));
+
+    /**
+     * Trace update notification
+     */
+
+    /**
+     * Graphic class changes
+     */
+
+    /**
+     *
+     */
+};
+
+struct service
+{
+    /**
+     * Query session informations
+     */
+    struct session_info_t
+    {
+        CPPH_REFL_DECLARE_c;
+
+        string  name;
+        string  hostname;
+        string  keystr;
+        int64_t epoch;
+        string  description;
+        int32_t num_cores;
+    };
+
+    DEFINE_IFACE(session_info, session_info_t());
+
+    /**
+     * Returns session status
+     */
+    struct session_status_t
     {
         CPPH_REFL_DECLARE_c;
 
@@ -116,28 +165,8 @@ struct notify
         int32_t bw_in;
     };
 
-    DEFINE_IFACE(session_state, void(session_state_t));
+    DEFINE_IFACE(session_status, session_status_t());
 
-    /**
-     * Notification on configuration class creation
-     */
-
-    /**
-     * Configuration update notifies
-     */
-    struct config_update_t
-    {
-        CPPH_REFL_DECLARE_c;
-
-        uint64_t          config_key;
-        msgpack_archive_t content_next;  // msgpack data chunk for supporting 'any'
-    };
-
-    DEFINE_IFACE(config_update, vector<config_update_t>(void));
-};
-
-struct service
-{
     /**
      * Query if server is alive
      */

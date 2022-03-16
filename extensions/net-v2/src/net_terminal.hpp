@@ -103,6 +103,11 @@ class terminal : public if_terminal
     int64_t                       _tty_fence = 0;
     locked<message::tty_output_t> _tty_obuf;
 
+    // Misc
+    message::service::session_info_t   _session_info;
+    message::service::session_status_t _session_status;
+    spinlock                           _session_status_lock;
+
    public:
     explicit terminal(terminal_info info) noexcept;
     void _start_();
