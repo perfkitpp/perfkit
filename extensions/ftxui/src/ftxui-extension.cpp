@@ -52,18 +52,18 @@ class perfkit_ftxui::worker_info_t
     }
 
    public:
-    std::thread thrd_loop;
-    std::thread thrd_poll;
+    std::thread      thrd_loop;
+    std::thread      thrd_poll;
 
     std::atomic_bool _alive{true};
 };
 
 perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
         ftxui::ScreenInteractive* screen,
-        ftxui::Component root_component,
+        ftxui::Component          root_component,
         std::chrono::milliseconds poll_interval)
 {
-    auto ptr = std::make_shared<worker_info_t>();
+    auto ptr       = std::make_shared<worker_info_t>();
 
     ptr->thrd_loop = std::thread{
             [screen, root_component, flag = &ptr->_alive] {
@@ -76,8 +76,7 @@ perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
                 using clock_ty                   = std::chrono::steady_clock;
                 clock_ty::time_point next_wakeup = {};
 
-                for (; flag->load(std::memory_order_relaxed);)
-                {
+                for (; flag->load(std::memory_order_relaxed);) {
                     screen->PostEvent(EVENT_POLL);
 
                     std::this_thread::sleep_until(next_wakeup);
@@ -101,24 +100,20 @@ class EventCatcher : public ftxui::ComponentBase
 
     bool OnEvent(ftxui::Event event) override
     {
-        if (event == _evt_type)
-        {
-            for (size_t index = 0; index < _root->ChildCount(); ++index)
-            {
+        if (event == _evt_type) {
+            for (size_t index = 0; index < _root->ChildCount(); ++index) {
                 _root->ChildAt(index)->OnEvent(event);
             }
 
             return false;
-        }
-        else
-        {
+        } else {
             return _root->OnEvent(event);
         }
     }
 
    private:
     ftxui::Component _root;
-    ftxui::Event _evt_type;
+    ftxui::Event     _evt_type;
 };
 }  // namespace
 
@@ -166,8 +161,8 @@ class atomic_string_queue : public perfkit_ftxui::string_queue
 
    private:
     std::condition_variable _cvar;
-    std::mutex _lock;
-    std::list<std::string> _queue;
+    std::mutex              _lock;
+    std::list<std::string>  _queue;
 };
 }  // namespace
 
@@ -177,7 +172,7 @@ class _inputbox : public ComponentBase
 {
    public:
     explicit _inputbox(std::shared_ptr<atomic_string_queue> queue,
-                       std::string const& prompt)
+                       std::string const&                   prompt)
     {
         _queue = queue;
 
@@ -204,17 +199,17 @@ class _inputbox : public ComponentBase
 
    private:
     std::shared_ptr<atomic_string_queue> _queue;
-    int _cpos = {};
-    std::wstring _cmd;
-    Component _box;
+    int                                  _cpos = {};
+    std::wstring                         _cmd;
+    Component                            _box;
 };
 }  // namespace
 }  // namespace perfkit
 
 ftxui::Component perfkit_ftxui::command_input(
-        std::shared_ptr<perfkit_ftxui::string_queue>* out_supplier,
+        std::shared_ptr<perfkit_ftxui::string_queue>*  out_supplier,
         std::weak_ptr<perfkit::util::command_registry> support,
-        std::string prompt)
+        std::string                                    prompt)
 {
     auto ptr      = std::make_shared<atomic_string_queue>();
     *out_supplier = ptr;
@@ -223,9 +218,9 @@ ftxui::Component perfkit_ftxui::command_input(
 }
 
 ftxui::Component perfkit_ftxui::PRESET(
-        std::shared_ptr<string_queue>* out_commands,
+        std::shared_ptr<string_queue>*                 out_commands,
         std::weak_ptr<perfkit::util::command_registry> command_support,
-        std::shared_ptr<if_subscriber> subscriber)
+        std::shared_ptr<if_subscriber>                 subscriber)
 {
     auto cmd   = command_input(out_commands, command_support, ":> enter command");
     auto cfg   = config_browser();
@@ -235,18 +230,16 @@ ftxui::Component perfkit_ftxui::PRESET(
     auto resize_context = std::make_shared<int>(30);
     auto components     = ResizableSplitLeft(cfg, trace, resize_context.get());
 
-    components = CatchEvent(components, [components](Event evt) {
-        if (evt == EVENT_POLL)
-        {
-            for (size_t j = 0; j < components->ChildAt(0)->ChildCount(); ++j)
-            {
+    components          = CatchEvent(components, [components](Event evt) {
+        if (evt == EVENT_POLL) {
+            for (size_t j = 0; j < components->ChildAt(0)->ChildCount(); ++j) {
                 components->ChildAt(0)->ChildAt(j)->OnEvent(evt);
             }
         }
         return false;
-    });
+             });
 
-    components = Container::Vertical({
+    components          = Container::Vertical({
             Renderer(cmd, [cmd] { return window(text("< command >"), hbox(text(" "), cmd->Render(), text(" "))); }),
             Renderer(components, [components] { return window(text("< monitor >"), components->Render()) | flex; }),
     });

@@ -34,7 +34,7 @@ class if_watcher
    public:
     // watcher calls for this when there's any change, thus update() call would do something.
     std::function<void()> notify_change;
-    dispatcher* io = nullptr;
+    dispatcher*           io = nullptr;
 
    public:
     virtual void start(){};

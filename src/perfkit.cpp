@@ -50,8 +50,7 @@ std::string perfkit::_configs_internal::INDEXER_STR2(int order)
 std::shared_ptr<spdlog::logger> perfkit::glog()
 {
     static std::weak_ptr<spdlog::logger> _inst{};
-    if (!_inst.lock())
-    {
+    if (!_inst.lock()) {
         auto ptr = spdlog::get("PERFKIT");
         if (!ptr) { ptr = spdlog::stdout_color_mt("PERFKIT"); }
         _inst = ptr;

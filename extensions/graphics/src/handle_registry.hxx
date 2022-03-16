@@ -46,27 +46,26 @@ class handle_registry
     {
         uint16_t index    = 0;
         uint32_t hash_gen = 0;
-        bool checkout     = false;
+        bool     checkout = false;
     };
 
     struct slot
     {
         vector<uint16_t> free_keys;
-        vector<node> keys;
+        vector<node>     keys;
     };
 
    public:
     template <typename Handle_>
     Handle_ checkout() noexcept
     {
-        Handle_ result;
+        Handle_      result;
         handle_data* data = &result;
 
-        slot& slot  = _slots.at(to_index(Handle_::type));
-        data->_type = Handle_::type;
+        slot&        slot = _slots.at(to_index(Handle_::type));
+        data->_type       = Handle_::type;
 
-        if (not slot.free_keys.empty())
-        {
+        if (not slot.free_keys.empty()) {
             auto idx = slot.free_keys.back();
             slot.free_keys.pop_back();
 
@@ -76,22 +75,18 @@ class handle_registry
 
             node->checkout = true;
 
-            data->_index = idx;
-            data->_hash  = ++node->hash_gen;
-        }
-        else if (slot.keys.size() < ~uint16_t{})
-        {
-            auto idx  = uint16_t(slot.keys.size());
-            auto node = &slot.keys.emplace_back();
+            data->_index   = idx;
+            data->_hash    = ++node->hash_gen;
+        } else if (slot.keys.size() < ~uint16_t{}) {
+            auto idx       = uint16_t(slot.keys.size());
+            auto node      = &slot.keys.emplace_back();
 
             node->checkout = true;
             node->index    = idx;
 
-            data->_index = idx;
-            data->_hash  = ++node->hash_gen;
-        }
-        else
-        {
+            data->_index   = idx;
+            data->_hash    = ++node->hash_gen;
+        } else {
             data->_type = resource_type::invalid;
         }
 
@@ -102,7 +97,7 @@ class handle_registry
     {
         slot& slot = _slots.at(data.resource_index());
 
-        auto node = &slot.keys.at(data._index);
+        auto  node = &slot.keys.at(data._index);
         assert(node->hash_gen == data._hash);
         assert(node->checkout);
         assert(node->index == data._index);

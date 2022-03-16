@@ -36,7 +36,7 @@ namespace perfkit::terminal::net::detail {
 struct server_mode_dispatcher_init_info
 {
     std::string bind_addr = "0.0.0.0";
-    uint16_t bind_port    = 0;
+    uint16_t    bind_port = 0;
 };
 
 class server_mode_dispatcher : public basic_dispatcher_impl
@@ -71,25 +71,21 @@ class server_mode_dispatcher : public basic_dispatcher_impl
 
         struct _accept_fn
         {
-            server_mode_dispatcher* self;
+            server_mode_dispatcher*      self;
             std::unique_ptr<tcp::socket> sock;
 
-            void operator()(asio::error_code const& ec)
+            void                         operator()(asio::error_code const& ec)
             {
                 auto CPPH_LOGGER = [this] { return self->CPPH_LOGGER(); };
 
-                if (ec)
-                {
-                    if (ec == asio::error::operation_aborted)
-                    {
+                if (ec) {
+                    if (ec == asio::error::operation_aborted) {
                         CPPH_INFO("aborting accept opeartion");
                         return;
                     }
 
                     CPPH_WARN("accept failed: {}", ec.message());
-                }
-                else
-                {
+                } else {
                     auto ep = sock->remote_endpoint();
                     CPPH_INFO("new client connection has been established: {}:{}",
                               ep.address().to_string(), ep.port());
@@ -114,8 +110,8 @@ class server_mode_dispatcher : public basic_dispatcher_impl
     }
 
    private:
-    init_info _init;
-    uint64_t _unique_id_gen = 0;
+    init_info                      _init;
+    uint64_t                       _unique_id_gen = 0;
     std::unique_ptr<tcp::acceptor> _acceptor;
 };
 }  // namespace perfkit::terminal::net::detail

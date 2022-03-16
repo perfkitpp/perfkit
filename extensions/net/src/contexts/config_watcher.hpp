@@ -65,14 +65,14 @@ class config_watcher : public if_watcher
     void _on_unregister(std::vector<config_key_t> keys);
 
    private:
-    thread::worker _worker;
+    thread::worker                    _worker;
 
     std::unique_ptr<asio::io_context> _ioc;
-    perfkit::shared_null _watcher_lifecycle;
+    perfkit::shared_null              _watcher_lifecycle;
 
     struct _cache_type
     {
-        std::vector<std::weak_ptr<perfkit::config_registry>> regs;
+        std::vector<std::weak_ptr<perfkit::config_registry>>   regs;
         std::unordered_map<config_key_t, perfkit::config_wptr> confmap;
     } _cache;
 };

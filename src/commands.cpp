@@ -48,22 +48,20 @@ const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 }  // namespace
 
 perfkit::commands::registry::node* perfkit::commands::registry::node::_add_subcommand(
-        std::string cmd,
-        invoke_fn handler,
+        std::string             cmd,
+        invoke_fn               handler,
         autocomplete_suggest_fn suggest,
-        bool name_constant)
+        bool                    name_constant)
 {
     lock_guard _{*_subcmd_lock};
 
-    if (_check_name_exist(cmd))
-    {
+    if (_check_name_exist(cmd)) {
         glog()->error("command name [{}] already exists as command or token.", cmd);
         throw command_already_exist_exception{};
     }
 
     std::cmatch match;
-    if (!std::regex_match(cmd.c_str(), cmd.c_str() + cmd.size(), match, rg_cmd_token))
-    {
+    if (!std::regex_match(cmd.c_str(), cmd.c_str() + cmd.size(), match, rg_cmd_token)) {
         glog()->error("invalid command name [{}])", cmd);
         throw command_name_invalid_exception{};
     }
@@ -80,12 +78,10 @@ perfkit::commands::registry::node* perfkit::commands::registry::node::_add_subco
 
 bool perfkit::commands::registry::node::_check_name_exist(std::string_view cmd) const noexcept
 {
-    if (auto it = _subcommands.find(cmd); it != _subcommands.end())
-    {
+    if (auto it = _subcommands.find(cmd); it != _subcommands.end()) {
         return true;
     }
-    if (auto it = _aliases.find(cmd); it != _aliases.end())
-    {
+    if (auto it = _aliases.find(cmd); it != _aliases.end()) {
         return true;
     }
 
@@ -97,13 +93,11 @@ perfkit::commands::registry::node const* perfkit::commands::registry::node::_fin
     using namespace ranges;
     lock_guard _{*_subcmd_lock};
 
-    if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end())
-    {
+    if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
         return &it->second;
     }
 
-    if (auto it = _aliases.find(cmd_or_alias); it != _aliases.end())
-    {
+    if (auto it = _aliases.find(cmd_or_alias); it != _aliases.end()) {
         return &_subcommands.find(cmd_or_alias)->second;
     }
 
@@ -111,16 +105,14 @@ perfkit::commands::registry::node const* perfkit::commands::registry::node::_fin
     node const* subcmd = {};
     {
         auto it = _subcommands.lower_bound(cmd_or_alias);
-        for (; it != _subcommands.end() && it->first.find(cmd_or_alias) == 0; ++it)
-        {
+        for (; it != _subcommands.end() && it->first.find(cmd_or_alias) == 0; ++it) {
             if (subcmd) { return nullptr; }
             subcmd = _find_subcommand(it->first);
         }
     }
     {
         auto it = _aliases.lower_bound(cmd_or_alias);
-        for (; it != _aliases.end() && it->first.find(cmd_or_alias) == 0; ++it)
-        {
+        for (; it != _aliases.end() && it->first.find(cmd_or_alias) == 0; ++it) {
             if (subcmd) { return nullptr; }
             subcmd = _find_subcommand(it->first);
         }
@@ -139,18 +131,13 @@ bool perfkit::commands::registry::node::erase_subcommand(std::string_view cmd_or
 {
     lock_guard _{*_subcmd_lock};
 
-    if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end())
-    {
+    if (auto it = _subcommands.find(cmd_or_alias); it != _subcommands.end()) {
         // erase all bound aliases to given command
-        for (auto it_a = _aliases.begin(); it_a != _aliases.end();)
-        {
+        for (auto it_a = _aliases.begin(); it_a != _aliases.end();) {
             auto& [alias, cmd] = *it_a;
-            if (cmd == cmd_or_alias)
-            {
+            if (cmd == cmd_or_alias) {
                 _aliases.erase(it_a++);
-            }
-            else
-            {
+            } else {
                 ++it_a;
             }
         }
@@ -158,8 +145,7 @@ bool perfkit::commands::registry::node::erase_subcommand(std::string_view cmd_or
         _subcommands.erase(it);
         return true;
     }
-    if (auto it = _aliases.find(cmd_or_alias); it != _aliases.end())
-    {
+    if (auto it = _aliases.find(cmd_or_alias); it != _aliases.end()) {
         _aliases.erase(it);
         return true;
     }
@@ -172,14 +158,12 @@ bool perfkit::commands::registry::node::alias(
 {
     lock_guard _{*_subcmd_lock};
 
-    if (_check_name_exist(alias))
-    {
+    if (_check_name_exist(alias)) {
         glog()->error("alias name [{}] already exists as command or token.");
         return false;
     }
 
-    if (auto it = _subcommands.find(cmd); it == _subcommands.end())
-    {
+    if (auto it = _subcommands.find(cmd); it == _subcommands.end()) {
         glog()->error("target command [{}] does not exist.");
         return false;
     }
@@ -192,8 +176,7 @@ namespace {
 template <typename Rng_>
 bool check_unique_prefix(std::string_view cmp, Rng_&& candidates)
 {
-    for (auto const& candidate : candidates)
-    {
+    for (auto const& candidate : candidates) {
         if (cmp.size() > candidate.size()) { continue; }   // not consider.
         if (candidate.size() == cmp.size()) { continue; }  // maybe same, or not considerable.
         if (candidate.find(cmp) == 0) { return false; }    // cmp is part of candidates
@@ -205,10 +188,10 @@ bool check_unique_prefix(std::string_view cmp, Rng_&& candidates)
 
 std::string perfkit::commands::registry::node::suggest(
         perfkit::array_view<std::string_view> full_tokens,
-        std::vector<std::string>& out_candidates,
-        bool space_after_last_token,
-        int* target_token_index,
-        bool* out_has_unique_match)
+        std::vector<std::string>&             out_candidates,
+        bool                                  space_after_last_token,
+        int*                                  target_token_index,
+        bool*                                 out_has_unique_match)
 {
     lock_guard _{*_subcmd_lock};
     if (_hook_pre_op) { _hook_pre_op(this, full_tokens); }
@@ -216,13 +199,11 @@ std::string perfkit::commands::registry::node::suggest(
     using namespace ranges;
     string_set user_candidates;
 
-    if (full_tokens.empty())
-    {
+    if (full_tokens.empty()) {
         out_candidates |= actions::push_back(_subcommands | views::keys);
         out_candidates |= actions::push_back(_aliases | views::keys);
 
-        if (_suggest)
-        {
+        if (_suggest) {
             _suggest(full_tokens, user_candidates);
             out_candidates.insert(out_candidates.end(),
                                   std::move(user_candidates).begin(),
@@ -235,12 +216,10 @@ std::string perfkit::commands::registry::node::suggest(
     auto exec          = full_tokens[0];
     bool is_last_token = full_tokens.size() == 1;
 
-    if (node* subcmd = {}; !is_last_token)
-    {
+    if (node* subcmd = {}; !is_last_token) {
         subcmd = _find_subcommand(exec);
 
-        if (subcmd)
-        {
+        if (subcmd) {
             // evaluate as next command, only when unique subcommand is found.
 
             out_has_unique_match && (*out_has_unique_match = check_unique_prefix(exec, out_candidates));
@@ -260,8 +239,7 @@ std::string perfkit::commands::registry::node::suggest(
     auto filter_starts_with = [&](auto&& map, auto& compare) {
         for (auto it = map.lower_bound(compare);
              it != map.end() && it->first.find(compare) == 0;
-             ++it)
-        {
+             ++it) {
             out_candidates.push_back(it->first);
         }
     };
@@ -269,23 +247,19 @@ std::string perfkit::commands::registry::node::suggest(
     filter_starts_with(_subcommands, exec);
     filter_starts_with(_aliases, exec);
 
-    if (_suggest)
-    {
+    if (_suggest) {
         _suggest(full_tokens, user_candidates);
         for (auto it = user_candidates.lower_bound(exec);
              it != user_candidates.end() && it->find(exec) == 0;
-             ++it)
-        {
+             ++it) {
             out_candidates.push_back(std::move(*it));
         }
     }
 
-    if (out_candidates.empty() == false)
-    {
+    if (out_candidates.empty() == false) {
         auto sharing = out_candidates.front();
 
-        for (auto candidate : out_candidates | views::tail)
-        {
+        for (auto candidate : out_candidates | views::tail) {
             // look for initial occlusion of two string
             size_t j = 0;
             for (; j < std::min(sharing.size(), candidate.size()) && sharing[j] == candidate[j]; ++j) {}
@@ -299,8 +273,7 @@ std::string perfkit::commands::registry::node::suggest(
 
         if (node* subcmd = {}; (space_after_last_token || is_unique_match)
                                && (subcmd = _find_subcommand(sharing))
-                               && _check_name_exist(exec))
-        {
+                               && _check_name_exist(exec)) {
             out_candidates.clear();
             target_token_index && ++*target_token_index;
             return subcmd->suggest(full_tokens.subspan(1),
@@ -322,17 +295,13 @@ bool perfkit::commands::registry::node::invoke(
     unique_lock _{*_subcmd_lock};
     if (_hook_pre_op) { _hook_pre_op(this, full_tokens); }
 
-    if (full_tokens.size() > 0)
-    {
-        auto subcmd = _find_subcommand(full_tokens[0]);
-        if (subcmd)
-        {
+    if (full_tokens.size() > 0) {
+        if (auto subcmd = _find_subcommand(full_tokens[0])) {
             return subcmd->invoke(full_tokens.subspan(1));
         }
     }
 
-    if (!_is_interface())
-    {
+    if (!_is_interface()) {
         return _invoke(full_tokens);
     }
 
@@ -372,9 +341,9 @@ void perfkit::commands::registry::node::reset_opreation_hook(
 }
 
 void perfkit::commands::tokenize_by_argv_rule(
-        std::string* io,
+        std::string*                   io,
         std::vector<std::string_view>& tokens,
-        std::vector<stroffset>* token_indexes)
+        std::vector<stroffset>*        token_indexes)
 {
     auto const src = *io;
     io->clear(), io->reserve(src.size());
@@ -382,40 +351,33 @@ void perfkit::commands::tokenize_by_argv_rule(
     std::cregex_iterator iter{src.data(), src.data() + src.size(), rg_argv_token};
     std::cregex_iterator iter_end{};
 
-    for (; iter != iter_end; ++iter)
-    {
+    for (; iter != iter_end; ++iter) {
         auto& match = *iter;
         if (!match.ready()) { continue; }
 
-        size_t n                = 0, position, length;
-        bool wrapped_with_quote = false;
-        if (match[1].matched)
-        {
+        size_t n                  = 0, position, length;
+        bool   wrapped_with_quote = false;
+        if (match[1].matched) {
             n                  = 1;
             wrapped_with_quote = true;
-        }
-        else if (match[2].matched)
-        {
+        } else if (match[2].matched) {
             n                  = 2;
             wrapped_with_quote = false;
-        }
-        else
-        {
+        } else {
             throw;
         }
 
         position = match.position(n), length = match.length(n);
 
-        if (token_indexes)
-        {
+        if (token_indexes) {
             token_indexes->push_back({position, length, wrapped_with_quote});
         }
 
         // correct escapes
-        std::string str = src.substr(position, length);
+        std::string             str = src.substr(position, length);
         const static std::regex rg_escape{R"(\\([ \\"']))"};
 
-        auto end = std::regex_replace(str.begin(), str.begin(), str.end(), rg_escape, "$1");
+        auto                    end = std::regex_replace(str.begin(), str.begin(), str.end(), rg_escape, "$1");
         str.resize(end - str.begin());
 
         tokens.emplace_back(io->c_str() + io->size(), str.size());
@@ -425,8 +387,7 @@ void perfkit::commands::tokenize_by_argv_rule(
 
 bool perfkit::commands::registry::invoke_command(std::string command)
 {
-    for (auto const& [_, hook] : _invoke_hooks)
-    {
+    for (auto const& [_, hook] : _invoke_hooks) {
         if (!hook(command)) { return false; }
     }
 
@@ -442,7 +403,7 @@ intptr_t perfkit::commands::registry::add_invoke_hook(std::function<bool(std::st
     assert(hook);
 
     static intptr_t _idgen = 0;
-    auto id                = ++_idgen;
+    auto            id     = ++_idgen;
     _invoke_hooks.emplace_back(id, std::move(hook));
     return id;
 }
@@ -452,7 +413,7 @@ bool perfkit::commands::registry::remove_invoke_hook(intptr_t id)
     using namespace ranges;
     auto names = _invoke_hooks | views::keys;
 
-    auto it = find(names, id);
+    auto it    = find(names, id);
     if (it == names.end()) { return false; }
 
     auto index = it - names.begin();
@@ -465,36 +426,31 @@ std::string perfkit::commands::registry::suggest(
         std::string line, std::vector<std::string>* candidates)
 {
     using namespace std::literals;
-    int position = 0;
+    int                              position = 0;
+    auto                             rg       = root();
 
-    auto rg = root();
-
-    std::string str = line;
-    std::vector<std::string_view> tokens;
+    std::string                      str      = line;
+    std::vector<std::string_view>    tokens;
     std::vector<commands::stroffset> offsets;
-    std::vector<std::string> suggests;
+    std::vector<std::string>         suggests;
 
     commands::tokenize_by_argv_rule(&str, tokens, &offsets);
 
-    int target_token = 0;
+    int  target_token = 0;
     bool has_unique_match;
     auto sharing = rg->suggest(
             tokens, suggests,
             not line.empty() && line.back() == ' ',
             &target_token, &has_unique_match);
 
-    if (not tokens.empty())
-    {
-        if (target_token < tokens.size())
-        {
+    if (not tokens.empty()) {
+        if (target_token < tokens.size()) {
             // means matching was performed on existing token
             auto const& tokofst = offsets[target_token];
 
-            position = tokofst.position;
+            position            = tokofst.position;
             if (position > 0 && line[position - 1] == '"') { position -= 1; }
-        }
-        else
-        {
+        } else {
             // matched all existing tokens, thus returned suggests are for next word.
             // return last position of string for next completion.
             position = offsets.back().position + offsets.back().length + has_unique_match;
@@ -504,34 +460,26 @@ std::string perfkit::commands::registry::suggest(
     }
 
     std::string suggest;
-    for (auto const& suggest_src : suggests)
-    {
+    for (auto const& suggest_src : suggests) {
         suggest = suggest_src;
 
         // escape all '"'s
-        for (auto it = suggest.begin(); it != suggest.end(); ++it)
-        {
+        for (auto it = suggest.begin(); it != suggest.end(); ++it) {
             if (*it == '"') { it = suggest.insert(it, '\\'), ++it; }
         }
 
-        if (suggest.find(' ') != ~size_t{})
-        {  // check
+        if (suggest.find(' ') != ~size_t{}) {  // check
             candidates->emplace_back("\""s.append(suggest).append("\""));
-        }
-        else
-        {
+        } else {
             candidates->emplace_back(std::move(suggest));
         }
     }
 
-    if (position < line.size())
-    {
+    if (position < line.size()) {
         // suggestion replaces existing word ...
         line.erase(position);
         line += sharing;
-    }
-    else
-    {
+    } else {
         // suggestion appends to end of the line ...
         line.append(position - line.size(), ' ');
         line.append(sharing);

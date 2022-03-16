@@ -55,15 +55,12 @@ class config_node_builder
         // initial full key will be used for sort categories.
         if (_subnodes.empty()) { _reference_key = ptr->full_key(); }
 
-        if (category.empty())
-        {
+        if (category.empty()) {
             if (!_subnodes.empty()) { throw std::invalid_argument(
                     fmt::format("A variable name cannot duplicate category name! ({})",
                                 ptr->display_key())); }
             _content = std::move(ptr);
-        }
-        else
-        {
+        } else {
             if (_content) { throw std::invalid_argument(
                     fmt::format("A category name cannot duplicate variable name! ({})",
                                 _content->display_key())); }
@@ -71,8 +68,7 @@ class config_node_builder
             auto key = category[0];
             auto it  = _subnodes.find(key);
 
-            if (it == _subnodes.end())
-            {
+            if (it == _subnodes.end()) {
                 auto [iter, _] = _subnodes.try_emplace(std::string(key));
                 it             = iter;
             }
@@ -86,8 +82,7 @@ class config_node_builder
         if (_content) { return 1; }
 
         size_t cnt = 0;
-        for (auto& item : _subnodes)
-        {
+        for (auto& item : _subnodes) {
             cnt += item.second.count();
         }
 
@@ -96,13 +91,11 @@ class config_node_builder
 
     std::function<Element()> decorator()
     {
-        if (_content)
-        {
+        if (_content) {
             return [ptr = _content, js = nlohmann::json{}]() mutable {
                 ptr->serialize(js);
 
-                switch (js.type())
-                {
+                switch (js.type()) {
                     case nlohmann::detail::value_t::null:
                         return ftxui::color(Color::Red, text("NULL"));
                     case nlohmann::detail::value_t::discarded:
@@ -124,26 +117,21 @@ class config_node_builder
 
                 return text("content");
             };
-        }
-        else
-        {
+        } else {
             auto cnt = count();
             return [cnt] { return ftxui::color(Color::GrayDark,
                                                text(fmt::format("{} item{}", cnt, cnt > 1 ? "s" : ""))); };
         }
     }
 
-    bool is_content() const { return !!_content; }
+    bool             is_content() const { return !!_content; }
 
     ftxui::Component build(
             std::shared_ptr<std::function<void(bool)>> parent_fold = nullptr)
     {
-        if (_content)
-        {
+        if (_content) {
             return _build_content_modifier();
-        }
-        else if (!_subnodes.empty())
-        {
+        } else if (!_subnodes.empty()) {
             auto subnode_ptr = _subnodes
                              | views::transform([](auto&& c) { return &c; })
                              | ranges::to_vector;
@@ -158,19 +146,15 @@ class config_node_builder
             auto fold_fn_all = std::make_shared<std::function<void(bool)>>([](bool) {});
 
             // expose subnodes as individual buttons, which extended/collapsed when clicked.
-            for (auto snode : subnode_ptr)
-            {
-                auto label_cont    = Container::Vertical({});
-                auto state_boolean = std::make_shared<bool>();
+            for (auto snode : subnode_ptr) {
+                auto           label_cont    = Container::Vertical({});
+                auto           state_boolean = std::make_shared<bool>();
 
                 CheckboxOption opts;
-                if (snode->second.is_content())
-                {
+                if (snode->second.is_content()) {
                     opts.style_checked   = "*";
                     opts.style_unchecked = "";
-                }
-                else
-                {
+                } else {
                     opts.style_checked   = "";
                     opts.style_unchecked = "";
                 }
@@ -180,8 +164,7 @@ class config_node_builder
                 };
                 static auto fold_or_unfold = [](auto&& container, auto&& child, bool en, auto&& state) {
                     if (!en && is_active(container)) { container->ChildAt(1)->Detach(); }
-                    if (en && !is_active(container))
-                    {
+                    if (en && !is_active(container)) {
                         child->OnEvent(Event::F5);
                         container->Add(child);
                         child->TakeFocus();
@@ -194,7 +177,7 @@ class config_node_builder
                 auto node_content    = snode->second.build(fold_fn);
                 auto subnode_fold_fn = *fold_fn;
 
-                opts.on_change = [node_content, label_cont, state_boolean] {
+                opts.on_change       = [node_content, label_cont, state_boolean] {
                     fold_or_unfold(label_cont, node_content, !is_active(label_cont), state_boolean);
                 };
                 *fold_fn = [node_content, label_cont, state_boolean](bool b) {
@@ -211,8 +194,7 @@ class config_node_builder
                 label
                         = CatchEvent(label,
                                      [fold_fn_all](Event const& evt) -> bool {
-                                         if (evt == Event::Backspace)
-                                         {
+                                         if (evt == Event::Backspace) {
                                              (*fold_fn_all)(false);
                                          }
                                          return false;
@@ -243,34 +225,31 @@ class config_node_builder
    private:
     struct _json_editor_builder
     {
-        config_ptr cfg;
-        bool allow_schema_modification;
-        nlohmann::json rootobj;
+        config_ptr            cfg;
+        bool                  allow_schema_modification;
+        nlohmann::json        rootobj;
         std::function<void()> on_change;
 
-        Component _iter(nlohmann::json* obj)
+        Component             _iter(nlohmann::json* obj)
         {
-            switch (obj->type())
-            {
+            switch (obj->type()) {
                 case nlohmann::detail::value_t::null:
                     break;
 
-                case nlohmann::detail::value_t::object:
-                {
+                case nlohmann::detail::value_t::object: {
                     auto outer = Container::Vertical({});
-                    for (auto it = (*obj).begin(); it != (*obj).end(); ++it)
-                    {
+                    for (auto it = (*obj).begin(); it != (*obj).end(); ++it) {
                         auto inner_value = _iter(&it.value());
 
-                        auto inner = Renderer(inner_value,
-                                              [this,
+                        auto inner       = Renderer(inner_value,
+                                                    [this,
                                                key = text(fmt::format("\"{}\":", it.key())),
                                                inner_value] {
                                                   return hbox(
-                                                                 ftxui::color(Color::Yellow, key),
-                                                                 text(" {"), inner_value->Render(), text("}"))
+                                                                       ftxui::color(Color::Yellow, key),
+                                                                       text(" {"), inner_value->Render(), text("}"))
                                                        | flex;
-                                              });
+                                                    });
 
                         outer->Add(inner);
                     }
@@ -278,29 +257,26 @@ class config_node_builder
                     return Renderer(outer, [outer] { return outer->Render() | flex; });
                 }
 
-                case nlohmann::detail::value_t::array:
-                {
+                case nlohmann::detail::value_t::array: {
                     auto outer = Container::Vertical({});
 
-                    for (size_t i = 0; i < obj->size(); ++i)
-                    {
+                    for (size_t i = 0; i < obj->size(); ++i) {
                         auto inner_value = _iter(&(*obj)[i]);
 
-                        auto inner = Renderer(inner_value,
-                                              [this,
+                        auto inner       = Renderer(inner_value,
+                                                    [this,
                                                key = text(fmt::format("[{}]:", i)),
                                                inner_value] {
                                                   return hbox(
-                                                          ftxui::color(Color::Violet, key),
-                                                          text(" {"), inner_value->Render(), text("}"));
-                                              });
+                                                                ftxui::color(Color::Violet, key),
+                                                                text(" {"), inner_value->Render(), text("}"));
+                                                    });
                         outer->Add(inner);
                     }
                     return Renderer(outer, [outer] { return outer->Render() | flex; });
                 }
 
-                case nlohmann::detail::value_t::string:
-                {
+                case nlohmann::detail::value_t::string: {
                     InputOption opt;
                     opt.on_enter        = on_change;
                     opt.cursor_position = 1 << 20;
@@ -308,8 +284,7 @@ class config_node_builder
                     return Input(obj->get_ptr<std::string*>(), "value", std::move(opt));
                 }
 
-                case nlohmann::detail::value_t::boolean:
-                {
+                case nlohmann::detail::value_t::boolean: {
                     CheckboxOption opt;
                     opt.style_checked   = "true ";
                     opt.style_unchecked = "false";
@@ -320,25 +295,21 @@ class config_node_builder
 
                 case nlohmann::detail::value_t::number_integer:
                 case nlohmann::detail::value_t::number_unsigned:
-                case nlohmann::detail::value_t::number_float:
-                {
+                case nlohmann::detail::value_t::number_float: {
                     auto pwstr = std::make_shared<std::wstring>();
                     *pwstr     = ftxui::to_wstring(obj->dump());
                     InputOption opt;
                     opt.cursor_position = 1 << 20;
 
-                    opt.on_enter = [pwstr, this, obj] {
+                    opt.on_enter        = [pwstr, this, obj] {
                         double value = 0;
-                        auto str     = ftxui::to_string(*pwstr);
+                        auto   str   = ftxui::to_string(*pwstr);
 
-                        try
-                        {
+                        try {
                             auto result = std::stod(str);
                             *obj        = result;
                             on_change();
-                        }
-                        catch (std::invalid_argument&)
-                        {
+                        } catch (std::invalid_argument&) {
                         }
                     };
 
@@ -359,37 +330,36 @@ class config_node_builder
 
     Component _build_content_modifier()
     {
-        auto cfg = _content;
+        auto      cfg = _content;
 
         Component inner;
-        auto proto     = _content->serialize();
-        auto ptr       = std::make_shared<_json_editor_builder>();
-        ptr->on_change = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
-        ptr->cfg       = cfg;
-        ptr->rootobj   = proto;
+        auto      proto                = _content->serialize();
+        auto      ptr                  = std::make_shared<_json_editor_builder>();
+        ptr->on_change                 = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
+        ptr->cfg                       = cfg;
+        ptr->rootobj                   = proto;
 
         ptr->allow_schema_modification = false;
 
-        inner = Container::Vertical({ptr->_iter(&ptr->rootobj)});
-        inner = CatchEvent(inner,
-                           [inner, ptr](Event evt) {
-                               if (evt == Event::F5)
-                               {
+        inner                          = Container::Vertical({ptr->_iter(&ptr->rootobj)});
+        inner                          = CatchEvent(inner,
+                                                    [inner, ptr](Event evt) {
+                               if (evt == Event::F5) {
                                    ptr->rootobj = ptr->cfg->serialize();
                                    inner->DetachAllChildren();
                                    inner->Add({ptr->_iter(&ptr->rootobj)});
                                }
                                return false;
-                           });
-        inner = Renderer(inner, [inner] { return inner->Render() | flex; });
+                                                    });
+        inner                          = Renderer(inner, [inner] { return inner->Render() | flex; });
 
         return Renderer(inner, [inner] { return vbox(hbox(text(" "), inner->Render()), ftxui::color(Color::Cyan, separator())) | flex; });
     }
 
    private:
     std::map<std::string, config_node_builder, std::less<>> _subnodes;
-    std::string_view _reference_key;
-    config_ptr _content;
+    std::string_view                                        _reference_key;
+    config_ptr                                              _content;
 };
 
 class config_browser : public ftxui::ComponentBase
@@ -400,15 +370,13 @@ class config_browser : public ftxui::ComponentBase
         // generate configuration tree from all configs.
         // copy all array then sort with rule
         config_node_builder root;
-        for (auto [key, ptr] : perfkit::config_registry::all())
-        {
+        for (auto [key, ptr] : perfkit::config_registry::all()) {
             if (ptr->tokenized_display_key().front() == "-") { continue; }  // skip invisible configs
             root._put_new(ptr->tokenized_display_key(), std::move(ptr));
         }
 
         // from config tree, generate element tree.
-        if (perfkit::config_registry::all().empty())
-        {
+        if (perfkit::config_registry::all().empty()) {
             glog()->warn("No available configuration in program !");
             _container = Button("<empty>", [] {});
             return;

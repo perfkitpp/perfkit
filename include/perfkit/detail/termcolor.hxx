@@ -60,9 +60,9 @@ struct termcolor
     constexpr termcolor& operator=(termcolor const&) noexcept = default;
     constexpr termcolor& operator=(termcolor&&) noexcept = default;
 
-    constexpr bool operator==(termcolor const& r) const noexcept { return code == r.code; }
-    constexpr bool operator!=(termcolor const& r) const noexcept { return code != r.code; }
-    constexpr bool operator<(termcolor const& r) const noexcept { return code < r.code; }
+    constexpr bool       operator==(termcolor const& r) const noexcept { return code == r.code; }
+    constexpr bool       operator!=(termcolor const& r) const noexcept { return code != r.code; }
+    constexpr bool       operator<(termcolor const& r) const noexcept { return code < r.code; }
 
     template <typename OutIt_>
     void append_xterm_256(OutIt_ out, bool fg = true) noexcept
@@ -81,8 +81,7 @@ struct termcolor
 };
 
 /// See extended CSS color keywords (4.3) in http://www.w3.org/TR/2011/REC-css3-color-20110607/
-enum class termcolors
-{
+enum class termcolors {
     alice_blue             = 0xf0f8ff,
     antique_white          = 0xfaebd7,
     aqua                   = 0xFFFF,
@@ -182,55 +181,55 @@ enum class termcolors
     midnight_blue          = 0x191970,
     mint_cream             = 0xf5fffa,
 
-    misty_rose      = 0xffe4e1,
-    moccasin        = 0xffe4b5,
-    navajo_white    = 0xffdead,
-    navy            = 0x000080,
-    old_lace        = 0xfdf5e6,
-    olive           = 0x808000,
-    olive_drab      = 0x6b8e23,
-    orange          = 0xffa500,
-    orange_red      = 0xff4500,
-    orchid          = 0xda70d6,
-    pale_goldenrod  = 0xeee8aa,
-    pale_green      = 0x98fb98,
-    pale_turquoise  = 0xafeeee,
-    pale_violet_red = 0xdb7093,
-    papaya_whip     = 0xffefd5,
-    peach_puff      = 0xffdab9,
-    peru            = 0xcd853f,
-    pink            = 0xffc0cb,
-    plum            = 0xdda0dd,
-    powder_blue     = 0xb0e0e6,
-    purple          = 0x800080,
-    red             = 0xFF0000,
-    rosy_brown      = 0xbc8f8f,
-    royal_blue      = 0x4169e1,
-    saddle_brown    = 0x8b4513,
-    salmon          = 0xfa8072,
-    sandy_brown     = 0xf4a460,
-    sea_green       = 0x2e8b57,
-    sea_shell       = 0xfff5ee,
-    sienna          = 0xa0522d,
-    silver          = 0xc0c0c0,
-    sky_blue        = 0x87ceeb,
-    slate_blue      = 0x6a5acd,
-    slate_gray      = 0x708090,
-    slate_grey      = 0x708090,
-    snow            = 0xfffafa,
-    spring_green    = 0xff7f,
-    steel_blue      = 0x4682b4,
-    tan             = 0xd2b48c,
-    teal            = 0x008080,
-    thistle         = 0xd8bfd8,
-    tomato          = 0xff6347,
-    turquoise       = 0x40e0d0,
-    violet          = 0xee82ee,
-    wheat           = 0xf5deb3,
-    white           = 0xFFFFFF,
-    white_smoke     = 0xf5f5f5,
-    yellow          = 0xFFFF00,
-    yellow_green    = 0x9acd32,
+    misty_rose             = 0xffe4e1,
+    moccasin               = 0xffe4b5,
+    navajo_white           = 0xffdead,
+    navy                   = 0x000080,
+    old_lace               = 0xfdf5e6,
+    olive                  = 0x808000,
+    olive_drab             = 0x6b8e23,
+    orange                 = 0xffa500,
+    orange_red             = 0xff4500,
+    orchid                 = 0xda70d6,
+    pale_goldenrod         = 0xeee8aa,
+    pale_green             = 0x98fb98,
+    pale_turquoise         = 0xafeeee,
+    pale_violet_red        = 0xdb7093,
+    papaya_whip            = 0xffefd5,
+    peach_puff             = 0xffdab9,
+    peru                   = 0xcd853f,
+    pink                   = 0xffc0cb,
+    plum                   = 0xdda0dd,
+    powder_blue            = 0xb0e0e6,
+    purple                 = 0x800080,
+    red                    = 0xFF0000,
+    rosy_brown             = 0xbc8f8f,
+    royal_blue             = 0x4169e1,
+    saddle_brown           = 0x8b4513,
+    salmon                 = 0xfa8072,
+    sandy_brown            = 0xf4a460,
+    sea_green              = 0x2e8b57,
+    sea_shell              = 0xfff5ee,
+    sienna                 = 0xa0522d,
+    silver                 = 0xc0c0c0,
+    sky_blue               = 0x87ceeb,
+    slate_blue             = 0x6a5acd,
+    slate_gray             = 0x708090,
+    slate_grey             = 0x708090,
+    snow                   = 0xfffafa,
+    spring_green           = 0xff7f,
+    steel_blue             = 0x4682b4,
+    tan                    = 0xd2b48c,
+    teal                   = 0x008080,
+    thistle                = 0xd8bfd8,
+    tomato                 = 0xff6347,
+    turquoise              = 0x40e0d0,
+    violet                 = 0xee82ee,
+    wheat                  = 0xf5deb3,
+    white                  = 0xFFFFFF,
+    white_smoke            = 0xf5f5f5,
+    yellow                 = 0xFFFF00,
+    yellow_green           = 0x9acd32,
 };
 
 }  // namespace perfkit

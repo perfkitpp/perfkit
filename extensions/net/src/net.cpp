@@ -41,22 +41,20 @@ static void parse_auth(std::string_view auth, std::vector<auth_info>* out)
 {
     auto CPPH_LOGGER = [] { return detail::nglog(); };
 
-    for (; not auth.empty();)
-    {
+    for (; not auth.empty();) {
         auto token = auth.substr(0, auth.find_first_of(';'));
         auth       = auth.substr(token.size() + (token.size() < auth.size()));
 
         if (token.empty())
             continue;
 
-        try
-        {
-            auto id     = token.substr(0, token.find_first_of(':'));
-            token       = token.substr(id.size() + 1);
-            auto pw     = token.substr(0, token.find_first_of(':'));
-            auto access = token.substr(pw.size() + 1);
+        try {
+            auto id              = token.substr(0, token.find_first_of(':'));
+            token                = token.substr(id.size() + 1);
+            auto  pw             = token.substr(0, token.find_first_of(':'));
+            auto  access         = token.substr(pw.size() + 1);
 
-            bool is_admin = access.find_first_of("wW") == 0;
+            bool  is_admin       = access.find_first_of("wW") == 0;
 
             auto& info           = out->emplace_back();
             info.id              = id;
@@ -71,9 +69,7 @@ static void parse_auth(std::string_view auth, std::vector<auth_info>* out)
 
             info.password.assign(b64hash.begin(), b64hash.end());
             CPPH_INFO("adding {} auth {}", info.readonly_access ? "readonly" : "admin", info.id);
-        }
-        catch (std::out_of_range& ec)
-        {
+        } catch (std::out_of_range& ec) {
             glog()->error("auth format error: <ID>:<PW>:<ACCESS>[;<ID>:<PW>:<ACCESS>[;...]]");
         }
     }
@@ -83,20 +79,17 @@ static void parse_auth(std::string_view auth, std::vector<auth_info>* out)
 perfkit::terminal_ptr perfkit::terminal::net::create(profile const& cfg)
 {
     terminal_init_info init{*cfg.session_name};
-    auto CPPH_LOGGER = [] { return detail::nglog(); };
+    auto               CPPH_LOGGER = [] { return detail::nglog(); };
 
     CPPH_INFO("creating network session: {}", *cfg.session_name);
     init.description = cfg.session_description.ref();
 
-    if (*cfg.has_relay_server)
-    {
+    if (*cfg.has_relay_server) {
         parse_auth(cfg.auth.ref(), &init.auths);
 
         init.relay_to(*cfg.ipaddr, *cfg.port);
         CPPH_INFO("connecting to relay server {}:{}", *cfg.ipaddr, *cfg.port);
-    }
-    else
-    {
+    } else {
         init.serve(*cfg.ipaddr, *cfg.port);
         CPPH_INFO("server binding to {}:{}", *cfg.ipaddr, *cfg.port);
     }

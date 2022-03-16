@@ -76,7 +76,7 @@ void trace_watcher::stop()
 }
 
 void trace_watcher::_dispatch_fetched_trace(
-        std::weak_ptr<perfkit::tracer> tracer,
+        std::weak_ptr<perfkit::tracer>         tracer,
         perfkit::tracer::fetched_traces const& traces)
 {
     auto buf = _pool_traces.checkout();
@@ -101,7 +101,7 @@ void trace_watcher::_dispatch_fetched_trace(
 }
 
 static void dump_trace(
-        perfkit::tracer::trace const& v,
+        perfkit::tracer::trace const&                          v,
         perfkit::terminal::net::outgoing::traces::node_scheme* node)
 {
     node->trace_key   = v.unique_id().value;
@@ -114,35 +114,24 @@ static void dump_trace(
                 using namespace perfkit::terminal::net::outgoing;
                 using type = std::remove_const_t<std::remove_reference_t<decltype(value)>>;
 
-                if constexpr (std::is_same_v<type, nullptr_t>)
-                {
+                if constexpr (std::is_same_v<type, nullptr_t>) {
                     node->value_type = TRACE_VALUE_NULLPTR;
                     node->value      = "";
-                }
-                else if constexpr (std::is_same_v<type, perfkit::tracer::clock_type::duration>)
-                {
+                } else if constexpr (std::is_same_v<type, perfkit::tracer::clock_type::duration>) {
                     node->value_type = TRACE_VALUE_DURATION_USEC;
                     node->value      = std::to_string(
                                  std::chrono::duration_cast<std::chrono::microseconds>(value)
                                          .count());
-                }
-                else if constexpr (std::is_same_v<type, int64_t>)
-                {
+                } else if constexpr (std::is_same_v<type, int64_t>) {
                     node->value_type = TRACE_VALUE_INTEGER;
                     node->value      = std::to_string(value);
-                }
-                else if constexpr (std::is_same_v<type, double>)
-                {
+                } else if constexpr (std::is_same_v<type, double>) {
                     node->value_type = TRACE_VALUE_FLOATING_POINT;
                     node->value      = std::to_string(value);
-                }
-                else if constexpr (std::is_same_v<type, std::string>)
-                {
+                } else if constexpr (std::is_same_v<type, std::string>) {
                     node->value_type = TRACE_VALUE_STRING;
                     node->value      = value;
-                }
-                else if constexpr (std::is_same_v<type, bool>)
-                {
+                } else if constexpr (std::is_same_v<type, bool>) {
                     node->value_type = TRACE_VALUE_BOOLEAN;
                     node->value      = value ? "true" : "false";
                 }
@@ -161,7 +150,7 @@ void trace_watcher::_dispatcher_impl_on_io(
     outgoing::traces trc;
     trc.class_name = tracer->name();
 
-    std::vector<decltype(&trc.root)> stack;
+    std::vector<decltype(&trc.root)>           stack;
     std::vector<perfkit::tracer::trace const*> hierarchy;
 
     stack.reserve(10);
@@ -174,16 +163,14 @@ void trace_watcher::_dispatcher_impl_on_io(
     ::dump_trace(traces[0], &trc.root);
     trc.root.is_fresh = true;
 
-    auto fence = traces[0].fence;
+    auto fence        = traces[0].fence;
 
     // build trace tree
-    for (auto const& trace : traces)
-    {
+    for (auto const& trace : traces) {
         assert(stack.size() == hierarchy.size());
 
         auto key = trace.unique_id();
-        if (auto [it, is_new] = _nodes.try_emplace(key); is_new)
-        {
+        if (auto [it, is_new] = _nodes.try_emplace(key); is_new) {
             auto* item   = &it->second;
             item->subscr = std::shared_ptr<std::atomic_bool>(
                     tracer, trace._bk_p_subscribed());
@@ -194,8 +181,7 @@ void trace_watcher::_dispatcher_impl_on_io(
         if (&trace == &traces[0])
             continue;
 
-        while (trace.owner_node != hierarchy.back()->self_node)
-        {  // pop all non-relatives
+        while (trace.owner_node != hierarchy.back()->self_node) {  // pop all non-relatives
             hierarchy.pop_back();
             stack.pop_back();
 
@@ -219,7 +205,7 @@ void trace_watcher::signal(std::string_view class_name)
 {
     auto lock = _tracers.lock();
 
-    auto it = lock->find(class_name);
+    auto it   = lock->find(class_name);
     if (it == lock->end())
         return;
 
@@ -303,11 +289,9 @@ void trace_watcher::_publish_tracer_list(decltype(_tracers)::value_type* table)
 {
     outgoing::trace_class_list message;
 
-    for (auto [name, wptr] : *table)
-    {
+    for (auto [name, wptr] : *table) {
         auto sptr = wptr.lock();
-        if (not sptr)
-        {
+        if (not sptr) {
             CPPH_WARN("tracer {} expired incorrectly!", name);
             continue;
         }

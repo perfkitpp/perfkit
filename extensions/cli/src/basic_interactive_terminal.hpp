@@ -41,26 +41,26 @@ class basic_interactive_terminal : public if_terminal
     basic_interactive_terminal();
 
    public:
-    commands::registry* commands() override { return &_registry; }
+    commands::registry*        commands() override { return &_registry; }
     std::optional<std::string> fetch_command(milliseconds timeout) override;
-    void write(std::string_view str) override;
-    void push_command(std::string_view command) override;
+    void                       write(std::string_view str) override;
+    void                       push_command(std::string_view command) override;
 
    private:
     void _register_autocomplete();
     void _unregister_autocomplete();
 
    private:
-    commands::registry _registry;
+    commands::registry                   _registry;
     std::shared_ptr<spdlog::sinks::sink> _sink;
 
-    std::future<std::string> _cmd;
-    circular_queue<std::string> _cmd_history{16};
-    size_t _cmd_counter = 0;
+    std::future<std::string>             _cmd;
+    circular_queue<std::string>          _cmd_history{16};
+    size_t                               _cmd_counter = 0;
 
-    std::mutex _cmd_queue_lock;
-    std::list<std::string> _cmd_queued;
+    std::mutex                           _cmd_queue_lock;
+    std::list<std::string>               _cmd_queued;
 
-    std::string _prompt = "$ ";
+    std::string                          _prompt = "$ ";
 };
 }  // namespace perfkit

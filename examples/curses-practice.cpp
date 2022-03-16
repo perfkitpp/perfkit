@@ -32,22 +32,22 @@
 
 static SCREEN* myscr;
 
-WINDOW* create_newwin(int height, int width, int starty, int startx);
-void destroy_win(WINDOW* local_win);
+WINDOW*        create_newwin(int height, int width, int starty, int startx);
+void           destroy_win(WINDOW* local_win);
 
-int main(int argc, char* argv[])
+int            main(int argc, char* argv[])
 {
     auto prev_stdout = stdout;
     auto prev_stderr = stderr;
     stdout           = fopen("log.txt", "w");
     stderr           = fopen("logerr.txt", "w");
 
-    myscr = newterm(nullptr, prev_stdout, prev_stderr);
+    myscr            = newterm(nullptr, prev_stdout, prev_stderr);
     set_term(myscr);
 
     WINDOW* my_win;
-    int startx, starty, width, height;
-    int ch;
+    int     startx, starty, width, height;
+    int     ch;
 
     // initscr();            /* Start curses mode 		*/
     cbreak();             /* Line buffering disabled, Pass on
@@ -62,10 +62,8 @@ int main(int argc, char* argv[])
     refresh();
     my_win = create_newwin(height, width, starty, startx);
 
-    while ((ch = getch()) != KEY_F(1))
-    {
-        switch (ch)
-        {
+    while ((ch = getch()) != KEY_F(1)) {
+        switch (ch) {
             case KEY_LEFT:
                 destroy_win(my_win);
                 my_win = create_newwin(height, width, starty, --startx);

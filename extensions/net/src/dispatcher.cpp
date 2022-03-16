@@ -45,26 +45,21 @@ perfkit::terminal::net::dispatcher::dispatcher(
     detail::basic_dispatcher_impl_init_info init0;
     init0.auth = init_info.auths;
 
-    if (init_info._mode == operation_mode::independent_server)
-    {
+    if (init_info._mode == operation_mode::independent_server) {
         detail::server_mode_dispatcher_init_info init1;
         init1.bind_port = init_info._port_param;
         init1.bind_addr = init_info._string_param;
 
-        self = std::make_unique<detail::server_mode_dispatcher>(init0, init1);
-    }
-    else if (init_info._mode == operation_mode::relay_server_provider)
-    {
+        self            = std::make_unique<detail::server_mode_dispatcher>(init0, init1);
+    } else if (init_info._mode == operation_mode::relay_server_provider) {
         UNIMPLEMENTED();
-    }
-    else
-    {
+    } else {
         throw std::logic_error{"specify valid terminal operation mode!"};
     }
 }
 
 void perfkit::terminal::net::dispatcher::_register_recv(
-        std::string route,
+        std::string                                   route,
         std::function<bool(const recv_archive_type&)> fn)
 {
     self->register_recv(std::move(route), std::move(fn));
@@ -72,8 +67,8 @@ void perfkit::terminal::net::dispatcher::_register_recv(
 
 void perfkit::terminal::net::dispatcher::_send(
         std::string_view route,
-        int64_t fence,
-        void const* userobj,
+        int64_t          fence,
+        void const*      userobj,
         void (*payload)(send_archive_type*, void const*))
 {
     self->send(route, fence, userobj, payload);

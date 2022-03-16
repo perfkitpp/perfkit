@@ -61,31 +61,26 @@ basic_interactive_terminal::basic_interactive_terminal()
 
 std::optional<std::string> basic_interactive_terminal::fetch_command(milliseconds timeout)
 {
-    auto until = steady_clock::now() + timeout;
+    auto                       until = steady_clock::now() + timeout;
     std::optional<std::string> entered;
 
-    if (std::unique_lock _{_cmd_queue_lock}; not _cmd_queued.empty())
-    {
+    if (std::unique_lock _{_cmd_queue_lock}; not _cmd_queued.empty()) {
         auto str = std::move(_cmd_queued.front());
         _cmd_queued.pop_front();
         return std::move(str);
     }
 
     do {
-        if (_kbhit())
-        {
+        if (_kbhit()) {
             char buf[4096];
             fgets(buf, sizeof buf, stdin);
             entered = buf;
             entered->pop_back();
             break;
-        }
-        else
-        {
+        } else {
             std::this_thread::sleep_for(10ms);
         }
-    }
-    while (steady_clock::now() < until);
+    } while (steady_clock::now() < until);
 
     return entered;
 }
@@ -106,8 +101,7 @@ std::optional<std::string>
 perfkit::basic_interactive_terminal::fetch_command(
         std::chrono::milliseconds timeout)
 {
-    if (!_cmd.valid())
-    {
+    if (!_cmd.valid()) {
         _cmd = std::async([this]() -> std::string {
             _register_autocomplete();
             auto c_str = linenoise(_prompt.c_str());
@@ -120,34 +114,26 @@ perfkit::basic_interactive_terminal::fetch_command(
         });
     }
 
-    if (auto _ = std::unique_lock{_cmd_queue_lock}; !_cmd_queued.empty())
-    {
+    if (auto _ = std::unique_lock{_cmd_queue_lock}; !_cmd_queued.empty()) {
         auto cmd = std::move(_cmd_queued.front());
         _cmd_queued.pop_front();
         return cmd;
     }
 
-    if (_cmd.wait_for(timeout) != std::future_status::ready)
-    {
+    if (_cmd.wait_for(timeout) != std::future_status::ready) {
         return {};
     }
 
     auto cmd = _cmd.get();
-    if (cmd.empty() && !_cmd_history.empty())
-    {
+    if (cmd.empty() && !_cmd_history.empty()) {
         write("!{}\n"_fmt % _cmd_history.back() / 0);
         cmd = _cmd_history.back();
-    }
-    else if (cmd.empty())
-    {
+    } else if (cmd.empty()) {
         return {};
-    }
-    else
-    {
+    } else {
         bool is_history = cmd.front() == '!';
 
-        if (!is_history && (_cmd_history.empty() || cmd != _cmd_history.back()))
-        {
+        if (!is_history && (_cmd_history.empty() || cmd != _cmd_history.back())) {
             _cmd_history.rotate(cmd);
             ++_cmd_counter;
         }
@@ -163,12 +149,9 @@ basic_interactive_terminal::basic_interactive_terminal()
     char const* env_term = getenv("TERM");
     env_term == nullptr && (env_term = "<empty>");
 
-    if (linenoiseIsUnsupportedTerm())
-    {
+    if (linenoiseIsUnsupportedTerm()) {
         glog()->warn("linenoise unsupported for $TERM={}", env_term);
-    }
-    else
-    {
+    } else {
         glog()->info("$TERM={}", env_term);
     }
 
@@ -177,8 +160,7 @@ basic_interactive_terminal::basic_interactive_terminal()
             [this](auto&&) -> bool {
                 auto pivot = _cmd_counter - _cmd_history.size();
 
-                for (const auto& item : _cmd_history)
-                {
+                for (const auto& item : _cmd_history) {
                     basic_interactive_terminal::write("{:5}  {}\n"_fmt(pivot++, item) / 0);
                 }
 
@@ -188,29 +170,25 @@ basic_interactive_terminal::basic_interactive_terminal()
     _registry.add_invoke_hook(
             [this](std::string& s) {
                 if (s.empty()) { return false; }
-                if (s[0] == '!')
-                {
+                if (s[0] == '!') {
                     if (_cmd_history.empty()) { return false; }
 
-                    std::string tok = s;
+                    std::string                   tok = s;
                     std::vector<std::string_view> tokens;
                     commands::tokenize_by_argv_rule(&tok, tokens);
 
                     tok.assign(tokens[0].begin() + 1, tokens[0].end());
-                    int hidx       = 0;
+                    int  hidx      = 0;
                     auto r_conv    = std::from_chars(tok.c_str(), tok.c_str() + tok.size(), hidx);
                     bool is_number = r_conv.ec != std::errc::invalid_argument
                                   && r_conv.ptr == tok.c_str() + tok.size();
 
-                    if (is_number)
-                    {
+                    if (is_number) {
                         hidx = hidx - _cmd_counter + _cmd_history.size() + 1;
                         if (hidx < 0 || hidx >= _cmd_history.size()) { return false; }
 
                         s = _cmd_history.begin()[hidx];
-                    }
-                    else if (!tok.empty())
-                    {
+                    } else if (!tok.empty()) {
                         auto it = std::find_if(_cmd_history.rbegin(), _cmd_history.rend(),
                                                [&, tok](auto&& ss) {
                                                    return ss.find(tok) == 0;  // if contains !...
@@ -218,14 +196,11 @@ basic_interactive_terminal::basic_interactive_terminal()
 
                         if (it == _cmd_history.rend()) { return false; }
                         s = *it;
-                    }
-                    else
-                    {
+                    } else {
                         return false;
                     }
 
-                    if (s != _cmd_history.back())
-                    {
+                    if (s != _cmd_history.back()) {
                         _cmd_history.rotate(s);
                     }
 
@@ -239,48 +214,43 @@ basic_interactive_terminal::basic_interactive_terminal()
 
 static auto locked_command_registry = std::atomic<commands::registry*>{};
 
-void basic_interactive_terminal::_register_autocomplete()
+void        basic_interactive_terminal::_register_autocomplete()
 {
     if (linenoiseIsUnsupportedTerm()) { return; }
 
     for (commands::registry* rg = nullptr;
          !locked_command_registry.compare_exchange_strong(rg, commands());
-         rg = nullptr)
-    {
+         rg = nullptr) {
         std::this_thread::sleep_for(10ms);
     }
 
     auto completion = [](char const* buf, linenoiseCompletions* lc) -> int {
-        int position = 0;
+        int                              position = 0;
 
-        auto rg = locked_command_registry.load()->root();
+        auto                             rg       = locked_command_registry.load()->root();
 
-        std::string str = buf;
-        auto srclen     = str.size();
-        std::vector<std::string_view> tokens;
+        std::string                      str      = buf;
+        auto                             srclen   = str.size();
+        std::vector<std::string_view>    tokens;
         std::vector<commands::stroffset> offsets;
-        std::vector<std::string> suggests;
+        std::vector<std::string>         suggests;
 
         commands::tokenize_by_argv_rule(&str, tokens, &offsets);
 
-        int target_token = 0;
+        int  target_token = 0;
         bool has_unique_match;
         rg->suggest(tokens, suggests,
                     srclen > 0 && buf[srclen - 1] == ' ',
                     &target_token, &has_unique_match);
 
-        if (tokens.empty() == false)
-        {
-            if (target_token < tokens.size())
-            {
+        if (tokens.empty() == false) {
+            if (target_token < tokens.size()) {
                 // means matching was performed on existing token
                 auto const& tokofst = offsets[target_token];
 
-                position = tokofst.position;
+                position            = tokofst.position;
                 if (position > 0 && buf[position - 1] == '"') { position -= 1; }
-            }
-            else
-            {
+            } else {
                 // matched all existing tokens, thus returned suggests are for next word.
                 // return last position of string for next completion.
                 position = offsets.back().position + offsets.back().length + has_unique_match;
@@ -290,22 +260,17 @@ void basic_interactive_terminal::_register_autocomplete()
         }
 
         std::string suggest;
-        for (const auto& suggest_src : suggests)
-        {
+        for (const auto& suggest_src : suggests) {
             suggest = suggest_src;
 
             // escape all '"'s
-            for (auto it = suggest.begin(); it != suggest.end(); ++it)
-            {
+            for (auto it = suggest.begin(); it != suggest.end(); ++it) {
                 if (*it == '"') { it = suggest.insert(it, '\\'), ++it; }
             }
 
-            if (suggest.find(' ') != ~size_t{})
-            {  // check
+            if (suggest.find(' ') != ~size_t{}) {  // check
                 linenoiseAddCompletion(lc, "\""s.append(suggest).append("\"").c_str());
-            }
-            else
-            {
+            } else {
                 linenoiseAddCompletion(lc, suggest.c_str());
             }
         }
@@ -333,15 +298,11 @@ void basic_interactive_terminal::push_command(std::string_view command)
 void basic_interactive_terminal::write(std::string_view str)
 {
     bool has_cr_lf = false;
-    for (auto ch : str)
-    {
-        if (ch == '\n')
-        {
+    for (auto ch : str) {
+        if (ch == '\n') {
             has_cr_lf |= 1;
             fputs("\r\n", stdout);
-        }
-        else
-        {
+        } else {
             has_cr_lf |= ch == '\r';
             fputc(ch, stdout);
         }

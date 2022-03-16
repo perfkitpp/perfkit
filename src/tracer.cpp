@@ -54,13 +54,12 @@ tracer::_entity_ty* tracer::_fork_branch(
     if (std::this_thread::get_id() != _working_thread_id)
         throw std::logic_error{"branching cannot occur on different thread from fork()ed one!"};
 
-    auto hash = _hash_active(parent, name);
+    auto hash         = _hash_active(parent, name);
 
     auto [it, is_new] = _table.try_emplace(hash);
     auto& data        = it->second;
 
-    if (is_new)
-    {
+    if (is_new) {
         data.key_buffer          = std::string(name);
         data.body.self_node      = &data.body;
         data.body.hash           = hash;
@@ -88,12 +87,9 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top)
     // --> 계층은 전역으로 관리되면 안 됨 ... 각각의 프록시가 관리해야함!!
     // Hierarchy 각각의 데이터 엔티티 기반으로 관리되게 ... _hierarchy_hash 관련 기능 싹 갈아엎기
     auto hash = hasher::FNV_OFFSET_BASE;
-    if (parent)
-    {
+    if (parent) {
         hash = parent->body.hash;
-    }
-    else
-    {
+    } else {
         return hash;  // parent==nullptr -> root trace. always return same hash.
     }
 
@@ -125,7 +121,7 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
     prx._ref               = _fork_branch(nullptr, n, false);
     prx._epoch_if_required = clock_type::now();
 
-    auto thrd_hash = std::hash<std::thread::id>{}(_working_thread_id);
+    auto thrd_hash         = std::hash<std::thread::id>{}(_working_thread_id);
     char buf[perfkit::base64::encoded_size(sizeof thrd_hash)];
     perfkit::base64::encode_one(thrd_hash, buf);
     tracer_proxy total
@@ -155,12 +151,10 @@ bool tracer::_deliver_previous_result()
     // copies all messages and put them to cache buffer to prevent memory reallocation
     // if any entity is folded, skip all of its subtree
     this->_local_reused_memory.clear();
-    for (auto& [hash, entity] : _table)
-    {
+    for (auto& [hash, entity] : _table) {
         bool folded = false;
         for (auto parent = entity.parent; parent; parent = parent->parent)
-            if (parent->is_folded.load(std::memory_order_relaxed))
-            {
+            if (parent->is_folded.load(std::memory_order_relaxed)) {
                 folded = true;
                 break;
             }
@@ -180,7 +174,7 @@ bool tracer::_deliver_previous_result()
 namespace {
 struct message_block_sorter
 {
-    int n;
+    int         n;
     friend bool operator<(std::weak_ptr<tracer> ptr, message_block_sorter s)
     {
         return s.n < ptr.lock()->order();
@@ -231,8 +225,7 @@ auto perfkit::tracer::create(int order, std::string_view name) -> std::shared_pt
 
     auto it_insert = std::lower_bound(_all().begin(), _all().end(), message_block_sorter{order});
 
-    if (it_insert != _all().end())
-    {
+    if (it_insert != _all().end()) {
         auto lck = it_insert->lock();
         if (lck && lck->name() == name)
             throw std::logic_error{"trace name duplicate!"};
@@ -255,21 +248,17 @@ perfkit::tracer::~tracer() noexcept
                                return perfkit::ptr_equals(wptr, weak_from_this());
                            });
 
-    if (it != _all().end())
-    {
+    if (it != _all().end()) {
         _all().erase(it);
         CPPH_DEBUG("erasing tracer from all {}", _name);
-    }
-    else
-    {
+    } else {
         CPPH_DEBUG("logic error: tracer invalid! {}", _name);
     }
 }
 
 void perfkit::tracer::_try_pop(_trace::_entity_ty const* body)
 {
-    if (_stack.empty())
-    {
+    if (_stack.empty()) {
         CPPH_WARN("Stack was empty!");
         return;
     }
@@ -323,8 +312,7 @@ tracer_proxy::~tracer_proxy() noexcept
     if (!_owner) { return; }
     _owner->_try_pop(_ref);
 
-    if (_epoch_if_required != clock_type::time_point{})
-    {
+    if (_epoch_if_required != clock_type::time_point{}) {
         _data() = clock_type::now() - _epoch_if_required;
     }
 
@@ -340,9 +328,9 @@ tracer::variant_type& tracer::proxy::_data() noexcept
 
 tracer_proxy& tracer_proxy::switch_to_timer(std::string_view name)
 {
-    auto owner  = _owner;
-    auto parent = _ref->parent;
-    *this       = {};
+    auto owner         = _owner;
+    auto parent        = _ref->parent;
+    *this              = {};
 
     _ref               = owner->_fork_branch(parent, name, false);
     _owner             = owner;
@@ -352,8 +340,7 @@ tracer_proxy& tracer_proxy::switch_to_timer(std::string_view name)
 }
 
 namespace {
-enum class hierarchy_compare_result
-{
+enum class hierarchy_compare_result {
     irrelevant,
     a_contains_b,
     b_contains_a,
@@ -365,29 +352,23 @@ compare_hierarchy(array_view<std::string_view> a, array_view<std::string_view> b
 {
     size_t num_equals = 0;
 
-    for (size_t i = 0, n_max = std::min(a.size(), b.size()); i < n_max; ++i)
-    {
+    for (size_t i = 0, n_max = std::min(a.size(), b.size()); i < n_max; ++i) {
         if (a[i] != b[i]) { break; }
         ++num_equals;
     }
 
-    if (a.size() == b.size())
-    {
+    if (a.size() == b.size()) {
         return num_equals == a.size()
                      ? hierarchy_compare_result::equal
                      : hierarchy_compare_result::irrelevant;
     }
-    if (num_equals != a.size() && num_equals != b.size())
-    {
+    if (num_equals != a.size() && num_equals != b.size()) {
         return hierarchy_compare_result::irrelevant;
     }
 
-    if (num_equals == a.size())
-    {
+    if (num_equals == a.size()) {
         return hierarchy_compare_result::b_contains_a;
-    }
-    else
-    {
+    } else {
         return hierarchy_compare_result::a_contains_b;
     }
 }
@@ -418,8 +399,7 @@ bool compare_hierarchy_2(tracer::trace const& a, tracer::trace const& b)
         return a_is_higher;
 
     // 조상이 같아질 때까지 팝 업
-    while (higher->owner_node != lower->owner_node)
-    {
+    while (higher->owner_node != lower->owner_node) {
         higher = higher->owner_node;
         lower  = lower->owner_node;
     }
@@ -439,8 +419,7 @@ void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept
 
 void tracer::trace::dump_data(std::string& s) const
 {
-    switch (data.index())
-    {
+    switch (data.index()) {
         case 0:
             s = "[null]";
             break;
@@ -449,8 +428,7 @@ void tracer::trace::dump_data(std::string& s) const
         {
             auto count = std::chrono::duration<double>{std::get<clock_type ::duration>(data)}.count();
             s          = fmt::format("{:.4f} ms", count * 1000.);
-        }
-        break;
+        } break;
 
         case 2:  // int64_t,
             s = std::to_string(std::get<int64_t>(data));

@@ -85,17 +85,14 @@ perfkit::terminal::net::terminal::terminal(
 
 void perfkit::terminal::net::terminal::_char_handler(char c)
 {
-    if (not _shell_active.test_and_set())
-    {
+    if (not _shell_active.test_and_set()) {
         _shell_buffered.content = _shell_accumulated;
     }
 
-    if (_any_connection)
-    {
+    if (_any_connection) {
         _shell_buffered.content += c;
 
-        if (c == '\n' || (c == '\r' && _shell_buffered.content.size() > 1))
-        {
+        if (c == '\n' || (c == '\r' && _shell_buffered.content.size() > 1)) {
             // send buffer as message
             _io.send(_shell_buffered);
             _shell_buffered.content.clear();
@@ -104,9 +101,8 @@ void perfkit::terminal::net::terminal::_char_handler(char c)
 
     _shell_accumulated += c;
 
-    int constexpr NUM_MAX_BUF = 1 << 16; // TODO: Resolve parsing error on too long buffer size
-    if (_shell_accumulated.size() > NUM_MAX_BUF)
-    {
+    int constexpr NUM_MAX_BUF = 1 << 16;  // TODO: Resolve parsing error on too long buffer size
+    if (_shell_accumulated.size() > NUM_MAX_BUF) {
         _shell_accumulated.erase(
                 _shell_accumulated.begin(),
                 _shell_accumulated.end() - NUM_MAX_BUF / 2);
@@ -115,16 +111,14 @@ void perfkit::terminal::net::terminal::_char_handler(char c)
 
 void perfkit::terminal::net::terminal::_on_no_connection()
 {
-    if (_any_connection.exchange(false))
-    {
+    if (_any_connection.exchange(false)) {
         _touch_worker();
     }
 }
 
 void perfkit::terminal::net::terminal::_on_any_connection(int n_conn)
 {
-    if (not _any_connection.exchange(true) && n_conn >= 1)
-    {
+    if (not _any_connection.exchange(true) && n_conn >= 1) {
         CPPH_INFO("{} connections initially established. redirecting stdout ...", n_conn);
 
         _any_connection.store(true);
@@ -139,24 +133,21 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
     perfkit::poll_timer tmr{500ms};
     detail::proc_stat_t stat = {};
 
-    while (_active)
-    {
+    while (_active) {
         auto wait = std::chrono::duration_cast<decltype(1ms)>(tmr.remaining());
         auto str  = detail::try_fetch_input(wait.count());
 
-        if (not str.empty())
-        {
+        if (not str.empty()) {
             _command_queue.emplace(std::move(str));
         }
 
-        if (tmr.check() && fetch_proc_stat(&stat))
-        {
+        if (tmr.check() && fetch_proc_stat(&stat)) {
             auto [in, out]        = _io.num_bytes_in_out();
             auto delta_in         = in - _bytes_io_prev.first;
             auto delta_out        = out - _bytes_io_prev.second;
             auto dt               = tmr.delta().count();
-            int in_rate           = delta_in / dt;
-            int out_rate          = delta_out / dt;
+            int  in_rate          = delta_in / dt;
+            int  out_rate         = delta_out / dt;
             _bytes_io_prev.first  = in;
             _bytes_io_prev.second = out;
 
@@ -185,8 +176,7 @@ void perfkit::terminal::net::terminal::_on_push_command(
 void perfkit::terminal::net::terminal::_on_configure(
         perfkit::terminal::net::incoming::configure_entity&& s)
 {
-    for (auto& entity : s.content)
-    {
+    for (auto& entity : s.content) {
         _context.configs.update_entity(
                 entity.config_key,
                 std::move(entity.value));
@@ -196,8 +186,8 @@ void perfkit::terminal::net::terminal::_on_configure(
 void perfkit::terminal::net::terminal::_on_suggest_request(
         perfkit::terminal::net::incoming::suggest_command&& s)
 {
-    std::vector<std::string> candidates;
-    auto nextstr = _commands.suggest(s.command, &candidates);
+    std::vector<std::string>  candidates;
+    auto                      nextstr = _commands.suggest(s.command, &candidates);
 
     outgoing::suggest_command cmd;
     cmd.new_command = std::move(nextstr);
@@ -213,8 +203,7 @@ void perfkit::terminal::net::terminal::_on_suggest_request(
 void perfkit::terminal::net::terminal::_on_trace_signal(
         perfkit::terminal::net::incoming::signal_fetch_traces&& s)
 {
-    for (auto& sig : s.targets)
-    {
+    for (auto& sig : s.targets) {
         _context.traces.signal(sig);
     }
 }
@@ -233,8 +222,7 @@ void perfkit::terminal::net::terminal::_exec()
     _worker_state = CPPH_BIND(_worker_idle);
 
     CPPH_INFO("entering worker loop...");
-    while (_active)
-    {
+    while (_active) {
         // invoke state loop
         _worker_state();
 
@@ -252,8 +240,7 @@ void perfkit::terminal::net::terminal::_exec()
                     &_context.graphics,
             };
 
-    for (auto* watcher : watchers)
-    {
+    for (auto* watcher : watchers) {
         watcher->stop();
     }
     CPPH_INFO("exiting worker thread ...");
@@ -261,13 +248,10 @@ void perfkit::terminal::net::terminal::_exec()
 
 void perfkit::terminal::net::terminal::_worker_idle()
 {
-    if (_any_connection)
-    {
+    if (_any_connection) {
         CPPH_INFO("new connection found. transitioning to bootstrap state...");
         _transition(CPPH_BIND(_worker_boostrap));
-    }
-    else
-    {
+    } else {
         ;  // otherwise, do nothing.
     }
 }
@@ -280,8 +264,7 @@ void perfkit::terminal::net::terminal::_worker_boostrap()
     context::if_watcher* watchers[] = {
             &_context.configs, &_context.traces, &_context.graphics};
 
-    for (auto* watcher : watchers)
-    {
+    for (auto* watcher : watchers) {
         watcher->stop();
         watcher->notify_change = CPPH_BIND(_touch_worker);
         watcher->io            = &_io;
@@ -304,15 +287,13 @@ void perfkit::terminal::net::terminal::_transition(std::function<void()> fn)
 
 void perfkit::terminal::net::terminal::_worker_exec()
 {
-    if (not _any_connection)
-    {
+    if (not _any_connection) {
         CPPH_INFO("last connection has been lost. returning to idling state ...");
         _transition(CPPH_BIND(_worker_idle));
         return;
     }
 
-    if (_new_connection_exist)
-    {
+    if (_new_connection_exist) {
         CPPH_INFO("new connection found. resetting all state ...");
         _transition(CPPH_BIND(_worker_boostrap));
         return;
@@ -321,8 +302,7 @@ void perfkit::terminal::net::terminal::_worker_exec()
     context::if_watcher* watchers[] = {
             &_context.configs, &_context.traces, &_context.graphics};
 
-    for (auto* watcher : watchers)
-    {
+    for (auto* watcher : watchers) {
         watcher->update();
     }
 }

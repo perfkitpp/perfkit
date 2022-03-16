@@ -105,21 +105,16 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
               typename RgTy_ = commands::registry>
     auto add_command(std::string name, Fn_&& handler = nullptr)
     {
-        if constexpr (std::is_invocable_r_v<bool, Fn_, cmd_args_view>)
-        {
+        if constexpr (std::is_invocable_r_v<bool, Fn_, cmd_args_view>) {
             _add_subcommand(std::move(name), std::forward<Fn_>(handler));
-        }
-        else if constexpr (std::is_invocable_v<Fn_, cmd_args_view>)
-        {
+        } else if constexpr (std::is_invocable_v<Fn_, cmd_args_view>) {
             _add_subcommand(
                     std::move(name),
                     [fn = std::forward<Fn_>(handler)](auto&& args) {
                         fn(args);
                         return true;
                     });
-        }
-        else if constexpr (std::is_invocable_v<Fn_>)
-        {
+        } else if constexpr (std::is_invocable_v<Fn_>) {
             _add_subcommand(
                     std::move(name),
                     [fn = std::forward<Fn_>(handler)](auto&& args) {
@@ -146,7 +141,7 @@ void initialize_with_basic_commands(if_terminal* ref);
  * @param cmd_read usage: cmd_read [path]. if path is not specified, previous path will be used.
  */
 void register_conffile_io_commands(
-        if_terminal* ref,
+        if_terminal*     ref,
         std::string_view cmd_load     = "load-config",  // e.g. "ld"
         std::string_view cmd_store    = "save-config",
         std::string_view initial_path = {});  // e.g. "w"
@@ -167,7 +162,7 @@ void register_conffile_io_commands(
  *
  */
 void register_config_manip_command(
-        if_terminal* ref,
+        if_terminal*     ref,
         std::string_view cmd = "config");
 
 /**
@@ -182,7 +177,7 @@ void register_config_manip_command(
  *      <cmd> <trace> subscribe
  */
 void register_trace_manip_command(
-        if_terminal* ref,
+        if_terminal*     ref,
         std::string_view cmd = "trace");
 
 /**
@@ -197,7 +192,7 @@ void register_trace_manip_command(
  *      <cmd> set [logger]: sets loglevel of given logger. set none, applies to global
  */
 void register_logging_manip_command(
-        if_terminal* ref,
+        if_terminal*     ref,
         std::string_view cmd = "logging");
 
 }  // namespace terminal

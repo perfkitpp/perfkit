@@ -37,7 +37,7 @@ terminal_ptr create(const profile& cfg)
     init.bind_port   = cfg.bind_port;
     init.bind_ip     = cfg.bind_address;
 
-    auto term = std::make_shared<perfkit::net::terminal>(std::move(init));
+    auto term        = std::make_shared<perfkit::net::terminal>(std::move(init));
     term->_start_();
 
     return term;

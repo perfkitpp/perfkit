@@ -30,12 +30,11 @@
 perfkit::logger_ptr perfkit::share_logger(std::string const& name)
 {
     static perfkit::spinlock mtx;
-    std::lock_guard _{mtx};
+    std::lock_guard          _{mtx};
 
-    auto ptr = spdlog::get(name);
+    auto                     ptr = spdlog::get(name);
 
-    if (not ptr)
-    {
+    if (not ptr) {
         ptr = spdlog::default_logger()->clone(name);
         spdlog::register_logger(ptr);
     }

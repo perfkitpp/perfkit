@@ -124,25 +124,20 @@ class value_parse : public if_state
     {
         if (tok.empty()) { return *next = this, true; }  // wait for next token ...
 
-        try
-        {
+        try {
             CPPH_TRACE("parsing flag {} ... -> {}", tok, _conf->default_value().type_name());
 
-            if (_conf->default_value().is_string())
-            {
+            if (_conf->default_value().is_string()) {
                 std::string data;
                 data.reserve(2 + tok.size());
                 (R"("{}")"_fmt % tok) > data;
                 _conf->request_modify(nlohmann::json::parse(data.begin(), data.end()));
-            }
-            else if (_conf->default_value().is_array())
-            {
+            } else if (_conf->default_value().is_array()) {
                 auto curvalue = _conf->serialize();
                 auto jsvalue  = nlohmann::json::parse(tok.begin(), tok.end(), nullptr, false);
 
                 // if parsing fails, try once more as plain string
-                if (jsvalue.is_discarded())
-                {
+                if (jsvalue.is_discarded()) {
                     std::string data;
                     data.reserve(2 + tok.size());
                     (R"("{}")"_fmt % tok) > data;
@@ -151,14 +146,10 @@ class value_parse : public if_state
 
                 curvalue.emplace_back(std::move(jsvalue));
                 _conf->request_modify(std::move(curvalue));
-            }
-            else
-            {
+            } else {
                 _conf->request_modify(nlohmann::json::parse(tok.begin(), tok.end()));
             }
-        }
-        catch (nlohmann::json::parse_error& e)
-        {
+        } catch (nlohmann::json::parse_error& e) {
             throw parse_error("failed to parse value ... {}:{} << {}\n error: {}"_fmt
                               % _conf->display_key()
                               % _conf->default_value().type_name()
@@ -182,8 +173,7 @@ class single_dash_parse : public if_state
         if (config_shared_ptr conf; ch_first != 'N'
                                     && tok.size() >= 1
                                     && (conf = _find_conf(ch_first, ignore_undefined))
-                                    && not conf->default_value().is_boolean())
-        {
+                                    && not conf->default_value().is_boolean()) {
             // it's asserted to be value string from second charater.
             return fork<value_parse>(_return, conf)->invoke(tok.substr(1), next);
         }
@@ -193,13 +183,11 @@ class single_dash_parse : public if_state
 
         if (token.empty()) { throw parse_error("invalid flag: {}"_fmt % tok); }
 
-        for (char ch : token)
-        {
+        for (char ch : token) {
             auto conf = _find_conf(ch, ignore_undefined);
 
             if (conf == nullptr) { continue; }
-            if (not conf->default_value().is_boolean())
-            {
+            if (not conf->default_value().is_boolean()) {
                 throw parse_error("flag {} is not boolean"_fmt % ch);
             }
 
@@ -222,17 +210,12 @@ class double_dash_parse : public if_state
         if (conf == nullptr) { return do_return(true, next); }
 
         bool is_not = tok.find("no-") == 0;
-        if (conf->default_value().is_boolean())
-        {
+        if (conf->default_value().is_boolean()) {
             conf->request_modify(not is_not);
             return do_return(true, next);
-        }
-        else if (is_not)
-        {
+        } else if (is_not) {
             throw parse_error("invalid flag {}: {} is not boolean"_fmt % tok % key);
-        }
-        else
-        {
+        } else {
             auto tok_value = tok.substr(key.size());  // strip initial '='
             if (not tok_value.empty() && tok_value[0] == '=') { tok_value = tok_value.substr(1); }
             return fork<value_parse>(_return, conf)->invoke(tok_value, next);
@@ -250,12 +233,9 @@ class initial_state : public if_state
 
         if (tok == "-h" || tok == "--help") { _build_help(); }
 
-        if (tok[1] == '-')
-        {
+        if (tok[1] == '-') {
             return fork<double_dash_parse>(this)->invoke(tok.substr(2), next);
-        }
-        else
-        {
+        } else {
             return fork<single_dash_parse>(this)->invoke(tok.substr(1), next);
         }
     }
@@ -264,14 +244,13 @@ class initial_state : public if_state
     void _build_help()
     {
         std::map<detail::config_base*, std::list<std::string_view>>
-                flag_mappings;
+                    flag_mappings;
 
         std::string str;
 
         using namespace ranges;
         str += "\n\nusage: <program> ";
-        for (auto const& [key, conf] : _flags())
-        {
+        for (auto const& [key, conf] : _flags()) {
             flag_mappings[conf.get()].push_back(key);
             str << "[{}{}{}] "_fmt
                             % (key.size() == 1 ? "-" : "--")
@@ -284,8 +263,7 @@ class initial_state : public if_state
         str += "args...";
 
         str += "\n\n"_fmt.s();
-        for (auto const& [conf, keys] : flag_mappings)
-        {
+        for (auto const& [conf, keys] : flag_mappings) {
             str << "  {:.<80}\n"_fmt
                             % to_string("{{ \"{}\" :{} }}"_fmt
                                         % conf->display_key()
@@ -323,18 +301,14 @@ void perfkit::configs::parse_args(
     initial_state->ignore_undefined = ignore_undefined;
     if_state* state                 = initial_state.get();
 
-    for (auto it = (*args).begin(); it != (*args).end();)
-    {
+    for (auto it = (*args).begin(); it != (*args).end();) {
         auto tok = *it;
 
         if (state == initial_state.get() && tok == "--") { break; }
 
-        if (state->invoke(tok, &state) && consume)
-        {
+        if (state->invoke(tok, &state) && consume) {
             it = args->erase(it);
-        }
-        else
-        {
+        } else {
             ++it;
         }
     }
@@ -349,26 +323,19 @@ perfkit::configs::flag_binding_table& perfkit::configs::_flags() noexcept
 bool perfkit::configs::import_file(std::string_view path)
 {
     std::ifstream fs{std::string{path}};
-    if (not fs.is_open())
-    {
+    if (not fs.is_open()) {
         CPPH_ERROR("config load failed: file '{}' does not exist", path);
         return false;
     }
 
-    try
-    {
+    try {
         auto js = json::parse(std::istream_iterator<char>{fs}, std::istream_iterator<char>{});
-        if (js.is_object())
-        {
+        if (js.is_object()) {
             return import_from(js);
-        }
-        else
-        {
+        } else {
             CPPH_ERROR("config load failed: file '{}' is not a json object!", path);
         }
-    }
-    catch (json::parse_error& e)
-    {
+    } catch (json::parse_error& e) {
         CPPH_ERROR(
                 "config load failed: file '{}' is not valid json: (error at {}) {}",
                 path, e.byte, e.what());
@@ -380,8 +347,7 @@ bool perfkit::configs::import_file(std::string_view path)
 bool perfkit::configs::export_to(std::string_view path)
 {
     std::ofstream fs{std::string{path}};
-    if (not fs.is_open())
-    {
+    if (not fs.is_open()) {
         CPPH_ERROR("config export failed: not valid file path: {}", path);
         return false;
     }

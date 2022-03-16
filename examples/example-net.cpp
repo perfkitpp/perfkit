@@ -63,8 +63,7 @@ int main(void)
 
     std::thread thr{
             [&] {
-                for (;;)
-                {
+                for (;;) {
                     char buf[2048];
                     auto n               = fgets(buf, sizeof buf, stdin);
                     buf[strlen(buf) - 1] = 0;
@@ -74,8 +73,7 @@ int main(void)
                 }
             }};
 
-    while (running)
-    {
+    while (running) {
         conf_global::update();
 
         auto cmd = term->fetch_command(1s);

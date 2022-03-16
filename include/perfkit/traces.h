@@ -63,12 +63,9 @@
     INTERNAL_PERFKIT_ACTIVE_TRACER->branch(String)
 
 #define PERFKIT_TRACE_SEQUENCE(Name)                                               \
-    if (not INTERNAL_PERFKIT_SEQ_TRACE.is_valid())                                 \
-    {                                                                              \
+    if (not INTERNAL_PERFKIT_SEQ_TRACE.is_valid()) {                               \
         INTERNAL_PERFKIT_SEQ_TRACE = INTERNAL_PERFKIT_ACTIVE_TRACER->timer(#Name); \
-    }                                                                              \
-    else                                                                           \
-    {                                                                              \
+    } else {                                                                       \
         INTERNAL_PERFKIT_SEQ_TRACE.switch_to_timer(#Name);                         \
     }                                                                              \
     auto& Name = INTERNAL_PERFKIT_SEQ_TRACE

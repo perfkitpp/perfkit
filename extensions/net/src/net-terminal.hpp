@@ -116,36 +116,36 @@ class terminal : public if_terminal
     static spdlog::logger* CPPH_LOGGER() { return &*detail::nglog(); }
 
    private:
-    outgoing::session_reset _init_msg;
+    outgoing::session_reset   _init_msg;
 
-    dispatcher _io;
-    commands::registry _commands;
+    dispatcher                _io;
+    commands::registry        _commands;
 
-    std::atomic_bool _active = true;
+    std::atomic_bool          _active = true;
 
-    std::thread _worker_user_command;
+    std::thread               _worker_user_command;
     notify_queue<std::string> _command_queue;
 
-    outgoing::shell_output _shell_buffered;
-    std::string _shell_accumulated;
-    std::atomic_flag _shell_active;
+    outgoing::shell_output    _shell_buffered;
+    std::string               _shell_accumulated;
+    std::atomic_flag          _shell_active;
 
     alignas(64) std::atomic_bool _any_connection = false;
-    std::thread _worker;
-    std::function<void()> _worker_state;
+    std::thread               _worker;
+    std::function<void()>     _worker_state;
 
-    std::mutex _mtx_worker;
-    std::condition_variable _cvar_worker;
-    volatile bool _dirty;
-    std::atomic_bool _new_connection_exist;
+    std::mutex                _mtx_worker;
+    std::condition_variable   _cvar_worker;
+    volatile bool             _dirty;
+    std::atomic_bool          _new_connection_exist;
 
     std::pair<size_t, size_t> _bytes_io_prev;
-    perfkit::stopwatch _bytes_io_counter;
+    perfkit::stopwatch        _bytes_io_counter;
 
     struct _context_t
     {
-        context::config_watcher configs;
-        context::trace_watcher traces;
+        context::config_watcher   configs;
+        context::trace_watcher    traces;
         context::graphics_watcher graphics;
     } _context;
 };

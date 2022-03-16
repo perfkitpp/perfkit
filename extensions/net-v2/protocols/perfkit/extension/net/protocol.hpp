@@ -57,7 +57,7 @@ struct tty_output_t
     CPPH_REFL_DECLARE_c;
 
     int64_t fence = 0;
-    string content;
+    string  content;
 };
 
 /**
@@ -67,10 +67,10 @@ struct config_entity_t
 {
     CPPH_REFL_DECLARE_c;
 
-    string name;
-    uint64_t config_key;
+    string            name;
+    uint64_t          config_key;
 
-    string description;
+    string            description;
 
     msgpack_archive_t opt_min;
     msgpack_archive_t opt_max;
@@ -81,9 +81,9 @@ struct config_category_t
 {
     CPPH_REFL_DECLARE_c;
 
-    string name;
+    string                       name;
     std::list<config_category_t> subcategories;
-    std::list<config_entity_t> entities;
+    std::list<config_entity_t>   entities;
 };
 
 //
@@ -103,10 +103,10 @@ struct notify
     {
         CPPH_REFL_DECLARE_c;
 
-        double cpu_usage_total_user;
-        double cpu_usage_total_system;
-        double cpu_usage_self_user;
-        double cpu_usage_self_system;
+        double  cpu_usage_total_user;
+        double  cpu_usage_total_system;
+        double  cpu_usage_self_user;
+        double  cpu_usage_self_system;
 
         int64_t memory_usage_virtual;
         int64_t memory_usage_resident;
@@ -129,7 +129,7 @@ struct notify
     {
         CPPH_REFL_DECLARE_c;
 
-        uint64_t config_key;
+        uint64_t          config_key;
         msgpack_archive_t content_next;  // msgpack data chunk for supporting 'any'
     };
 
@@ -167,8 +167,8 @@ struct service
         CPPH_REFL_DECLARE_c;
 
         std::pair<int, int> replace_range;
-        string replaced_content;
-        vector<string> candidate_words;
+        string              replaced_content;
+        vector<string>      candidate_words;
     };
 
     DEFINE_IFACE(suggest, suggest_result_t(string command, int cursor));

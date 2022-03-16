@@ -36,11 +36,11 @@
 
 struct test_config_structure_nested
 {
-    int x            = 0;
-    int y            = 0;
-    double z         = 0;
-    bool flag        = false;
-    std::string path = "ola";
+    int                                     x    = 0;
+    int                                     y    = 0;
+    double                                  z    = 0;
+    bool                                    flag = false;
+    std::string                             path = "ola";
     std::list<test_config_structure_nested> list;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
@@ -50,11 +50,11 @@ struct test_config_structure_nested
 
 struct test_config_structure
 {
-    int x            = 0;
-    int y            = 0;
-    double z         = 0;
-    bool flag        = false;
-    std::string path = "ola";
+    int                          x      = 0;
+    int                          y      = 0;
+    double                       z      = 0;
+    bool                         flag   = false;
+    std::string                  path   = "ola";
 
     test_config_structure_nested nested = {test_config_structure_nested{}};
 
@@ -127,11 +127,11 @@ class test_class
     auto CPPH_LOGGER() const { return &*_logger; }
 
    private:
-    std::string _id;
-    test_class_configs _cfg{_id};
+    std::string         _id;
+    test_class_configs  _cfg{_id};
     perfkit::tracer_ptr _tracer = perfkit::tracer::create(1024, _id);
-    std::thread _worker;
+    std::thread         _worker;
 
-    std::atomic_bool _loop_active{true};
+    std::atomic_bool    _loop_active{true};
     perfkit::logger_ptr _logger = perfkit::share_logger(_id);
 };

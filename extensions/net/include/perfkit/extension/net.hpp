@@ -51,8 +51,7 @@ terminal_ptr create(struct terminal_init_info const& info);
  */
 terminal_ptr create(std::string config_profile_name = "__NETTERM%%");
 
-enum class operation_mode
-{
+enum class operation_mode {
     invalid,
     independent_server,
     relay_server_provider,
@@ -127,8 +126,8 @@ struct terminal_init_info
    private:
     friend class dispatcher;  // internal use
     operation_mode _mode = operation_mode::invalid;
-    std::string _string_param;
-    uint16_t _port_param = 0;
+    std::string    _string_param;
+    uint16_t       _port_param = 0;
 
    public:
     explicit terminal_init_info(std::string session_name) : name{std::move(session_name)} {};

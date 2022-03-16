@@ -51,10 +51,10 @@ using std::weak_ptr;
 
 struct terminal_info
 {
-    string name;
-    string description;
+    string   name;
+    string   description;
 
-    string bind_ip;
+    string   bind_ip;
     uint16_t bind_port;
 
     // TODO: Authentication
@@ -81,15 +81,15 @@ class terminal : public if_terminal
 
     // Thread pool
     asio::thread_pool _ioc{4};
-    thread::worker _worker;
+    thread::worker    _worker;
 
     // Basics
     commands::registry _cmd;
-    logger_ptr _logging = share_logger("PERFKIT:NET");
+    logger_ptr         _logging = share_logger("PERFKIT:NET");
 
     // RPC connection context
     shared_ptr<terminal_monitor> _rpc_monitor = std::make_shared<terminal_monitor>(_logging);
-    msgpack::rpc::context _rpc;
+    msgpack::rpc::context        _rpc;
 
     // Connection
     asio::ip::tcp::acceptor _acceptor{_ioc};
@@ -98,9 +98,9 @@ class terminal : public if_terminal
     notify_queue<string> _pending_commands;
 
     // TTY
-    spinlock _tty_lock;
-    circular_queue<char> _tty_buf{2 << 20};
-    int64_t _tty_fence = 0;
+    spinlock                      _tty_lock;
+    circular_queue<char>          _tty_buf{2 << 20};
+    int64_t                       _tty_fence = 0;
     locked<message::tty_output_t> _tty_obuf;
 
    public:
@@ -109,16 +109,16 @@ class terminal : public if_terminal
     ~terminal();
 
    private:
-    auto CPPH_LOGGER() const { return _logging.get(); }
-    void _worker_func();
+    auto                       CPPH_LOGGER() const { return _logging.get(); }
+    void                       _worker_func();
     msgpack::rpc::service_info _build_service();
 
-    void _on_char_buf(char const*, size_t);
+    void                       _on_char_buf(char const*, size_t);
 
    public:
-    optional<string> fetch_command(milliseconds timeout) override;
-    void push_command(string_view command) override;
-    void write(string_view str) override;
+    optional<string>    fetch_command(milliseconds timeout) override;
+    void                push_command(string_view command) override;
+    void                write(string_view str) override;
     commands::registry* commands() override { return &_cmd; }
 };
 

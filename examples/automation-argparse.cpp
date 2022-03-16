@@ -69,7 +69,7 @@ TEST_SUITE("Argument Parser")
     TEST_CASE("Single Flags")
     {
         auto charpp = to_charpp(argset0);
-        int argc    = charpp.size();
+        int  argc   = charpp.size();
         auto argv   = charpp.data();
 
         perfkit::configs::parse_args(&argc, &argv, true);
@@ -105,7 +105,7 @@ TEST_SUITE("Argument Parser")
         };
 
         auto charpp = to_charpp(argset);
-        int argc    = charpp.size();
+        int  argc   = charpp.size();
         auto argv   = charpp.data();
 
         REQUIRE_THROWS_AS(perfkit::configs::parse_args(&argc, &argv, true),

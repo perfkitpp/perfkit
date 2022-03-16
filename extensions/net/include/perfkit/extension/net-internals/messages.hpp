@@ -34,12 +34,12 @@ struct session_reset
 {
     constexpr static char ROUTE[] = "update:epoch";
 
-    std::string name;
-    std::string hostname;
-    std::string keystr;
-    int64_t epoch;
-    std::string description;
-    int32_t num_cores;
+    std::string           name;
+    std::string           hostname;
+    std::string           keystr;
+    int64_t               epoch;
+    std::string           description;
+    int32_t               num_cores;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             session_reset, name, keystr, epoch, description, num_cores);
@@ -49,17 +49,17 @@ struct session_state
 {
     constexpr static char ROUTE[] = "update:session_state";
 
-    double cpu_usage_total_user;
-    double cpu_usage_total_system;
-    double cpu_usage_self_user;
-    double cpu_usage_self_system;
+    double                cpu_usage_total_user;
+    double                cpu_usage_total_system;
+    double                cpu_usage_self_user;
+    double                cpu_usage_self_system;
 
-    int64_t memory_usage_virtual;
-    int64_t memory_usage_resident;
-    int32_t num_threads;
+    int64_t               memory_usage_virtual;
+    int64_t               memory_usage_resident;
+    int32_t               num_threads;
 
-    int32_t bw_out;
-    int32_t bw_in;
+    int32_t               bw_out;
+    int32_t               bw_in;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             session_state,
@@ -78,7 +78,7 @@ struct shell_output
 {
     constexpr static char ROUTE[] = "update:shell_output";
 
-    std::string content;
+    std::string           content;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             shell_output, content);
@@ -90,8 +90,8 @@ struct new_config_class
 
     struct entity_scheme
     {
-        std::string name;
-        uint64_t config_key;
+        std::string    name;
+        uint64_t       config_key;
         nlohmann::json value;
         nlohmann::json metadata;
 
@@ -101,15 +101,15 @@ struct new_config_class
 
     struct category_scheme
     {
-        std::string name;
+        std::string                name;
         std::list<category_scheme> subcategories;
-        std::list<entity_scheme> entities;
+        std::list<entity_scheme>   entities;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
                 category_scheme, name, subcategories, entities);
     };
 
-    std::string key;
+    std::string     key;
     category_scheme root;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
@@ -122,14 +122,14 @@ struct config_entity
 
     struct entity_scheme
     {
-        uint64_t config_key = {};
+        uint64_t       config_key = {};
         nlohmann::json value;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
                 entity_scheme, config_key, value);
     };
 
-    std::string class_key;
+    std::string                      class_key;
     std::forward_list<entity_scheme> content;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
@@ -138,10 +138,10 @@ struct config_entity
 
 struct suggest_command
 {
-    constexpr static char ROUTE[] = "rpc:suggest_command";
+    constexpr static char          ROUTE[] = "rpc:suggest_command";
 
-    int64_t reply_to;
-    std::string new_command;
+    int64_t                        reply_to;
+    std::string                    new_command;
     std::forward_list<std::string> candidates;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
@@ -159,8 +159,7 @@ struct trace_class_list
             trace_class_list, content);
 };
 
-enum trace_value_type
-{
+enum trace_value_type {
     TRACE_VALUE_NULLPTR,
     TRACE_VALUE_DURATION_USEC,
     TRACE_VALUE_INTEGER,
@@ -175,13 +174,13 @@ struct traces
 
     struct node_scheme
     {
-        std::string name;
-        uint64_t trace_key;
-        bool is_fresh;
-        bool subscribing;
-        bool folded;
-        std::string value;
-        int value_type;
+        std::string            name;
+        uint64_t               trace_key;
+        bool                   is_fresh;
+        bool                   subscribing;
+        bool                   folded;
+        std::string            value;
+        int                    value_type;
         std::list<node_scheme> children;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
@@ -203,7 +202,7 @@ struct push_command
 {
     constexpr static char ROUTE[] = "cmd:push_command";
 
-    std::string command;
+    std::string           command;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             push_command, command);
@@ -213,9 +212,9 @@ struct suggest_command
 {
     constexpr static char ROUTE[] = "rpc:suggest_command";
 
-    int64_t reply_to;
-    int16_t position;
-    std::string command;
+    int64_t               reply_to;
+    int16_t               position;
+    std::string           command;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             suggest_command, reply_to, position, command);
@@ -227,14 +226,14 @@ struct configure_entity
 
     struct entity_scheme
     {
-        uint64_t config_key;
+        uint64_t       config_key;
         nlohmann::json value;
 
         CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
                 entity_scheme, config_key, value);
     };
 
-    std::string class_key;
+    std::string              class_key;
     std::list<entity_scheme> content;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
@@ -243,7 +242,7 @@ struct configure_entity
 
 struct signal_fetch_traces
 {
-    constexpr static char ROUTE[] = "cmd:signal_fetch_traces";
+    constexpr static char  ROUTE[] = "cmd:signal_fetch_traces";
     std::list<std::string> targets;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(signal_fetch_traces, targets);
@@ -252,10 +251,10 @@ struct signal_fetch_traces
 struct control_trace
 {
     constexpr static char ROUTE[] = "cmd:control_trace";
-    std::string class_name;
-    uint64_t trace_key;
-    std::optional<bool> fold;
-    std::optional<bool> subscribe;
+    std::string           class_name;
+    uint64_t              trace_key;
+    std::optional<bool>   fold;
+    std::optional<bool>   subscribe;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
             control_trace, class_name, trace_key, fold, subscribe);

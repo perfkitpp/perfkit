@@ -63,35 +63,29 @@ class tracer_instance_browser : public ComponentBase
    public:
     Element Render() override
     {
-        auto title = hbox(spinner(15, _latest_fence), text(" "), _title->Render());
+        auto  title = hbox(spinner(15, _latest_fence), text(" "), _title->Render());
         Pixel sep;
         sep.character = ".";
         sep.dim       = true;
 
-        if (_is_fetching)
-        {
+        if (_is_fetching) {
             return vbox(
                     separator(sep),
                     hbox(title | ftxui::color(Color::DarkGreen),
                          filler(),
                          text(std::to_string(_latest_fence)) | ftxui::color(Color::GrayDark)),
                     (_outer->Render() | flex));
-        }
-        else
-        {
+        } else {
             return vbox(separator(sep), title | ftxui::color(Color::GrayDark));
         }
     }
 
     bool OnEvent(Event event) override
     {
-        if (event == EVENT_POLL)
-        {
+        if (event == EVENT_POLL) {
             // Request trace result fetch periodically.
-            if (_async_result.valid())
-            {
-                if (_async_result.wait_for(0ms) == std::future_status::ready)
-                {
+            if (_async_result.valid()) {
+                if (_async_result.wait_for(0ms) == std::future_status::ready) {
                     auto result = _async_result.get();
                     _traces.clear(), result.copy_sorted(_traces);
                     _async_result = {};
@@ -100,21 +94,16 @@ class tracer_instance_browser : public ComponentBase
                 }
             }
 
-            if (!_async_result.valid() && _is_fetching)
-            {
+            if (!_async_result.valid() && _is_fetching) {
                 _target->async_fetch_request(&_async_result);
             }
 
             // Increase poll index. This is used to visualize spinner
             return false;
-        }
-        else if (event == Event::Backspace)
-        {
+        } else if (event == Event::Backspace) {
             _title->TakeFocus();
             return true;
-        }
-        else
-        {
+        } else {
             return _container->OnEvent(event);
         }
     }
@@ -136,7 +125,7 @@ class tracer_instance_browser : public ComponentBase
             opts_subcr.style_checked   = "";
             opts_subcr.style_unchecked = "";
 
-            _control_toggle = Container::Horizontal({
+            _control_toggle            = Container::Horizontal({
                     Checkbox("<|", &_folding, opts),
                     Checkbox("(+)", &_subscribing, opts_subcr),
             });
@@ -148,21 +137,15 @@ class tracer_instance_browser : public ComponentBase
             auto name  = text(_c_name);
             auto value = text(_c_value);
 
-            if (_data.fence < _owner->_latest_fence)
-            {
+            if (_data.fence < _owner->_latest_fence) {
                 name = name | ftxui::color(Color::GrayDark);
-            }
-            else if (_data.data.index() == 0)
-            {
+            } else if (_data.data.index() == 0) {
                 name = name | ftxui::color(Color::Cyan) | bold;
-            }
-            else
-            {
+            } else {
                 //        name = name ;
             }
 
-            switch (_data.data.index())
-            {
+            switch (_data.data.index()) {
                 case 0:  //<clock_type::duration,
                     value = hbox(value | ftxui::color(Color::Violet), text(" [ms]") | dim);
                     break;
@@ -190,9 +173,9 @@ class tracer_instance_browser : public ComponentBase
 
             auto hrange = hbox(name, filler(), value, text(" "));
 
-            auto ret = hbox(text(std::string{}.append(_data.hierarchy.size() * 2, ' ')),
-                            _control_toggle->Render(),
-                            text(" "), (_data.subscribing() ? hrange | inverted : hrange) | flex)
+            auto ret    = hbox(text(std::string{}.append(_data.hierarchy.size() * 2, ' ')),
+                               _control_toggle->Render(),
+                               text(" "), (_data.subscribing() ? hrange | inverted : hrange) | flex)
                      | flex;
             return ret;
         }
@@ -205,12 +188,9 @@ class tracer_instance_browser : public ComponentBase
 
             {
                 _c_name.clear();
-                if (_data.data.index() == 0)
-                {
+                if (_data.data.index() == 0) {
                     _c_name.append("[");
-                }
-                else
-                {
+                } else {
                     _c_name.append(" ");
                 }
 
@@ -228,8 +208,7 @@ class tracer_instance_browser : public ComponentBase
             if (_folding) { _owner->_folded_entities.insert(_data.hash); }
             if (!_folding) { _owner->_folded_entities.erase(_data.hash); }
 
-            if (_data.subscribing() != _subscribing)
-            {
+            if (_data.subscribing() != _subscribing) {
                 _data.subscribe(_subscribing);
                 if (!_subscribing && _owner->_monitor) { _owner->_monitor->on_end(_owner->_build_param(_data)); }
             }
@@ -237,15 +216,15 @@ class tracer_instance_browser : public ComponentBase
         }
 
        public:
-        std::string _c_name;
-        std::string _c_value;
+        std::string              _c_name;
+        std::string              _c_value;
 
         tracer_instance_browser* _owner;
-        Component _control_toggle;
-        tracer::trace _data;
+        Component                _control_toggle;
+        tracer::trace            _data;
 
-        bool _folding     = false;
-        bool _subscribing = false;
+        bool                     _folding     = false;
+        bool                     _subscribing = false;
     };
 
     void _regenerate()
@@ -253,19 +232,15 @@ class tracer_instance_browser : public ComponentBase
         _reserve_pool(_traces.size());
         _outer->DetachAllChildren();
 
-        array_view<std::string_view> skipping = {};
+        array_view<std::string_view> skipping  = {};
 
-        size_t max_fence = 0;
-        for (auto& trace : _traces)
-        {
+        size_t                       max_fence = 0;
+        for (auto& trace : _traces) {
             max_fence = std::max(max_fence, trace.fence);
 
-            if (!skipping.empty() && _one_is_root_of(skipping, trace.hierarchy))
-            {
+            if (!skipping.empty() && _one_is_root_of(skipping, trace.hierarchy)) {
                 continue;
-            }
-            else
-            {
+            } else {
                 // order is always guaranteed.
                 skipping = {};
             }
@@ -275,17 +250,15 @@ class tracer_instance_browser : public ComponentBase
             auto manip_mod    = &it->second;
             if (is_new) { _folded_entities.emplace(trace.hash); }
 
-            if (_is_folded(trace.hash))
-            {  // check folded subnode
+            if (_is_folded(trace.hash)) {  // check folded subnode
                 skipping = trace.hierarchy;
             }
 
-            auto subscribing          = trace.subscribing();
+            auto       subscribing    = trace.subscribing();
             bool const update_subscr  = subscribing && trace.fence > _latest_fence;
             bool const trigger_subscr = subscribing && *manip_mod < 2;
 
-            if ((update_subscr || trigger_subscr) && _monitor)
-            {
+            if ((update_subscr || trigger_subscr) && _monitor) {
                 // update subscription
                 auto keep_subscr = _monitor->on_update(_build_param(trace), trace.data);
                 if (!keep_subscr) { trace.subscribe(false), subscribing = false; }
@@ -310,8 +283,7 @@ class tracer_instance_browser : public ComponentBase
 
     void _reserve_pool(size_t s)
     {
-        while (_pool.size() < s)
-        {
+        while (_pool.size() < s) {
             _pool.emplace_back(std::make_shared<_data_label>(this));
         }
     }
@@ -337,22 +309,22 @@ class tracer_instance_browser : public ComponentBase
     }
 
    private:
-    Component _container;
-    Component _title;
-    Component _outer;
+    Component                                 _container;
+    Component                                 _title;
+    Component                                 _outer;
 
-    bool _is_fetching = false;
-    std::set<uint64_t> _folded_entities;
-    std::map<uint64_t, int> _cached_modes;
+    bool                                      _is_fetching = false;
+    std::set<uint64_t>                        _folded_entities;
+    std::map<uint64_t, int>                   _cached_modes;
 
     std::vector<std::shared_ptr<_data_label>> _pool;
 
-    tracer* _target;
-    tracer::fetched_traces _traces;
-    tracer::future_result _async_result;
-    size_t _latest_fence = 0;
+    tracer*                                   _target;
+    tracer::fetched_traces                    _traces;
+    tracer::future_result                     _async_result;
+    size_t                                    _latest_fence = 0;
 
-    std::shared_ptr<if_subscriber> _monitor;
+    std::shared_ptr<if_subscriber>            _monitor;
 };
 
 // 1. 루트 트레이스 -> 각 tracer 인스턴스에 대한 fetch content 활성 제어
@@ -367,8 +339,7 @@ class trace_browser : public ComponentBase
         _container = Container::Vertical({});
 
         // iterate all tracers and create tracer root object
-        for (auto item : tracer::all())
-        {
+        for (auto item : tracer::all()) {
             _container->Add(std::make_shared<tracer_instance_browser>(item, m));
         }
 

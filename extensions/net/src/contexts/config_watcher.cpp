@@ -44,7 +44,7 @@
 #define CPPH_LOGGER() detail::nglog()
 
 using namespace perfkit::terminal::net::context;
-namespace views = ranges::views;
+namespace views                   = ranges::views;
 
 config_watcher::config_watcher()  = default;
 config_watcher::~config_watcher() = default;
@@ -59,24 +59,21 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
 {
     outgoing::new_config_class message;
 
-    auto& all   = rg->bk_all();
-    message.key = rg->name();
+    auto&                      all = rg->bk_all();
+    message.key                    = rg->name();
 
-    for (auto& [_, config] : all)
-    {
+    for (auto& [_, config] : all) {
         if (config->is_hidden())
             continue;  // dont' publish hidden ones
 
-        auto hierarchy = config->tokenized_display_key();
-        auto* level    = &message.root;
+        auto  hierarchy = config->tokenized_display_key();
+        auto* level     = &message.root;
 
-        for (auto category : make_iterable(hierarchy.begin(), hierarchy.end() - 1))
-        {
+        for (auto category : make_iterable(hierarchy.begin(), hierarchy.end() - 1)) {
             auto it = perfkit::find_if(level->subcategories,
                                        [&](auto&& s) { return s.name == category; });
 
-            if (it == level->subcategories.end())
-            {
+            if (it == level->subcategories.end()) {
                 level->subcategories.emplace_back();
                 it       = --level->subcategories.end();
                 it->name = category;
@@ -99,7 +96,7 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
     // Subscribe changes
     rg->on_update.add_weak(
             _watcher_lifecycle,
-            [this](perfkit::config_registry* rg,
+            [this](perfkit::config_registry*                          rg,
                    perfkit::array_view<perfkit::detail::config_base*> updates) {
                 auto wptr = rg->weak_from_this();
 
@@ -148,8 +145,7 @@ void config_watcher::start()
                 asio::post(
                         *_ioc,
                         [this, wptr = ptr->weak_from_this()] {
-                            if (auto rg = wptr.lock())
-                            {
+                            if (auto rg = wptr.lock()) {
                                 _publish_registry(&*rg);
                             }
                         });
@@ -173,8 +169,7 @@ void config_watcher::update_entity(uint64_t key, nlohmann::json&& value)
                 if (it == _cache.confmap.end()) { return; }
 
                 auto conf = it->second.lock();
-                if (not conf)
-                {
+                if (not conf) {
                     CPPH_DEBUG("Ghost entity found for key {}", key);
                     _cache.confmap.erase(it);
                     return;
@@ -188,7 +183,7 @@ void config_watcher::update_entity(uint64_t key, nlohmann::json&& value)
 }
 
 void config_watcher::_on_update(
-        std::weak_ptr<config_registry> wrg,
+        std::weak_ptr<config_registry>             wrg,
         std::vector<perfkit::detail::config_base*> args)
 {
     auto rg = wrg.lock();
@@ -198,8 +193,7 @@ void config_watcher::_on_update(
     outgoing::config_entity message;
     message.class_key = rg->name();
 
-    for (auto arg : args)
-    {
+    for (auto arg : args) {
         auto* p       = &message.content.emplace_front();
         p->config_key = config_key_t::hash(&*arg).value;
         p->value      = arg->serialize();

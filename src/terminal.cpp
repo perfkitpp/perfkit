@@ -84,7 +84,7 @@ class _config_saveload_manager
                 it, end, std::inserter(cands, cands.end()),
                 [](auto&& p) {
                     fs::path path = p.path();
-                    auto&& str    = path.string();
+                    auto&&   str  = path.string();
                     std::replace(str.begin(), str.end(), '\\', '/');
 
                     return fs::is_directory(path) ? str.append("/") : str;
@@ -97,9 +97,9 @@ class _config_saveload_manager
 
 void register_conffile_io_commands(
         perfkit::if_terminal* ref,
-        std::string_view cmd_load,
-        std::string_view cmd_store,
-        std::string_view initial_path)
+        std::string_view      cmd_load,
+        std::string_view      cmd_store,
+        std::string_view      initial_path)
 {
     auto manip     = std::make_shared<_config_saveload_manager>();
     manip->_latest = initial_path;
@@ -125,39 +125,30 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd)
     struct fn_op
     {
         if_terminal* ref;
-        std::string logger_name;
+        std::string  logger_name;
 
-        bool operator()(args_view args)
+        bool         operator()(args_view args)
         {
             spdlog::logger* logger = {};
-            if (logger_name.empty())
-            {
+            if (logger_name.empty()) {
                 logger = spdlog::default_logger_raw();
-            }
-            else
-            {
+            } else {
                 logger = spdlog::get(logger_name).get();
             }
 
-            if (!logger)
-            {
+            if (!logger) {
                 SPDLOG_LOGGER_ERROR(glog(), "dead logger '{}'", logger_name);
                 return false;
             }
 
-            if (args.empty())
-            {
+            if (args.empty()) {
                 ref->write("{} = {}\n"_fmt
                            % logger_name
                            % spdlog::level::to_string_view(logger->level())
                            / 20);
-            }
-            else if (args.size() == 1)
-            {
+            } else if (args.size() == 1) {
                 logger->set_level(spdlog::level::from_str(std::string{args[0]}));
-            }
-            else
-            {
+            } else {
                 return false;
             }
             return true;
@@ -183,8 +174,7 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd)
     logging->add_subcommand(
             "_global_",
             [ref](args_view args) -> bool {
-                if (args.empty())
-                {
+                if (args.empty()) {
                     std::string buf;
                     spdlog::details::registry::instance().apply_all(
                             [&](const std::shared_ptr<spdlog::logger>& logger) {
@@ -195,13 +185,9 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd)
                                                   % name
                                                   % spdlog::level::to_string_view(logger->level())));
                             });
-                }
-                else if (args.size() == 1)
-                {
+                } else if (args.size() == 1) {
                     spdlog::set_level(spdlog::level::from_str(std::string{args[0]}));
-                }
-                else
-                {
+                } else {
                     return false;
                 }
                 return true;
@@ -228,8 +214,7 @@ class _trace_manip
     void suggest(string_set& repos)
     {
         // list of tracers
-        for (auto const& tracer : tracer::all())
-        {
+        for (auto const& tracer : tracer::all()) {
             repos.insert(tracer->name());
         }
     }
@@ -238,52 +223,41 @@ class _trace_manip
     {
         if (args.empty() || args.size() > 3) { return help(), false; }
 
-        if (_async.valid())
-        {
+        if (_async.valid()) {
             auto r_wait = _async.wait_for(200ms);
 
-            if (r_wait == std::future_status::timeout)
-            {
+            if (r_wait == std::future_status::timeout) {
                 SPDLOG_LOGGER_WARN(glog(), "previous trace lookup request is under progress ...");
                 return false;
-            }
-            else if (r_wait == std::future_status::ready)
-            {
-                try
-                {
+            } else if (r_wait == std::future_status::ready) {
+                try {
                     _async.get();
-                }
-                catch (std::regex_error& e)
-                {
+                } catch (std::regex_error& e) {
                     SPDLOG_LOGGER_WARN(glog(), "regex error on trace filter: {}", e.what());
                 }
-            }
-            else
-            {
+            } else {
                 throw std::logic_error("async operation must not be deffered.");
             }
         }
 
-        std::string pattern{".*"};
+        std::string         pattern{".*"};
         std::optional<bool> setter;
 
         if (args.size() > 1) { pattern.assign(args[1].begin(), args[1].end()); }
-        if (args.size() > 2)
-        {
+        if (args.size() > 2) {
             args[2] == "true" && (setter = true) || args[2] == "false" && (setter = false);
         }
 
         using namespace ranges;
         auto traces = tracer::all();
 
-        auto it = std::find_if(traces.begin(),
-                               traces.end(),
-                               [&](auto& p) {
+        auto it     = std::find_if(traces.begin(),
+                                   traces.end(),
+                                   [&](auto& p) {
                                    return p->name() == args[0];
-                               });
+                                   });
 
-        if (it == traces.end())
-        {
+        if (it == traces.end()) {
             SPDLOG_LOGGER_ERROR(glog(), "name '{}' is not valid tracer name", args[0]);
             return false;
         }
@@ -297,8 +271,8 @@ class _trace_manip
     void _async_request(std::shared_ptr<tracer> ref, std::string pattern, std::optional<bool> setter)
     {
         std::promise<perfkit::tracer::fetched_traces> promise;
-        auto fut          = promise.get_future();
-        auto valid_marker = std::make_shared<nullptr_t>();
+        auto                                          fut          = promise.get_future();
+        auto                                          valid_marker = std::make_shared<nullptr_t>();
 
         ref->on_fetch
                 += [promise = &promise,
@@ -312,8 +286,7 @@ class _trace_manip
 
         ref->request_fetch_data();
 
-        if (fut.wait_for(3s) == std::future_status::timeout)
-        {
+        if (fut.wait_for(3s) == std::future_status::timeout) {
             SPDLOG_LOGGER_ERROR(glog(), "tracer '{}' update timeout", ref->name());
             return;
         }
@@ -321,14 +294,13 @@ class _trace_manip
         tracer::fetched_traces result = fut.get();
 
         using namespace ranges;
-        std::regex match{pattern};
+        std::regex  match{pattern};
         std::string output;
         output << "\n"_fmt.s();
 
         array_view<std::string_view> current_hierarchy = {};
-        std::string hierarchy_key, data_str, full_key;
-        for (auto& item : result)
-        {
+        std::string                  hierarchy_key, data_str, full_key;
+        for (auto& item : result) {
             auto hierarchy = item.hierarchy.subspan(0, item.hierarchy.size() - 1);
 
             full_key.clear();
@@ -338,8 +310,7 @@ class _trace_manip
             if (setter) { item.subscribe(*setter); }
 
             bool hierarchy_changed = hierarchy != current_hierarchy;
-            if (hierarchy_changed)
-            {
+            if (hierarchy_changed) {
                 current_hierarchy = hierarchy;
                 hierarchy_key.clear();
                 for (auto c : hierarchy | views::join("."sv))
@@ -349,12 +320,9 @@ class _trace_manip
             }
 
             // append string
-            if (hierarchy_changed)
-            {
+            if (hierarchy_changed) {
                 output << "{}{}"_fmt % hierarchy_key % item.key;
-            }
-            else
-            {
+            } else {
                 output << "{0:{1}}{2}"_fmt % "" % hierarchy_key.size() % item.key;
             }
 
@@ -366,7 +334,7 @@ class _trace_manip
     }
 
    private:
-    if_terminal* _ref;
+    if_terminal*      _ref;
     std::future<void> _async;
 };
 
@@ -389,11 +357,11 @@ void initialize_with_basic_commands(if_terminal* ref)
 
 void register_config_manip_command(if_terminal* ref, std::string_view cmd)
 {
-    auto _locked  = ref->commands()->root()->acquire();
-    auto node_cmd = ref->commands()->root()->add_subcommand(std::string{cmd});
+    auto _locked    = ref->commands()->root()->acquire();
+    auto node_cmd   = ref->commands()->root()->add_subcommand(std::string{cmd});
 
-    auto node_set = node_cmd->add_subcommand("set");
-    auto node_get = node_cmd->add_subcommand("get");
+    auto node_set   = node_cmd->add_subcommand("set");
+    auto node_get   = node_cmd->add_subcommand("get");
 
     using node_type = commands::registry::node;
     auto hook_enum_regs =
@@ -404,8 +372,7 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd)
                     auto _ = node_reg->acquire();
                     node_reg->clear();
 
-                    for (const auto& registry : config_registry::bk_enumerate_registries())
-                    {
+                    for (const auto& registry : config_registry::bk_enumerate_registries()) {
                         auto node = node_reg->add_subcommand(registry->name());
                         node->reset_opreation_hook(hook_factory(registry));
                     }
@@ -420,13 +387,11 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd)
                     auto rg = wrg.lock();
                     if (not rg) { return; }
 
-                    for (const auto& [_, config] : rg->bk_all())
-                    {
+                    for (const auto& [_, config] : rg->bk_all()) {
                         node_cfg->add_subcommand(
                                 config->display_key(),
                                 [wconf = std::weak_ptr{config}](args_view args) {
-                                    if (args.empty())
-                                    {
+                                    if (args.empty()) {
                                         glog()->error("command 'set' requires argument");
                                         return;
                                     }
@@ -437,8 +402,7 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd)
                                     auto value  = args[0];
                                     auto parsed = json::parse(value.begin(), value.end(), nullptr, false);
 
-                                    if (parsed.is_discarded())
-                                    {
+                                    if (parsed.is_discarded()) {
                                         glog()->error("failed to parse input value");
                                         return;
                                     }
@@ -452,13 +416,11 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd)
     node_get->reset_opreation_hook(
             hook_enum_regs([ref](std::weak_ptr<config_registry> wrg) {
                 return [wrg, ref](node_type* node_cfg, auto&&) {
-                    if (auto rg = wrg.lock())
-                    {
+                    if (auto rg = wrg.lock()) {
                         // register config info command
                         auto all = rg->bk_all();
 
-                        for (auto& [key, config] : all)
-                        {
+                        for (auto& [key, config] : all) {
                             node_cfg->add_subcommand(
                                     config->display_key(),
                                     [ref, _conf = config] {
@@ -475,9 +437,7 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd)
                                         ref->write(buf);
                                     });
                         }
-                    }
-                    else
-                    {
+                    } else {
                         return;
                     }
 
@@ -501,8 +461,7 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd)
                                 buf << "< {} >\n"_fmt % (_category);
 
                                 // during string begins with this category name ...
-                                for (const auto& [_, conf] : *all)
-                                {
+                                for (const auto& [_, conf] : *all) {
                                     if (conf->display_key().find(_category) != 0) { continue; }
 
                                     // auto depth = conf->tokenized_display_key().size();
@@ -534,8 +493,8 @@ void perfkit::if_terminal::_add_subcommand(
 
 size_t perfkit::if_terminal::invoke_queued_commands(std::chrono::milliseconds timeout)
 {
-    auto now   = [] { return std::chrono::steady_clock::now(); };
-    auto until = now() + timeout;
+    auto   now    = [] { return std::chrono::steady_clock::now(); };
+    auto   until  = now() + timeout;
 
     size_t n_proc = 0;
     do {
@@ -544,8 +503,7 @@ size_t perfkit::if_terminal::invoke_queued_commands(std::chrono::milliseconds ti
 
         invoke_command(std::move(*cmd));
         ++n_proc;
-    }
-    while (now() < until);
+    } while (now() < until);
 
     return n_proc;
 }

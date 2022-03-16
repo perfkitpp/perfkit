@@ -33,8 +33,7 @@ using point2    = math::vec2i;
 using size2     = math::vec2i;
 using rectangle = math::rectangle;
 
-enum class pixel_format
-{
+enum class pixel_format {
     mono,    // 8-bit mono color
     f_mono,  // 32-bit floating point mono color
     rgb,     // 24-bit rgb color
@@ -43,8 +42,7 @@ enum class pixel_format
     f_rgba,  // 128-bit rgb color
 };
 
-enum class modal_result
-{
+enum class modal_result {
     unavailable,  // couldn't pop up modal due to system issue.
     closed,       // user closed or pressed okay button in okay modal.
     yes,          // user pressed yes
@@ -52,8 +50,7 @@ enum class modal_result
     expired,      // 'modal_expired' exception is thrown during iteration.
 };
 
-enum class modal_type
-{
+enum class modal_type {
     okay,          // simply show okey button
     yes_no,        // show yes/no button. closing modal will be treated as 'no'.
     yes_no_abort,  // show yes/no/abort button. closing modal will be treated as 'closed'
@@ -100,13 +97,13 @@ struct vertex2_0
  */
 struct material
 {
-    texture_handle albedo   = {};    // f_rgb
-    texture_handle normal   = {};    // f_rgb
-    texture_handle metalic  = {};    // f_mono
-    texture_handle rouhness = {};    // f_mono
-    texture_handle opacity  = {};    // f_mono
-    texture_handle emissive = {};    // f_rgb
-    bool binary_alpha       = true;  // if set true, alpha channel will work as simple mask.
+    texture_handle albedo       = {};    // f_rgb
+    texture_handle normal       = {};    // f_rgb
+    texture_handle metalic      = {};    // f_mono
+    texture_handle rouhness     = {};    // f_mono
+    texture_handle opacity      = {};    // f_mono
+    texture_handle emissive     = {};    // f_rgb
+    bool           binary_alpha = true;  // if set true, alpha channel will work as simple mask.
 };
 
 }  // namespace perfkit::graphics

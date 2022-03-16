@@ -43,16 +43,16 @@ perfkit::tracer traces[] = {
 
 int main(int argc, char const* argv[])
 {
-    auto comp1     = perfkit_ftxui::config_browser();
-    auto comp2     = perfkit_ftxui::trace_browser(nullptr);
-    auto component = ftxui::Container::Horizontal({
+    auto comp1       = perfkit_ftxui::config_browser();
+    auto comp2       = perfkit_ftxui::trace_browser(nullptr);
+    auto component   = ftxui::Container::Horizontal({
             comp1,
             Renderer([] { return separator(); }),
             comp2,
     });
-    component      = perfkit_ftxui::event_dispatcher(component);
+    component        = perfkit_ftxui::event_dispatcher(component);
 
-    auto screen = ScreenInteractive::Fullscreen();
+    auto screen      = ScreenInteractive::Fullscreen();
 
     auto kill_switch = perfkit_ftxui::launch_async_loop(
             &screen,
@@ -64,10 +64,8 @@ int main(int argc, char const* argv[])
                                      | size(ftxui::HEIGHT, ftxui::LESS_THAN, 55);
                             }),
                     [p = &screen](Event evt) -> bool {
-                        if (evt == perfkit_ftxui::EVENT_POLL)
-                        {
-                            if (cfg::active.get() == false)
-                            {
+                        if (evt == perfkit_ftxui::EVENT_POLL) {
+                            if (cfg::active.get() == false) {
                                 p->ExitLoopClosure()();
                             }
                         }
@@ -75,12 +73,11 @@ int main(int argc, char const* argv[])
                     }),
             50ms);
 
-    for (int ic = 0; perfkit_ftxui::is_alive(kill_switch.get()); ++ic)
-    {
+    for (int ic = 0; perfkit_ftxui::is_alive(kill_switch.get()); ++ic) {
         std::this_thread::sleep_for(10ms);
         cfg::registry().apply_update_and_check_if_dirty();
 
-        auto trc_root = traces[0].fork("Root Trace");
+        auto trc_root                      = traces[0].fork("Root Trace");
 
         auto timer                         = trc_root.timer("Some Timer");
         trc_root["Value 0"]                = 3;
@@ -93,14 +90,13 @@ int main(int argc, char const* argv[])
         trc_root["Value 3"]["Subvalue 2"]  = !!(ic & 1);
         trc_root["Value 4"]["Subvalue 3"]  = fmt::format("Hell, world! {}", ic);
 
-        auto r                            = trc_root["Value 5"];
-        trc_root["Value 5"]["Subvalue 0"] = ic;
+        auto r                             = trc_root["Value 5"];
+        trc_root["Value 5"]["Subvalue 0"]  = ic;
         if (r) { trc_root["Value 5"]["Subvalue 1 Cond"] = double(ic); }
         trc_root["Value 5"]["Subvalue 2"] = !!(ic & 1);
 
         cfg::labels::foo.async_modify(cfg::labels::foo.get() + 1);
-        if (cfg::active_async.get() == false)
-        {
+        if (cfg::active_async.get() == false) {
             kill_switch.reset();
             break;
         }

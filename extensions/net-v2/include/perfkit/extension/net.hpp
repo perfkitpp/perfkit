@@ -56,7 +56,6 @@ PERFKIT_T_CATEGORY(
 
         PERFKIT_T_CONFIGURE(bind_port, 15572)
                 .env("PERFKIT_NET_PORT")
-                .confirm();
-);
+                .confirm(););
 
 }  // namespace perfkit::terminal::net

@@ -67,50 +67,49 @@ struct config_class_hook : std::function<void(config_class*)>
 #define INTERNAL_PERFKIT_INDEXER       "+" + ::perfkit::_configs_internal::INDEXER_STR(__COUNTER__) + "|"  // max 99999
 
 #define INTERNAL_PERFKIT_CONFIG_COUNTER_NEXT(FieldName) \
-    enum                                                \
-    {                                                   \
+    enum {                                              \
         _indexof_##FieldName = __LINE__                 \
     };
 
 #define PERFKIT_FILEMARKER __FILE__ ":" INTERNAL_PERFKIT_STRINGFY(__LINE__) " " INTERNAL_PERFKIT_STRINGFY(__func__) "(): "
 
 // HELPER MACROS
-#define PERFKIT_CATEGORY(category)                                                     \
-    namespace category {                                                               \
-    ::std::string _perfkit_INTERNAL_CATNAME()                                          \
-    {                                                                                  \
-        return "";                                                                     \
-    }                                                                                  \
-    ::std::string _perfkit_INTERNAL_CATNAME_2()                                        \
-    {                                                                                  \
-        return _perfkit_INTERNAL_CATNAME();                                            \
-    }                                                                                  \
-    ::perfkit::config_registry& _registry()                                            \
-    {                                                                                  \
-        static auto inst = ::perfkit::config_registry::create(#category);              \
-        return *inst;                                                                  \
-    }                                                                                  \
-    [[deprecated]] ::perfkit::config_registry& root_registry() { return _registry(); } \
-    ::perfkit::config_registry& registry() { return _registry(); }                     \
-                                                                                       \
-    bool update() { return _registry().update(); }                                     \
-    }                                                                                  \
+#define PERFKIT_CATEGORY(category)                                                       \
+    namespace category {                                                                 \
+    ::std::string _perfkit_INTERNAL_CATNAME()                                            \
+    {                                                                                    \
+        return "";                                                                       \
+    }                                                                                    \
+    ::std::string _perfkit_INTERNAL_CATNAME_2()                                          \
+    {                                                                                    \
+        return _perfkit_INTERNAL_CATNAME();                                              \
+    }                                                                                    \
+    ::perfkit::config_registry& _registry()                                              \
+    {                                                                                    \
+        static auto inst = ::perfkit::config_registry::create(#category);                \
+        return *inst;                                                                    \
+    }                                                                                    \
+    [[deprecated]] ::perfkit::config_registry& root_registry() { return _registry(); }   \
+    ::perfkit::config_registry&                registry() { return _registry(); }        \
+                                                                                         \
+    bool                                       update() { return _registry().update(); } \
+    }                                                                                    \
     namespace category
 
-#define PERFKIT_SUBCATEGORY(category)                                                                   \
-    namespace category {                                                                                \
-    static inline auto _perfkit_INTERNAL_CATNAME_BEFORE = &_perfkit_INTERNAL_CATNAME;                   \
-    [[deprecated]] ::perfkit::config_registry& root_registry() { return _registry(); }                  \
-    ::perfkit::config_registry& registry() { return _registry(); }                                      \
-    ::std::string _perfkit_INTERNAL_CATNAME()                                                           \
-    {                                                                                                   \
-        return category::_perfkit_INTERNAL_CATNAME_BEFORE() + INTERNAL_PERFKIT_INDEXER + #category "|"; \
-    }                                                                                                   \
-    ::std::string _perfkit_INTERNAL_CATNAME_2()                                                         \
-    {                                                                                                   \
-        return _perfkit_INTERNAL_CATNAME();                                                             \
-    }                                                                                                   \
-    }                                                                                                   \
+#define PERFKIT_SUBCATEGORY(category)                                                                         \
+    namespace category {                                                                                      \
+    static inline auto                         _perfkit_INTERNAL_CATNAME_BEFORE = &_perfkit_INTERNAL_CATNAME; \
+    [[deprecated]] ::perfkit::config_registry& root_registry() { return _registry(); }                        \
+    ::perfkit::config_registry&                registry() { return _registry(); }                             \
+    ::std::string                              _perfkit_INTERNAL_CATNAME()                                    \
+    {                                                                                                         \
+        return category::_perfkit_INTERNAL_CATNAME_BEFORE() + INTERNAL_PERFKIT_INDEXER + #category "|";       \
+    }                                                                                                         \
+    ::std::string _perfkit_INTERNAL_CATNAME_2()                                                               \
+    {                                                                                                         \
+        return _perfkit_INTERNAL_CATNAME();                                                                   \
+    }                                                                                                         \
+    }                                                                                                         \
     namespace category
 
 #define PERFKIT_CONFIGURE(name, ...)                                                               \
@@ -120,21 +119,21 @@ struct config_class_hook : std::function<void(config_class*)>
                                    _perfkit_INTERNAL_CATNAME_2() + INTERNAL_PERFKIT_INDEXER #name, \
                                    __VA_ARGS__)
 
-#define PERFKIT_DECLARE_SUBCATEGORY(hierarchy)                  \
-    namespace hierarchy {                                       \
-    ::std::string _perfkit_INTERNAL_CATNAME_2();                \
-    [[deprecated]] ::perfkit::config_registry& root_registry(); \
-    ::perfkit::config_registry& registry();                     \
-    }                                                           \
+#define PERFKIT_DECLARE_SUBCATEGORY(hierarchy)                                \
+    namespace hierarchy {                                                     \
+    ::std::string                              _perfkit_INTERNAL_CATNAME_2(); \
+    [[deprecated]] ::perfkit::config_registry& root_registry();               \
+    ::perfkit::config_registry&                registry();                    \
+    }                                                                         \
     namespace hierarchy
 
-#define PERFKIT_DECLARE_CATEGORY(hierarchy)    \
-    namespace hierarchy {                      \
-    ::std::string _perfkit_INTERNAL_CATNAME(); \
-    ::perfkit::config_registry& _registry();   \
-    ::perfkit::config_registry& registry();    \
-    bool update();                             \
-    }                                          \
+#define PERFKIT_DECLARE_CATEGORY(hierarchy)                  \
+    namespace hierarchy {                                    \
+    ::std::string               _perfkit_INTERNAL_CATNAME(); \
+    ::perfkit::config_registry& _registry();                 \
+    ::perfkit::config_registry& registry();                  \
+    bool                        update();                    \
+    }                                                        \
     namespace hierarchy
 
 #define INTERNAL_PERFKIT_T_CATEGORY_head(ClassName)
@@ -145,7 +144,7 @@ struct config_class_hook : std::function<void(config_class*)>
    private:                                                           \
     using _internal_super = ClassName;                                \
     std::shared_ptr<::perfkit::config_registry> _perfkit_INTERNAL_RG; \
-    static std::string _category_name()                               \
+    static std::string                          _category_name()      \
     {                                                                 \
         return "";                                                    \
     }                                                                 \

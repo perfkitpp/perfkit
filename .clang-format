@@ -4,10 +4,10 @@ Language: Cpp
 AccessModifierOffset: -1
 AlignAfterOpenBracket: Align
 # AlignArrayOfStructures: Right
-AlignConsecutiveMacros: true
-AlignConsecutiveAssignments: true
-AlignConsecutiveBitFields: true
-AlignConsecutiveDeclarations: false
+AlignConsecutiveMacros: Consecutive
+AlignConsecutiveAssignments: AcrossEmptyLines
+AlignConsecutiveBitFields: AcrossEmptyLines
+AlignConsecutiveDeclarations: AcrossEmptyLines
 AlignEscapedNewlines: Left
 AlignOperands: AlignAfterOperator
 AlignTrailingComments: true
@@ -30,20 +30,20 @@ AttributeMacros:
 BinPackArguments: true
 BinPackParameters: true
 BraceWrapping:
-  AfterCaseLabel: true
+  AfterCaseLabel: false
   AfterClass: true
-  AfterControlStatement: Always
-  AfterEnum: true
+  AfterControlStatement: Never
+  AfterEnum: false
   AfterFunction: true
   AfterNamespace: false
   AfterObjCDeclaration: true
   AfterStruct: true
   AfterUnion: true
   AfterExternBlock: true
-  BeforeCatch: true
-  BeforeElse: true
+  BeforeCatch: false
+  BeforeElse: false
   BeforeLambdaBody: false
-  BeforeWhile: true
+  BeforeWhile: false
   IndentBraces: false
   SplitEmptyFunction: true
   SplitEmptyRecord: true

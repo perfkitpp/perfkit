@@ -38,10 +38,10 @@ namespace perfkit::commands {
 class registry;
 struct stroffset
 {
-    size_t position = {};
-    size_t length   = {};
+    size_t position    = {};
+    size_t length      = {};
 
-    bool should_wrap = {};
+    bool   should_wrap = {};
 };
 
 struct command_exception : std::exception
@@ -61,9 +61,9 @@ struct command_name_invalid_exception : std::exception
  * @param tokens
  */
 void tokenize_by_argv_rule(
-        std::string* io,
+        std::string*                   io,
         std::vector<std::string_view>& tokens,
-        std::vector<stroffset>* token_indexes = nullptr);
+        std::vector<stroffset>*        token_indexes = nullptr);
 
 /**
  * Invocation Handler
@@ -85,10 +85,10 @@ class registry
     class node
     {
         perfkit::commands::registry::node* _add_subcommand(
-                std::string cmd,
-                invoke_fn handler               = {},
-                autocomplete_suggest_fn suggest = {},
-                bool name_constant              = false);
+                std::string             cmd,
+                invoke_fn               handler       = {},
+                autocomplete_suggest_fn suggest       = {},
+                bool                    name_constant = false);
 
        public:
         /**
@@ -102,18 +102,15 @@ class registry
          */
         template <typename Fn_ = nullptr_t>
         perfkit::commands::registry::node* add_subcommand(
-                std::string cmd,
-                Fn_&& handler                   = nullptr,
-                autocomplete_suggest_fn suggest = {},
-                bool name_constant              = false)
+                std::string             cmd,
+                Fn_&&                   handler       = nullptr,
+                autocomplete_suggest_fn suggest       = {},
+                bool                    name_constant = false)
         {
-            if constexpr (std::is_invocable_r_v<bool, Fn_, args_view>)
-            {
+            if constexpr (std::is_invocable_r_v<bool, Fn_, args_view>) {
                 return _add_subcommand(
                         std::move(cmd), std::forward<Fn_>(handler), std::move(suggest), name_constant);
-            }
-            else if constexpr (std::is_invocable_v<Fn_, args_view>)
-            {
+            } else if constexpr (std::is_invocable_v<Fn_, args_view>) {
                 return _add_subcommand(
                         std::move(cmd),
                         [fn = std::forward<Fn_>(handler)](auto&& args) {
@@ -121,9 +118,7 @@ class registry
                             return true;
                         },
                         std::move(suggest), name_constant);
-            }
-            else if constexpr (std::is_invocable_v<Fn_>)
-            {
+            } else if constexpr (std::is_invocable_v<Fn_>) {
                 return _add_subcommand(
                         std::move(cmd),
                         [fn = std::forward<Fn_>(handler)](auto&& args) {
@@ -131,9 +126,7 @@ class registry
                             return true;
                         },
                         std::move(suggest), name_constant);
-            }
-            else if (std::is_same_v<Fn_, nullptr_t>)
-            {
+            } else if (std::is_same_v<Fn_, nullptr_t>) {
                 return _add_subcommand(
                         std::move(cmd),
                         {},
@@ -222,10 +215,10 @@ class registry
          */
         std::string suggest(
                 perfkit::array_view<std::string_view> full_tokens,
-                std::vector<std::string>& out_candidates,
-                bool space_after_last_token,
-                int* target_token_index    = nullptr,
-                bool* out_has_unique_match = nullptr);
+                std::vector<std::string>&             out_candidates,
+                bool                                  space_after_last_token,
+                int*                                  target_token_index   = nullptr,
+                bool*                                 out_has_unique_match = nullptr);
 
         /**
          * Invoke command with given arguments.
@@ -240,39 +233,39 @@ class registry
         node* parent() const { return _parent; }
 
        private:
-        bool _check_name_exist(std::string_view) const noexcept;
-        bool _is_interface() const noexcept { return !_invoke; }
+        bool        _check_name_exist(std::string_view) const noexcept;
+        bool        _is_interface() const noexcept { return !_invoke; }
 
         node const* _find_subcommand(std::string_view cmd_or_alias) const;
-        node* _find_subcommand(std::string_view cmd_or_alias);
+        node*       _find_subcommand(std::string_view cmd_or_alias);
 
        private:
         friend class registry;
 
-        std::map<std::string const, node, std::less<>> _subcommands;
+        std::map<std::string const, node, std::less<>>              _subcommands;
         std::map<std::string const, std::string const, std::less<>> _aliases;
 
-        node* _parent;
-        std::recursive_mutex* _subcmd_lock;
+        node*                                                       _parent;
+        std::recursive_mutex*                                       _subcmd_lock;
 
-        invoke_fn _invoke;
-        autocomplete_suggest_fn _suggest;
-        std::function<void(node*, args_view)> _hook_pre_op;
-        bool _constant_name = {};
+        invoke_fn                                                   _invoke;
+        autocomplete_suggest_fn                                     _suggest;
+        std::function<void(node*, args_view)>                       _hook_pre_op;
+        bool                                                        _constant_name = {};
     };
 
    public:
     using hook_fn = std::function<bool(std::string& command)>;
 
    public:
-    bool invoke_command(std::string command);
-    node* root() { return _root.get(); }
+    bool        invoke_command(std::string command);
+    node*       root() { return _root.get(); }
     node const* root() const { return _root.get(); }
 
     registry() { _root->_subcmd_lock = &_subcmd_lock; }
 
-    intptr_t add_invoke_hook(hook_fn hook);
-    bool remove_invoke_hook(intptr_t);
+    intptr_t    add_invoke_hook(hook_fn hook);
+    bool        remove_invoke_hook(intptr_t);
 
     std::string suggest(std::string line, std::vector<std::string>* candidates);
 

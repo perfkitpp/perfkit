@@ -53,11 +53,9 @@ void perfkit::net::terminal::_start_()
 
 void perfkit::net::terminal::_worker_func()
 {
-    try
-    {
+    try {
         // If listening socket is not initialized yet, do initialize.
-        if (not _acceptor.is_open())
-        {
+        if (not _acceptor.is_open()) {
             using namespace asio::ip;
             tcp::endpoint ep{make_address(_info.bind_ip), _info.bind_port};
             CPPH_INFO("accept>> Binding acceptor to {}:{} ...", _info.bind_ip, _info.bind_port);
@@ -78,9 +76,7 @@ void perfkit::net::terminal::_worker_func()
         std::this_thread::sleep_for(100ms);
 
         // TODO:
-    }
-    catch (asio::system_error& ec)
-    {
+    } catch (asio::system_error& ec) {
         CPPH_ERROR("Socket error! ({}): {}", ec.code().value(), ec.what());
         CPPH_ERROR("Sleep for 3 seconds before retry ...");
 

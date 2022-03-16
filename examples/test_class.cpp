@@ -67,10 +67,9 @@ void test_class::start()
             [&]() {
                 CPPH_INFO("worker thread created.");
 
-                while (_loop_active.load())
-                {
-                    auto trc_root = _tracer->fork("time_all");
-                    auto& trc     = *_tracer;
+                while (_loop_active.load()) {
+                    auto  trc_root = _tracer->fork("time_all");
+                    auto& trc      = *_tracer;
 
                     trc.timer("global-update"), tc::update();
                     trc.timer("sleep-interval"),
@@ -80,8 +79,7 @@ void test_class::start()
 
                     _cfg->update();
 
-                    if (auto tr0 = trc.timer("tree-0"))
-                    {
+                    if (auto tr0 = trc.timer("tree-0")) {
                         auto tr1       = trc.timer("tree-1");
                         tr1["integer"] = _cfg.t_int.ref();
                         tr1["double"]  = _cfg.t_double.value();
@@ -95,16 +93,14 @@ void test_class::start()
                     tr1["double"]  = _cfg.t_double.value();
                     tr1["str"]     = _cfg.t_string.value();
 
-                    if (_cfg.t_boolean.ref())
-                    {
+                    if (_cfg.t_boolean.ref()) {
                         auto tr2       = trc.timer("tree-2");
                         tr2["integer"] = _cfg.t_int.ref();
                         tr2["double"]  = _cfg.t_double.value();
                         tr2["str"]     = _cfg.t_string.value();
                     }
 
-                    if (auto branch = trc.branch("reload"))
-                    {
+                    if (auto branch = trc.branch("reload")) {
                         branch.unsubscribe();
                         _tracer.reset(), _tracer = perfkit::tracer::create(1024, _id);
                         CPPH_INFO("Reloading tracer 1");

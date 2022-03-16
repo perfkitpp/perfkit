@@ -47,13 +47,13 @@ class trace_watcher : public if_watcher
     };
 
    private:
-    perfkit::shared_null _event_lifespan;
+    perfkit::shared_null                                              _event_lifespan;
     locked<std::map<std::string, std::weak_ptr<tracer>, std::less<>>> _tracers;
 
-    pool<perfkit::tracer::fetched_traces> _pool_traces;
+    pool<perfkit::tracer::fetched_traces>                             _pool_traces;
 
-    std::unordered_map<trace_key_t, _trace_node> _nodes;
-    poll_timer _tmr_enumerate{1s};
+    std::unordered_map<trace_key_t, _trace_node>                      _nodes;
+    poll_timer                                                        _tmr_enumerate{1s};
 
    public:
     void start() override;

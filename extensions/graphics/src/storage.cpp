@@ -52,37 +52,37 @@ class storage::impl
     {
     }
 
-    handle_data find_resource(std::string_view key) const { return {}; }
+    handle_data    find_resource(std::string_view key) const { return {}; }
     texture_handle create_texture(std::string key, bool lossless) { return {}; }
-    window_handle create_window(std::string key) { return {}; }
-    mesh_handle create_mesh(std::string key) { return {}; }
+    window_handle  create_window(std::string key) { return {}; }
+    mesh_handle    create_mesh(std::string key) { return {}; }
 
    public:
     void draw(
             texture_handle handle,
             size2 size, pixel_format format,
-            void const* buffer,
+            void const*            buffer,
             texture_draw_fn const& draw_fn) {}
 
     bool try_draw(
             texture_handle handle,
             size2 size, pixel_format format,
-            void const* buffer,
+            void const*            buffer,
             texture_draw_fn const& draw_fn) { return false; }
 
     void show(
-            window_handle handle,
+            window_handle         handle,
             window_proc_fn const& wnd_proc)
     {
     }
 
     bool try_show(
-            window_handle handle,
+            window_handle         handle,
             window_proc_fn const& wnd_proc) { return false; }
 
     modal_result
-    modal(window_handle handle,
-          modal_type type,
+    modal(window_handle         handle,
+          modal_type            type,
           window_proc_fn const& wnd_proc) { return modal_result::expired; }
 
    public:

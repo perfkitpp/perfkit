@@ -74,37 +74,37 @@ class config_base
 
    public:
     config_base(class config_registry* owner,
-                void* raw,
-                std::string full_key,
-                deserializer fn_deserial,
-                serializer fn_serial,
-                nlohmann::json&& attribute);
+                void*                  raw,
+                std::string            full_key,
+                deserializer           fn_deserial,
+                serializer             fn_serial,
+                nlohmann::json&&       attribute);
 
     /**
      * @warning this function is not re-entrant!
      * @return
      */
-    nlohmann::json serialize();
-    void serialize(nlohmann::json&);
-    void serialize(std::function<void(nlohmann::json const&)> const&);
+    nlohmann::json        serialize();
+    void                  serialize(nlohmann::json&);
+    void                  serialize(std::function<void(nlohmann::json const&)> const&);
 
     nlohmann::json const& attribute() const noexcept { return _attribute; }
     nlohmann::json const& default_value() const { return _attribute["default"]; }
 
-    bool consume_dirty() { return _dirty.exchange(false); }
+    bool                  consume_dirty() { return _dirty.exchange(false); }
 
-    auto const& full_key() const { return _full_key; }
-    auto const& display_key() const { return _display_key; }
-    auto const& description() const { return _attribute["description"].get_ref<std::string const&>(); }
-    auto tokenized_display_key() const { return make_view(_categories); }
-    void request_modify(nlohmann::json js);
+    auto const&           full_key() const { return _full_key; }
+    auto const&           display_key() const { return _display_key; }
+    auto const&           description() const { return _attribute["description"].get_ref<std::string const&>(); }
+    auto                  tokenized_display_key() const { return make_view(_categories); }
+    void                  request_modify(nlohmann::json js);
 
-    size_t num_modified() const { return _fence_modified; };
-    size_t num_serialized() const { return _fence_serialized; }
+    size_t                num_modified() const { return _fence_modified; };
+    size_t                num_serialized() const { return _fence_serialized; }
 
-    bool can_export() const noexcept { return not attribute().contains("transient"); }
-    bool can_import() const noexcept { return not attribute().contains("block_read"); }
-    bool is_hidden() const noexcept { return attribute().contains("hidden"); }
+    bool                  can_export() const noexcept { return not attribute().contains("transient"); }
+    bool                  can_import() const noexcept { return not attribute().contains("block_read"); }
+    bool                  is_hidden() const noexcept { return attribute().contains("hidden"); }
 
     /**
      * Check if latest marshalling result was invalid
@@ -116,28 +116,28 @@ class config_base
     }
 
    private:
-    bool _try_deserialize(nlohmann::json const& value);
+    bool        _try_deserialize(nlohmann::json const& value);
     static void _split_categories(std::string_view view, std::vector<std::string_view>& out);
 
    private:
     friend class perfkit::config_registry;
-    perfkit::config_registry* _owner;
+    perfkit::config_registry*     _owner;
 
-    std::string _full_key;
-    std::string _display_key;
-    void* _raw;
-    std::atomic_bool _dirty                 = true;  // default true to trigger initialization
-    std::atomic_bool _latest_marshal_failed = false;
+    std::string                   _full_key;
+    std::string                   _display_key;
+    void*                         _raw;
+    std::atomic_bool              _dirty                 = true;  // default true to trigger initialization
+    std::atomic_bool              _latest_marshal_failed = false;
 
-    std::atomic_size_t _fence_modified   = 0;
-    std::atomic_size_t _fence_serialized = ~size_t{};
-    nlohmann::json _cached_serialized;
-    nlohmann::json _attribute;
+    std::atomic_size_t            _fence_modified        = 0;
+    std::atomic_size_t            _fence_serialized      = ~size_t{};
+    nlohmann::json                _cached_serialized;
+    nlohmann::json                _attribute;
 
     std::vector<std::string_view> _categories;
 
-    deserializer _deserialize;
-    serializer _serialize;
+    deserializer                  _deserialize;
+    serializer                    _serialize;
 };
 }  // namespace detail
 
@@ -158,14 +158,14 @@ struct schema_mismatch : parse_error { using parse_error::parse_error; };
 using flag_binding_table = std::map<std::string, config_shared_ptr, std::less<>>;
 flag_binding_table& _flags() noexcept;
 
-void parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
-void parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
+void                parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
+void                parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
 
-bool import_from(json const& data);
-json export_all();
+bool                import_from(json const& data);
+json                export_all();
 
-bool import_file(std::string_view path);
-bool export_to(std::string_view path);
+bool                import_file(std::string_view path);
+bool                export_to(std::string_view path);
 
 /** wait until any configuration update is applied. */
 perfkit::event<perfkit::config_registry*>&
@@ -185,23 +185,22 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     using container         = std::map<std::string, weak_ptr<config_registry>, std::less<>>;
 
    private:
-    enum class update_state
-    {
+    enum class update_state {
         none,
         busy,
         ready
     };
 
    private:
-    std::string _name;
-    config_table _entities;
-    string_view_table _disp_keymap;
+    std::string                       _name;
+    config_table                      _entities;
+    string_view_table                 _disp_keymap;
     std::vector<detail::config_base*> _pending_updates;
-    perfkit::spinlock _update_lock;
+    perfkit::spinlock                 _update_lock;
 
     // this value is used for identifying config registry's schema type, as config registry's
     //  layout never changes after updated once.
-    std::type_info const* _schema_class;
+    std::type_info const*  _schema_class;
     configs::schema_hash_t _schema_hash{hasher::FNV_OFFSET_BASE};
 
     // since configurations can be loaded before registry instance loaded, this flag makes
@@ -215,24 +214,24 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     ~config_registry() noexcept;
 
    public:
-    bool update();
-    void export_to(nlohmann::json*);
-    void import_from(nlohmann::json);
+    bool        update();
+    void        export_to(nlohmann::json*);
+    void        import_from(nlohmann::json);
 
     auto const& name() const { return _name; }
 
    public:
-    bool bk_queue_update_value(std::string_view full_key, json value);
-    std::string_view bk_find_key(std::string_view display_key);
-    auto const& bk_all() const noexcept { return _entities; }
-    auto bk_schema_class() const noexcept { return _schema_class; }
-    auto bk_schema_hash() const noexcept { return _schema_hash; }
+    bool                                                                                 bk_queue_update_value(std::string_view full_key, json value);
+    std::string_view                                                                     bk_find_key(std::string_view display_key);
+    auto const&                                                                          bk_all() const noexcept { return _entities; }
+    auto                                                                                 bk_schema_class() const noexcept { return _schema_class; }
+    auto                                                                                 bk_schema_hash() const noexcept { return _schema_hash; }
     perfkit::event<perfkit::config_registry*, perfkit::array_view<detail::config_base*>> on_update;
-    perfkit::event<perfkit::config_registry*> on_destroy;
+    perfkit::event<perfkit::config_registry*>                                            on_destroy;
 
    public:
-    static auto bk_enumerate_registries(bool filter_complete = false) noexcept -> std::vector<std::shared_ptr<config_registry>>;
-    static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
+    static auto                        bk_enumerate_registries(bool filter_complete = false) noexcept -> std::vector<std::shared_ptr<config_registry>>;
+    static auto                        bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
 
     static shared_ptr<config_registry> create(std::string name, std::type_info const* schema = nullptr);
 
@@ -249,8 +248,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 };
 
 namespace _attr_flag {
-enum ty : uint64_t
-{
+enum ty : uint64_t {
     has_min      = 0x01 << 0,
     has_max      = 0x01 << 1,
     has_validate = 0x01 << 2,
@@ -259,8 +257,7 @@ enum ty : uint64_t
 };
 }
 
-enum class _config_io_type
-{
+enum class _config_io_type {
     persistent,
     transient,
     transient_readonly,
@@ -272,25 +269,24 @@ class config;
 template <typename Ty_>
 struct _config_attrib_data
 {
-    std::string description;
-    std::function<bool(Ty_&)> validate;
-    std::function<bool(Ty_ const&)> verify;
-    std::optional<Ty_> min;
-    std::optional<Ty_> max;
-    std::optional<std::set<Ty_>> one_of;
-    std::string env_name;
-    bool hidden = false;
+    std::string                             description;
+    std::function<bool(Ty_&)>               validate;
+    std::function<bool(Ty_ const&)>         verify;
+    std::optional<Ty_>                      min;
+    std::optional<Ty_>                      max;
+    std::optional<std::set<Ty_>>            one_of;
+    std::string                             env_name;
+    bool                                    hidden = false;
 
     std::optional<std::vector<std::string>> flag_binding;
-    _config_io_type transient_type = _config_io_type::persistent;
+    _config_io_type                         transient_type = _config_io_type::persistent;
 };
 
 template <typename Ty_, uint64_t Flags_ = 0>
 class _config_factory
 {
    public:
-    enum
-    {
+    enum {
         flag = Flags_
     };
 
@@ -350,12 +346,9 @@ class _config_factory
     template <typename Callable_>
     auto& validate(Callable_&& v)
     {
-        if constexpr (std::is_invocable_r_v<bool, Callable_, Ty_&>)
-        {
+        if constexpr (std::is_invocable_r_v<bool, Callable_, Ty_&>) {
             _data.validate = std::move(v);
-        }
-        else
-        {
+        } else {
             _data.validate =
                     [fn = std::forward<Callable_>(v)](Ty_& s) {
                         fn(s);
@@ -433,9 +426,9 @@ class _config_factory
    public:
     struct _init_info
     {
-        config_registry* dispatcher = {};
-        std::string full_key        = {};
-        Ty_ default_value           = {};
+        config_registry* dispatcher    = {};
+        std::string      full_key      = {};
+        Ty_              default_value = {};
     };
 
     std::shared_ptr<_init_info> _pinfo;
@@ -449,9 +442,9 @@ class config
     template <uint64_t Flags_>
     config(
             std::integral_constant<uint64_t, Flags_>,
-            config_registry& repo,
-            std::string full_key,
-            Ty_&& default_value,
+            config_registry&         repo,
+            std::string              full_key,
+            Ty_&&                    default_value,
             _config_attrib_data<Ty_> attribute) noexcept
             : _owner(&repo), _value(std::forward<Ty_>(default_value))
     {
@@ -464,48 +457,38 @@ class config
 
         // set reference attribute
         nlohmann::json js_attrib;
-        js_attrib["default"] = _value;
+        js_attrib["default"]     = _value;
 
         js_attrib["description"] = attribute.description;
 
-        if constexpr (!!(Flags_ & _attr_flag::has_min))
-        {
+        if constexpr (!!(Flags_ & _attr_flag::has_min)) {
             js_attrib["min"] = *attribute.min;
         }
-        if constexpr (!!(Flags_ & _attr_flag::has_max))
-        {
+        if constexpr (!!(Flags_ & _attr_flag::has_max)) {
             js_attrib["max"] = *attribute.max;
         }
-        if constexpr (!!(Flags_ & _attr_flag::has_one_of))
-        {
+        if constexpr (!!(Flags_ & _attr_flag::has_one_of)) {
             js_attrib["one_of"] = *attribute.one_of;
         }
-        if constexpr (!!(Flags_ & _attr_flag::has_validate))
-        {
+        if constexpr (!!(Flags_ & _attr_flag::has_validate)) {
             js_attrib["has_custom_validator"] = true;
-        }
-        else
-        {
+        } else {
             js_attrib["has_custom_validator"] = false;
         }
 
-        if (attribute.hidden)
-        {
+        if (attribute.hidden) {
             js_attrib["hidden"] = true;
         }
 
-        if (attribute.flag_binding)
-        {
+        if (attribute.flag_binding) {
             std::vector<std::string>& binding = *attribute.flag_binding;
             js_attrib["is_flag"]              = true;
-            if (not binding.empty())
-            {
+            if (not binding.empty()) {
                 js_attrib["flag_binding"] = std::move(binding);
             }
         }
 
-        if (attribute.transient_type != _config_io_type::persistent)
-        {
+        if (attribute.transient_type != _config_io_type::persistent) {
             js_attrib["transient"] = true;
             if (attribute.transient_type == _config_io_type::transient)
                 js_attrib["block_read"] = true;
@@ -514,10 +497,9 @@ class config
         // setup marshaller / de-marshaller with given rule of attribute
         detail::config_base::deserializer fn_m = [attrib = std::move(attribute)]  //
                 (nlohmann::json const& in, void* out) {
-                    try
-                    {
-                        Ty_ parsed;
-                        bool okay = true;
+                    try {
+                        Ty_                             parsed;
+                        bool                            okay = true;
 
                         _config_attrib_data<Ty_> const& attr = attrib;
 
@@ -526,36 +508,29 @@ class config
                         else
                             nlohmann::from_json(in, parsed);
 
-                        if constexpr (!!(Flags_ & _attr_flag::has_min))
-                        {
+                        if constexpr (!!(Flags_ & _attr_flag::has_min)) {
                             if constexpr (has_binary_op_v<std::less<>, Ty_>)
                                 parsed = std::max<Ty_>(*attr.min, parsed);
                         }
-                        if constexpr (!!(Flags_ & _attr_flag::has_max))
-                        {
+                        if constexpr (!!(Flags_ & _attr_flag::has_max)) {
                             if constexpr (has_binary_op_v<std::less<>, Ty_>)
                                 parsed = std::min<Ty_>(*attr.max, parsed);
                         }
-                        if constexpr (!!(Flags_ & _attr_flag::has_one_of))
-                        {
+                        if constexpr (!!(Flags_ & _attr_flag::has_one_of)) {
                             if (attr.one_of->find(parsed) == attr.one_of->end())
                                 return false;
                         }
-                        if constexpr (!!(Flags_ & _attr_flag::has_verify))
-                        {
+                        if constexpr (!!(Flags_ & _attr_flag::has_verify)) {
                             if (not attr.verify(parsed))
                                 return false;
                         }
-                        if constexpr (!!(Flags_ & _attr_flag::has_validate))
-                        {
+                        if constexpr (!!(Flags_ & _attr_flag::has_validate)) {
                             okay |= attr.validate(parsed);  // value should be validated
                         }
 
                         *(Ty_*)out = std::move(parsed);
                         return okay;
-                    }
-                    catch (std::exception&)
-                    {
+                    } catch (std::exception&) {
                         return false;
                     }
                 };
@@ -574,8 +549,7 @@ class config
 
         // queue environment value if available
         if (not env.empty())
-            if (auto env_value = getenv(env.c_str()))
-            {
+            if (auto env_value = getenv(env.c_str())) {
                 nlohmann::json parsed_json;
                 if constexpr (std::is_same_v<Ty_, std::string>)  // if it's string, apply as-is.
                     parsed_json = env_value;
@@ -598,32 +572,32 @@ class config
      * @return
      */
     [[deprecated]] Ty_ const& get() const noexcept { return _value; }
-    Ty_ value() const noexcept { return _copy(); }
-    Ty_ const& ref() const noexcept { return _value; }
+    Ty_                       value() const noexcept { return _copy(); }
+    Ty_ const&                ref() const noexcept { return _value; }
 
     /**
      * Provides thread-safe access for configuration.
      *
      * @return
      */
-    Ty_ _copy() const noexcept { return _owner->_access_lock(), Ty_{_value}; }
+    Ty_                 _copy() const noexcept { return _owner->_access_lock(), Ty_{_value}; }
 
-    Ty_ const& operator*() const noexcept { return ref(); }
-    Ty_ const* operator->() const noexcept { return &ref(); }
-    operator Ty_() const noexcept { return _copy(); }
+    Ty_ const&          operator*() const noexcept { return ref(); }
+    Ty_ const*          operator->() const noexcept { return &ref(); }
+                        operator Ty_() const noexcept { return _copy(); }
 
     [[deprecated]] bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
     [[deprecated]] void async_modify(Ty_ v) { commit(std::move(v)); }
-    bool check_update() const { return _opt->consume_dirty(); }
-    void commit(Ty_ v) { _owner->bk_queue_update_value(_opt->full_key(), std::move(v)); }
+    bool                check_update() const { return _opt->consume_dirty(); }
+    void                commit(Ty_ v) { _owner->bk_queue_update_value(_opt->full_key(), std::move(v)); }
 
-    auto& base() const { return *_opt; }
+    auto&               base() const { return *_opt; }
 
    private:
     config_shared_ptr _opt;
 
-    config_registry* _owner;
-    Ty_ _value;
+    config_registry*  _owner;
+    Ty_               _value;
 };
 
 namespace configs {
@@ -646,8 +620,8 @@ using _cvt_ty = std::conditional_t<
 
 template <typename Ty_>
 auto configure(config_registry& dispatcher,
-               std::string&& full_key,
-               Ty_&& default_value) noexcept
+               std::string&&    full_key,
+               Ty_&&            default_value) noexcept
 {
     _config_factory<_cvt_ty<Ty_>> attribute;
     attribute._pinfo                = std::make_shared<typename _config_factory<_cvt_ty<Ty_>>::_init_info>();
