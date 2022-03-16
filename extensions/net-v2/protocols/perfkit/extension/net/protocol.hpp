@@ -32,7 +32,7 @@
 #include <list>
 
 #include "perfkit/common/refl/core.hxx"
-#include "perfkit/common/refl/extension/msgpack-rpc/signature.hxx"
+#include "perfkit/common/refl/msgpack-rpc/signature.hxx"
 
 namespace perfkit::msgpack::rpc {
 class context;

@@ -33,7 +33,7 @@
 #include <asio/thread_pool.hpp>
 
 #include "perfkit/common/circular_queue.hxx"
-#include "perfkit/common/refl/extension/msgpack-rpc.hxx"
+#include "perfkit/common/refl/msgpack-rpc/context.hxx"
 #include "perfkit/common/thread/locked.hxx"
 #include "perfkit/common/thread/notify_queue.hxx"
 #include "perfkit/common/thread/worker.hxx"

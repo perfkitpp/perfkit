@@ -33,7 +33,7 @@
 #include <spdlog/spdlog.h>
 
 #include "perfkit/common/functional.hxx"
-#include "perfkit/common/refl/extension/msgpack-rpc/asio.hxx"
+#include "perfkit/common/refl/msgpack-rpc/asio.hxx"
 #include "utils.hpp"
 
 using namespace std::literals;
