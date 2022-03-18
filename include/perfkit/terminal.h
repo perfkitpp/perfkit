@@ -31,7 +31,6 @@
 #include <spdlog/fwd.h>
 
 #include "perfkit/common/array_view.hxx"
-#include "perfkit/detail/termcolor.hxx"
 
 namespace perfkit {
 namespace commands {

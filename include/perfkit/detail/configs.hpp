@@ -243,19 +243,24 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     auto const& name() const { return _name; }
 
    public:
-    bool                                                                                 bk_queue_update_value(std::string_view full_key, json value);
-    std::string_view                                                                     bk_find_key(std::string_view display_key);
-    auto const&                                                                          bk_all() const noexcept { return _entities; }
-    auto                                                                                 bk_schema_class() const noexcept { return _schema_class; }
-    auto                                                                                 bk_schema_hash() const noexcept { return _schema_hash; }
-    perfkit::event<perfkit::config_registry*, perfkit::array_view<detail::config_base*>> on_update;
-    perfkit::event<perfkit::config_registry*>                                            on_destroy;
+    bool             bk_queue_update_value(std::string_view full_key, json value);
+    std::string_view bk_find_key(std::string_view display_key);
+    auto const&      bk_all() const noexcept { return _entities; }
+    auto             bk_schema_class() const noexcept { return _schema_class; }
+    auto             bk_schema_hash() const noexcept { return _schema_hash; }
+
+    using update_event_t  = event<config_registry*, array_view<detail::config_base*>>;
+    using destroy_event_t = event<config_registry*>;
+
+    update_event_t  on_update;
+    destroy_event_t on_destroy;
 
    public:
-    static auto                        bk_enumerate_registries(bool filter_complete = false) noexcept -> std::vector<std::shared_ptr<config_registry>>;
-    static auto                        bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
+    static auto create(std::string name, std::type_info const* schema = nullptr) -> shared_ptr<config_registry>;
 
-    static shared_ptr<config_registry> create(std::string name, std::type_info const* schema = nullptr);
+   public:
+    static auto bk_enumerate_registries(bool filter_complete = false) noexcept -> std::vector<std::shared_ptr<config_registry>>;
+    static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
 
    private:
     // TODO: redesign this!

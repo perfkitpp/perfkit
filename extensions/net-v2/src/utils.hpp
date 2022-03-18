@@ -29,11 +29,9 @@
 
 #include <spdlog/fwd.h>
 
-#include "perfkit/common/utility/inserter.hxx"
-
 namespace perfkit::net::detail {
-std::string                     try_fetch_input(int ms_to_wait);
-std::shared_ptr<spdlog::logger> nglog();
+std::string     try_fetch_input(int ms_to_wait);
+spdlog::logger* nglog();
 
 struct proc_stat_t
 {

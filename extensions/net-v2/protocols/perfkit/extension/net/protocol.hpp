@@ -92,6 +92,28 @@ struct config_entity_update_t
 struct notify
 {
     /**
+     * Returns current session status
+     */
+    struct session_status_t
+    {
+        CPPH_REFL_DECLARE_c;
+
+        double  cpu_usage_total_user;
+        double  cpu_usage_total_system;
+        double  cpu_usage_self_user;
+        double  cpu_usage_self_system;
+
+        int64_t memory_usage_virtual;
+        int64_t memory_usage_resident;
+        int32_t num_threads;
+
+        int32_t bw_out;
+        int32_t bw_in;
+    };
+    
+    DEFINE_RPC(session_status, session_status_t());
+
+    /**
      * Shell content output on every flush
      */
     DEFINE_RPC(tty, void(tty_output_t));
@@ -146,28 +168,6 @@ struct service
     };
 
     DEFINE_RPC(session_info, session_info_t());
-
-    /**
-     * Returns session status
-     */
-    struct session_status_t
-    {
-        CPPH_REFL_DECLARE_c;
-
-        double  cpu_usage_total_user;
-        double  cpu_usage_total_system;
-        double  cpu_usage_self_user;
-        double  cpu_usage_self_system;
-
-        int64_t memory_usage_virtual;
-        int64_t memory_usage_resident;
-        int32_t num_threads;
-
-        int32_t bw_out;
-        int32_t bw_in;
-    };
-
-    DEFINE_RPC(session_status, session_status_t());
 
     /**
      * Query if server is alive

@@ -42,10 +42,10 @@
 
 #define CPPH_LOGGER() perfkit::net::detail::nglog()
 
-std::shared_ptr<spdlog::logger> perfkit::net::detail::nglog()
+spdlog::logger* perfkit::net::detail::nglog()
 {
     static auto logger = perfkit::share_logger("PERFKIT:NET");
-    return logger;
+    return &*logger;
 }
 
 #if __unix__

@@ -35,9 +35,6 @@
 #include "perfkit/common/functional.hxx"
 #include "perfkit/common/refl/msgpack-rpc/asio.hxx"
 #include "perfkit/configs.h"
-#include "range/v3/range/conversion.hpp"
-#include "range/v3/view/map.hpp"
-#include "range/v3/view/transform.hpp"
 #include "utils.hpp"
 
 using namespace std::literals;
@@ -70,7 +67,7 @@ void perfkit::net::terminal::_start_()
     detail::input_redirect(bind_front(&terminal::_on_char_buf, this));
 
     CPPH_INFO("Starting session [{}] ...", _info.name);
-    _worker.repeat(bind_front(&terminal::_worker_func, this));
+    _worker.repeat(bind_front(&terminal::_tick_worker, this));
 
     // Post event for opening acceptor
     _event_proc.post(bind_front(&terminal::_open_acceptor, this));
@@ -95,7 +92,7 @@ void perfkit::net::terminal::_open_acceptor()
     CPPH_INFO("accept>> Now listening ...");
 }
 
-void perfkit::net::terminal::_worker_func()
+void perfkit::net::terminal::_tick_worker()
 {
     try {
         _event_proc.run_for(250ms);
@@ -151,18 +148,15 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
 
                        out->content.assign(begin, end);
                    })
-            .route(service::heartbeat,
-                   [this] { CPPH_INFO("HEARTBEAT!"); })
+            .route(service::heartbeat, [] { ; })
             .route(service::session_info,
                    [this](perfkit::net::message::service::session_info_t* rv) {
                        *rv = _session_info;
                    })
             .route(service::update_config_entity,
-                   [this](config_entity_update_t const& entity) {
-                       ;  // TODO
-                   })
+                   bind_front(&config_context::rpc_update_request, &_ctx_config))
             .route(service::request_republish_config_registries,
-                   bind_front(&terminal::_config_republish_all_registry, this));
+                   bind_front(&config_context::rpc_republish_all_registries, &_ctx_config));
 
     return service_desc;
 }
@@ -215,127 +209,25 @@ void perfkit::net::terminal::_on_session_list_change()
         _session_active_state_anchor = std::make_shared<nullptr_t>();
         weak_ptr anchor              = _session_active_state_anchor;
 
-        configs::on_new_config_registry().add_weak(
-                anchor, [this](config_registry* reg) {
-                    auto fn_lazy_publish =
-                            [this, wreg = reg->weak_from_this()] {
-                                if (auto reg = wreg.lock())
-                                    _config_publish_new_registry(reg);
-                            };
-
-                    asio::post(_event_proc, std::move(fn_lazy_publish));
-                });
-
-        tracer::on_new_tracer().add_weak(
-                anchor, [this](tracer* tracer) {
-                    ;  // TODO
-                });
+        _ctx_config.start_monitoring(anchor);
     } else {
         CPPH_INFO("Last session disposed ... Stopping monitoring.");
+        _ctx_config.stop_monitoring();
+
         _session_active_state_anchor = nullptr;
     }
-}
-
-void perfkit::net::terminal::_config_publish_new_registry(shared_ptr<config_registry> rg)
-{
-    CPPH_DEBUG("Publishing config registry: {}", rg->name());
-
-    auto& all              = rg->bk_all();
-    auto  key              = rg->name();
-    auto  root             = message::notify::config_category_t{};
-
-    // Always try destroy registries before  
-    _config_on_destroy(rg->name());
-
-    auto  registry_context = &_config_registries[rg->name()];
-    registry_context->associated_keys.reserve(rg->bk_all().size());
-
-    for (auto& [_, config] : all) {
-        if (config->is_hidden())
-            continue;  // dont' publish hidden ones
-
-        auto  hierarchy = config->tokenized_display_key();
-        auto* level     = &root;
-
-        for (auto category : make_iterable(hierarchy.begin(), hierarchy.end() - 1)) {
-            auto it = perfkit::find_if(level->subcategories,
-                                       [&](auto&& s) { return s.name == category; });
-
-            if (it == level->subcategories.end()) {
-                level->subcategories.emplace_back();
-                it       = --level->subcategories.end();
-                it->name = category;
-            }
-
-            level = &*it;
-        }
-
-        auto fn_archive =
-                [](string* v, nlohmann::json const& js) {
-                    v->clear();
-
-                    if (js.empty())
-                        return;
-
-                    nlohmann::json::to_msgpack(js, nlohmann::detail::output_adapter<char>(*v));
-                };
-
-        auto* dst        = &level->entities.emplace_back();
-        auto  config_key = config_key_t::hash(&*config);
-        dst->name        = config->tokenized_display_key().back();
-        dst->description = config->description();
-        dst->config_key  = config_key.value;
-
-        fn_archive(&dst->initial_value, config->serialize());
-        fn_archive(&dst->opt_one_of, config->attribute().one_of);
-        fn_archive(&dst->opt_max, config->attribute().max);
-        fn_archive(&dst->opt_min, config->attribute().min);
-
-        _config_instances[config_key] = config;
-        registry_context->associated_keys.insert(config_key);
-    }
-
-    message::notify::new_config_category(_rpc).notify_all(key, root);
-
-    rg->on_update.add_weak(
-            _session_active_state_anchor,
-            [this](config_registry* rg, array_view<perfkit::detail::config_base*> updates) {
-                auto wptr = rg->weak_from_this();
-
-                // apply updates .. as long as wptr alive, pointers can be accessed safely
-                auto buffer   = std::vector(updates.begin(), updates.end());
-                auto function = bind_front_weak(wptr, &terminal::_config_on_update, this, rg, std::move(buffer));
-                asio::post(_event_proc, std::move(function));
-            });
-
-    rg->on_destroy.add_weak(
-            _session_active_state_anchor,
-            [this](config_registry* rg) {
-                namespace views = ranges::views;
-                std::vector<int64_t> keys_all;
-
-                // retrive all keys from rg, and delete them from confmap
-                auto keys = rg->bk_all()
-                          | views::values
-                          | views::transform([](auto& p) { return config_key_t::hash(&*p); })
-                          | ranges::to_vector;
-
-                auto function = perfkit::bind_front(
-                        &terminal::_config_on_destroy, this, rg->name());
-                asio::post(_event_proc, std::move(function));
-            });
 }
 
 void perfkit::net::terminal_monitor::on_new_session(
         const perfkit::msgpack::rpc::session_profile& profile) noexcept
 {
     CPPH_INFO("session [{}]>> Connected", profile.peer_name);
-    _owner->_event_proc.post(bind_front(&terminal::_on_session_list_change, _owner));
+    asio::post(_owner->_event_proc, bind_front(&terminal::_on_session_list_change, _owner));
 }
 
 void perfkit::net::terminal_monitor::on_dispose_session(
         const perfkit::msgpack::rpc::session_profile& profile) noexcept
 {
     CPPH_INFO("session [{}]>> Disconnecting ... ", profile.peer_name);
-    _owner->_event_proc.post(bind_front(&terminal::_on_session_list_change, _owner));
+    asio::post(_owner->_event_proc, bind_front(&terminal::_on_session_list_change, _owner));
 }

@@ -119,10 +119,7 @@ auto perfkit::config_registry::bk_enumerate_registries(bool filter_complete) noe
             out.assign(ptrs.begin(), ptrs.end());
         } else {
             auto filtered = ptrs
-                          | views::filter(
-                                    [](auto&& sp) {
-                                        return sp->_initially_updated();
-                                    });
+                          | views::filter([](auto&& sp) { return sp->_initially_updated(); });
 
             out.assign(filtered.begin(), filtered.end());
         }

@@ -35,6 +35,7 @@
 #include <asio/ip/tcp.hpp>
 #include <asio/thread_pool.hpp>
 
+#include "context/config_context.hpp"
 #include "perfkit/common/circular_queue.hxx"
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/refl/msgpack-rpc/context.hxx"
@@ -45,7 +46,6 @@
 #include "perfkit/extension/net/protocol.hpp"
 #include "perfkit/logging.h"
 #include "perfkit/terminal.h"
-#include "perfkit/traces.h"
 
 namespace perfkit::net {
 using std::optional;
@@ -119,9 +119,12 @@ class terminal : public if_terminal
     shared_ptr<void> _session_active_state_anchor;
 
     // Misc
-    message::service::session_info_t   _session_info;
-    message::service::session_status_t _session_status;
-    spinlock                           _session_status_lock;
+    message::service::session_info_t  _session_info;
+    message::notify::session_status_t _session_status;
+    spinlock                          _session_status_lock;
+
+    // Contexts
+    config_context _ctx_config{&_event_proc, &_rpc};
 
    public:
     explicit terminal(terminal_info info) noexcept;
@@ -130,7 +133,7 @@ class terminal : public if_terminal
 
    private:
     auto CPPH_LOGGER() const { return _logging.get(); }
-    void _worker_func();
+    void _tick_worker();
     auto _build_service() -> msgpack::rpc::service_info;
 
     void _on_char_buf(char const*, size_t);
@@ -138,27 +141,6 @@ class terminal : public if_terminal
    private:
     void _open_acceptor();
     void _on_session_list_change();
-
-   private:
-    CPPH_UNIQUE_KEY_TYPE(config_key_t);
-
-    struct config_registry_context_t
-    {
-        std::unordered_set<config_key_t> associated_keys;
-    };
-
-    using registry_context_table_t = std::map<string, config_registry_context_t, std::less<>>;
-    using config_key_table         = std::unordered_map<config_key_t, weak_ptr<detail::config_base>>;
-
-   private:
-    registry_context_table_t _config_registries;
-    config_key_table         _config_instances;
-
-   private:
-    void _config_republish_all_registry() {}
-    void _config_publish_new_registry(shared_ptr<config_registry>);
-    void _config_on_update(config_registry*, vector<detail::config_base*>) {}
-    void _config_on_destroy(string) {}
 
    public:
     optional<string>    fetch_command(milliseconds timeout) override;
