@@ -155,7 +155,7 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
                        *rv = _session_info;
                    })
             .serve(service::update_config_entity,
-                   [this](config_entity_t const& entity) {
+                   [this](config_entity_update_t const& entity) {
                        ;  // TODO
                    });
 
@@ -261,18 +261,29 @@ void perfkit::net::terminal::_config_publish_new_registry(shared_ptr<config_regi
 
         auto fn_archive =
                 [](string* v, nlohmann::json const& js) {
+                    v->clear();
+
+                    if (js.empty())
+                        return;
+
                     nlohmann::json::to_msgpack(js, nlohmann::detail::output_adapter<char>(*v));
                 };
-        auto* dst = &level->entities.emplace_back();
-        dst->name = config->tokenized_display_key().back();
+
+        auto* dst        = &level->entities.emplace_back();
+        dst->name        = config->tokenized_display_key().back();
+        dst->description = config->description();
+        dst->config_key  = config_key_t::hash(&*config).value;
+
         fn_archive(&dst->initial_value, config->serialize());
-        
+        fn_archive(&dst->opt_one_of, config->attribute().one_of);
+        fn_archive(&dst->opt_max, config->attribute().max);
+        fn_archive(&dst->opt_min, config->attribute().min);
+
         //
         //        auto to_msgpack =
         //        auto content = nlohmann::json::to_msgpack(config->serialize());
         //        dst->initial_value.assign(content.begin(), content.end());
         //        dst->opt_one_of =
-        //        dst->config_key = config_key_t::hash(&*config).value;
         //
         //        _cache.confmap.try_emplace({dst->config_key}, config);
     }

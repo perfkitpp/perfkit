@@ -78,6 +78,14 @@ struct config_entity_t
     msgpack_archive_t opt_one_of;
 };
 
+struct config_entity_update_t
+{
+    CPPH_REFL_DECLARE_c;
+
+    uint64_t          config_key;
+    msgpack_archive_t content_next;  // msgpack data chunk for supporting 'any'
+};
+
 //
 // SHELL
 //
@@ -91,15 +99,7 @@ struct notify
     /**
      * Configuration update notifies
      */
-    struct config_entity_update_t
-    {
-        CPPH_REFL_DECLARE_c;
-
-        uint64_t          config_key;
-        msgpack_archive_t content_next;  // msgpack data chunk for supporting 'any'
-    };
-
-    DEFINE_RPC(config_entity_update, void(vector<config_entity_update_t>));
+    DEFINE_RPC(config_entity_update, void(config_entity_update_t));
 
     /**
      * Configuration class notifies
@@ -207,7 +207,7 @@ struct service
     /**
      * Update config
      */
-    DEFINE_RPC(update_config_entity, void(config_entity_t));
+    DEFINE_RPC(update_config_entity, void(config_entity_update_t));
     DEFINE_RPC(request_republish_config_registries, void());
 };
 

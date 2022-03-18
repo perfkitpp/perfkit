@@ -35,6 +35,7 @@
 #include <asio/thread_pool.hpp>
 
 #include "perfkit/common/circular_queue.hxx"
+#include "perfkit/common/hasher.hxx"
 #include "perfkit/common/refl/msgpack-rpc/context.hxx"
 #include "perfkit/common/thread/locked.hxx"
 #include "perfkit/common/thread/notify_queue.hxx"
@@ -141,6 +142,7 @@ class terminal : public if_terminal
     {
     };
 
+    CPPH_UNIQUE_KEY_TYPE(config_key_t);
     using registry_context_table_t = std::map<string, config_registry_context_t, std::less<>>;
 
    private:

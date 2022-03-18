@@ -66,7 +66,7 @@ CPPH_REFL_DEFINE_OBJECT_c(
         (entities, 3));
 
 CPPH_REFL_DEFINE_OBJECT_c(
-        notify::config_entity_update_t, (),
+        config_entity_update_t, (),
         (config_key, 1), (content_next, 2));
 
 CPPH_REFL_DEFINE_OBJECT_c(
