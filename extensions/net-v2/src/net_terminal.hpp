@@ -29,6 +29,7 @@
 //
 
 #pragma once
+#include <unordered_set>
 #include <utility>
 
 #include <asio/ip/tcp.hpp>
@@ -51,6 +52,7 @@ using std::optional;
 using std::shared_ptr;
 using std::string;
 using std::string_view;
+using std::vector;
 using std::weak_ptr;
 
 struct terminal_info
@@ -138,18 +140,25 @@ class terminal : public if_terminal
     void _on_session_list_change();
 
    private:
+    CPPH_UNIQUE_KEY_TYPE(config_key_t);
+
     struct config_registry_context_t
     {
+        std::unordered_set<config_key_t> associated_keys;
     };
 
-    CPPH_UNIQUE_KEY_TYPE(config_key_t);
     using registry_context_table_t = std::map<string, config_registry_context_t, std::less<>>;
+    using config_key_table         = std::unordered_map<config_key_t, weak_ptr<detail::config_base>>;
 
    private:
     registry_context_table_t _config_registries;
+    config_key_table         _config_instances;
 
    private:
+    void _config_republish_all_registry() {}
     void _config_publish_new_registry(shared_ptr<config_registry>);
+    void _config_on_update(config_registry*, vector<detail::config_base*>) {}
+    void _config_on_destroy(string) {}
 
    public:
     optional<string>    fetch_command(milliseconds timeout) override;

@@ -113,7 +113,7 @@ struct notify
         list<config_entity_t>   entities;
     };
 
-    DEFINE_RPC(new_config_category, void(string, config_category_t));
+    DEFINE_RPC(new_config_category, void(string registry_key, config_category_t));
 
     /**
      * Trace update notification
