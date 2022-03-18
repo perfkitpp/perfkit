@@ -137,7 +137,7 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
 event<perfkit::tracer*>& tracer::on_new_tracer()
 {
     constexpr auto ff = [] {};
-    return singleton<event<perfkit::tracer*>, decltype(ff)>.get();
+    return default_singleton<event<perfkit::tracer*>, decltype(ff)>();
 }
 
 bool tracer::_deliver_previous_result()

@@ -282,7 +282,7 @@ perfkit::json perfkit::configs::export_all()
 perfkit::event<perfkit::config_registry*>& perfkit::configs::on_new_config_registry()
 {
     constexpr auto p = [] {};  // give uniqueness for this singleton
-    return singleton<perfkit::event<perfkit::config_registry*>, decltype(p)>.get();
+    return default_singleton<perfkit::event<perfkit::config_registry*>, decltype(p)>();
 }
 
 bool perfkit::config_registry::update()
