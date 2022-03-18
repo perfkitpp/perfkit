@@ -82,11 +82,12 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
             level = &*it;
         }
 
-        auto* dst       = &level->entities.emplace_back();
-        dst->name       = config->tokenized_display_key().back();
-        dst->value      = config->serialize();
-        dst->metadata   = config->attribute();
-        dst->config_key = config_key_t::hash(&*config).value;
+        auto* dst                    = &level->entities.emplace_back();
+        dst->name                    = config->tokenized_display_key().back();
+        dst->value                   = config->serialize();
+        dst->metadata["description"] = config->attribute().description;
+        dst->metadata["default"]     = config->attribute().default_value;
+        dst->config_key              = config_key_t::hash(&*config).value;
 
         _cache.confmap.try_emplace({dst->config_key}, config);
     }

@@ -378,11 +378,9 @@ void perfkit::config_registry::_put(std::shared_ptr<detail::config_base> o)
     _schema_hash = {hasher::fnv1a_64(o->full_key(), _schema_hash.value)};
 
     // TODO: throw error if flag belongs to disposable registry
-    if (auto attr = &o->attribute(); attr->contains("is_flag")) {
-        std::vector<std::string> bindings;
-        if (auto it = attr->find("flag_binding"); it != attr->end()) {
-            bindings = it->get<std::vector<std::string>>();
-        } else {
+    if (auto attr = &o->attribute(); attr->is_flag) {
+        std::vector<std::string> bindings = attr->flag_bindings;
+        if (bindings.empty()) {
             using namespace ranges;
             bindings.emplace_back(
                     o->display_key()
@@ -447,7 +445,7 @@ perfkit::detail::config_base::config_base(
         void* raw, std::string full_key,
         perfkit::detail::config_base::deserializer fn_deserial,
         perfkit::detail::config_base::serializer   fn_serial,
-        nlohmann::json&&                           attribute)
+        config_attribute_t&&                       attribute)
         : _owner(owner),
           _full_key(std::move(full_key)),
           _raw(raw),

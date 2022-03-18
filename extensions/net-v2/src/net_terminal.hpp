@@ -29,6 +29,8 @@
 //
 
 #pragma once
+#include <utility>
+
 #include <asio/ip/tcp.hpp>
 #include <asio/thread_pool.hpp>
 
@@ -41,6 +43,7 @@
 #include "perfkit/extension/net/protocol.hpp"
 #include "perfkit/logging.h"
 #include "perfkit/terminal.h"
+#include "perfkit/traces.h"
 
 namespace perfkit::net {
 using std::optional;
@@ -62,10 +65,12 @@ struct terminal_info
 
 class terminal_monitor : public msgpack::rpc::if_context_monitor
 {
+    class terminal*     _owner;
     perfkit::logger_ptr _logger;
 
    public:
-    explicit terminal_monitor(const logger_ptr& logger) : _logger(logger) {}
+    explicit terminal_monitor(terminal* owner, logger_ptr logger)
+            : _owner(owner), _logger(std::move(logger)) {}
 
    public:
     void on_new_session(const msgpack::rpc::session_profile& profile) noexcept override;
@@ -77,9 +82,13 @@ class terminal_monitor : public msgpack::rpc::if_context_monitor
 
 class terminal : public if_terminal
 {
+    friend class terminal_monitor;
+
+    //
     terminal_info _info;
 
     // Thread pool
+    asio::io_context  _event_proc;
     asio::thread_pool _ioc{4};
     thread::worker    _worker;
 
@@ -88,7 +97,7 @@ class terminal : public if_terminal
     logger_ptr         _logging = share_logger("PERFKIT:NET");
 
     // RPC connection context
-    shared_ptr<terminal_monitor> _rpc_monitor = std::make_shared<terminal_monitor>(_logging);
+    shared_ptr<terminal_monitor> _rpc_monitor = std::make_shared<terminal_monitor>(this, _logging);
     msgpack::rpc::context        _rpc;
 
     // Connection
@@ -103,6 +112,9 @@ class terminal : public if_terminal
     int64_t                       _tty_fence = 0;
     locked<message::tty_output_t> _tty_obuf;
 
+    // States
+    shared_ptr<void> _session_active_state_anchor;
+
     // Misc
     message::service::session_info_t   _session_info;
     message::service::session_status_t _session_status;
@@ -114,11 +126,28 @@ class terminal : public if_terminal
     ~terminal();
 
    private:
-    auto                       CPPH_LOGGER() const { return _logging.get(); }
-    void                       _worker_func();
-    msgpack::rpc::service_info _build_service();
+    auto CPPH_LOGGER() const { return _logging.get(); }
+    void _worker_func();
+    auto _build_service() -> msgpack::rpc::service_info;
 
-    void                       _on_char_buf(char const*, size_t);
+    void _on_char_buf(char const*, size_t);
+
+   private:
+    void _open_acceptor();
+    void _on_session_list_change();
+
+   private:
+    struct config_registry_context_t
+    {
+    };
+
+    using registry_context_table_t = std::map<string, config_registry_context_t, std::less<>>;
+
+   private:
+    registry_context_table_t _config_registries;
+
+   private:
+    void _config_publish_new_registry(shared_ptr<config_registry>);
 
    public:
     optional<string>    fetch_command(milliseconds timeout) override;

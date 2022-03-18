@@ -60,6 +60,28 @@ using config_wptr       = std::weak_ptr<detail::config_base>;
 using std::shared_ptr;
 using std::weak_ptr;
 
+struct config_attribute_t
+{
+    nlohmann::json default_value;
+    std::string    description;
+
+    nlohmann::json one_of;
+    nlohmann::json min;
+    nlohmann::json max;
+
+    //
+    bool has_custom_validator = false;
+
+    bool can_import           = true;
+    bool can_export           = true;
+
+    bool is_flag              = false;
+    bool hidden               = false;
+
+    //
+    std::vector<std::string> flag_bindings;
+};
+
 namespace detail {
 /**
  * basic config class
@@ -71,53 +93,6 @@ class config_base
    public:
     using deserializer = std::function<bool(nlohmann::json const&, void*)>;
     using serializer   = std::function<void(nlohmann::json&, void const*)>;
-
-   public:
-    config_base(class config_registry* owner,
-                void*                  raw,
-                std::string            full_key,
-                deserializer           fn_deserial,
-                serializer             fn_serial,
-                nlohmann::json&&       attribute);
-
-    /**
-     * @warning this function is not re-entrant!
-     * @return
-     */
-    nlohmann::json        serialize();
-    void                  serialize(nlohmann::json&);
-    void                  serialize(std::function<void(nlohmann::json const&)> const&);
-
-    nlohmann::json const& attribute() const noexcept { return _attribute; }
-    nlohmann::json const& default_value() const { return _attribute["default"]; }
-
-    bool                  consume_dirty() { return _dirty.exchange(false); }
-
-    auto const&           full_key() const { return _full_key; }
-    auto const&           display_key() const { return _display_key; }
-    auto const&           description() const { return _attribute["description"].get_ref<std::string const&>(); }
-    auto                  tokenized_display_key() const { return make_view(_categories); }
-    void                  request_modify(nlohmann::json js);
-
-    size_t                num_modified() const { return _fence_modified; };
-    size_t                num_serialized() const { return _fence_serialized; }
-
-    bool                  can_export() const noexcept { return not attribute().contains("transient"); }
-    bool                  can_import() const noexcept { return not attribute().contains("block_read"); }
-    bool                  is_hidden() const noexcept { return attribute().contains("hidden"); }
-
-    /**
-     * Check if latest marshalling result was invalid
-     * @return
-     */
-    bool latest_marshal_failed() const
-    {
-        return _latest_marshal_failed.load(std::memory_order_relaxed);
-    }
-
-   private:
-    bool        _try_deserialize(nlohmann::json const& value);
-    static void _split_categories(std::string_view view, std::vector<std::string_view>& out);
 
    private:
     friend class perfkit::config_registry;
@@ -131,13 +106,60 @@ class config_base
 
     std::atomic_size_t            _fence_modified        = 0;
     std::atomic_size_t            _fence_serialized      = ~size_t{};
+    config_attribute_t            _attribute;
     nlohmann::json                _cached_serialized;
-    nlohmann::json                _attribute;
 
     std::vector<std::string_view> _categories;
 
     deserializer                  _deserialize;
     serializer                    _serialize;
+
+   public:
+    config_base(class config_registry* owner,
+                void*                  raw,
+                std::string            full_key,
+                deserializer           fn_deserial,
+                serializer             fn_serial,
+                config_attribute_t&&   attribute);
+
+    /**
+     * @warning this function is not re-entrant!
+     * @return
+     */
+    nlohmann::json        serialize();
+    void                  serialize(nlohmann::json&);
+    void                  serialize(std::function<void(nlohmann::json const&)> const&);
+
+    auto const&           attribute() const noexcept { return _attribute; }
+    nlohmann::json const& default_value() const { return _attribute.default_value; }
+
+    bool                  consume_dirty() { return _dirty.exchange(false); }
+
+    auto const&           full_key() const { return _full_key; }
+    auto const&           display_key() const { return _display_key; }
+    auto const&           description() const { return _attribute.description; }
+    auto                  tokenized_display_key() const { return make_view(_categories); }
+    void                  request_modify(nlohmann::json js);
+
+    size_t                num_modified() const { return _fence_modified; };
+    size_t                num_serialized() const { return _fence_serialized; }
+
+    bool                  can_export() const noexcept { return _attribute.can_export; }
+    bool                  can_import() const noexcept { return _attribute.can_import; }
+    bool                  is_hidden() const noexcept { return _attribute.hidden; }
+
+    /**
+     * Check if latest marshalling result was invalid
+     * @return
+     */
+    bool latest_marshal_failed() const
+    {
+        return _latest_marshal_failed.load(std::memory_order_relaxed);
+    }
+
+   private:
+    bool        _try_deserialize(nlohmann::json const& value);
+    static void _split_categories(std::string_view view, std::vector<std::string_view>& out);
 };
 }  // namespace detail
 
@@ -456,43 +478,37 @@ class config
         };
 
         // set reference attribute
-        nlohmann::json js_attrib;
-        js_attrib["default"]     = _value;
+        config_attribute_t conf_attrib = {};
+        conf_attrib.default_value      = _value;
+        conf_attrib.description        = attribute.description;
 
-        js_attrib["description"] = attribute.description;
+        if constexpr (!!(Flags_ & _attr_flag::has_min))
+            conf_attrib.min = *attribute.min;
+        if constexpr (!!(Flags_ & _attr_flag::has_max))
+            conf_attrib.max = *attribute.max;
+        if constexpr (!!(Flags_ & _attr_flag::has_one_of))
+            conf_attrib.one_of = *attribute.one_of;
 
-        if constexpr (!!(Flags_ & _attr_flag::has_min)) {
-            js_attrib["min"] = *attribute.min;
-        }
-        if constexpr (!!(Flags_ & _attr_flag::has_max)) {
-            js_attrib["max"] = *attribute.max;
-        }
-        if constexpr (!!(Flags_ & _attr_flag::has_one_of)) {
-            js_attrib["one_of"] = *attribute.one_of;
-        }
         if constexpr (!!(Flags_ & _attr_flag::has_validate)) {
-            js_attrib["has_custom_validator"] = true;
+            conf_attrib.has_custom_validator = true;
         } else {
-            js_attrib["has_custom_validator"] = false;
+            conf_attrib.has_custom_validator = false;
         }
 
         if (attribute.hidden) {
-            js_attrib["hidden"] = true;
+            conf_attrib.hidden = true;
         }
 
         if (attribute.flag_binding) {
             std::vector<std::string>& binding = *attribute.flag_binding;
-            js_attrib["is_flag"]              = true;
+            conf_attrib.is_flag               = true;
             if (not binding.empty()) {
-                js_attrib["flag_binding"] = std::move(binding);
+                conf_attrib.flag_bindings = std::move(binding);
             }
         }
 
-        if (attribute.transient_type != _config_io_type::persistent) {
-            js_attrib["transient"] = true;
-            if (attribute.transient_type == _config_io_type::transient)
-                js_attrib["block_read"] = true;
-        }
+        conf_attrib.can_export = attribute.transient_type == _config_io_type::persistent;
+        conf_attrib.can_import = attribute.transient_type != _config_io_type::transient;
 
         // setup marshaller / de-marshaller with given rule of attribute
         detail::config_base::deserializer fn_m = [attrib = std::move(attribute)]  //
@@ -542,7 +558,7 @@ class config
                 std::move(full_key),
                 std::move(fn_m),
                 std::move(fn_d),
-                std::move(js_attrib));
+                std::move(conf_attrib));
 
         // put instance to global queue
         repo._put(_opt);

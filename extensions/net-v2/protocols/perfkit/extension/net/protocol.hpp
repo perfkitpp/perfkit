@@ -46,7 +46,7 @@ using std::vector;
 using msgpack_archive_t = binary<string>;
 using token_t           = string;
 
-#define DEFINE_IFACE(Name, ...) \
+#define DEFINE_RPC(Name, ...) \
     static inline const auto Name = msgpack::rpc::create_signature<__VA_ARGS__>(#Name);
 
 /**
@@ -71,19 +71,11 @@ struct config_entity_t
     uint64_t          config_key;
 
     string            description;
+    msgpack_archive_t initial_value;
 
     msgpack_archive_t opt_min;
     msgpack_archive_t opt_max;
     msgpack_archive_t opt_one_of;
-};
-
-struct config_category_t
-{
-    CPPH_REFL_DECLARE_c;
-
-    string                       name;
-    std::list<config_category_t> subcategories;
-    std::list<config_entity_t>   entities;
 };
 
 //
@@ -94,16 +86,12 @@ struct notify
     /**
      * Shell content output on every flush
      */
-    DEFINE_IFACE(tty, void(tty_output_t));
-
-    /**
-     * Notification on configuration class creation
-     */
+    DEFINE_RPC(tty, void(tty_output_t));
 
     /**
      * Configuration update notifies
      */
-    struct config_update_t
+    struct config_entity_update_t
     {
         CPPH_REFL_DECLARE_c;
 
@@ -111,7 +99,21 @@ struct notify
         msgpack_archive_t content_next;  // msgpack data chunk for supporting 'any'
     };
 
-    DEFINE_IFACE(config_update, vector<config_update_t>(void));
+    DEFINE_RPC(config_entity_update, void(vector<config_entity_update_t>));
+
+    /**
+     * Configuration class notifies
+     */
+    struct config_category_t
+    {
+        CPPH_REFL_DECLARE_c;
+
+        string                  name;
+        list<config_category_t> subcategories;
+        list<config_entity_t>   entities;
+    };
+
+    DEFINE_RPC(new_config_category, void(string, config_category_t));
 
     /**
      * Trace update notification
@@ -143,7 +145,7 @@ struct service
         int32_t num_cores;
     };
 
-    DEFINE_IFACE(session_info, session_info_t());
+    DEFINE_RPC(session_info, session_info_t());
 
     /**
      * Returns session status
@@ -165,28 +167,28 @@ struct service
         int32_t bw_in;
     };
 
-    DEFINE_IFACE(session_status, session_status_t());
+    DEFINE_RPC(session_status, session_status_t());
 
     /**
      * Query if server is alive
      */
-    DEFINE_IFACE(heartbeat, void(void));
+    DEFINE_RPC(heartbeat, void(void));
 
     /**
      * Requests tty output from since given fence value
      */
-    DEFINE_IFACE(fetch_tty, tty_output_t(int64_t fence));
+    DEFINE_RPC(fetch_tty, tty_output_t(int64_t fence));
 
     /**
      * Authentications
      */
-    DEFINE_IFACE(login, token_t(string));
-    DEFINE_IFACE(refresh_session, token_t(token_t));
+    DEFINE_RPC(login, token_t(string));
+    DEFINE_RPC(refresh_session, token_t(token_t));
 
     /**
      * Invoke command
      */
-    DEFINE_IFACE(invoke_command, void(token_t, string));
+    DEFINE_RPC(invoke_command, void(token_t, string));
 
     /**
      * Command suggest
@@ -200,8 +202,14 @@ struct service
         vector<string>      candidate_words;
     };
 
-    DEFINE_IFACE(suggest, suggest_result_t(string command, int cursor));
+    DEFINE_RPC(suggest, suggest_result_t(string command, int cursor));
+
+    /**
+     * Update config
+     */
+    DEFINE_RPC(update_config_entity, void(config_entity_t));
+    DEFINE_RPC(request_republish_config_registries, void());
 };
 
-#undef DEFINE_IFACE
+#undef DEFINE_RPC
 }  // namespace perfkit::net::message

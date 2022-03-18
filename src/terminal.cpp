@@ -431,7 +431,6 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd)
                                         buf << "<name        > {}\n"_fmt % _conf->display_key();
                                         buf << "<key         > {}\n"_fmt % _conf->full_key();
                                         buf << "<description > {}\n"_fmt % _conf->description();
-                                        buf << "<attributes  > {}\n"_fmt % _conf->attribute().dump(2);
                                         buf << "<value       > {}\n"_fmt % _conf->serialize().dump(2);
 
                                         ref->write(buf);

@@ -60,13 +60,13 @@ CPPH_REFL_DEFINE_OBJECT_c(
         (opt_min, 101), (opt_max, 102), (opt_one_of, 103));
 
 CPPH_REFL_DEFINE_OBJECT_c(
-        config_category_t, (),
+        notify::config_category_t, (),
         (name, 1),
         (subcategories, 2),
         (entities, 3));
 
 CPPH_REFL_DEFINE_OBJECT_c(
-        notify::config_update_t, (),
+        notify::config_entity_update_t, (),
         (config_key, 1), (content_next, 2));
 
 CPPH_REFL_DEFINE_OBJECT_c(
