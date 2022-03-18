@@ -252,11 +252,8 @@ perfkit::json perfkit::configs::export_all()
     json exported;
 
     // merge onto existing (will not affect existing cache)
-    json current;
-    {
-        auto [js, _] = _io::_loaded();
-        current      = *js;
-    }
+    auto [js, _]  = _io::_loaded();
+    json& current = *js;
 
     for (auto const& rg : regs) {
         // Always export configurations when target configuration is empty,
@@ -274,6 +271,14 @@ perfkit::json perfkit::configs::export_all()
 
     for (auto& item : exported.items()) {
         current[item.key()] = std::move(item.value());
+    }
+
+    // discard zero-sized entities. (maybe all are transient)
+    for (auto iter = current.begin(); iter != current.end();) {
+        if (iter->empty())
+            iter = current.erase(iter);
+        else
+            ++iter;
     }
 
     return current;
