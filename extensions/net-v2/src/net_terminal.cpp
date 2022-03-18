@@ -128,15 +128,15 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
 
     msgpack::rpc::service_info service_desc{};
     service_desc
-            .serve(service::suggest,
+            .route(service::suggest,
                    [this](service::suggest_result_t*, string const& content, int cursor) {
                        ;  // TODO
                    })
-            .serve(service::invoke_command,
+            .route(service::invoke_command,
                    [this](auto&&, string const& content) {
                        this->push_command(content);
                    })
-            .serve(service::fetch_tty,
+            .route(service::fetch_tty,
                    [this](tty_output_t* out, int64_t fence) {
                        // Returns requested range of bytes
                        lock_guard _lc_{_tty_lock};
@@ -148,13 +148,13 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
 
                        out->content.assign(begin, end);
                    })
-            .serve(service::heartbeat,
+            .route(service::heartbeat,
                    [this] { CPPH_INFO("HEARTBEAT!"); })
-            .serve(service::session_info,
+            .route(service::session_info,
                    [this](perfkit::net::message::service::session_info_t* rv) {
                        *rv = _session_info;
                    })
-            .serve(service::update_config_entity,
+            .route(service::update_config_entity,
                    [this](config_entity_update_t const& entity) {
                        ;  // TODO
                    });
