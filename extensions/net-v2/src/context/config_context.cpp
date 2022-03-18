@@ -43,10 +43,10 @@ using std::forward;
 using std::move;
 
 namespace perfkit::net::detail {
-logger_ptr nglog();
+spdlog::logger* nglog();
 }
 
-static auto CPPH_LOGGER() { return &*detail::nglog(); }
+static auto CPPH_LOGGER() { return detail::nglog(); }
 
 void        config_context::_publish_new_registry(shared_ptr<config_registry> rg)
 {
