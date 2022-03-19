@@ -128,10 +128,10 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
 
     msgpack::rpc::service_info service_desc{};
     service_desc
-            .route(service::suggest,
-                   bind_front(&self_t::_rpc_handle_suggest, this))
-            .route(service::invoke_command,
-                   bind_front(&self_t::_rpc_handle_command, this))
+            .route(service::suggest, bind_front(&self_t::_rpc_handle_suggest, this))
+            .route(service::invoke_command, bind_front(&self_t::_rpc_handle_command, this))
+            .route(service::login, bind_front(&self_t::_rpc_handle_login, this))
+            .route(service::heartbeat, [] {}) // do nothing
             .route(service::fetch_tty,
                    [this](tty_output_t* out, int64_t fence) {
                        // Returns requested range of bytes
@@ -144,23 +144,20 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
 
                        out->content.assign(begin, end);
                    })
-            .route(service::heartbeat, [] { ; })
             .route(service::session_info,
                    [this](perfkit::net::message::service::session_info_t* rv) {
                        *rv = _session_info;
                    })
             .route(service::update_config_entity,
                    [this](auto&& prof, auto&&, auto&& content) {
-                       if (not _has_admin_access(prof)) { return; }
+                       _verify_admin_access(prof);
                        _ctx_config.rpc_update_request(content);
                    })
             .route(service::request_republish_config_registries,
                    [this](auto&& prof, auto&&) {
-                       if (not _has_basic_access(prof)) { return; }
+                       _verify_basic_access(prof);
                        _ctx_config.rpc_republish_all_registries();
-                   })
-            .route(service::login,
-                   bind_front(&self_t::_rpc_handle_login, this));
+                   });
 
     return service_desc;
 }
@@ -232,14 +229,41 @@ bool perfkit::net::terminal::_has_admin_access(
 }
 
 void perfkit::net::terminal::_rpc_handle_login(
-        const perfkit::msgpack::rpc::session_profile& profile, bool* b, std::string&)
+        const perfkit::msgpack::rpc::session_profile& profile, message::auth_level_t* b, std::string& auth)
 {
-    // TODO: Implement basic ID/PW authentication!
-    CPPH_INFO("session {} requested login ... always has admin right!!", profile.peer_name);
+    // TODO: Implement ID/PW authentication logic!
+    {
+        CPPH_INFO("session {} requested login ... always given admin right!!", profile.peer_name);
 
-    _verified_sessions.access([&](decltype(_verified_sessions)::value_type& ref) {
-        ref[&profile].has_admin_access = true;
-    });
+        _verified_sessions.access([&](decltype(_verified_sessions)::value_type& ref) {
+            ref[&profile].has_admin_access = true;
+        });
+
+        *b = message::auth_level_t::admin_access;
+    }
+
+    // zero-fill auth info
+    std::fill(auth.begin(), auth.end(), 0);
+}
+
+void perfkit::net::terminal::_rpc_handle_command(
+        session_profile const& profile, void*,
+        const std::string&     content)
+{
+    _verify_admin_access(profile);
+    this->push_command(content);
+}
+
+void perfkit::net::terminal::_verify_admin_access(const perfkit::msgpack::rpc::session_profile& profile) const
+{
+    if (not _has_admin_access(profile))
+        throw std::runtime_error("Non-admin peer: " + profile.peer_name);
+}
+
+void perfkit::net::terminal::_verify_basic_access(const perfkit::msgpack::rpc::session_profile& profile) const
+{
+    if (not _has_basic_access(profile))
+        throw std::runtime_error("Non-authorized peer: " + profile.peer_name);
 }
 
 void perfkit::net::terminal_monitor::on_new_session(

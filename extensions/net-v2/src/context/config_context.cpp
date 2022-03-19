@@ -46,9 +46,12 @@ namespace perfkit::net::detail {
 spdlog::logger* nglog();
 }
 
-static auto CPPH_LOGGER() { return detail::nglog(); }
+static auto CPPH_LOGGER()
+{
+    return detail::nglog();
+}
 
-void        config_context::_publish_new_registry(shared_ptr<config_registry> rg)
+void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
 {
     CPPH_INFO("Publishing registry '{}'", rg->name());
 
@@ -108,7 +111,7 @@ void        config_context::_publish_new_registry(shared_ptr<config_registry> rg
         registry_context->associated_keys.insert(config_key);
     }
 
-    message::notify::new_config_category(*_rpc).notify_all(key, root);
+    message::notify::new_config_category(*_rpc).notify_all(key, root, _host->fn_basic_access());
 
     rg->on_update.add_weak(
             _monitor_anchor,
@@ -226,6 +229,6 @@ void config_context::_handle_update(
             nlohmann::json::to_msgpack(content, nlohmann::detail::output_adapter<char>(*buf));
         });
 
-        message::notify::config_entity_update(*_rpc).notify_all(payload);
+        message::notify::config_entity_update(*_rpc).notify_all(payload, _host->fn_basic_access());
     }
 }

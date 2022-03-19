@@ -85,6 +85,12 @@ struct config_entity_update_t
     msgpack_archive_t content_next;  // msgpack data chunk for supporting 'any'
 };
 
+enum class auth_level_t {
+    unauthorized,
+    basic_access,
+    admin_access
+};
+
 //
 // SHELL
 //
@@ -181,7 +187,7 @@ struct service
     /**
      * Authentications
      */
-    DEFINE_RPC(login, bool(string));
+    DEFINE_RPC(login, auth_level_t(string));
 
     /**
      * Invoke command

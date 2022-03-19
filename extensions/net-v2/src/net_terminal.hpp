@@ -173,15 +173,18 @@ class terminal : public if_terminal
     void _open_acceptor();
     void _on_session_list_change();
 
-    void _rpc_handle_login(session_profile_view profile, bool* b, string&);
+    void _rpc_handle_login(session_profile_view profile, message::auth_level_t* b, string&);
     void _rpc_handle_suggest(session_profile_view profile, message::service::suggest_result_t*, string const& content, int cursor) {}
-    void _rpc_handle_command(session_profile_view profile, void*, string const& content) { this->push_command(content); }
+    void _rpc_handle_command(session_profile_view profile, void*, string const& content);
 
     bool _has_basic_access(session_profile_view profile) const { return contains(*_verified_sessions.lock(), &profile); }
     bool _has_admin_access(session_profile_view profile) const;
 
     auto _fn_qualify() const { return bind_front(&self_t::_has_basic_access, this); }
     auto _fn_qualify_admin() const { return bind_front(&self_t::_has_admin_access, this); }
+
+    void _verify_admin_access(session_profile_view profile) const;
+    void _verify_basic_access(session_profile_view profile) const;
 
    public:
     optional<string>    fetch_command(milliseconds timeout) override;
