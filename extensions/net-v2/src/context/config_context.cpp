@@ -127,6 +127,8 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
     rg->on_destroy.add_weak(
             _monitor_anchor,
             [this](config_registry* rg) {
+                message::notify::deleted_config_category(*_rpc).notify_all(rg->name());
+
                 namespace views = ranges::views;
                 std::vector<int64_t> keys_all;
 
