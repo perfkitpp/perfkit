@@ -131,7 +131,7 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
             .route(service::suggest, bind_front(&self_t::_rpc_handle_suggest, this))
             .route(service::invoke_command, bind_front(&self_t::_rpc_handle_command, this))
             .route(service::login, bind_front(&self_t::_rpc_handle_login, this))
-            .route(service::heartbeat, [] {}) // do nothing
+            .route(service::heartbeat, [] {})  // do nothing
             .route(service::fetch_tty,
                    [this](tty_output_t* out, int64_t fence) {
                        // Returns requested range of bytes
