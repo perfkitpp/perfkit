@@ -56,7 +56,7 @@ CPPH_REFL_DEFINE_OBJECT_c(
 CPPH_REFL_DEFINE_OBJECT_c(
         config_entity_t, (),
         (name, 1), (config_key, 2),
-        (description, 11),
+        (description, 11), (initial_value, 12),
         (opt_min, 101), (opt_max, 102), (opt_one_of, 103));
 
 CPPH_REFL_DEFINE_OBJECT_c(
