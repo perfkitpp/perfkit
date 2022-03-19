@@ -116,7 +116,7 @@ struct notify
         int32_t bw_in;
     };
 
-    DEFINE_RPC(session_status, session_status_t());
+    DEFINE_RPC(session_status, void(session_status_t));
 
     /**
      * Shell content output on every flush
