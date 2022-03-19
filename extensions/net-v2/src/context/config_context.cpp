@@ -53,9 +53,8 @@ static auto CPPH_LOGGER()
 
 void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
 {
-    CPPH_INFO("Publishing registry '{}'", rg->name());
+    CPPH_DEBUG("Publishing registry '{}'", rg->name());
 
-#if 1
     auto& all  = rg->bk_all();
     auto  key  = rg->name();
     auto  root = message::notify::config_category_t{};
@@ -137,7 +136,6 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
                         &self_t::_handle_registry_destruction, this, rg->name());
                 asio::post(*_event_proc, std::move(function));
             });
-#endif
 }
 
 void config_context::rpc_republish_all_registries()
