@@ -37,22 +37,7 @@
 #include <perfkit/extension/net/protocol.hpp>
 #include <perfkit/fwd.hpp>
 
-namespace perfkit::net {
-using std::shared_ptr;
-using std::string;
-using std::string_view;
-using std::unique_ptr;
-using std::vector;
-using std::weak_ptr;
-}  // namespace perfkit::net
-
-namespace perfkit::msgpack::rpc {
-class context;
-}
-
-namespace asio {
-class io_context;
-}
+#include "../net_terminal_adapter.hpp"
 
 namespace perfkit::net {
 class config_context
@@ -71,8 +56,10 @@ class config_context
     using config_key_table         = std::unordered_map<config_key_t, weak_ptr<detail::config_base>>;
 
    private:
-    asio::io_context*        _event_proc;
-    msgpack::rpc::context*   _rpc;
+    if_net_terminal_adapter* _host;
+
+    asio::io_context*        _event_proc{_host->event_proc()};
+    msgpack::rpc::context*   _rpc{_host->rpc()};
 
     registry_context_table_t _config_registries;
     config_key_table         _config_instances;
@@ -83,8 +70,7 @@ class config_context
             _buf_payload;
 
    public:
-    config_context(asio::io_context* event_proc, msgpack::rpc::context* rpc)
-            : _event_proc(event_proc), _rpc(rpc) {}
+    explicit config_context(if_net_terminal_adapter* host) : _host(host) {}
 
    public:
     void start_monitoring(weak_ptr<void> anchor);

@@ -36,6 +36,7 @@ add_library(
         src/utils.cpp
         src/net_terminal.cpp
         src/net.cpp
+        src/net_terminal_adapter.cpp
         src/context/config_context.cpp
         src/context/trace_context.cpp
         src/context/graphic_context.cpp

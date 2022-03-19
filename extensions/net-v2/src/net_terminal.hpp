@@ -29,6 +29,7 @@
 //
 
 #pragma once
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -36,6 +37,7 @@
 #include <asio/thread_pool.hpp>
 
 #include "context/config_context.hpp"
+#include "net_terminal_adapter.hpp"
 #include "perfkit/common/circular_queue.hxx"
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/refl/msgpack-rpc/context.hxx"
@@ -48,12 +50,15 @@
 #include "perfkit/terminal.h"
 
 namespace perfkit::net {
+using msgpack::rpc::session_profile;
+using session_profile_view = msgpack::rpc::session_profile const&;
 using std::optional;
 using std::shared_ptr;
 using std::string;
 using std::string_view;
 using std::vector;
 using std::weak_ptr;
+using std::chrono::steady_clock;
 
 struct terminal_info
 {
@@ -76,18 +81,40 @@ class terminal_monitor : public msgpack::rpc::if_context_monitor
             : _owner(owner), _logger(std::move(logger)) {}
 
    public:
-    void on_new_session(const msgpack::rpc::session_profile& profile) noexcept override;
-    void on_dispose_session(const msgpack::rpc::session_profile& profile) noexcept override;
+    void on_new_session(session_profile_view profile) noexcept override;
+    void on_dispose_session(session_profile_view profile) noexcept override;
 
    private:
     auto CPPH_LOGGER() const { return &*_logger; }
 };
 
+struct terminal_session_descriptor
+{
+    bool has_admin_access = false;
+};
+
 class terminal : public if_terminal
 {
+    using self_t = terminal;
     friend class terminal_monitor;
 
-    //
+   private:
+    class adapter_t : public if_net_terminal_adapter
+    {
+        terminal* _owner;
+
+       public:
+        explicit adapter_t(terminal* owner) noexcept : _owner(owner) {}
+
+       public:
+        bool                   has_basic_access(const session_profile& profile) const override { return _owner->_has_basic_access(profile); }
+        bool                   has_admin_access(const session_profile& profile) const override { return _owner->_has_admin_access(profile); }
+        asio::io_context*      event_proc() override { return &_owner->_event_proc; }
+        msgpack::rpc::context* rpc() override { return &_owner->_rpc; }
+    };
+
+   private:
+    adapter_t     _adapter{this};
     terminal_info _info;
 
     // Thread pool
@@ -115,6 +142,10 @@ class terminal : public if_terminal
     int64_t                       _tty_fence = 0;
     locked<message::tty_output_t> _tty_obuf;
 
+    // Sessions
+    using session_table_t = std::unordered_map<session_profile const*, terminal_session_descriptor>;
+    locked<session_table_t> _verified_sessions;
+
     // States
     shared_ptr<void> _session_active_state_anchor;
 
@@ -124,7 +155,7 @@ class terminal : public if_terminal
     spinlock                          _session_status_lock;
 
     // Contexts
-    config_context _ctx_config{&_event_proc, &_rpc};
+    config_context _ctx_config{&_adapter};
 
    public:
     explicit terminal(terminal_info info) noexcept;
@@ -141,6 +172,16 @@ class terminal : public if_terminal
    private:
     void _open_acceptor();
     void _on_session_list_change();
+
+    void _rpc_handle_login(session_profile_view profile, bool* b, string&);
+    void _rpc_handle_suggest(session_profile_view profile, message::service::suggest_result_t*, string const& content, int cursor) {}
+    void _rpc_handle_command(session_profile_view profile, void*, string const& content) { this->push_command(content); }
+
+    bool _has_basic_access(session_profile_view profile) const { return contains(*_verified_sessions.lock(), &profile); }
+    bool _has_admin_access(session_profile_view profile) const;
+
+    auto _fn_qualify() const { return bind_front(&self_t::_has_basic_access, this); }
+    auto _fn_qualify_admin() const { return bind_front(&self_t::_has_admin_access, this); }
 
    public:
     optional<string>    fetch_command(milliseconds timeout) override;

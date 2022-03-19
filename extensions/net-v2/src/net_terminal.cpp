@@ -129,13 +129,9 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
     msgpack::rpc::service_info service_desc{};
     service_desc
             .route(service::suggest,
-                   [this](service::suggest_result_t*, string const& content, int cursor) {
-                       ;  // TODO
-                   })
+                   bind_front(&self_t::_rpc_handle_suggest, this))
             .route(service::invoke_command,
-                   [this](auto&&, string const& content) {
-                       this->push_command(content);
-                   })
+                   bind_front(&self_t::_rpc_handle_command, this))
             .route(service::fetch_tty,
                    [this](tty_output_t* out, int64_t fence) {
                        // Returns requested range of bytes
@@ -154,9 +150,17 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
                        *rv = _session_info;
                    })
             .route(service::update_config_entity,
-                   bind_front(&config_context::rpc_update_request, &_ctx_config))
+                   [this](auto&& prof, auto&&, auto&& content) {
+                       if (not _has_admin_access(prof)) { return; }
+                       _ctx_config.rpc_update_request(content);
+                   })
             .route(service::request_republish_config_registries,
-                   bind_front(&config_context::rpc_republish_all_registries, &_ctx_config));
+                   [this](auto&& prof, auto&&) {
+                       if (not _has_basic_access(prof)) { return; }
+                       _ctx_config.rpc_republish_all_registries();
+                   })
+            .route(service::login,
+                   bind_front(&self_t::_rpc_handle_login, this));
 
     return service_desc;
 }
@@ -218,6 +222,26 @@ void perfkit::net::terminal::_on_session_list_change()
     }
 }
 
+bool perfkit::net::terminal::_has_admin_access(
+        const perfkit::msgpack::rpc::session_profile& profile) const
+{
+    if (auto ptr = find_ptr(*_verified_sessions.lock(), &profile))
+        return ptr->second.has_admin_access;
+    else
+        return false;
+}
+
+void perfkit::net::terminal::_rpc_handle_login(
+        const perfkit::msgpack::rpc::session_profile& profile, bool* b, std::string&)
+{
+    // TODO: Implement basic ID/PW authentication!
+    CPPH_INFO("session {} requested login ... always has admin right!!", profile.peer_name);
+
+    _verified_sessions.access([&](decltype(_verified_sessions)::value_type& ref) {
+        ref[&profile].has_admin_access = true;
+    });
+}
+
 void perfkit::net::terminal_monitor::on_new_session(
         const perfkit::msgpack::rpc::session_profile& profile) noexcept
 {
@@ -228,6 +252,10 @@ void perfkit::net::terminal_monitor::on_new_session(
 void perfkit::net::terminal_monitor::on_dispose_session(
         const perfkit::msgpack::rpc::session_profile& profile) noexcept
 {
-    CPPH_INFO("session [{}]>> Disconnecting ... ", profile.peer_name);
+    if (_owner->_verified_sessions.lock()->erase(&profile))
+        CPPH_INFO("Authorized session [{}]>> Disconnecting ... ", profile.peer_name);
+    else
+        CPPH_INFO("Unauthorized session [{}]>> Disconnecting ... ", profile.peer_name);
+
     asio::post(_owner->_event_proc, bind_front(&terminal::_on_session_list_change, _owner));
 }
