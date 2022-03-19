@@ -39,10 +39,10 @@ int            main(int argc, char* argv[])
 {
     auto prev_stdout = stdout;
     auto prev_stderr = stderr;
-    stdout           = fopen("log.txt", "w");
-    stderr           = fopen("logerr.txt", "w");
+    stdout = fopen("log.txt", "w");
+    stderr = fopen("logerr.txt", "w");
 
-    myscr            = newterm(nullptr, prev_stdout, prev_stderr);
+    myscr = newterm(nullptr, prev_stdout, prev_stderr);
     set_term(myscr);
 
     WINDOW* my_win;
@@ -55,7 +55,7 @@ int            main(int argc, char* argv[])
     keypad(stdscr, TRUE); /* I need that nifty F1 	*/
 
     height = 3;
-    width  = 10;
+    width = 10;
     starty = (LINES - height) / 2; /* Calculating for a center placement */
     startx = (COLS - width) / 2;   /* of the window		*/
     printw("Press F1 to exit");

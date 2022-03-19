@@ -149,7 +149,7 @@ class terminal : public if_terminal
 
     // States
     shared_ptr<void> _session_active_state_anchor;
-    size_t           _session_prev_bytes[2]     = {};
+    size_t           _session_prev_bytes[2] = {};
     stopwatch        _session_state_delta_timer = {};
 
     // Misc

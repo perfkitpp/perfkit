@@ -44,9 +44,9 @@
 #define CPPH_LOGGER() detail::nglog()
 
 using namespace perfkit::terminal::net::context;
-namespace views                   = ranges::views;
+namespace views = ranges::views;
 
-config_watcher::config_watcher()  = default;
+config_watcher::config_watcher() = default;
 config_watcher::~config_watcher() = default;
 
 void config_watcher::update()
@@ -60,14 +60,14 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
     outgoing::new_config_class message;
 
     auto&                      all = rg->bk_all();
-    message.key                    = rg->name();
+    message.key = rg->name();
 
     for (auto& [_, config] : all) {
         if (config->is_hidden())
             continue;  // dont' publish hidden ones
 
         auto  hierarchy = config->tokenized_display_key();
-        auto* level     = &message.root;
+        auto* level = &message.root;
 
         for (auto category : make_iterable(hierarchy.begin(), hierarchy.end() - 1)) {
             auto it = perfkit::find_if(level->subcategories,
@@ -75,19 +75,19 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
 
             if (it == level->subcategories.end()) {
                 level->subcategories.emplace_back();
-                it       = --level->subcategories.end();
+                it = --level->subcategories.end();
                 it->name = category;
             }
 
             level = &*it;
         }
 
-        auto* dst                    = &level->entities.emplace_back();
-        dst->name                    = config->tokenized_display_key().back();
-        dst->value                   = config->serialize();
+        auto* dst = &level->entities.emplace_back();
+        dst->name = config->tokenized_display_key().back();
+        dst->value = config->serialize();
         dst->metadata["description"] = config->attribute().description;
-        dst->metadata["default"]     = config->attribute().default_value;
-        dst->config_key              = config_key_t::hash(&*config).value;
+        dst->metadata["default"] = config->attribute().default_value;
+        dst->config_key = config_key_t::hash(&*config).value;
 
         _cache.confmap.try_emplace({dst->config_key}, config);
     }
@@ -102,7 +102,7 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
                 auto wptr = rg->weak_from_this();
 
                 // apply updates .. as long as wptr alive, pointers can be accessed safely
-                auto buffer   = std::vector(updates.begin(), updates.end());
+                auto buffer = std::vector(updates.begin(), updates.end());
                 auto function = perfkit::bind_front(&config_watcher::_on_update, this, wptr, std::move(buffer));
                 asio::post(*_ioc, std::move(function));
 
@@ -195,9 +195,9 @@ void config_watcher::_on_update(
     message.class_key = rg->name();
 
     for (auto arg : args) {
-        auto* p       = &message.content.emplace_front();
+        auto* p = &message.content.emplace_front();
         p->config_key = config_key_t::hash(&*arg).value;
-        p->value      = arg->serialize();
+        p->value = arg->serialize();
     }
 
     io->send(message);

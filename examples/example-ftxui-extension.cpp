@@ -202,28 +202,28 @@ int main(int argc, char const* argv[])
     auto                                         screen = ScreenInteractive::Fullscreen();
 
     std::shared_ptr<perfkit_ftxui::string_queue> commands;
-    auto                                         preset      = perfkit_ftxui::PRESET(&commands, {}, std::make_shared<my_subscriber>());
+    auto                                         preset = perfkit_ftxui::PRESET(&commands, {}, std::make_shared<my_subscriber>());
     auto                                         kill_switch = perfkit_ftxui::launch_async_loop(&screen, preset);
 
     for (int ic = 0; perfkit_ftxui::is_alive(kill_switch.get()); ++ic) {
         std::this_thread::sleep_for(10ms);
         cfg::registry().apply_update_and_check_if_dirty();
 
-        auto trc_root                      = traces[0].fork("Root Trace");
+        auto trc_root = traces[0].fork("Root Trace");
 
-        auto timer                         = trc_root.timer("Some Timer");
-        trc_root["Value 0"]                = 3;
-        trc_root["Value 1"]                = *cfg::labels::foo;
-        trc_root["Value 2"]                = fmt::format("Hell, world! {}", *cfg::labels::foo);
-        trc_root["Value 3"]                = false;
-        trc_root["Value 3"]["Subvalue 0"]  = ic;
+        auto timer = trc_root.timer("Some Timer");
+        trc_root["Value 0"] = 3;
+        trc_root["Value 1"] = *cfg::labels::foo;
+        trc_root["Value 2"] = fmt::format("Hell, world! {}", *cfg::labels::foo);
+        trc_root["Value 3"] = false;
+        trc_root["Value 3"]["Subvalue 0"] = ic;
         trc_root["Value 3"]["Subvalue GR"] = std::vector<int>{3, 4, 5};
-        trc_root["Value 3"]["Subvalue 1"]  = double(ic);
-        trc_root["Value 3"]["Subvalue 2"]  = !!(ic & 1);
-        trc_root["Value 4"]["Subvalue 3"]  = fmt::format("Hell, world! {}", ic);
+        trc_root["Value 3"]["Subvalue 1"] = double(ic);
+        trc_root["Value 3"]["Subvalue 2"] = !!(ic & 1);
+        trc_root["Value 4"]["Subvalue 3"] = fmt::format("Hell, world! {}", ic);
 
-        auto r                             = trc_root["Value 5"];
-        trc_root["Value 5"]["Subvalue 0"]  = ic;
+        auto r = trc_root["Value 5"];
+        trc_root["Value 5"]["Subvalue 0"] = ic;
         if (r) { trc_root["Value 5"]["Subvalue 1 Cond"] = double(ic); }
         trc_root["Value 5"]["Subvalue 2"] = !!(ic & 1);
 

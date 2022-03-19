@@ -91,7 +91,7 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
     size_t invoke_queued_commands(milliseconds timeout = {});
 
    private:
-    using cmd_args_view       = array_view<std::string_view>;
+    using cmd_args_view = array_view<std::string_view>;
     using cmd_invoke_function = std::function<bool(cmd_args_view full_tokens)>;
 
     void _add_subcommand(std::string name, cmd_invoke_function handler);
@@ -141,8 +141,8 @@ void initialize_with_basic_commands(if_terminal* ref);
  */
 void register_conffile_io_commands(
         if_terminal*     ref,
-        std::string_view cmd_load     = "load-config",  // e.g. "ld"
-        std::string_view cmd_store    = "save-config",
+        std::string_view cmd_load = "load-config",  // e.g. "ld"
+        std::string_view cmd_store = "save-config",
         std::string_view initial_path = {});  // e.g. "w"
 
 /**

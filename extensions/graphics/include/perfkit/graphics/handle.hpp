@@ -57,12 +57,12 @@ struct handle_data
     uint8_t  resource_index() const noexcept { return (uint8_t)_type - 1; }
 
    public:
-    resource_type _type    = {};
+    resource_type _type = {};
 
     uint8_t       _padding = {};
 
-    uint16_t      _index   = {};
-    uint32_t      _hash    = {};
+    uint16_t      _index = {};
+    uint32_t      _hash = {};
 };
 
 /**
@@ -87,8 +87,8 @@ struct _handle_base : handle_data
 
 static_assert(sizeof _handle_base<resource_type::invalid>{} == 8);
 
-using texture_handle  = _handle_base<resource_type::texture>;
-using window_handle   = _handle_base<resource_type::window>;
-using mesh_handle     = _handle_base<resource_type::mesh>;
+using texture_handle = _handle_base<resource_type::texture>;
+using window_handle = _handle_base<resource_type::window>;
+using mesh_handle = _handle_base<resource_type::mesh>;
 using material_handle = _handle_base<resource_type::material>;
 }  // namespace perfkit::graphics

@@ -65,7 +65,7 @@ int main(void)
             [&] {
                 for (;;) {
                     char buf[2048];
-                    auto n               = fgets(buf, sizeof buf, stdin);
+                    auto n = fgets(buf, sizeof buf, stdin);
                     buf[strlen(buf) - 1] = 0;
 
                     if (not running) { return; }

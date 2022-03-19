@@ -84,9 +84,9 @@ void trace_watcher::_dispatch_fetched_trace(
 
     io->dispatch(
             [this,
-             buf     = std::move(buf),
+             buf = std::move(buf),
              wtracer = std::move(tracer),
-             life    = std::weak_ptr{_event_lifespan}]  //
+             life = std::weak_ptr{_event_lifespan}]  //
             () mutable {
                 auto locked = life.lock();
                 if (not locked)
@@ -104,9 +104,9 @@ static void dump_trace(
         perfkit::tracer::trace const&                          v,
         perfkit::terminal::net::outgoing::traces::node_scheme* node)
 {
-    node->trace_key   = v.unique_id().value;
-    node->name        = v.hierarchy.back();
-    node->folded      = v.folded();
+    node->trace_key = v.unique_id().value;
+    node->name = v.hierarchy.back();
+    node->folded = v.folded();
     node->subscribing = v.subscribing();
 
     auto visitor =
@@ -116,24 +116,24 @@ static void dump_trace(
 
                 if constexpr (std::is_same_v<type, nullptr_t>) {
                     node->value_type = TRACE_VALUE_NULLPTR;
-                    node->value      = "";
+                    node->value = "";
                 } else if constexpr (std::is_same_v<type, perfkit::tracer::clock_type::duration>) {
                     node->value_type = TRACE_VALUE_DURATION_USEC;
-                    node->value      = std::to_string(
-                                 std::chrono::duration_cast<std::chrono::microseconds>(value)
-                                         .count());
+                    node->value = std::to_string(
+                            std::chrono::duration_cast<std::chrono::microseconds>(value)
+                                    .count());
                 } else if constexpr (std::is_same_v<type, int64_t>) {
                     node->value_type = TRACE_VALUE_INTEGER;
-                    node->value      = std::to_string(value);
+                    node->value = std::to_string(value);
                 } else if constexpr (std::is_same_v<type, double>) {
                     node->value_type = TRACE_VALUE_FLOATING_POINT;
-                    node->value      = std::to_string(value);
+                    node->value = std::to_string(value);
                 } else if constexpr (std::is_same_v<type, std::string>) {
                     node->value_type = TRACE_VALUE_STRING;
-                    node->value      = value;
+                    node->value = value;
                 } else if constexpr (std::is_same_v<type, bool>) {
                     node->value_type = TRACE_VALUE_BOOLEAN;
-                    node->value      = value ? "true" : "false";
+                    node->value = value ? "true" : "false";
                 }
             };
 
@@ -163,7 +163,7 @@ void trace_watcher::_dispatcher_impl_on_io(
     ::dump_trace(traces[0], &trc.root);
     trc.root.is_fresh = true;
 
-    auto fence        = traces[0].fence;
+    auto fence = traces[0].fence;
 
     // build trace tree
     for (auto const& trace : traces) {
@@ -171,7 +171,7 @@ void trace_watcher::_dispatcher_impl_on_io(
 
         auto key = trace.unique_id();
         if (auto [it, is_new] = _nodes.try_emplace(key); is_new) {
-            auto* item   = &it->second;
+            auto* item = &it->second;
             item->subscr = std::shared_ptr<std::atomic_bool>(
                     tracer, trace._bk_p_subscribed());
             item->fold = std::shared_ptr<std::atomic_bool>(
@@ -205,7 +205,7 @@ void trace_watcher::signal(std::string_view class_name)
 {
     auto lock = _tracers.lock();
 
-    auto it   = lock->find(class_name);
+    auto it = lock->find(class_name);
     if (it == lock->end())
         return;
 
@@ -247,7 +247,7 @@ void trace_watcher::tweak(
 
 void trace_watcher::_on_new_tracer(perfkit::tracer* tracer)
 {
-    auto weak  = tracer->weak_from_this();
+    auto weak = tracer->weak_from_this();
     auto table = _tracers.lock();
 
     _on_new_tracer_impl(&*table, tracer);
@@ -296,8 +296,8 @@ void trace_watcher::_publish_tracer_list(decltype(_tracers)::value_type* table)
             continue;
         }
 
-        auto arg    = &message.content.emplace_front();
-        arg->first  = name;
+        auto arg = &message.content.emplace_front();
+        arg->first = name;
         arg->second = perfkit::hasher::fnv1a_64(&*sptr);
     }
 

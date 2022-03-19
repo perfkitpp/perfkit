@@ -29,8 +29,8 @@
 #include "perfkit/common/math/rectangle.hxx"
 
 namespace perfkit::graphics {
-using point2    = math::vec2i;
-using size2     = math::vec2i;
+using point2 = math::vec2i;
+using size2 = math::vec2i;
 using rectangle = math::rectangle;
 
 enum class pixel_format {
@@ -56,7 +56,7 @@ enum class modal_type {
     yes_no_abort,  // show yes/no/abort button. closing modal will be treated as 'closed'
 };
 
-using window_proc_fn  = perfkit::function<void(wdc*)>;
+using window_proc_fn = perfkit::function<void(wdc*)>;
 using texture_draw_fn = perfkit::function<void(dc*)>;
 
 struct modal_expired : std::exception
@@ -97,12 +97,12 @@ struct vertex2_0
  */
 struct material
 {
-    texture_handle albedo       = {};    // f_rgb
-    texture_handle normal       = {};    // f_rgb
-    texture_handle metalic      = {};    // f_mono
-    texture_handle rouhness     = {};    // f_mono
-    texture_handle opacity      = {};    // f_mono
-    texture_handle emissive     = {};    // f_rgb
+    texture_handle albedo = {};          // f_rgb
+    texture_handle normal = {};          // f_rgb
+    texture_handle metalic = {};         // f_mono
+    texture_handle rouhness = {};        // f_mono
+    texture_handle opacity = {};         // f_mono
+    texture_handle emissive = {};        // f_rgb
     bool           binary_alpha = true;  // if set true, alpha channel will work as simple mask.
 };
 

@@ -41,7 +41,7 @@ class basic_dispatcher_impl;
 namespace perfkit::terminal::net {
 class dispatcher
 {
-    using impl_ptr          = std::unique_ptr<detail::basic_dispatcher_impl>;
+    using impl_ptr = std::unique_ptr<detail::basic_dispatcher_impl>;
     using recv_archive_type = nlohmann::json;
     using send_archive_type = nlohmann::json;
 

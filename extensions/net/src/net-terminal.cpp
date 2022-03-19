@@ -37,9 +37,9 @@ perfkit::terminal::net::terminal::terminal(
         _init_msg.epoch = duration_cast<milliseconds>(
                                   steady_clock::now().time_since_epoch())
                                   .count();
-        _init_msg.name        = init.name;
+        _init_msg.name = init.name;
         _init_msg.description = init.description;
-        _init_msg.num_cores   = std::thread::hardware_concurrency();
+        _init_msg.num_cores = std::thread::hardware_concurrency();
 
         // key string generation
         char hostname[65];
@@ -63,7 +63,7 @@ perfkit::terminal::net::terminal::terminal(
 
     // launch user command fetcher
     _worker_user_command = std::thread(CPPH_BIND(_user_command_fetch_fn));
-    _worker              = std::thread{CPPH_BIND(_exec)};
+    _worker = std::thread{CPPH_BIND(_exec)};
 
     // register events
     _io.on_new_connection() += CPPH_BIND(_on_any_connection);
@@ -135,20 +135,20 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
 
     while (_active) {
         auto wait = std::chrono::duration_cast<decltype(1ms)>(tmr.remaining());
-        auto str  = detail::try_fetch_input(wait.count());
+        auto str = detail::try_fetch_input(wait.count());
 
         if (not str.empty()) {
             _command_queue.emplace(std::move(str));
         }
 
         if (tmr.check() && fetch_proc_stat(&stat)) {
-            auto [in, out]        = _io.num_bytes_in_out();
-            auto delta_in         = in - _bytes_io_prev.first;
-            auto delta_out        = out - _bytes_io_prev.second;
-            auto dt               = tmr.delta().count();
-            int  in_rate          = delta_in / dt;
-            int  out_rate         = delta_out / dt;
-            _bytes_io_prev.first  = in;
+            auto [in, out] = _io.num_bytes_in_out();
+            auto delta_in = in - _bytes_io_prev.first;
+            auto delta_out = out - _bytes_io_prev.second;
+            auto dt = tmr.delta().count();
+            int  in_rate = delta_in / dt;
+            int  out_rate = delta_out / dt;
+            _bytes_io_prev.first = in;
             _bytes_io_prev.second = out;
 
             outgoing::session_state message
@@ -190,7 +190,7 @@ void perfkit::terminal::net::terminal::_on_suggest_request(
 
     outgoing::suggest_command cmd;
     cmd.new_command = std::move(nextstr);
-    cmd.reply_to    = s.reply_to;
+    cmd.reply_to = s.reply_to;
     perfkit::transform(
             candidates,
             std::front_inserter(cmd.candidates),
@@ -266,7 +266,7 @@ void perfkit::terminal::net::terminal::_worker_boostrap()
     for (auto* watcher : watchers) {
         watcher->stop();
         watcher->notify_change = CPPH_BIND(_touch_worker);
-        watcher->io            = &_io;
+        watcher->io = &_io;
         watcher->start();
     }
 
@@ -281,7 +281,7 @@ void perfkit::terminal::net::terminal::_worker_boostrap()
 void perfkit::terminal::net::terminal::_transition(std::function<void()> fn)
 {
     _worker_state = std::move(fn);
-    _dirty        = true;
+    _dirty = true;
 }
 
 void perfkit::terminal::net::terminal::_worker_exec()

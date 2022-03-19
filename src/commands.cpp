@@ -66,12 +66,12 @@ perfkit::commands::registry::node* perfkit::commands::registry::node::_add_subco
         throw command_name_invalid_exception{};
     }
 
-    auto& subcmd          = _subcommands[std::move(cmd)];
-    subcmd._invoke        = std::move(handler);
-    subcmd._suggest       = std::move(suggest);
+    auto& subcmd = _subcommands[std::move(cmd)];
+    subcmd._invoke = std::move(handler);
+    subcmd._suggest = std::move(suggest);
     subcmd._constant_name = name_constant;
-    subcmd._parent        = this;
-    subcmd._subcmd_lock   = _subcmd_lock;
+    subcmd._parent = this;
+    subcmd._subcmd_lock = _subcmd_lock;
 
     return &subcmd;
 }
@@ -213,7 +213,7 @@ std::string perfkit::commands::registry::node::suggest(
         return {};
     }
 
-    auto exec          = full_tokens[0];
+    auto exec = full_tokens[0];
     bool is_last_token = full_tokens.size() == 1;
 
     if (node* subcmd = {}; !is_last_token) {
@@ -355,13 +355,13 @@ void perfkit::commands::tokenize_by_argv_rule(
         auto& match = *iter;
         if (!match.ready()) { continue; }
 
-        size_t n                  = 0, position, length;
+        size_t n = 0, position, length;
         bool   wrapped_with_quote = false;
         if (match[1].matched) {
-            n                  = 1;
+            n = 1;
             wrapped_with_quote = true;
         } else if (match[2].matched) {
-            n                  = 2;
+            n = 2;
             wrapped_with_quote = false;
         } else {
             throw;
@@ -403,7 +403,7 @@ intptr_t perfkit::commands::registry::add_invoke_hook(std::function<bool(std::st
     assert(hook);
 
     static intptr_t _idgen = 0;
-    auto            id     = ++_idgen;
+    auto            id = ++_idgen;
     _invoke_hooks.emplace_back(id, std::move(hook));
     return id;
 }
@@ -413,7 +413,7 @@ bool perfkit::commands::registry::remove_invoke_hook(intptr_t id)
     using namespace ranges;
     auto names = _invoke_hooks | views::keys;
 
-    auto it    = find(names, id);
+    auto it = find(names, id);
     if (it == names.end()) { return false; }
 
     auto index = it - names.begin();
@@ -427,9 +427,9 @@ std::string perfkit::commands::registry::suggest(
 {
     using namespace std::literals;
     int                              position = 0;
-    auto                             rg       = root();
+    auto                             rg = root();
 
-    std::string                      str      = line;
+    std::string                      str = line;
     std::vector<std::string_view>    tokens;
     std::vector<commands::stroffset> offsets;
     std::vector<std::string>         suggests;
@@ -448,7 +448,7 @@ std::string perfkit::commands::registry::suggest(
             // means matching was performed on existing token
             auto const& tokofst = offsets[target_token];
 
-            position            = tokofst.position;
+            position = tokofst.position;
             if (position > 0 && line[position - 1] == '"') { position -= 1; }
         } else {
             // matched all existing tokens, thus returned suggests are for next word.

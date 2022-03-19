@@ -57,14 +57,14 @@ class _config_saveload_manager
     bool load_from(args_view args = {})
     {
         auto path = args.empty() ? _latest : args.front();
-        _latest   = path;
+        _latest = path;
         return perfkit::configs::import_file(path);
     }
 
     bool save_to(args_view args = {})
     {
         auto path = args.empty() ? _latest : args.front();
-        _latest   = path;
+        _latest = path;
         return perfkit::configs::export_to(path);
     }
 
@@ -84,7 +84,7 @@ class _config_saveload_manager
                 it, end, std::inserter(cands, cands.end()),
                 [](auto&& p) {
                     fs::path path = p.path();
-                    auto&&   str  = path.string();
+                    auto&&   str = path.string();
                     std::replace(str.begin(), str.end(), '\\', '/');
 
                     return fs::is_directory(path) ? str.append("/") : str;
@@ -101,10 +101,10 @@ void register_conffile_io_commands(
         std::string_view      cmd_store,
         std::string_view      initial_path)
 {
-    auto manip     = std::make_shared<_config_saveload_manager>();
+    auto manip = std::make_shared<_config_saveload_manager>();
     manip->_latest = initial_path;
 
-    auto rootnode  = ref->commands()->root();
+    auto rootnode = ref->commands()->root();
     auto node_load = rootnode->add_subcommand(
             std::string{cmd_load},
             [manip](auto&& tok) { return manip->load_from(tok); },
@@ -251,11 +251,11 @@ class _trace_manip
         using namespace ranges;
         auto traces = tracer::all();
 
-        auto it     = std::find_if(traces.begin(),
-                                   traces.end(),
-                                   [&](auto& p) {
+        auto it = std::find_if(traces.begin(),
+                               traces.end(),
+                               [&](auto& p) {
                                    return p->name() == args[0];
-                                   });
+                               });
 
         if (it == traces.end()) {
             SPDLOG_LOGGER_ERROR(glog(), "name '{}' is not valid tracer name", args[0]);
@@ -263,7 +263,7 @@ class _trace_manip
         }
 
         auto trc = *it;
-        _async   = std::async(std::launch::async, [=] { _async_request(trc, pattern, setter); });
+        _async = std::async(std::launch::async, [=] { _async_request(trc, pattern, setter); });
         return true;
     }
 
@@ -271,12 +271,12 @@ class _trace_manip
     void _async_request(std::shared_ptr<tracer> ref, std::string pattern, std::optional<bool> setter)
     {
         std::promise<perfkit::tracer::fetched_traces> promise;
-        auto                                          fut          = promise.get_future();
+        auto                                          fut = promise.get_future();
         auto                                          valid_marker = std::make_shared<nullptr_t>();
 
         ref->on_fetch
                 += [promise = &promise,
-                    valid   = std::weak_ptr{valid_marker}]  //
+                    valid = std::weak_ptr{valid_marker}]  //
                 (auto const& traces) {
                     if (not valid.expired())
                         promise->set_value(traces);
@@ -357,11 +357,11 @@ void initialize_with_basic_commands(if_terminal* ref)
 
 void register_config_manip_command(if_terminal* ref, std::string_view cmd)
 {
-    auto _locked    = ref->commands()->root()->acquire();
-    auto node_cmd   = ref->commands()->root()->add_subcommand(std::string{cmd});
+    auto _locked = ref->commands()->root()->acquire();
+    auto node_cmd = ref->commands()->root()->add_subcommand(std::string{cmd});
 
-    auto node_set   = node_cmd->add_subcommand("set");
-    auto node_get   = node_cmd->add_subcommand("get");
+    auto node_set = node_cmd->add_subcommand("set");
+    auto node_get = node_cmd->add_subcommand("get");
 
     using node_type = commands::registry::node;
     auto hook_enum_regs =
@@ -399,7 +399,7 @@ void register_config_manip_command(if_terminal* ref, std::string_view cmd)
                                     auto conf = wconf.lock();
                                     if (not conf) { return; }
 
-                                    auto value  = args[0];
+                                    auto value = args[0];
                                     auto parsed = json::parse(value.begin(), value.end(), nullptr, false);
 
                                     if (parsed.is_discarded()) {
@@ -492,8 +492,8 @@ void perfkit::if_terminal::_add_subcommand(
 
 size_t perfkit::if_terminal::invoke_queued_commands(std::chrono::milliseconds timeout)
 {
-    auto   now    = [] { return std::chrono::steady_clock::now(); };
-    auto   until  = now() + timeout;
+    auto   now = [] { return std::chrono::steady_clock::now(); };
+    auto   until = now() + timeout;
 
     size_t n_proc = 0;
     do {

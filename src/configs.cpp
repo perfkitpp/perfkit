@@ -63,7 +63,7 @@ auto perfkit::config_registry::create(std::string name, std::type_info const* sc
     auto [all, _] = detail::_all_repos();
     CPPH_DEBUG("Creating new config registry {}", name);
 
-    auto rg_ptr           = new config_registry{std::move(name)};
+    auto rg_ptr = new config_registry{std::move(name)};
     rg_ptr->_schema_class = schema;
 
     shared_ptr<config_registry> rg{rg_ptr};
@@ -109,7 +109,7 @@ auto perfkit::config_registry::bk_enumerate_registries(bool filter_complete) noe
         using namespace ranges;
         auto [all, _] = detail::_all_repos();
 
-        auto ptrs     = views::all(*all)
+        auto ptrs = views::all(*all)
                   | views::transform(
                             [](auto&& o) {
                                 return o.second.lock();
@@ -132,7 +132,7 @@ auto perfkit::config_registry::bk_find_reg(std::string_view name) noexcept
         -> std::shared_ptr<perfkit::config_registry>
 {
     auto [all, _] = detail::_all_repos();
-    auto it       = all->find(name);
+    auto it = all->find(name);
 
     if (it == all->end()) { return nullptr; }
     auto ptr = it->second.lock();
@@ -153,7 +153,7 @@ auto _loaded()
 json fetch_changes(std::string_view reg_name)
 {
     auto [js, _] = _io::_loaded();
-    auto it      = js->find(reg_name);
+    auto it = js->find(reg_name);
     if (it == js->end()) { return {}; }
 
     return *it;
@@ -207,7 +207,7 @@ bool perfkit::configs::import_from(json const& data)
     // 2. Queue all changes for each registry
     {
         auto [js, _] = _io::_loaded();
-        *js          = data;
+        *js = data;
     }
 
     auto registries = config_registry::bk_enumerate_registries();
@@ -249,7 +249,7 @@ perfkit::json perfkit::configs::export_all()
     json exported;
 
     // merge onto existing (will not affect existing cache)
-    auto [js, _]  = _io::_loaded();
+    auto [js, _] = _io::_loaded();
     json& current = *js;
 
     for (auto const& rg : regs) {
@@ -414,7 +414,7 @@ std::string_view perfkit::config_registry::bk_find_key(std::string_view display_
 
 bool perfkit::config_registry::bk_queue_update_value(std::string_view full_key, json value)
 {
-    auto _  = _access_lock();
+    auto _ = _access_lock();
 
     auto it = _entities.find(full_key);
     if (it == _entities.end()) { return false; }
@@ -422,10 +422,10 @@ bool perfkit::config_registry::bk_queue_update_value(std::string_view full_key, 
     // to prevent value ignorance on contiguous load-save call without apply_changes(),
     // stores cache without validation.
     it->second->_cached_serialized = std::move(value);
-    it->second->_fence_serialized  = ++it->second->_fence_modified;
+    it->second->_fence_serialized = ++it->second->_fence_modified;
 
     // push unique element
-    auto updates  = &_pending_updates;
+    auto updates = &_pending_updates;
     auto conf_ptr = it->second.get();
     if (auto it_up = std::find(updates->begin(), updates->end(), conf_ptr);
         it_up == updates->end())
@@ -508,10 +508,10 @@ void perfkit::detail::config_base::serialize(nlohmann::json& copy)
         auto _lock = _owner->_access_lock();
         _serialize(_cached_serialized, _raw);
         _fence_serialized = nmodify;
-        copy              = _cached_serialized;
+        copy = _cached_serialized;
     } else {
         auto _lock = _owner->_access_lock();
-        copy       = _cached_serialized;
+        copy = _cached_serialized;
     }
 }
 
@@ -541,7 +541,7 @@ void perfkit::detail::config_base::_split_categories(std::string_view view, std:
         if (view[i] == '|') {
             out.push_back(view.substr(0, i));
             view = view.substr(i + 1);
-            i    = 0;
+            i = 0;
         } else {
             ++i;
         }

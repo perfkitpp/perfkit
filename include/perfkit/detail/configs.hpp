@@ -56,7 +56,7 @@ class config_base;
 
 class config_registry;
 using config_shared_ptr = std::shared_ptr<detail::config_base>;
-using config_wptr       = std::weak_ptr<detail::config_base>;
+using config_wptr = std::weak_ptr<detail::config_base>;
 using std::shared_ptr;
 using std::weak_ptr;
 
@@ -72,11 +72,11 @@ struct config_attribute_t
     //
     bool has_custom_validator = false;
 
-    bool can_import           = true;
-    bool can_export           = true;
+    bool can_import = true;
+    bool can_export = true;
 
-    bool is_flag              = false;
-    bool hidden               = false;
+    bool is_flag = false;
+    bool hidden = false;
 
     //
     std::vector<std::string> flag_bindings;
@@ -92,7 +92,7 @@ class config_base
 {
    public:
     using deserializer = std::function<bool(nlohmann::json const&, void*)>;
-    using serializer   = std::function<void(nlohmann::json&, void const*)>;
+    using serializer = std::function<void(nlohmann::json&, void const*)>;
 
    private:
     friend class perfkit::config_registry;
@@ -101,11 +101,11 @@ class config_base
     std::string                   _full_key;
     std::string                   _display_key;
     void*                         _raw;
-    std::atomic_bool              _dirty                 = true;  // default true to trigger initialization
+    std::atomic_bool              _dirty = true;  // default true to trigger initialization
     std::atomic_bool              _latest_marshal_failed = false;
 
-    std::atomic_size_t            _fence_modified        = 0;
-    std::atomic_size_t            _fence_serialized      = ~size_t{};
+    std::atomic_size_t            _fence_modified = 0;
+    std::atomic_size_t            _fence_serialized = ~size_t{};
     config_attribute_t            _attribute;
     nlohmann::json                _cached_serialized;
 
@@ -201,10 +201,10 @@ on_new_config_registry();
 class config_registry : public std::enable_shared_from_this<config_registry>
 {
    public:
-    using json_table        = std::map<std::string_view, nlohmann::json>;
-    using config_table      = std::map<std::string_view, std::shared_ptr<detail::config_base>>;
+    using json_table = std::map<std::string_view, nlohmann::json>;
+    using config_table = std::map<std::string_view, std::shared_ptr<detail::config_base>>;
     using string_view_table = std::map<std::string_view, std::string_view>;
-    using container         = std::map<std::string, weak_ptr<config_registry>, std::less<>>;
+    using container = std::map<std::string, weak_ptr<config_registry>, std::less<>>;
 
    private:
     enum class update_state {
@@ -249,7 +249,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     auto             bk_schema_class() const noexcept { return _schema_class; }
     auto             bk_schema_hash() const noexcept { return _schema_hash; }
 
-    using update_event_t  = event<config_registry*, array_view<detail::config_base*>>;
+    using update_event_t = event<config_registry*, array_view<detail::config_base*>>;
     using destroy_event_t = event<config_registry*>;
 
     update_event_t  on_update;
@@ -276,11 +276,11 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
 namespace _attr_flag {
 enum ty : uint64_t {
-    has_min      = 0x01 << 0,
-    has_max      = 0x01 << 1,
+    has_min = 0x01 << 0,
+    has_max = 0x01 << 1,
     has_validate = 0x01 << 2,
-    has_one_of   = 0x01 << 3,
-    has_verify   = 0x01 << 4,
+    has_one_of = 0x01 << 3,
+    has_verify = 0x01 << 4,
 };
 }
 
@@ -453,8 +453,8 @@ class _config_factory
    public:
     struct _init_info
     {
-        config_registry* dispatcher    = {};
-        std::string      full_key      = {};
+        config_registry* dispatcher = {};
+        std::string      full_key = {};
         Ty_              default_value = {};
     };
 
@@ -484,8 +484,8 @@ class config
 
         // set reference attribute
         config_attribute_t conf_attrib = {};
-        conf_attrib.default_value      = _value;
-        conf_attrib.description        = attribute.description;
+        conf_attrib.default_value = _value;
+        conf_attrib.description = attribute.description;
 
         if constexpr (!!(Flags_ & _attr_flag::has_min))
             conf_attrib.min = *attribute.min;
@@ -506,7 +506,7 @@ class config
 
         if (attribute.flag_binding) {
             std::vector<std::string>& binding = *attribute.flag_binding;
-            conf_attrib.is_flag               = true;
+            conf_attrib.is_flag = true;
             if (not binding.empty()) {
                 conf_attrib.flag_bindings = std::move(binding);
             }
@@ -584,7 +584,7 @@ class config
     }
 
     config(config const&) noexcept = delete;
-    config(config&&) noexcept      = default;
+    config(config&&) noexcept = default;
 
     /**
      * @warning
@@ -645,10 +645,10 @@ auto configure(config_registry& dispatcher,
                Ty_&&            default_value) noexcept
 {
     _config_factory<_cvt_ty<Ty_>> attribute;
-    attribute._pinfo                = std::make_shared<typename _config_factory<_cvt_ty<Ty_>>::_init_info>();
-    attribute._pinfo->dispatcher    = &dispatcher;
+    attribute._pinfo = std::make_shared<typename _config_factory<_cvt_ty<Ty_>>::_init_info>();
+    attribute._pinfo->dispatcher = &dispatcher;
     attribute._pinfo->default_value = std::move(default_value);
-    attribute._pinfo->full_key      = std::move(full_key);
+    attribute._pinfo->full_key = std::move(full_key);
 
     return attribute;
 }

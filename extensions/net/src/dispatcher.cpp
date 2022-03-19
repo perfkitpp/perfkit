@@ -50,7 +50,7 @@ perfkit::terminal::net::dispatcher::dispatcher(
         init1.bind_port = init_info._port_param;
         init1.bind_addr = init_info._string_param;
 
-        self            = std::make_unique<detail::server_mode_dispatcher>(init0, init1);
+        self = std::make_unique<detail::server_mode_dispatcher>(init0, init1);
     } else if (init_info._mode == operation_mode::relay_server_provider) {
         UNIMPLEMENTED();
     } else {

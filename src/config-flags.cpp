@@ -66,17 +66,17 @@ using state_ptr = std::unique_ptr<if_state>;
 class if_state
 {
    public:
-    virtual ~if_state()                                        = default;
+    virtual ~if_state() = default;
     virtual bool invoke(std::string_view tok, if_state** next) = 0;
 
    protected:
     template <typename Ty_, typename... Args_>
     if_state* fork(if_state* return_state, Args_&&... args)
     {
-        auto ptr              = state_ptr{new Ty_{std::forward<Args_>(args)...}};
+        auto ptr = state_ptr{new Ty_{std::forward<Args_>(args)...}};
         ptr->ignore_undefined = ignore_undefined;
-        ptr->_return          = return_state;
-        _child                = std::move(ptr);
+        ptr->_return = return_state;
+        _child = std::move(ptr);
         return _child.get();
     }
 
@@ -134,7 +134,7 @@ class value_parse : public if_state
                 _conf->request_modify(nlohmann::json::parse(data.begin(), data.end()));
             } else if (_conf->default_value().is_array()) {
                 auto curvalue = _conf->serialize();
-                auto jsvalue  = nlohmann::json::parse(tok.begin(), tok.end(), nullptr, false);
+                auto jsvalue = nlohmann::json::parse(tok.begin(), tok.end(), nullptr, false);
 
                 // if parsing fails, try once more as plain string
                 if (jsvalue.is_discarded()) {
@@ -299,7 +299,7 @@ void perfkit::configs::parse_args(
 
     state_ptr initial_state{new class initial_state};
     initial_state->ignore_undefined = ignore_undefined;
-    if_state* state                 = initial_state.get();
+    if_state* state = initial_state.get();
 
     for (auto it = (*args).begin(); it != (*args).end();) {
         auto tok = *it;

@@ -53,7 +53,7 @@ class config_context
     };
 
     using registry_context_table_t = std::map<string, config_registry_context_t, std::less<>>;
-    using config_key_table         = std::unordered_map<config_key_t, weak_ptr<detail::config_base>>;
+    using config_key_table = std::unordered_map<config_key_t, weak_ptr<detail::config_base>>;
 
    private:
     if_net_terminal_adapter* _host;

@@ -50,9 +50,9 @@ perfkit::net::terminal::terminal(perfkit::net::terminal_info info) noexcept
     _session_info.epoch = duration_cast<milliseconds>(
                                   steady_clock::now().time_since_epoch())
                                   .count();
-    _session_info.name        = _info.name;
+    _session_info.name = _info.name;
     _session_info.description = _info.description;
-    _session_info.num_cores   = std::thread::hardware_concurrency();
+    _session_info.num_cores = std::thread::hardware_concurrency();
 
     // key string generation
     char hostname[65];
@@ -89,7 +89,7 @@ void perfkit::net::terminal::_open_acceptor()
     CPPH_INFO("accept>> Bind successful. Starting listening ...");
 
     msgpack::rpc::session_config config;
-    config.timeout         = 10s;
+    config.timeout = 10s;
     config.use_integer_key = true;
 
     msgpack::rpc::asio_ex::open_acceptor(_rpc, config, _acceptor);
@@ -105,11 +105,11 @@ void perfkit::net::terminal::_tick_worker()
         if (detail::proc_stat_t stat = {}; _session_active_state_anchor && detail::fetch_proc_stat(&stat)) {
             size_t in, out;
             _rpc.totals(&in, &out);
-            auto delta_in  = in - _session_prev_bytes[0];
+            auto delta_in = in - _session_prev_bytes[0];
             auto delta_out = out - _session_prev_bytes[1];
-            auto dt        = _session_state_delta_timer.elapsed().count();
-            int  in_rate   = delta_in / dt;
-            int  out_rate  = delta_out / dt;
+            auto dt = _session_state_delta_timer.elapsed().count();
+            int  in_rate = delta_in / dt;
+            int  out_rate = delta_out / dt;
             _session_state_delta_timer.reset();
             _session_prev_bytes[0] = in;
             _session_prev_bytes[1] = out;
@@ -170,9 +170,9 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
                        lock_guard _lc_{_tty_lock};
                        out->fence = _tty_fence;
 
-                       fence      = std::clamp<int64_t>(fence, _tty_fence - _tty_buf.size(), _tty_fence);
+                       fence = std::clamp<int64_t>(fence, _tty_fence - _tty_buf.size(), _tty_fence);
                        auto begin = _tty_buf.end() - (_tty_fence - fence);
-                       auto end   = _tty_buf.end();
+                       auto end = _tty_buf.end();
 
                        out->content.assign(begin, end);
                    })
@@ -230,7 +230,7 @@ void perfkit::net::terminal::_on_session_list_change()
     CPPH_INFO("{} sessions are currently active.", num_sessions);
 
     bool const should_start_monitoring = num_sessions;
-    bool const has_no_change           = should_start_monitoring == !!_session_active_state_anchor;
+    bool const has_no_change = should_start_monitoring == !!_session_active_state_anchor;
 
     if (has_no_change)
         return;
@@ -240,7 +240,7 @@ void perfkit::net::terminal::_on_session_list_change()
 
         // Start monitoring
         _session_active_state_anchor = std::make_shared<nullptr_t>();
-        weak_ptr anchor              = _session_active_state_anchor;
+        weak_ptr anchor = _session_active_state_anchor;
 
         _ctx_config.start_monitoring(anchor);
     } else {

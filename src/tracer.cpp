@@ -54,28 +54,28 @@ tracer::_entity_ty* tracer::_fork_branch(
     if (std::this_thread::get_id() != _working_thread_id)
         throw std::logic_error{"branching cannot occur on different thread from fork()ed one!"};
 
-    auto hash         = _hash_active(parent, name);
+    auto hash = _hash_active(parent, name);
 
     auto [it, is_new] = _table.try_emplace(hash);
-    auto& data        = it->second;
+    auto& data = it->second;
 
     if (is_new) {
-        data.key_buffer          = std::string(name);
-        data.body.self_node      = &data.body;
-        data.body.hash           = hash;
-        data.body.key            = data.key_buffer;
+        data.key_buffer = std::string(name);
+        data.body.self_node = &data.body;
+        data.body.hash = hash;
+        data.body.key = data.key_buffer;
         data.body._is_subscribed = &data.is_subscribed;
-        data.body._is_folded     = &data.is_folded;
+        data.body._is_folded = &data.is_folded;
         data.is_subscribed.store(initial_subscribe_state, std::memory_order_relaxed);
         parent && (data.hierarchy = parent->hierarchy, 0);  // only includes parent hierarchy.
         data.hierarchy.push_back(data.key_buffer);
-        data.body.hierarchy    = data.hierarchy;
+        data.body.hierarchy = data.hierarchy;
         data.body.unique_order = _table.size();
         parent && (data.body.owner_node = &parent->body);
     }
 
-    data.parent            = parent;
-    data.body.fence        = _fence_active;
+    data.parent = parent;
+    data.body.fence = _fence_active;
     data.body.active_order = _order_active++;
     _stack.push_back(&data);
 
@@ -100,7 +100,7 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top)
 tracer_proxy tracer::fork(std::string_view n, size_t interval)
 {
     auto last_fork = _last_fork;
-    _last_fork     = clock_type::now();
+    _last_fork = clock_type::now();
 
     if (_fence_active > _fence_latest)  // only when update exist...
         _deliver_previous_result();
@@ -117,16 +117,16 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
     _stack.clear();
 
     tracer_proxy prx;
-    prx._owner             = this;
-    prx._ref               = _fork_branch(nullptr, n, false);
+    prx._owner = this;
+    prx._ref = _fork_branch(nullptr, n, false);
     prx._epoch_if_required = clock_type::now();
 
-    auto thrd_hash         = std::hash<std::thread::id>{}(_working_thread_id);
+    auto thrd_hash = std::hash<std::thread::id>{}(_working_thread_id);
     char buf[perfkit::base64::encoded_size(sizeof thrd_hash)];
     perfkit::base64::encode_one(thrd_hash, buf);
     tracer_proxy total
             = branch("[[internals]]", std::string_view{buf, sizeof buf});
-    branch("age")._epoch_if_required      = _birth;
+    branch("age")._epoch_if_required = _birth;
     branch("interval")._epoch_if_required = last_fork;
     branch("sequence", _fence_active);
     branch("branches", _table.size());
@@ -273,7 +273,7 @@ void perfkit::tracer::_try_pop(_trace::_entity_ty const* body)
 
 tracer_proxy perfkit::tracer::timer(std::string_view name)
 {
-    auto px               = branch(name);
+    auto px = branch(name);
     px._epoch_if_required = clock_type::now();
     return px;
 }
@@ -282,7 +282,7 @@ tracer_proxy perfkit::tracer::branch(std::string_view name)
 {
     tracer_proxy px;
     px._owner = this;
-    px._ref   = _fork_branch(_stack.back(), name, false);
+    px._ref = _fork_branch(_stack.back(), name, false);
     return px;
 }
 
@@ -292,7 +292,7 @@ tracer::proxy tracer::proxy::branch(std::string_view n) noexcept
 
     tracer_proxy px;
     px._owner = _owner;
-    px._ref   = _owner->_fork_branch(_ref, n, false);
+    px._ref = _owner->_fork_branch(_ref, n, false);
     return px;
 }
 
@@ -301,8 +301,8 @@ tracer::proxy tracer::proxy::timer(std::string_view n) noexcept
     if (not is_valid()) { return {}; }
 
     tracer_proxy px;
-    px._owner             = _owner;
-    px._ref               = _owner->_fork_branch(_ref, n, false);
+    px._owner = _owner;
+    px._ref = _owner->_fork_branch(_ref, n, false);
     px._epoch_if_required = clock_type::now();
     return px;
 }
@@ -318,7 +318,7 @@ tracer_proxy::~tracer_proxy() noexcept
 
     // clear to prevent logic error
     _owner = nullptr;
-    _ref   = nullptr;
+    _ref = nullptr;
 }
 
 tracer::variant_type& tracer::proxy::_data() noexcept
@@ -328,12 +328,12 @@ tracer::variant_type& tracer::proxy::_data() noexcept
 
 tracer_proxy& tracer_proxy::switch_to_timer(std::string_view name)
 {
-    auto owner         = _owner;
-    auto parent        = _ref->parent;
-    *this              = {};
+    auto owner = _owner;
+    auto parent = _ref->parent;
+    *this = {};
 
-    _ref               = owner->_fork_branch(parent, name, false);
-    _owner             = owner;
+    _ref = owner->_fork_branch(parent, name, false);
+    _owner = owner;
     _epoch_if_required = clock_type::now();
 
     return *this;
@@ -401,12 +401,12 @@ bool compare_hierarchy_2(tracer::trace const& a, tracer::trace const& b)
     // 조상이 같아질 때까지 팝 업
     while (higher->owner_node != lower->owner_node) {
         higher = higher->owner_node;
-        lower  = lower->owner_node;
+        lower = lower->owner_node;
     }
 
     // 조상이 같다면, unique_index(절대 등장 순서)를 비교한다.
     auto alpha = a_is_higher ? higher : lower;
-    auto beta  = a_is_higher ? lower : higher;
+    auto beta = a_is_higher ? lower : higher;
 
     return alpha->unique_order < beta->unique_order;
 }
@@ -427,7 +427,7 @@ void tracer::trace::dump_data(std::string& s) const
         case 1:  //<clock_type::duration,
         {
             auto count = std::chrono::duration<double>{std::get<clock_type ::duration>(data)}.count();
-            s          = fmt::format("{:.4f} ms", count * 1000.);
+            s = fmt::format("{:.4f} ms", count * 1000.);
         } break;
 
         case 2:  // int64_t,

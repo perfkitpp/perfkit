@@ -36,9 +36,9 @@
 
 struct test_config_structure_nested
 {
-    int                                     x    = 0;
-    int                                     y    = 0;
-    double                                  z    = 0;
+    int                                     x = 0;
+    int                                     y = 0;
+    double                                  z = 0;
     bool                                    flag = false;
     std::string                             path = "ola";
     std::list<test_config_structure_nested> list;
@@ -50,11 +50,11 @@ struct test_config_structure_nested
 
 struct test_config_structure
 {
-    int                          x      = 0;
-    int                          y      = 0;
-    double                       z      = 0;
-    bool                         flag   = false;
-    std::string                  path   = "ola";
+    int                          x = 0;
+    int                          y = 0;
+    double                       z = 0;
+    bool                         flag = false;
+    std::string                  path = "ola";
 
     test_config_structure_nested nested = {test_config_structure_nested{}};
 

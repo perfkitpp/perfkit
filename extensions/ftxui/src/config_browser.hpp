@@ -66,11 +66,11 @@ class config_node_builder
                                 _content->display_key())); }
 
             auto key = category[0];
-            auto it  = _subnodes.find(key);
+            auto it = _subnodes.find(key);
 
             if (it == _subnodes.end()) {
                 auto [iter, _] = _subnodes.try_emplace(std::string(key));
-                it             = iter;
+                it = iter;
             }
 
             it->second._put_new(category.subspan(1), std::move(ptr));
@@ -142,20 +142,20 @@ class config_node_builder
                              return a->second._reference_key < b->second._reference_key;
                          });
 
-            auto subnodes    = Container::Vertical({});
+            auto subnodes = Container::Vertical({});
             auto fold_fn_all = std::make_shared<std::function<void(bool)>>([](bool) {});
 
             // expose subnodes as individual buttons, which extended/collapsed when clicked.
             for (auto snode : subnode_ptr) {
-                auto           label_cont    = Container::Vertical({});
+                auto           label_cont = Container::Vertical({});
                 auto           state_boolean = std::make_shared<bool>();
 
                 CheckboxOption opts;
                 if (snode->second.is_content()) {
-                    opts.style_checked   = "*";
+                    opts.style_checked = "*";
                     opts.style_unchecked = "";
                 } else {
-                    opts.style_checked   = "";
+                    opts.style_checked = "";
                     opts.style_unchecked = "";
                 }
 
@@ -173,11 +173,11 @@ class config_node_builder
                     *state = is_active(container);
                 };
 
-                auto fold_fn         = std::make_shared<std::function<void(bool)>>();
-                auto node_content    = snode->second.build(fold_fn);
+                auto fold_fn = std::make_shared<std::function<void(bool)>>();
+                auto node_content = snode->second.build(fold_fn);
                 auto subnode_fold_fn = *fold_fn;
 
-                opts.on_change       = [node_content, label_cont, state_boolean] {
+                opts.on_change = [node_content, label_cont, state_boolean] {
                     fold_or_unfold(label_cont, node_content, !is_active(label_cont), state_boolean);
                 };
                 *fold_fn = [node_content, label_cont, state_boolean](bool b) {
@@ -241,15 +241,15 @@ class config_node_builder
                     for (auto it = (*obj).begin(); it != (*obj).end(); ++it) {
                         auto inner_value = _iter(&it.value());
 
-                        auto inner       = Renderer(inner_value,
-                                                    [this,
+                        auto inner = Renderer(inner_value,
+                                              [this,
                                                key = text(fmt::format("\"{}\":", it.key())),
                                                inner_value] {
                                                   return hbox(
-                                                                       ftxui::color(Color::Yellow, key),
-                                                                       text(" {"), inner_value->Render(), text("}"))
+                                                                 ftxui::color(Color::Yellow, key),
+                                                                 text(" {"), inner_value->Render(), text("}"))
                                                        | flex;
-                                                    });
+                                              });
 
                         outer->Add(inner);
                     }
@@ -263,14 +263,14 @@ class config_node_builder
                     for (size_t i = 0; i < obj->size(); ++i) {
                         auto inner_value = _iter(&(*obj)[i]);
 
-                        auto inner       = Renderer(inner_value,
-                                                    [this,
+                        auto inner = Renderer(inner_value,
+                                              [this,
                                                key = text(fmt::format("[{}]:", i)),
                                                inner_value] {
                                                   return hbox(
-                                                                ftxui::color(Color::Violet, key),
-                                                                text(" {"), inner_value->Render(), text("}"));
-                                                    });
+                                                          ftxui::color(Color::Violet, key),
+                                                          text(" {"), inner_value->Render(), text("}"));
+                                              });
                         outer->Add(inner);
                     }
                     return Renderer(outer, [outer] { return outer->Render() | flex; });
@@ -278,7 +278,7 @@ class config_node_builder
 
                 case nlohmann::detail::value_t::string: {
                     InputOption opt;
-                    opt.on_enter        = on_change;
+                    opt.on_enter = on_change;
                     opt.cursor_position = 1 << 20;
 
                     return Input(obj->get_ptr<std::string*>(), "value", std::move(opt));
@@ -286,9 +286,9 @@ class config_node_builder
 
                 case nlohmann::detail::value_t::boolean: {
                     CheckboxOption opt;
-                    opt.style_checked   = "true ";
+                    opt.style_checked = "true ";
                     opt.style_unchecked = "false";
-                    opt.on_change       = on_change;
+                    opt.on_change = on_change;
 
                     return Checkbox("<>", obj->get_ptr<bool*>(), std::move(opt));
                 }
@@ -297,17 +297,17 @@ class config_node_builder
                 case nlohmann::detail::value_t::number_unsigned:
                 case nlohmann::detail::value_t::number_float: {
                     auto pwstr = std::make_shared<std::wstring>();
-                    *pwstr     = ftxui::to_wstring(obj->dump());
+                    *pwstr = ftxui::to_wstring(obj->dump());
                     InputOption opt;
                     opt.cursor_position = 1 << 20;
 
-                    opt.on_enter        = [pwstr, this, obj] {
+                    opt.on_enter = [pwstr, this, obj] {
                         double value = 0;
-                        auto   str   = ftxui::to_string(*pwstr);
+                        auto   str = ftxui::to_string(*pwstr);
 
                         try {
                             auto result = std::stod(str);
-                            *obj        = result;
+                            *obj = result;
                             on_change();
                         } catch (std::invalid_argument&) {
                         }
@@ -333,25 +333,25 @@ class config_node_builder
         auto      cfg = _content;
 
         Component inner;
-        auto      proto                = _content->serialize();
-        auto      ptr                  = std::make_shared<_json_editor_builder>();
-        ptr->on_change                 = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
-        ptr->cfg                       = cfg;
-        ptr->rootobj                   = proto;
+        auto      proto = _content->serialize();
+        auto      ptr = std::make_shared<_json_editor_builder>();
+        ptr->on_change = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
+        ptr->cfg = cfg;
+        ptr->rootobj = proto;
 
         ptr->allow_schema_modification = false;
 
-        inner                          = Container::Vertical({ptr->_iter(&ptr->rootobj)});
-        inner                          = CatchEvent(inner,
-                                                    [inner, ptr](Event evt) {
+        inner = Container::Vertical({ptr->_iter(&ptr->rootobj)});
+        inner = CatchEvent(inner,
+                           [inner, ptr](Event evt) {
                                if (evt == Event::F5) {
                                    ptr->rootobj = ptr->cfg->serialize();
                                    inner->DetachAllChildren();
                                    inner->Add({ptr->_iter(&ptr->rootobj)});
                                }
                                return false;
-                                                    });
-        inner                          = Renderer(inner, [inner] { return inner->Render() | flex; });
+                           });
+        inner = Renderer(inner, [inner] { return inner->Render() | flex; });
 
         return Renderer(inner, [inner] { return vbox(hbox(text(" "), inner->Render()), ftxui::color(Color::Cyan, separator())) | flex; });
     }

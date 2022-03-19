@@ -57,13 +57,13 @@ using asio::ip::tcp;
 using socket_id_t = perfkit::basic_key<class LABEL_socket_id_t>;
 
 using std::chrono::steady_clock;
-using timestamp_t       = std::chrono::steady_clock::time_point;
+using timestamp_t = std::chrono::steady_clock::time_point;
 using recv_archive_type = nlohmann::json;
 using send_archive_type = nlohmann::json;
 
 struct basic_dispatcher_impl_init_info
 {
-    size_t                 buffer_size_hint   = 65535;
+    size_t                 buffer_size_hint = 65535;
     size_t                 message_size_limit = 1 << 20;
     std::vector<auth_info> auth;
 };
@@ -72,7 +72,7 @@ struct basic_dispatcher_impl_init_info
 struct message_header_t
 {
     char identifier[4] = {'o', '`', 'P', '%'};
-    char buflen[4]     = {};
+    char buflen[4] = {};
 };
 static_assert(sizeof(message_header_t) == 8);
 #pragma pack(pop)
@@ -107,7 +107,7 @@ class basic_dispatcher_impl
 {
    public:
     using init_info = basic_dispatcher_impl_init_info;
-    using buffer_t  = std::vector<char>;
+    using buffer_t = std::vector<char>;
 
    public:
     virtual ~basic_dispatcher_impl()
@@ -130,7 +130,7 @@ class basic_dispatcher_impl
    public:
     void launch()
     {
-        _alive     = true;
+        _alive = true;
         _io_worker = std::thread{
                 [&] {
                     while (_alive) {
@@ -199,14 +199,14 @@ class basic_dispatcher_impl
         buffer->resize(8);
         nlohmann::json::to_msgpack(archive, {*buffer});
 
-        (*buffer)[0]         = 'o';
-        (*buffer)[1]         = '`';
-        (*buffer)[2]         = 'P';
-        (*buffer)[3]         = '%';
+        (*buffer)[0] = 'o';
+        (*buffer)[1] = '`';
+        (*buffer)[2] = 'P';
+        (*buffer)[3] = '%';
         *(int*)&(*buffer)[4] = buffer->size() - 8;
 
-        auto shared_buffer   = std::make_shared<decltype(buffer)>(std::move(buffer));
-        auto pbuf            = &**shared_buffer;
+        auto shared_buffer = std::make_shared<decltype(buffer)>(std::move(buffer));
+        auto pbuf = &**shared_buffer;
 
         for (auto sock : _sockets_active) {
             // Share buffer ownership, for
@@ -262,11 +262,11 @@ class basic_dispatcher_impl
 
         auto [it, is_new] = _connections.try_emplace(id);
         assert_(is_new);  // id must be unique!
-        auto* context        = &it->second;
-        context->socket      = std::move(socket);
+        auto* context = &it->second;
+        context->socket = std::move(socket);
         context->recv_latest = steady_clock::now();
 
-        auto* sock           = &*context->socket;
+        auto* sock = &*context->socket;
         asio::async_read(
                 *sock, asio::dynamic_buffer(context->rdbuf).prepare(8),
                 asio::transfer_all(),
@@ -374,13 +374,13 @@ class basic_dispatcher_impl
         }
         _perf_in(n_read);
 
-        bool             login_success   = false;
+        bool             login_success = false;
         bool             access_readonly = true;
-        std::string_view auth_id         = "<none>";
+        std::string_view auth_id = "<none>";
 
         if (_auth.empty()) {
             // there's no authentication info.
-            login_success   = true;
+            login_success = true;
             access_readonly = false;
             CPPH_WARN(
                     "no authentication information registered."
@@ -389,14 +389,14 @@ class basic_dispatcher_impl
             message_in_t message;
             try {
                 auto buf = _view(ctx->rdbuf, n_read);
-                message  = nlohmann::json::from_msgpack(buf.begin(), buf.end());
+                message = nlohmann::json::from_msgpack(buf.begin(), buf.end());
 
                 if (message.route != "auth:login")
                     throw std::exception{};
 
                 using binary_t = nlohmann::json::binary_t;
-                auto& id_str   = message.parameter.at("id").get_ref<std::string&>();
-                auto& auth     = _auth.at(id_str);
+                auto& id_str = message.parameter.at("id").get_ref<std::string&>();
+                auto& auth = _auth.at(id_str);
 
                 CPPH_INFO("login attempt to id {}", id_str);
 
@@ -405,8 +405,8 @@ class basic_dispatcher_impl
                 if (not perfkit::equal2(auth.password, *passwd))
                     throw std::runtime_error("password mismatch");
 
-                auth_id         = auth.id;
-                login_success   = true;
+                auth_id = auth.id;
+                login_success = true;
                 access_readonly = auth.readonly_access;
             } catch (std::exception& e) {
                 CPPH_ERROR("login failed: {}", e.what());
@@ -435,7 +435,7 @@ class basic_dispatcher_impl
         {
             auto lc{std::lock_guard{_mtx_modify}};
             _sockets_active.push_back(&*ctx->socket);
-            n_connections  = _sockets_active.size();
+            n_connections = _sockets_active.size();
             ctx->is_active = true;
 
             if (access_readonly)
@@ -503,7 +503,7 @@ class basic_dispatcher_impl
 
         try {
             auto buf = _view(ctx->rdbuf, n_read);
-            message  = nlohmann::json::from_msgpack(buf.begin(), buf.begin() + n_read);
+            message = nlohmann::json::from_msgpack(buf.begin(), buf.begin() + n_read);
 
             if (message.route == "cmd:heartbeat") {
                 ;  // silently ignore message.
@@ -546,7 +546,7 @@ class basic_dispatcher_impl
 
         // check if header size does not exceed buffer length
         size_t decoded = 0;
-        decoded        = *(int*)h.buflen;
+        decoded = *(int*)h.buflen;
 
         if (decoded >= _cfg.message_size_limit)
             return CPPH_WARN("buffer size exceeds max: {} [max {}B]",
@@ -573,7 +573,7 @@ class basic_dispatcher_impl
     pool<std::string>                                     _send_pool;
     poll_timer                                            _perf_timer{1s};
     size_t                                                _perf_bytes_out = 0;
-    size_t                                                _perf_bytes_in  = 0;
+    size_t                                                _perf_bytes_in = 0;
 
     std::string                                           _token;       // login token to compare with.
     std::mutex                                            _mtx_modify;  // locks when modification (socket add/remove) occurs.

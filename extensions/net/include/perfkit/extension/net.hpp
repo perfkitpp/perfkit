@@ -96,9 +96,9 @@ struct terminal_init_info
      */
     void serve(std::string bindaddr, uint16_t port)
     {
-        _mode         = operation_mode::independent_server;
+        _mode = operation_mode::independent_server;
         _string_param = std::move(bindaddr);
-        _port_param   = port;
+        _port_param = port;
     }
 
     void serve(uint16_t port) { serve("0.0.0.0", port); }

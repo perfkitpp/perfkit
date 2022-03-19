@@ -55,8 +55,8 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
 {
     CPPH_DEBUG("Publishing registry '{}'", rg->name());
 
-    auto& all  = rg->bk_all();
-    auto  key  = rg->name();
+    auto& all = rg->bk_all();
+    auto  key = rg->name();
     auto  root = message::notify::config_category_t{};
 
     // Always try destroy registries before
@@ -70,7 +70,7 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
             continue;  // dont' publish hidden ones
 
         auto  hierarchy = config->tokenized_display_key();
-        auto* level     = &root;
+        auto* level = &root;
 
         for (auto category : make_iterable(hierarchy.begin(), hierarchy.end() - 1)) {
             auto it = perfkit::find_if(level->subcategories,
@@ -78,7 +78,7 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
 
             if (it == level->subcategories.end()) {
                 level->subcategories.emplace_back();
-                it       = --level->subcategories.end();
+                it = --level->subcategories.end();
                 it->name = category;
             }
 
@@ -95,11 +95,11 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
                     nlohmann::json::to_msgpack(js, nlohmann::detail::output_adapter<char>(*v));
                 };
 
-        auto* dst        = &level->entities.emplace_back();
+        auto* dst = &level->entities.emplace_back();
         auto  config_key = config_key_t::hash(&*config);
-        dst->name        = config->tokenized_display_key().back();
+        dst->name = config->tokenized_display_key().back();
         dst->description = config->description();
-        dst->config_key  = config_key.value;
+        dst->config_key = config_key.value;
 
         fn_archive(&dst->initial_value, config->serialize());
         fn_archive(&dst->opt_one_of, config->attribute().one_of);
@@ -118,7 +118,7 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
                 auto wptr = rg->weak_from_this();
 
                 // apply updates .. as long as wptr alive, pointers can be accessed safely
-                auto buffer   = std::vector(updates.begin(), updates.end());
+                auto buffer = std::vector(updates.begin(), updates.end());
                 auto function = bind_front_weak(wptr, &self_t::_handle_update, this, rg, std::move(buffer));
                 asio::post(*_event_proc, std::move(function));
             });
@@ -155,11 +155,11 @@ void config_context::rpc_update_request(const message::config_entity_update_t& c
     auto func =
             [this, content = content] {
                 try {
-                    auto& str          = content.content_next;
+                    auto& str = content.content_next;
                     auto  json_content = nlohmann::json::from_msgpack(str);
 
-                    auto  config_key   = config_key_t{content.config_key};
-                    auto  wptr         = _config_instances.at(config_key);
+                    auto  config_key = config_key_t{content.config_key};
+                    auto  wptr = _config_instances.at(config_key);
 
                     if (auto cfg = wptr.lock()) {
                         cfg->request_modify(std::move(json_content));

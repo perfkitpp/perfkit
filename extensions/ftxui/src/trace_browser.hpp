@@ -42,7 +42,7 @@ class tracer_instance_browser : public ComponentBase
     {
         {
             CheckboxOption opts;
-            opts.style_checked   = "";
+            opts.style_checked = "";
             opts.style_unchecked = "";
 
             opts.on_change
@@ -66,7 +66,7 @@ class tracer_instance_browser : public ComponentBase
         auto  title = hbox(spinner(15, _latest_fence), text(" "), _title->Render());
         Pixel sep;
         sep.character = ".";
-        sep.dim       = true;
+        sep.dim = true;
 
         if (_is_fetching) {
             return vbox(
@@ -116,16 +116,16 @@ class tracer_instance_browser : public ComponentBase
                 : _owner(owner)
         {
             CheckboxOption opts;
-            opts.on_change       = [this] { _do_refresh(); };
-            opts.style_checked   = "<";
+            opts.on_change = [this] { _do_refresh(); };
+            opts.style_checked = "<";
             opts.style_unchecked = "|";
 
             CheckboxOption opts_subcr;
-            opts_subcr.on_change       = opts.on_change;
-            opts_subcr.style_checked   = "";
+            opts_subcr.on_change = opts.on_change;
+            opts_subcr.style_checked = "";
             opts_subcr.style_unchecked = "";
 
-            _control_toggle            = Container::Horizontal({
+            _control_toggle = Container::Horizontal({
                     Checkbox("<|", &_folding, opts),
                     Checkbox("(+)", &_subscribing, opts_subcr),
             });
@@ -134,7 +134,7 @@ class tracer_instance_browser : public ComponentBase
 
         Element Render() override
         {
-            auto name  = text(_c_name);
+            auto name = text(_c_name);
             auto value = text(_c_value);
 
             if (_data.fence < _owner->_latest_fence) {
@@ -173,17 +173,17 @@ class tracer_instance_browser : public ComponentBase
 
             auto hrange = hbox(name, filler(), value, text(" "));
 
-            auto ret    = hbox(text(std::string{}.append(_data.hierarchy.size() * 2, ' ')),
-                               _control_toggle->Render(),
-                               text(" "), (_data.subscribing() ? hrange | inverted : hrange) | flex)
+            auto ret = hbox(text(std::string{}.append(_data.hierarchy.size() * 2, ' ')),
+                            _control_toggle->Render(),
+                            text(" "), (_data.subscribing() ? hrange | inverted : hrange) | flex)
                      | flex;
             return ret;
         }
 
         void configure(tracer::trace&& tr, int mod)
         {
-            _data        = std::move(tr);
-            _folding     = mod & 1;
+            _data = std::move(tr);
+            _folding = mod & 1;
             _subscribing = mod & (1 << 1);
 
             {
@@ -223,7 +223,7 @@ class tracer_instance_browser : public ComponentBase
         Component                _control_toggle;
         tracer::trace            _data;
 
-        bool                     _folding     = false;
+        bool                     _folding = false;
         bool                     _subscribing = false;
     };
 
@@ -232,7 +232,7 @@ class tracer_instance_browser : public ComponentBase
         _reserve_pool(_traces.size());
         _outer->DetachAllChildren();
 
-        array_view<std::string_view> skipping  = {};
+        array_view<std::string_view> skipping = {};
 
         size_t                       max_fence = 0;
         for (auto& trace : _traces) {
@@ -245,17 +245,17 @@ class tracer_instance_browser : public ComponentBase
                 skipping = {};
             }
 
-            auto label        = _assign();
+            auto label = _assign();
             auto [it, is_new] = _cached_modes.try_emplace(trace.hash, 0);
-            auto manip_mod    = &it->second;
+            auto manip_mod = &it->second;
             if (is_new) { _folded_entities.emplace(trace.hash); }
 
             if (_is_folded(trace.hash)) {  // check folded subnode
                 skipping = trace.hierarchy;
             }
 
-            auto       subscribing    = trace.subscribing();
-            bool const update_subscr  = subscribing && trace.fence > _latest_fence;
+            auto       subscribing = trace.subscribing();
+            bool const update_subscr = subscribing && trace.fence > _latest_fence;
             bool const trigger_subscr = subscribing && *manip_mod < 2;
 
             if ((update_subscr || trigger_subscr) && _monitor) {
@@ -275,9 +275,9 @@ class tracer_instance_browser : public ComponentBase
     {
         if_subscriber::update_param_type arg;
         arg.block_name = _target->name();
-        arg.name       = data.key;
-        arg.hash       = data.hash;
-        arg.hierarchy  = data.hierarchy;
+        arg.name = data.key;
+        arg.hash = data.hash;
+        arg.hierarchy = data.hierarchy;
         return arg;
     }
 

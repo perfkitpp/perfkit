@@ -47,7 +47,7 @@ namespace fmt {
 namespace perfkit {
 class tracer;
 
-using clock_type         = std::chrono::steady_clock;
+using clock_type = std::chrono::steady_clock;
 using trace_variant_type = std::variant<nullptr_t,
                                         clock_type::duration,
                                         int64_t,
@@ -55,7 +55,7 @@ using trace_variant_type = std::variant<nullptr_t,
                                         std::string,
                                         bool>;
 
-using trace_key_t        = basic_key<class tracer>;
+using trace_key_t = basic_key<class tracer>;
 
 namespace _trace {
 struct trace
@@ -92,19 +92,19 @@ struct trace
     std::string_view             key;
     uint64_t                     hash;
 
-    size_t                       fence        = 0;
+    size_t                       fence = 0;
     size_t                       unique_order = 0;
     int                          active_order = 0;
     array_view<std::string_view> hierarchy;
     trace const*                 owner_node = nullptr;
-    trace const*                 self_node  = nullptr;
+    trace const*                 self_node = nullptr;
 
     trace_variant_type           data;
 
    private:
     friend class ::perfkit::tracer;
     std::atomic_bool* _is_subscribed = {};
-    std::atomic_bool* _is_folded     = {};
+    std::atomic_bool* _is_folded = {};
 };
 
 struct _entity_ty
@@ -204,12 +204,12 @@ class tracer_proxy
     tracer_proxy& operator=(tracer_proxy&& other) noexcept
     {
         this->~tracer_proxy();
-        _owner                   = other._owner;
-        _ref                     = other._ref;
-        _epoch_if_required       = other._epoch_if_required;
+        _owner = other._owner;
+        _ref = other._ref;
+        _epoch_if_required = other._epoch_if_required;
 
-        other._owner             = {};
-        other._ref               = {};
+        other._owner = {};
+        other._ref = {};
         other._epoch_if_required = {};
 
         return *this;
@@ -232,20 +232,20 @@ class tracer_proxy
     tracer_proxy() noexcept { (void)0; };
 
    private:
-    tracer*                _owner             = nullptr;
-    _trace::_entity_ty*    _ref               = nullptr;
+    tracer*                _owner = nullptr;
+    _trace::_entity_ty*    _ref = nullptr;
     clock_type::time_point _epoch_if_required = {};
 };
 
 class tracer : public std::enable_shared_from_this<tracer>
 {
    public:
-    using clock_type     = perfkit::clock_type;
-    using variant_type   = trace_variant_type;
+    using clock_type = perfkit::clock_type;
+    using variant_type = trace_variant_type;
     using fetched_traces = std::vector<_trace::trace>;
-    using _entity_ty     = _trace::_entity_ty;
-    using trace          = _trace::trace;
-    using proxy          = tracer_proxy;
+    using _entity_ty = _trace::_entity_ty;
+    using trace = _trace::trace;
+    using proxy = tracer_proxy;
 
     static_assert(std::is_nothrow_move_assignable_v<_trace::trace>);
     static_assert(std::is_nothrow_move_constructible_v<_trace::trace>);
@@ -309,7 +309,7 @@ class tracer : public std::enable_shared_from_this<tracer>
     tracer_proxy branch(std::string_view name, ValTy_&& val)
     {
         auto br = branch(name);
-        br      = std::forward<ValTy_>(val);
+        br = std::forward<ValTy_>(val);
         return br;
     }
 
@@ -339,11 +339,11 @@ class tracer : public std::enable_shared_from_this<tracer>
     // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
     //    이 때 최신 시퀀스 넘버도 같이 받는다.
     std::unordered_map<uint64_t, _trace::_entity_ty> _table;
-    size_t                                           _fence_active     = 0;  // active sequence number of back buffer.
-    size_t                                           _fence_latest     = 0;
+    size_t                                           _fence_active = 0;  // active sequence number of back buffer.
+    size_t                                           _fence_latest = 0;
     size_t                                           _interval_counter = 0;
 
-    int                                              _order_active     = 0;  // temporary variable for single iteration
+    int                                              _order_active = 0;  // temporary variable for single iteration
     std::atomic_bool                                 _pending_fetch;
     fetched_traces                                   _local_reused_memory;
 
@@ -352,12 +352,12 @@ class tracer : public std::enable_shared_from_this<tracer>
 
     std::vector<_entity_ty const*>                   _stack;
     clock_type::time_point                           _last_fork;
-    clock_type::time_point                           _birth             = clock_type::now();
+    clock_type::time_point                           _birth = clock_type::now();
 
     std::thread::id                                  _working_thread_id = {};
 };
 
-using tracer_ptr  = std::shared_ptr<tracer>;
+using tracer_ptr = std::shared_ptr<tracer>;
 using tracer_wptr = std::weak_ptr<tracer>;
 
 /**

@@ -178,8 +178,8 @@ basic_interactive_terminal::basic_interactive_terminal()
                     commands::tokenize_by_argv_rule(&tok, tokens);
 
                     tok.assign(tokens[0].begin() + 1, tokens[0].end());
-                    int  hidx      = 0;
-                    auto r_conv    = std::from_chars(tok.c_str(), tok.c_str() + tok.size(), hidx);
+                    int  hidx = 0;
+                    auto r_conv = std::from_chars(tok.c_str(), tok.c_str() + tok.size(), hidx);
                     bool is_number = r_conv.ec != std::errc::invalid_argument
                                   && r_conv.ptr == tok.c_str() + tok.size();
 
@@ -227,10 +227,10 @@ void        basic_interactive_terminal::_register_autocomplete()
     auto completion = [](char const* buf, linenoiseCompletions* lc) -> int {
         int                              position = 0;
 
-        auto                             rg       = locked_command_registry.load()->root();
+        auto                             rg = locked_command_registry.load()->root();
 
-        std::string                      str      = buf;
-        auto                             srclen   = str.size();
+        std::string                      str = buf;
+        auto                             srclen = str.size();
         std::vector<std::string_view>    tokens;
         std::vector<commands::stroffset> offsets;
         std::vector<std::string>         suggests;
@@ -248,7 +248,7 @@ void        basic_interactive_terminal::_register_autocomplete()
                 // means matching was performed on existing token
                 auto const& tokofst = offsets[target_token];
 
-                position            = tokofst.position;
+                position = tokofst.position;
                 if (position > 0 && buf[position - 1] == '"') { position -= 1; }
             } else {
                 // matched all existing tokens, thus returned suggests are for next word.

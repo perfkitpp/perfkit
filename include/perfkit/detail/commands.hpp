@@ -38,8 +38,8 @@ namespace perfkit::commands {
 class registry;
 struct stroffset
 {
-    size_t position    = {};
-    size_t length      = {};
+    size_t position = {};
+    size_t length = {};
 
     bool   should_wrap = {};
 };
@@ -68,15 +68,15 @@ void tokenize_by_argv_rule(
 /**
  * Invocation Handler
  */
-using args_view      = array_view<std::string_view>;
-using invoke_fn      = std::function<bool(args_view full_tokens)>;
+using args_view = array_view<std::string_view>;
+using invoke_fn = std::function<bool(args_view full_tokens)>;
 using invoke_void_fn = std::function<void(args_view full_tokens)>;
 
 /**
  * When this handler is called, out_candidates parameter will hold initial
  * autocomplete list consist of available commands and aliases.
  */
-using string_set              = std::set<std::string, std::less<>>;
+using string_set = std::set<std::string, std::less<>>;
 using autocomplete_suggest_fn = std::function<void(args_view hint, string_set& candidates)>;
 
 class registry
@@ -86,8 +86,8 @@ class registry
     {
         perfkit::commands::registry::node* _add_subcommand(
                 std::string             cmd,
-                invoke_fn               handler       = {},
-                autocomplete_suggest_fn suggest       = {},
+                invoke_fn               handler = {},
+                autocomplete_suggest_fn suggest = {},
                 bool                    name_constant = false);
 
        public:
@@ -103,8 +103,8 @@ class registry
         template <typename Fn_ = nullptr_t>
         perfkit::commands::registry::node* add_subcommand(
                 std::string             cmd,
-                Fn_&&                   handler       = nullptr,
-                autocomplete_suggest_fn suggest       = {},
+                Fn_&&                   handler = nullptr,
+                autocomplete_suggest_fn suggest = {},
                 bool                    name_constant = false)
         {
             if constexpr (std::is_invocable_r_v<bool, Fn_, args_view>) {
@@ -217,7 +217,7 @@ class registry
                 perfkit::array_view<std::string_view> full_tokens,
                 std::vector<std::string>&             out_candidates,
                 bool                                  space_after_last_token,
-                int*                                  target_token_index   = nullptr,
+                int*                                  target_token_index = nullptr,
                 bool*                                 out_has_unique_match = nullptr);
 
         /**

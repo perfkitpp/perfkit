@@ -43,21 +43,21 @@ static void parse_auth(std::string_view auth, std::vector<auth_info>* out)
 
     for (; not auth.empty();) {
         auto token = auth.substr(0, auth.find_first_of(';'));
-        auth       = auth.substr(token.size() + (token.size() < auth.size()));
+        auth = auth.substr(token.size() + (token.size() < auth.size()));
 
         if (token.empty())
             continue;
 
         try {
-            auto id              = token.substr(0, token.find_first_of(':'));
-            token                = token.substr(id.size() + 1);
-            auto  pw             = token.substr(0, token.find_first_of(':'));
-            auto  access         = token.substr(pw.size() + 1);
+            auto id = token.substr(0, token.find_first_of(':'));
+            token = token.substr(id.size() + 1);
+            auto  pw = token.substr(0, token.find_first_of(':'));
+            auto  access = token.substr(pw.size() + 1);
 
-            bool  is_admin       = access.find_first_of("wW") == 0;
+            bool  is_admin = access.find_first_of("wW") == 0;
 
-            auto& info           = out->emplace_back();
-            info.id              = id;
+            auto& info = out->emplace_back();
+            info.id = id;
             info.readonly_access = not is_admin;
 
             // parse password as sha256

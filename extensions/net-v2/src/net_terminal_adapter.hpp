@@ -63,7 +63,7 @@ class if_net_terminal_adapter
 
     //
     virtual asio::io_context*      event_proc() = 0;
-    virtual msgpack::rpc::context* rpc()        = 0;
+    virtual msgpack::rpc::context* rpc() = 0;
 
    public:
     auto fn_basic_access() const { return bind_front(&if_net_terminal_adapter::has_basic_access, this); }

@@ -102,7 +102,7 @@ class storage : std::enable_shared_from_this<storage>
             texture_handle handle,
             size2 size, pixel_format format,
             void const*            base_buffer = nullptr,
-            texture_draw_fn const& draw_fn     = perfkit::default_function);
+            texture_draw_fn const& draw_fn = perfkit::default_function);
 
     /**
      * Uploads texture only if possible. It'll not store any data into storage unless there's
@@ -123,7 +123,7 @@ class storage : std::enable_shared_from_this<storage>
             texture_handle handle,
             size2 size, pixel_format format,
             void const*            base_buffer = nullptr,
-            texture_draw_fn const& draw_fn     = perfkit::default_function);
+            texture_draw_fn const& draw_fn = perfkit::default_function);
 
     /**
      * Show window once. Size of the window will be determined by remote system. \n

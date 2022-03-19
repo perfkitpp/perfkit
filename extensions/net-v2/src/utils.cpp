@@ -56,8 +56,8 @@ spdlog::logger* perfkit::net::detail::nglog()
 std::string perfkit::net::detail::try_fetch_input(int ms_to_wait)
 {
     pollfd pollee;
-    pollee.fd      = STDIN_FILENO;
-    pollee.events  = POLLIN;
+    pollee.fd = STDIN_FILENO;
+    pollee.events = POLLIN;
     pollee.revents = 0;
 
     if (::poll(&pollee, 1, ms_to_wait) <= 0) {
@@ -89,10 +89,10 @@ static struct redirection_context_t
    private:
     int              _fd_org_stdout = -1;
     int              _fd_org_stderr = -1;
-    int              _fd_pout[2]    = {-1, -1};
-    int              _fd_perr[2]    = {-1, -1};
+    int              _fd_pout[2] = {-1, -1};
+    int              _fd_perr[2] = {-1, -1};
 
-    std::atomic_bool _active        = false;
+    std::atomic_bool _active = false;
     std::thread      _worker;
 
    public:
@@ -143,8 +143,8 @@ static struct redirection_context_t
         _worker = std::thread(
                 [this, fn = std::move(fn)] {
                     pollfd pollfds[2];
-                    pollfds[0].fd     = _fd_pout[0];
-                    pollfds[1].fd     = _fd_perr[0];
+                    pollfds[0].fd = _fd_pout[0];
+                    pollfds[1].fd = _fd_perr[0];
                     pollfds[0].events = POLLIN;
                     pollfds[1].events = POLLIN;
 
@@ -168,7 +168,7 @@ static struct redirection_context_t
                             if (not(pfd->revents & POLLIN))
                                 continue;
 
-                            auto n_read  = ::read(pfd->fd, buffer, std::size(buffer));
+                            auto n_read = ::read(pfd->fd, buffer, std::size(buffer));
                             auto n_write = ::write(*fd, buffer, n_read);
 
                             fn(buffer, n_read);
@@ -205,7 +205,7 @@ bool perfkit::net::detail::fetch_proc_stat(perfkit::net::detail::proc_stat_t* os
     try {
         perfkit::stopwatch trace;
 
-        static double      uptime     = 0.;
+        static double      uptime = 0.;
         static double      delta_time = 0.;
         {
             futils::file_ptr ptr{fopen("/proc/uptime", "r")};
@@ -214,45 +214,45 @@ bool perfkit::net::detail::fetch_proc_stat(perfkit::net::detail::proc_stat_t* os
             fscanf(&*ptr, "%lf", &now);
 
             delta_time = now - uptime;
-            uptime     = now;
+            uptime = now;
         }
 
         struct _all
         {
-            int64_t user   = 0;
+            int64_t user = 0;
             int64_t system = 0;
-            int64_t nice   = 0;
-            int64_t idle   = 0;
-            int64_t wait   = 0;
-            int64_t hi     = 0;
-            int64_t si     = 0;
+            int64_t nice = 0;
+            int64_t idle = 0;
+            int64_t wait = 0;
+            int64_t hi = 0;
+            int64_t si = 0;
 
             void    fill(proc_stat_t* out) const noexcept
             {
                 static int64_t prev_total, prev_user, prev_nice, prev_idle;
 
-                auto           total        = user + nice + system + idle + wait + hi + si;
-                auto           total_delta  = total - prev_total;
-                auto           user_delta   = user + nice - prev_user - prev_nice;
-                auto           idle_delta   = idle - prev_idle;
+                auto           total = user + nice + system + idle + wait + hi + si;
+                auto           total_delta = total - prev_total;
+                auto           user_delta = user + nice - prev_user - prev_nice;
+                auto           idle_delta = idle - prev_idle;
 
-                auto           divider      = total_delta / delta_time;
-                auto           userm        = double(user_delta) / divider;
-                auto           systemm      = double(total_delta - user_delta - idle_delta) / divider;
+                auto           divider = total_delta / delta_time;
+                auto           userm = double(user_delta) / divider;
+                auto           systemm = double(total_delta - user_delta - idle_delta) / divider;
 
-                prev_user                   = user;
-                prev_nice                   = nice;
-                prev_idle                   = idle;
-                prev_total                  = total;
+                prev_user = user;
+                prev_nice = nice;
+                prev_idle = idle;
+                prev_total = total;
 
-                out->cpu_usage_total_user   = userm;
+                out->cpu_usage_total_user = userm;
                 out->cpu_usage_total_system = systemm;
             }
         };
 
         {  // retrieve system
             auto [buffer, size] = futils::readin("/proc/stat");
-            auto content        = std::string_view(buffer.get(), size);
+            auto content = std::string_view(buffer.get(), size);
             char cpubuf[4];
 
             _all all;
@@ -268,10 +268,10 @@ bool perfkit::net::detail::fetch_proc_stat(perfkit::net::detail::proc_stat_t* os
         {  // retrieve self
 
             auto [buffer, size] = futils::readin("/proc/self/stat");
-            auto content        = std::string_view(buffer.get(), size);
+            auto content = std::string_view(buffer.get(), size);
 
-            content             = content.substr(content.find_last_of(')') + 2);
-            int  cursor         = 3;
+            content = content.substr(content.find_last_of(')') + 2);
+            int  cursor = 3;
 
             auto get_at
                     = ([&](int destination) -> int64_t {
@@ -281,7 +281,7 @@ bool perfkit::net::detail::fetch_proc_stat(perfkit::net::detail::proc_stat_t* os
                               content = content.substr(content.find_first_of(' ') + 1);
 
                           auto    begin = content.data();
-                          auto    end   = begin + content.find_first_of(' ');
+                          auto    end = begin + content.find_first_of(' ');
                           int64_t retval;
 
                           std::from_chars(begin, end, retval);
@@ -291,21 +291,21 @@ bool perfkit::net::detail::fetch_proc_stat(perfkit::net::detail::proc_stat_t* os
             static const auto sysclock{sysconf(_SC_CLK_TCK)};
             static int64_t    prev_utime, prev_stime;
 
-            auto              sysclockf  = double(sysclock);
-            auto              utime      = get_at(14);
-            auto              stime      = get_at(15);
-            auto              num_thrd   = get_at(20);
-            auto              vsize      = get_at(23);
-            auto              rss        = get_at(24) * sysconf(_SC_PAGESIZE);
+            auto              sysclockf = double(sysclock);
+            auto              utime = get_at(14);
+            auto              stime = get_at(15);
+            auto              num_thrd = get_at(20);
+            auto              vsize = get_at(23);
+            auto              rss = get_at(24) * sysconf(_SC_PAGESIZE);
 
-            ostat->cpu_usage_self_user   = ((utime - prev_utime) / delta_time / sysclockf);
+            ostat->cpu_usage_self_user = ((utime - prev_utime) / delta_time / sysclockf);
             ostat->cpu_usage_self_system = ((stime - prev_stime) / delta_time / sysclockf);
-            ostat->num_threads           = num_thrd;
-            ostat->memory_usage_virtual  = vsize;
+            ostat->num_threads = num_thrd;
+            ostat->memory_usage_virtual = vsize;
             ostat->memory_usage_resident = rss;
 
-            prev_utime                   = utime;
-            prev_stime                   = stime;
+            prev_utime = utime;
+            prev_stime = stime;
         }
     } catch (futils::file_read_error& e) {
         CPPH_ERROR("failed to read /proc/");
@@ -340,7 +340,7 @@ std::string perfkit::net::detail::try_fetch_input(int ms_to_wait)
     static std::string buffer;
 
     std::string        return_string;
-    auto               now   = [] { return std::chrono::steady_clock::now(); };
+    auto               now = [] { return std::chrono::steady_clock::now(); };
     auto               until = 1ms * ms_to_wait + now();
 
     while (now() < until) {
@@ -381,7 +381,7 @@ bool                      perfkit::net::detail::fetch_proc_stat(perfkit::net::de
             return false;
         }
 
-        ostat->memory_usage_virtual  = pmc.PagefileUsage + pmc.QuotaNonPagedPoolUsage + pmc.QuotaPagedPoolUsage;
+        ostat->memory_usage_virtual = pmc.PagefileUsage + pmc.QuotaNonPagedPoolUsage + pmc.QuotaPagedPoolUsage;
         ostat->memory_usage_resident = pmc.WorkingSetSize;
     }
 
@@ -395,17 +395,17 @@ bool                      perfkit::net::detail::fetch_proc_stat(perfkit::net::de
             return false;
         }
 
-        auto deltaIdle                = FileTimeToInt64(idleTime) - idleTimePrev;
-        auto deltaKernel              = FileTimeToInt64(kernelTime) - kernelTimePrev;
-        auto deltaUser                = FileTimeToInt64(userTime) - userTimePrev;
+        auto deltaIdle = FileTimeToInt64(idleTime) - idleTimePrev;
+        auto deltaKernel = FileTimeToInt64(kernelTime) - kernelTimePrev;
+        auto deltaUser = FileTimeToInt64(userTime) - userTimePrev;
 
-        totalDeltaTicks               = deltaIdle + deltaKernel + deltaUser;
+        totalDeltaTicks = deltaIdle + deltaKernel + deltaUser;
         ostat->cpu_usage_total_system = deltaKernel / totalDeltaTicks;
-        ostat->cpu_usage_total_user   = deltaUser / totalDeltaTicks;
+        ostat->cpu_usage_total_user = deltaUser / totalDeltaTicks;
 
-        idleTimePrev                  = FileTimeToInt64(idleTime);
-        kernelTimePrev                = FileTimeToInt64(kernelTime);
-        userTimePrev                  = FileTimeToInt64(userTime);
+        idleTimePrev = FileTimeToInt64(idleTime);
+        kernelTimePrev = FileTimeToInt64(kernelTime);
+        userTimePrev = FileTimeToInt64(userTime);
     }
 
     {
@@ -417,14 +417,14 @@ bool                      perfkit::net::detail::fetch_proc_stat(perfkit::net::de
             return false;
         }
 
-        auto deltaKernel             = FileTimeToInt64(kernelTime) - kernelTimePrev;
-        auto deltaUser               = FileTimeToInt64(userTime) - userTimePrev;
+        auto deltaKernel = FileTimeToInt64(kernelTime) - kernelTimePrev;
+        auto deltaUser = FileTimeToInt64(userTime) - userTimePrev;
 
         ostat->cpu_usage_self_system = deltaKernel / totalDeltaTicks * num_cores;
-        ostat->cpu_usage_self_user   = deltaUser / totalDeltaTicks * num_cores;
+        ostat->cpu_usage_self_user = deltaUser / totalDeltaTicks * num_cores;
 
-        kernelTimePrev               = FileTimeToInt64(kernelTime);
-        userTimePrev                 = FileTimeToInt64(userTime);
+        kernelTimePrev = FileTimeToInt64(kernelTime);
+        userTimePrev = FileTimeToInt64(userTime);
     }
 
     static perfkit::poll_timer thread_count_timer{5s};
@@ -432,8 +432,8 @@ bool                      perfkit::net::detail::fetch_proc_stat(perfkit::net::de
 
     if (thread_count_timer.check()) {
         size_t nThread = 0;
-        HANDLE h       = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-        auto   PID     = GetProcessId(GetCurrentProcess());
+        HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        auto   PID = GetProcessId(GetCurrentProcess());
         if (h != INVALID_HANDLE_VALUE) {
             THREADENTRY32 te;
             te.dwSize = sizeof(te);
@@ -498,10 +498,10 @@ void                                       perfkit::net::detail::input_redirect(
 
     CPPH_INFO("Redirecting all registered loggers");
 
-    inserter_sink              = std::make_shared<redirect_context_t>(std::move(inserter));
+    inserter_sink = std::make_shared<redirect_context_t>(std::move(inserter));
     auto   default_logger_sink = spdlog::default_logger()->sinks().front();
 
-    size_t n_redirected        = 0;
+    size_t n_redirected = 0;
     spdlog::details::registry::instance()
             .apply_all([&](std::shared_ptr<spdlog::logger> logger) {
                 if (logger->sinks().size() == 1 && logger->sinks().front() == default_logger_sink) {
@@ -518,7 +518,7 @@ void perfkit::net::detail::input_rollback()
     spdlog::details::registry::instance()
             .apply_all([&](std::shared_ptr<spdlog::logger> logger) {
                 auto& sinks = logger->sinks();
-                auto  it    = perfkit::find(sinks, inserter_sink);
+                auto  it = perfkit::find(sinks, inserter_sink);
 
                 if (it != sinks.end())
                     sinks.erase(it);

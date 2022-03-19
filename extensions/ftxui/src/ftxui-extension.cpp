@@ -63,7 +63,7 @@ perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
         ftxui::Component          root_component,
         std::chrono::milliseconds poll_interval)
 {
-    auto ptr       = std::make_shared<worker_info_t>();
+    auto ptr = std::make_shared<worker_info_t>();
 
     ptr->thrd_loop = std::thread{
             [screen, root_component, flag = &ptr->_alive] {
@@ -73,7 +73,7 @@ perfkit_ftxui::kill_switch_ty perfkit_ftxui::launch_async_loop(
 
     ptr->thrd_poll = std::thread{
             [screen, flag = &ptr->_alive, poll_interval] {
-                using clock_ty                   = std::chrono::steady_clock;
+                using clock_ty = std::chrono::steady_clock;
                 clock_ty::time_point next_wakeup = {};
 
                 for (; flag->load(std::memory_order_relaxed);) {
@@ -178,8 +178,8 @@ class _inputbox : public ComponentBase
 
         InputOption opts;
         opts.cursor_position = &_cpos;
-        opts.on_enter        = [this] { _on_enter(); };
-        _box                 = Input(&_cmd, prompt, opts);
+        opts.on_enter = [this] { _on_enter(); };
+        _box = Input(&_cmd, prompt, opts);
 
         Add(_box);
     }
@@ -211,7 +211,7 @@ ftxui::Component perfkit_ftxui::command_input(
         std::weak_ptr<perfkit::util::command_registry> support,
         std::string                                    prompt)
 {
-    auto ptr      = std::make_shared<atomic_string_queue>();
+    auto ptr = std::make_shared<atomic_string_queue>();
     *out_supplier = ptr;
 
     return std::make_shared<_inputbox>(ptr, std::move(prompt));
@@ -222,24 +222,24 @@ ftxui::Component perfkit_ftxui::PRESET(
         std::weak_ptr<perfkit::util::command_registry> command_support,
         std::shared_ptr<if_subscriber>                 subscriber)
 {
-    auto cmd   = command_input(out_commands, command_support, ":> enter command");
-    auto cfg   = config_browser();
+    auto cmd = command_input(out_commands, command_support, ":> enter command");
+    auto cfg = config_browser();
     auto trace = trace_browser(subscriber);
     // TODO: in future, put log output window ...
 
     auto resize_context = std::make_shared<int>(30);
-    auto components     = ResizableSplitLeft(cfg, trace, resize_context.get());
+    auto components = ResizableSplitLeft(cfg, trace, resize_context.get());
 
-    components          = CatchEvent(components, [components](Event evt) {
+    components = CatchEvent(components, [components](Event evt) {
         if (evt == EVENT_POLL) {
             for (size_t j = 0; j < components->ChildAt(0)->ChildCount(); ++j) {
                 components->ChildAt(0)->ChildAt(j)->OnEvent(evt);
             }
         }
         return false;
-             });
+    });
 
-    components          = Container::Vertical({
+    components = Container::Vertical({
             Renderer(cmd, [cmd] { return window(text("< command >"), hbox(text(" "), cmd->Render(), text(" "))); }),
             Renderer(components, [components] { return window(text("< monitor >"), components->Render()) | flex; }),
     });

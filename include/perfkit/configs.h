@@ -52,7 +52,7 @@ std::string INDEXER_STR2(int order);
 namespace perfkit {
 struct config_class
 {
-    virtual ~config_class()                                          = default;
+    virtual ~config_class() = default;
     virtual std::shared_ptr<perfkit::config_registry> _rg() noexcept = 0;
 };
 

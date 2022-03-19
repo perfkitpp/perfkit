@@ -5,7 +5,7 @@ AccessModifierOffset: -1
 AlignAfterOpenBracket: Align
 # AlignArrayOfStructures: Right
 AlignConsecutiveMacros: Consecutive
-AlignConsecutiveAssignments: AcrossEmptyLines
+AlignConsecutiveAssignments: None
 AlignConsecutiveBitFields: AcrossEmptyLines
 AlignConsecutiveDeclarations: AcrossEmptyLines
 AlignEscapedNewlines: Left
