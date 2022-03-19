@@ -118,9 +118,10 @@ class terminal : public if_terminal
     terminal_info _info;
 
     // Thread pool
-    asio::io_context  _event_proc;
-    asio::thread_pool _ioc{4};
-    thread::worker    _worker;
+    asio::io_context      _event_proc;
+    asio::any_io_executor _event_proc_guard = asio::require(_event_proc.get_executor(), asio::execution::outstanding_work_t::tracked);
+    asio::thread_pool     _ioc{4};
+    thread::worker        _worker;
 
     // Basics
     commands::registry _cmd;
@@ -148,11 +149,11 @@ class terminal : public if_terminal
 
     // States
     shared_ptr<void> _session_active_state_anchor;
+    size_t           _session_prev_bytes[2]     = {};
+    stopwatch        _session_state_delta_timer = {};
 
     // Misc
-    message::service::session_info_t  _session_info;
-    message::notify::session_status_t _session_status;
-    spinlock                          _session_status_lock;
+    message::service::session_info_t _session_info;
 
     // Contexts
     config_context _ctx_config{&_adapter};
@@ -180,8 +181,8 @@ class terminal : public if_terminal
     bool _has_basic_access(session_profile_view profile) const { return contains(*_verified_sessions.lock(), &profile); }
     bool _has_admin_access(session_profile_view profile) const;
 
-    auto _fn_qualify() const { return bind_front(&self_t::_has_basic_access, this); }
-    auto _fn_qualify_admin() const { return bind_front(&self_t::_has_admin_access, this); }
+    auto _fn_basic_access() const { return bind_front(&self_t::_has_basic_access, this); }
+    auto _fn_admin_access() const { return bind_front(&self_t::_has_admin_access, this); }
 
     void _verify_admin_access(session_profile_view profile) const;
     void _verify_basic_access(session_profile_view profile) const;

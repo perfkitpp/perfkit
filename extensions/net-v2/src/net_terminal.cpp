@@ -40,7 +40,11 @@
 using namespace std::literals;
 
 perfkit::net::terminal::terminal(perfkit::net::terminal_info info) noexcept
-        : _info(std::move(info)), _rpc(_build_service(), _rpc_monitor)
+        : _info(std::move(info)),
+          _rpc(
+                  _build_service(),
+                  [this](auto&& fn) { asio::post(_ioc, std::forward<decltype(fn)>(fn)); },
+                  _rpc_monitor)
 {
     using namespace std::chrono;
     _session_info.epoch = duration_cast<milliseconds>(
@@ -95,8 +99,33 @@ void perfkit::net::terminal::_open_acceptor()
 void perfkit::net::terminal::_tick_worker()
 {
     try {
-        _event_proc.run_for(250ms);
         _event_proc.restart();
+        _event_proc.run_for(5s);
+
+        if (detail::proc_stat_t stat = {}; _session_active_state_anchor && detail::fetch_proc_stat(&stat)) {
+            size_t in, out;
+            _rpc.totals(&in, &out);
+            auto delta_in  = in - _session_prev_bytes[0];
+            auto delta_out = out - _session_prev_bytes[1];
+            auto dt        = _session_state_delta_timer.elapsed().count();
+            int  in_rate   = delta_in / dt;
+            int  out_rate  = delta_out / dt;
+            _session_state_delta_timer.reset();
+            _session_prev_bytes[0] = in;
+            _session_prev_bytes[1] = out;
+
+            message::notify::session_status_t message
+                    = {stat.cpu_usage_total_user,
+                       stat.cpu_usage_total_system,
+                       stat.cpu_usage_self_user,
+                       stat.cpu_usage_self_system,
+                       stat.memory_usage_virtual,
+                       stat.memory_usage_resident,
+                       stat.num_threads,
+                       out_rate, in_rate};
+
+            message::notify::session_status(_rpc).notify_all(message, _fn_basic_access());
+        }
     } catch (asio::system_error& ec) {
         CPPH_ERROR("Socket error! ({}): {}", ec.code().value(), ec.what());
         CPPH_ERROR("Sleep for 3 seconds before retry ...");
@@ -114,6 +143,9 @@ perfkit::net::terminal::~terminal()
 
     // Disconnect all remote clients
     _rpc.disconnect_all();
+
+    // Stop
+    _event_proc_guard = {};
 
     // Wait all async
     _worker.join();
