@@ -44,7 +44,6 @@ using std::string;
 using std::vector;
 
 using msgpack_archive_t = binary<string>;
-using auth_token_t      = string;
 
 #define DEFINE_RPC(Name, ...) \
     static inline const auto Name = msgpack::rpc::create_signature<__VA_ARGS__>(#Name);
@@ -110,7 +109,7 @@ struct notify
         int32_t bw_out;
         int32_t bw_in;
     };
-    
+
     DEFINE_RPC(session_status, session_status_t());
 
     /**
@@ -182,13 +181,12 @@ struct service
     /**
      * Authentications
      */
-    DEFINE_RPC(login, auth_token_t(string));
-    DEFINE_RPC(refresh_session, auth_token_t(auth_token_t));
+    DEFINE_RPC(login, bool(string));
 
     /**
      * Invoke command
      */
-    DEFINE_RPC(invoke_command, void(auth_token_t, string));
+    DEFINE_RPC(invoke_command, void(string));
 
     /**
      * Command suggest
