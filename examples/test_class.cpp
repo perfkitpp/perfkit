@@ -68,6 +68,10 @@ void test_class::start()
                 CPPH_INFO("worker thread created.");
 
                 while (_loop_active.load()) {
+                    if (_cfg.t_boolean) {
+                        CPPH_INFO("LOOPLOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512!are412512");
+                    }
+
                     auto  trc_root = _tracer->fork("time_all");
                     auto& trc = *_tracer;
 

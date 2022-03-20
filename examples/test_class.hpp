@@ -81,7 +81,7 @@ PERFKIT_T_CATEGORY(
 
         PERFKIT_T_CONFIGURE(t_string, "hell!").confirm();
 
-        PERFKIT_T_CONFIGURE(t_boolean, true).confirm();
+        PERFKIT_T_CONFIGURE(t_boolean, false).confirm();
 
         PERFKIT_T_CONFIGURE(t_json, nlohmann::json{}).confirm();
 

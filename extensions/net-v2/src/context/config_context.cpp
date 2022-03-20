@@ -221,6 +221,8 @@ void config_context::_handle_update(
         config_registry*                             rg,
         vector<perfkit::detail::config_base*> const& changes)
 {
+    bool const is_waiting = not _pending_updates.empty();
+
     for (auto ptr : changes) {
         auto weak = ptr->weak_from_this();
         auto iter = find_if(_pending_updates, [&](auto&& e) { return ptr_equals(e, weak); });
@@ -229,9 +231,9 @@ void config_context::_handle_update(
 
     using std::chrono::steady_clock;
     using namespace std::literals;
-    if (steady_clock::now() < _lazy_update_publish.expiry()) { return; }
+    if (is_waiting) { return; }
 
-    _lazy_update_publish.expires_after(5ms);
+    _lazy_update_publish.expires_after(10ms);
     _lazy_update_publish.async_wait(
             [this](auto&& ec) {
                 if (ec) { return; }
