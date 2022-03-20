@@ -43,7 +43,7 @@ perfkit::net::terminal::terminal(perfkit::net::terminal_info info) noexcept
         : _info(std::move(info)),
           _rpc(
                   _build_service(),
-                  [this](auto&& fn) { asio::post(_ioc, std::forward<decltype(fn)>(fn)); },
+                  [this](auto&& fn) { asio::post(_thread_pool, std::forward<decltype(fn)>(fn)); },
                   _rpc_monitor)
 {
     using namespace std::chrono;
@@ -75,6 +75,9 @@ void perfkit::net::terminal::_start_()
 
     // Post event for opening acceptor
     _event_proc.post(bind_front(&terminal::_open_acceptor, this));
+
+    // Start stat() system
+    _publish_system_stat(asio::error_code{});
 }
 
 void perfkit::net::terminal::_open_acceptor()
@@ -101,31 +104,6 @@ void perfkit::net::terminal::_tick_worker()
     try {
         _event_proc.restart();
         _event_proc.run_for(2500ms);
-
-        if (detail::proc_stat_t stat = {}; _session_active_state_anchor && detail::fetch_proc_stat(&stat)) {
-            size_t in, out;
-            _rpc.totals(&in, &out);
-            auto delta_in = in - _session_prev_bytes[0];
-            auto delta_out = out - _session_prev_bytes[1];
-            auto dt = _session_state_delta_timer.elapsed().count();
-            int  in_rate = delta_in / dt;
-            int  out_rate = delta_out / dt;
-            _session_state_delta_timer.reset();
-            _session_prev_bytes[0] = in;
-            _session_prev_bytes[1] = out;
-
-            message::notify::session_status_t message
-                    = {stat.cpu_usage_total_user,
-                       stat.cpu_usage_total_system,
-                       stat.cpu_usage_self_user,
-                       stat.cpu_usage_self_system,
-                       stat.memory_usage_virtual,
-                       stat.memory_usage_resident,
-                       stat.num_threads,
-                       out_rate, in_rate};
-
-            message::notify::session_status(_rpc).notify_all(message, _fn_basic_access());
-        }
     } catch (asio::system_error& ec) {
         CPPH_ERROR("Socket error! ({}): {}", ec.code().value(), ec.what());
         CPPH_ERROR("Sleep for 3 seconds before retry ...");
@@ -149,7 +127,7 @@ perfkit::net::terminal::~terminal()
 
     // Wait all async
     _worker.join();
-    _ioc.join();
+    _thread_pool.join();
 
     detail::input_rollback();
 }
@@ -296,6 +274,39 @@ void perfkit::net::terminal::_verify_basic_access(const perfkit::msgpack::rpc::s
 {
     if (not _has_basic_access(profile))
         throw std::runtime_error("Non-authorized peer: " + profile.peer_name);
+}
+
+void perfkit::net::terminal::_publish_system_stat(asio::error_code ec)
+{
+    if (ec) { return; }
+
+    if (detail::proc_stat_t stat = {}; _session_active_state_anchor && detail::fetch_proc_stat(&stat)) {
+        size_t in, out;
+        _rpc.totals(&in, &out);
+        auto delta_in = in - _session_prev_bytes[0];
+        auto delta_out = out - _session_prev_bytes[1];
+        auto dt = _session_state_delta_timer.elapsed().count();
+        int  in_rate = delta_in / dt;
+        int  out_rate = delta_out / dt;
+        _session_state_delta_timer.reset();
+        _session_prev_bytes[0] = in;
+        _session_prev_bytes[1] = out;
+
+        message::notify::session_status_t message
+                = {stat.cpu_usage_total_user,
+                   stat.cpu_usage_total_system,
+                   stat.cpu_usage_self_user,
+                   stat.cpu_usage_self_system,
+                   stat.memory_usage_virtual,
+                   stat.memory_usage_resident,
+                   stat.num_threads,
+                   out_rate, in_rate};
+
+        message::notify::session_status(_rpc).notify_all(message, _fn_basic_access());
+    }
+
+    _session_stat_timer.expires_after(2500ms);
+    _session_stat_timer.async_wait(bind_front(&self_t::_publish_system_stat, this));
 }
 
 void perfkit::net::terminal_monitor::on_new_session(

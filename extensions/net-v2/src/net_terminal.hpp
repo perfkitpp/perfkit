@@ -34,6 +34,7 @@
 #include <utility>
 
 #include <asio/ip/tcp.hpp>
+#include <asio/steady_timer.hpp>
 #include <asio/thread_pool.hpp>
 
 #include "context/config_context.hpp"
@@ -120,7 +121,7 @@ class terminal : public if_terminal
     // Thread pool
     asio::io_context      _event_proc;
     asio::any_io_executor _event_proc_guard = asio::require(_event_proc.get_executor(), asio::execution::outstanding_work_t::tracked);
-    asio::thread_pool     _ioc{4};
+    asio::thread_pool     _thread_pool{4};
     thread::worker        _worker;
 
     // Basics
@@ -132,7 +133,7 @@ class terminal : public if_terminal
     msgpack::rpc::context        _rpc;
 
     // Connection
-    asio::ip::tcp::acceptor _acceptor{_ioc};
+    asio::ip::tcp::acceptor _acceptor{_thread_pool};
 
     // Commands that are pending execution
     notify_queue<string> _pending_commands;
@@ -154,6 +155,7 @@ class terminal : public if_terminal
 
     // Misc
     message::service::session_info_t _session_info;
+    asio::steady_timer               _session_stat_timer{_thread_pool};
 
     // Contexts
     config_context _ctx_config{&_adapter};
@@ -186,6 +188,8 @@ class terminal : public if_terminal
 
     void _verify_admin_access(session_profile_view profile) const;
     void _verify_basic_access(session_profile_view profile) const;
+
+    void _publish_system_stat(asio::error_code ec);
 
    public:
     optional<string>    fetch_command(milliseconds timeout) override;
