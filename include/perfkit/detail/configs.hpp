@@ -214,6 +214,9 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     };
 
    private:
+    static inline std::atomic_size_t  IDGEN = 0;
+
+    size_t const                      _id = ++IDGEN;
     std::string                       _name;
     config_table                      _entities;
     string_view_table                 _disp_keymap;
@@ -236,6 +239,8 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     ~config_registry() noexcept;
 
    public:
+    size_t      id() const noexcept { return _id; }
+
     bool        update();
     void        export_to(nlohmann::json*);
     void        import_from(nlohmann::json);

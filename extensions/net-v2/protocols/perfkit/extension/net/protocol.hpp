@@ -140,7 +140,7 @@ struct notify
         list<config_entity_t>   entities;
     };
 
-    DEFINE_RPC(new_config_category, void(string registry_key, config_category_t root));
+    DEFINE_RPC(new_config_category, void(uint64_t instance_hash, string registry_key, config_category_t root));
     DEFINE_RPC(deleted_config_category, void(string registry_key));
 
     /**

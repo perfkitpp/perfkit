@@ -58,6 +58,7 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
     auto& all = rg->bk_all();
     auto  key = rg->name();
     auto  root = message::notify::config_category_t{};
+    root.name = key;
 
     // Always try destroy registries before
     _handle_registry_destruction(rg->name());
@@ -110,7 +111,7 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
         registry_context->associated_keys.insert(config_key);
     }
 
-    message::notify::new_config_category(*_rpc).notify_all(key, root, _host->fn_basic_access());
+    message::notify::new_config_category(*_rpc).notify_all(rg->id(), key, root, _host->fn_basic_access());
 
     rg->on_update.add_weak(
             _monitor_anchor,
