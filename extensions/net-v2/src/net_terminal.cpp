@@ -100,7 +100,7 @@ void perfkit::net::terminal::_tick_worker()
 {
     try {
         _event_proc.restart();
-        _event_proc.run_for(5s);
+        _event_proc.run_for(2500ms);
 
         if (detail::proc_stat_t stat = {}; _session_active_state_anchor && detail::fetch_proc_stat(&stat)) {
             size_t in, out;

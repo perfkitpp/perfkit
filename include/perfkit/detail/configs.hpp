@@ -88,7 +88,7 @@ namespace detail {
  *
  * TODO: Attribute retrieval for config class
  */
-class config_base
+class config_base : public std::enable_shared_from_this<config_base>
 {
    public:
     using deserializer = std::function<bool(nlohmann::json const&, void*)>;

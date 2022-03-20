@@ -32,6 +32,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <asio/steady_timer.hpp>
 #include <perfkit/common/hasher.hxx>
 #include <perfkit/common/macros.hxx>
 #include <perfkit/extension/net/protocol.hpp>
@@ -66,8 +67,10 @@ class config_context
 
     weak_ptr<void>           _monitor_anchor;
 
-    message::config_entity_update_t
-            _buf_payload;
+    //
+    asio::steady_timer                         _lazy_update_publish{*_event_proc};
+    std::vector<weak_ptr<detail::config_base>> _pending_updates;
+    message::config_entity_update_t            _buf_payload;
 
    public:
     explicit config_context(if_net_terminal_adapter* host) : _host(host) {}

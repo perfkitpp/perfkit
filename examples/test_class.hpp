@@ -66,6 +66,9 @@ struct test_config_structure
 PERFKIT_T_CATEGORY(
         test_class_configs,
 
+        PERFKIT_T_CONFIGURE(t_increment, 10)
+                .confirm();
+
         PERFKIT_T_CONFIGURE(t_int, 10)
                 .min(0)
                 .max(141)

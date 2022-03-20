@@ -78,6 +78,7 @@ void test_class::start()
                                     1ms * tc::class_control::interval_ms.value());
 
                     _cfg->update();
+                    _cfg.t_increment.commit(*_cfg.t_increment + 1);
 
                     if (auto tr0 = trc.timer("tree-0")) {
                         auto tr1 = trc.timer("tree-1");

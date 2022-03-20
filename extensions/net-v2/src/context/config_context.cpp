@@ -221,15 +221,34 @@ void config_context::_handle_update(
         config_registry*                             rg,
         vector<perfkit::detail::config_base*> const& changes)
 {
-    auto& payload = _buf_payload;
-
-    for (auto cfg : changes) {
-        payload.config_key = config_key_t::hash(cfg).value;
-        payload.content_next.clear();
-        cfg->serialize([buf = &payload.content_next](nlohmann::json const& content) {
-            nlohmann::json::to_msgpack(content, nlohmann::detail::output_adapter<char>(*buf));
-        });
-
-        message::notify::config_entity_update(*_rpc).notify_all(payload, _host->fn_basic_access());
+    for (auto ptr : changes) {
+        auto weak = ptr->weak_from_this();
+        auto iter = find_if(_pending_updates, [&](auto&& e) { return ptr_equals(e, weak); });
+        if (iter == _pending_updates.end()) { _pending_updates.push_back(std::move(weak)); }
     }
+
+    using std::chrono::steady_clock;
+    using namespace std::literals;
+    if (steady_clock::now() < _lazy_update_publish.expiry()) { return; }
+
+    _lazy_update_publish.expires_after(5ms);
+    _lazy_update_publish.async_wait(
+            [this](auto&& ec) {
+                if (ec) { return; }
+                auto& payload = _buf_payload;
+                for (auto& weak : _pending_updates) {
+                    auto cfg = weak.lock();
+                    if (not cfg) { continue; }
+
+                    payload.config_key = config_key_t::hash(&*cfg).value;
+                    payload.content_next.clear();
+                    cfg->serialize([buf = &payload.content_next](nlohmann::json const& content) {
+                        nlohmann::json::to_msgpack(content, nlohmann::detail::output_adapter<char>(*buf));
+                    });
+
+                    message::notify::config_entity_update(*_rpc).notify_all(payload, _host->fn_basic_access());
+                }
+
+                _pending_updates.clear();
+            });
 }
