@@ -48,12 +48,8 @@ namespace perfkit {
 class tracer;
 
 using clock_type = std::chrono::steady_clock;
-using trace_variant_type = std::variant<nullptr_t,
-                                        clock_type::duration,
-                                        int64_t,
-                                        double,
-                                        std::string,
-                                        bool>;
+using trace_variant_type = std::variant<
+        nullptr_t, clock_type::duration, int64_t, double, std::string, bool>;
 
 using trace_key_t = basic_key<class tracer>;
 

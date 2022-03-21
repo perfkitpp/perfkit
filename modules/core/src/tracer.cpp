@@ -46,7 +46,7 @@
 #define CPPH_LOGGER() perfkit::glog()
 
 using namespace std::literals;
-using namespace perfkit;
+namespace perfkit {
 
 tracer::_entity_ty* tracer::_fork_branch(
         _entity_ty const* parent, std::string_view name, bool initial_subscribe_state)
@@ -134,10 +134,10 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
     return prx;
 }
 
-event<perfkit::tracer*>& tracer::on_new_tracer()
+event<tracer*>& tracer::on_new_tracer()
 {
     constexpr auto ff = [] {};
-    return default_singleton<event<perfkit::tracer*>, decltype(ff)>();
+    return default_singleton<event<tracer*>, decltype(ff)>();
 }
 
 bool tracer::_deliver_previous_result()
@@ -211,12 +211,12 @@ std::vector<std::shared_ptr<tracer>> tracer::all() noexcept
            }();
 }
 
-void perfkit::tracer::request_fetch_data()
+void tracer::request_fetch_data()
 {
     _pending_fetch = true;
 }
 
-auto perfkit::tracer::create(int order, std::string_view name) -> std::shared_ptr<tracer>
+auto tracer::create(int order, std::string_view name) -> std::shared_ptr<tracer>
 {
     auto _{lock_tracer_repo()};
     CPPH_DEBUG("creating tracer {}", name);
@@ -237,7 +237,7 @@ auto perfkit::tracer::create(int order, std::string_view name) -> std::shared_pt
     return entity;
 }
 
-perfkit::tracer::~tracer() noexcept
+tracer::~tracer() noexcept
 {
     on_destroy.invoke(this);
 
@@ -256,7 +256,7 @@ perfkit::tracer::~tracer() noexcept
     }
 }
 
-void perfkit::tracer::_try_pop(_trace::_entity_ty const* body)
+void tracer::_try_pop(_trace::_entity_ty const* body)
 {
     if (_stack.empty()) {
         CPPH_WARN("Stack was empty!");
@@ -271,14 +271,14 @@ void perfkit::tracer::_try_pop(_trace::_entity_ty const* body)
     _stack.erase(_stack.begin() + i);
 }
 
-tracer_proxy perfkit::tracer::timer(std::string_view name)
+tracer_proxy tracer::timer(std::string_view name)
 {
     auto px = branch(name);
     px._epoch_if_required = clock_type::now();
     return px;
 }
 
-tracer_proxy perfkit::tracer::branch(std::string_view name)
+tracer_proxy tracer::branch(std::string_view name)
 {
     tracer_proxy px;
     px._owner = this;
@@ -412,7 +412,7 @@ bool compare_hierarchy_2(tracer::trace const& a, tracer::trace const& b)
 }
 }  // namespace
 
-void perfkit::sort_messages_by_rule(tracer::fetched_traces& msg) noexcept
+void sort_messages_by_rule(tracer::fetched_traces& msg) noexcept
 {
     std::sort(msg.begin(), msg.end(), compare_hierarchy_2);
 }
@@ -457,3 +457,4 @@ void tracer::trace::dump_data(std::string& s) const
             s = "none";
     }
 }
+}  // namespace perfkit

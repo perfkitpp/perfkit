@@ -30,9 +30,9 @@
 
 #include "protocol.hpp"
 
-#include "perfkit/common/refl/container/binary.hxx"
-#include "perfkit/common/refl/container/list.hxx"
-#include "perfkit/common/refl/container/tuple.hxx"
+#include "perfkit/common/refl/types/binary.hxx"
+#include "perfkit/common/refl/types/list.hxx"
+#include "perfkit/common/refl/types/tuple.hxx"
 #include "perfkit/common/refl/object.hxx"
 
 namespace perfkit::net::message {
