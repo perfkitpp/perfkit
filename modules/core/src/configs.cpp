@@ -74,24 +74,6 @@ auto perfkit::config_registry::create(std::string name, std::type_info const* sc
     return rg;
 }
 
-auto perfkit::config_registry::share(std::string_view name, std::type_info const* schema)
-        -> std::shared_ptr<perfkit::config_registry>
-{
-    if (auto [all, _] = detail::_all_repos(); 1) {
-        auto it = all->find(name);
-
-        if (it != all->end()) {
-            auto repo = it->second.lock();
-            if (repo->bk_schema_class() != schema)
-                throw configs::schema_mismatch{"schema must match!"};
-
-            return repo;
-        }
-    }
-
-    return create(std::string{name}, schema);
-}
-
 perfkit::config_registry::~config_registry() noexcept
 {
     CPPH_DEBUG("destroying config registry {}", name());

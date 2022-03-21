@@ -267,10 +267,6 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     static auto bk_enumerate_registries(bool filter_complete = false) noexcept -> std::vector<std::shared_ptr<config_registry>>;
     static auto bk_find_reg(std::string_view name) noexcept -> shared_ptr<config_registry>;
 
-   private:
-    // TODO: redesign this!
-    static shared_ptr<config_registry> share(std::string_view name, std::type_info const* schema);
-
    public:  // for internal use only.
     auto _access_lock() { return std::unique_lock{_update_lock}; }
 
