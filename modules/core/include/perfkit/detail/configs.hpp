@@ -626,23 +626,27 @@ class config
     Ty_               _value;
 };
 
-namespace configs {
-}  // namespace configs
-
 //! \see https://stackoverflow.com/questions/24855160/how-to-tell-if-a-c-template-type-is-c-style-string
-template <class T>
-struct is_c_str
-        : std::integral_constant<
-                  bool,
-                  std::is_same<char const*, typename std::decay<T>::type>::value || std::is_same<char*, typename std::decay<T>::type>::value>
+template <typename Ty_, typename = void>
+struct _cvt_ty_impl
 {
+    using type = Ty_;
 };
 
 template <typename Ty_>
-using _cvt_ty = std::conditional_t<
-        is_c_str<Ty_>::value,
-        std::string,
-        std::remove_reference_t<Ty_>>;
+struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char const*>>>
+{
+    using type = std::string;
+};
+
+template <typename Ty_>
+struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char*>>>
+{
+    using type = std::string;
+};
+
+template <typename Ty_>
+using _cvt_ty = typename _cvt_ty_impl<std::decay_t<Ty_>>::type;
 
 template <typename Ty_>
 auto configure(config_registry& dispatcher,
@@ -652,7 +656,7 @@ auto configure(config_registry& dispatcher,
     _config_factory<_cvt_ty<Ty_>> attribute;
     attribute._pinfo = std::make_shared<typename _config_factory<_cvt_ty<Ty_>>::_init_info>();
     attribute._pinfo->dispatcher = &dispatcher;
-    attribute._pinfo->default_value = std::move(default_value);
+    attribute._pinfo->default_value = std::forward<Ty_>(default_value);
     attribute._pinfo->full_key = std::move(full_key);
 
     return attribute;
