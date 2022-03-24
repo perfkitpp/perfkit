@@ -1,4 +1,4 @@
-option(perfkit_ASIO_HEADERONLY ON)
+option(perfkit_ASIO_HEADERONLY "Use ASIO header-only configuration" ON)
 
 ## ASIO HEADER ONLY
 project(asio-header-only)
@@ -85,7 +85,9 @@ endif ()
 
 ## H/O or ..
 if (perfkit_ASIO_HEADERONLY)
+    message("[perfkit::asio] Use header-only")
     add_library(perfkit::asio ALIAS asio-header-only)
 else()
+    message("[perfkit::asio] Use static")
     add_library(perfkit::asio ALIAS asio-static)
 endif ()
