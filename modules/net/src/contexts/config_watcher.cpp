@@ -85,8 +85,15 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
         auto* dst = &level->entities.emplace_back();
         dst->name = config->tokenized_display_key().back();
         dst->value = config->serialize();
-        dst->metadata["description"] = config->attribute().description;
-        dst->metadata["default"] = config->attribute().default_value;
+
+        auto& attr = config->attribute();
+        dst->metadata["description"] = attr.description;
+        dst->metadata["default"] = attr.default_value;
+
+        if (not attr.max.empty()) { dst->metadata["max"] = attr.max; }
+        if (not attr.min.empty()) { dst->metadata["min"] = attr.max; }
+        if (not attr.one_of.empty()) { dst->metadata["one_of"] = attr.max; }
+
         dst->config_key = config_key_t::hash(&*config).value;
 
         _cache.confmap.try_emplace({dst->config_key}, config);
