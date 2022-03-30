@@ -243,9 +243,7 @@ perfkit::json perfkit::configs::export_all()
         do_export |= rg->_initially_updated();
 
         if (not do_export) { continue; }  // the first update() not called yet.
-        auto category = &exported[rg->name()];
-
-        rg->export_to(category);
+        rg->export_to(&exported[rg->name()]);
     }
 
     for (auto& item : exported.items()) {
@@ -286,7 +284,8 @@ bool perfkit::config_registry::update()
         //  For example, if non-transient configuration registry instance is created inside of
         //   function, and is not propagated outside of it, there's no chance to retrieve its
         //   configuration template.
-        if (auto [ptr, _] = configs::_io::_loaded(); true) {
+        {
+            auto [ptr, _] = configs::_io::_loaded();
             this->export_to(&(*ptr)[name()]);
         }
 
