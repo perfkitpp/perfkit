@@ -48,8 +48,7 @@ class config_context
    private:
     CPPH_UNIQUE_KEY_TYPE(config_key_t);
 
-    struct config_registry_context_t
-    {
+    struct config_registry_context_t {
         std::unordered_set<config_key_t> associated_keys;
     };
 

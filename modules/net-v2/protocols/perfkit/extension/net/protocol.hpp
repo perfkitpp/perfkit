@@ -51,8 +51,7 @@ using msgpack_archive_t = binary<string>;
 /**
  * Shell output descriptor
  */
-struct tty_output_t
-{
+struct tty_output_t {
     CPPH_REFL_DECLARE_c;
 
     int64_t fence = 0;
@@ -62,8 +61,7 @@ struct tty_output_t
 /**
  * Configuration descriptor
  */
-struct config_entity_t
-{
+struct config_entity_t {
     CPPH_REFL_DECLARE_c;
 
     string            name;
@@ -77,8 +75,7 @@ struct config_entity_t
     msgpack_archive_t opt_one_of;
 };
 
-struct config_entity_update_t
-{
+struct config_entity_update_t {
     CPPH_REFL_DECLARE_c;
 
     uint64_t          config_key;
@@ -94,13 +91,11 @@ enum class auth_level_t {
 //
 // SHELL
 //
-struct notify
-{
+struct notify {
     /**
      * Returns current session status
      */
-    struct session_status_t
-    {
+    struct session_status_t {
         CPPH_REFL_DECLARE_c;
 
         double  cpu_usage_total_user;
@@ -131,8 +126,7 @@ struct notify
     /**
      * Configuration class notifies
      */
-    struct config_category_t
-    {
+    struct config_category_t {
         CPPH_REFL_DECLARE_c;
 
         string                  name;
@@ -156,13 +150,11 @@ struct notify
      */
 };
 
-struct service
-{
+struct service {
     /**
      * Query session informations
      */
-    struct session_info_t
-    {
+    struct session_info_t {
         CPPH_REFL_DECLARE_c;
 
         string  name;
@@ -198,8 +190,7 @@ struct service
     /**
      * Command suggest
      */
-    struct suggest_result_t
-    {
+    struct suggest_result_t {
         CPPH_REFL_DECLARE_c;
 
         std::pair<int, int> replace_range;

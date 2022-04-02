@@ -30,10 +30,10 @@
 
 #include "protocol.hpp"
 
+#include "perfkit/common/refl/object.hxx"
 #include "perfkit/common/refl/types/binary.hxx"
 #include "perfkit/common/refl/types/list.hxx"
 #include "perfkit/common/refl/types/tuple.hxx"
-#include "perfkit/common/refl/object.hxx"
 
 namespace perfkit::net::message {
 CPPH_REFL_DEFINE_OBJECT_c(

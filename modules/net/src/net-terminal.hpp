@@ -142,8 +142,7 @@ class terminal : public if_terminal
     std::pair<size_t, size_t> _bytes_io_prev;
     perfkit::stopwatch        _bytes_io_counter;
 
-    struct _context_t
-    {
+    struct _context_t {
         context::config_watcher   configs;
         context::trace_watcher    traces;
         context::graphics_watcher graphics;

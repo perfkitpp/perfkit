@@ -61,8 +61,7 @@ using std::vector;
 using std::weak_ptr;
 using std::chrono::steady_clock;
 
-struct terminal_info
-{
+struct terminal_info {
     string   name;
     string   description;
 
@@ -89,8 +88,7 @@ class terminal_monitor : public msgpack::rpc::if_context_monitor
     auto CPPH_LOGGER() const { return &*_logger; }
 };
 
-struct terminal_session_descriptor
-{
+struct terminal_session_descriptor {
     bool has_admin_access = false;
 };
 

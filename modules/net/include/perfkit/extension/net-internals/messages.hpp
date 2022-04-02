@@ -30,8 +30,7 @@
 #include <perfkit/common/helper/nlohmann_json_macros.hxx>
 
 namespace perfkit::terminal::net::outgoing {
-struct session_reset
-{
+struct session_reset {
     constexpr static char ROUTE[] = "update:epoch";
 
     std::string           name;
@@ -45,8 +44,7 @@ struct session_reset
             session_reset, name, keystr, epoch, description, num_cores);
 };
 
-struct session_state
-{
+struct session_state {
     constexpr static char ROUTE[] = "update:session_state";
 
     double                cpu_usage_total_user;
@@ -74,8 +72,7 @@ struct session_state
             bw_in);
 };
 
-struct shell_output
-{
+struct shell_output {
     constexpr static char ROUTE[] = "update:shell_output";
 
     std::string           content;
@@ -84,12 +81,10 @@ struct shell_output
             shell_output, content);
 };
 
-struct new_config_class
-{
+struct new_config_class {
     constexpr static char ROUTE[] = "update:new_config_class";
 
-    struct entity_scheme
-    {
+    struct entity_scheme {
         std::string    name;
         uint64_t       config_key;
         nlohmann::json value;
@@ -99,8 +94,7 @@ struct new_config_class
                 entity_scheme, name, config_key, value, metadata);
     };
 
-    struct category_scheme
-    {
+    struct category_scheme {
         std::string                name;
         std::list<category_scheme> subcategories;
         std::list<entity_scheme>   entities;
@@ -116,12 +110,10 @@ struct new_config_class
             new_config_class, key, root);
 };
 
-struct config_entity
-{
+struct config_entity {
     constexpr static char ROUTE[] = "update:config_entity";
 
-    struct entity_scheme
-    {
+    struct entity_scheme {
         uint64_t       config_key = {};
         nlohmann::json value;
 
@@ -136,8 +128,7 @@ struct config_entity
             config_entity, class_key, content);
 };
 
-struct suggest_command
-{
+struct suggest_command {
     constexpr static char          ROUTE[] = "rpc:suggest_command";
 
     int64_t                        reply_to;
@@ -148,8 +139,7 @@ struct suggest_command
             suggest_command, reply_to, new_command, candidates);
 };
 
-struct trace_class_list
-{
+struct trace_class_list {
     constexpr static char ROUTE[] = "update:trace_class_list";
 
     // trace class name and its id
@@ -168,12 +158,10 @@ enum trace_value_type {
     TRACE_VALUE_BOOLEAN,
 };
 
-struct traces
-{
+struct traces {
     constexpr static char ROUTE[] = "update:traces";
 
-    struct node_scheme
-    {
+    struct node_scheme {
         std::string            name;
         uint64_t               trace_key;
         bool                   is_fresh;
@@ -198,8 +186,7 @@ struct traces
 }  // namespace perfkit::terminal::net::outgoing
 
 namespace perfkit::terminal::net::incoming {
-struct push_command
-{
+struct push_command {
     constexpr static char ROUTE[] = "cmd:push_command";
 
     std::string           command;
@@ -208,8 +195,7 @@ struct push_command
             push_command, command);
 };
 
-struct suggest_command
-{
+struct suggest_command {
     constexpr static char ROUTE[] = "rpc:suggest_command";
 
     int64_t               reply_to;
@@ -220,12 +206,10 @@ struct suggest_command
             suggest_command, reply_to, position, command);
 };
 
-struct configure_entity
-{
+struct configure_entity {
     constexpr static char ROUTE[] = "cmd:configure";
 
-    struct entity_scheme
-    {
+    struct entity_scheme {
         uint64_t       config_key;
         nlohmann::json value;
 
@@ -240,16 +224,14 @@ struct configure_entity
             configure_entity, class_key, content);
 };
 
-struct signal_fetch_traces
-{
+struct signal_fetch_traces {
     constexpr static char  ROUTE[] = "cmd:signal_fetch_traces";
     std::list<std::string> targets;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(signal_fetch_traces, targets);
 };
 
-struct control_trace
-{
+struct control_trace {
     constexpr static char ROUTE[] = "cmd:control_trace";
     std::string           class_name;
     uint64_t              trace_key;

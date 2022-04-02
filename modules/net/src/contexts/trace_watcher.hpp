@@ -40,8 +40,7 @@ using namespace std::literals;
 class trace_watcher : public if_watcher
 {
    private:
-    struct _trace_node
-    {
+    struct _trace_node {
         std::weak_ptr<std::atomic_bool> subscr;
         std::weak_ptr<std::atomic_bool> fold;
     };

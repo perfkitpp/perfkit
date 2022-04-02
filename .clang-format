@@ -37,8 +37,8 @@ BraceWrapping:
   AfterFunction: true
   AfterNamespace: false
   AfterObjCDeclaration: true
-  AfterStruct: true
-  AfterUnion: true
+  AfterStruct: false
+  AfterUnion: false
   AfterExternBlock: true
   BeforeCatch: false
   BeforeElse: false
@@ -46,8 +46,8 @@ BraceWrapping:
   BeforeWhile: false
   IndentBraces: false
   SplitEmptyFunction: true
-  SplitEmptyRecord: true
-  SplitEmptyNamespace: true
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
 BreakBeforeBinaryOperators: All
 BreakBeforeConceptDeclarations: true
 BreakBeforeBraces: Custom

@@ -38,8 +38,7 @@ enum class resource_type : uint8_t {
     MAX_,
 };
 
-struct handle_data
-{
+struct handle_data {
    public:
     bool is_valid() const noexcept
     {
@@ -69,8 +68,7 @@ struct handle_data
  * @tparam Label_ Only used for type identification
  */
 template <resource_type Resource_>
-struct _handle_base : handle_data
-{
+struct _handle_base : handle_data {
     static constexpr auto type = Resource_;
 
     static _handle_base   from(handle_data data)

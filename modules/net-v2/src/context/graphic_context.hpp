@@ -31,5 +31,4 @@
 #pragma once
 
 class graphic_context
-{
-};
+{};

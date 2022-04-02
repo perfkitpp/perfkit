@@ -33,8 +33,7 @@
 #include "basic_dispatcher_impl.hpp"
 
 namespace perfkit::terminal::net::detail {
-struct server_mode_dispatcher_init_info
-{
+struct server_mode_dispatcher_init_info {
     std::string bind_addr = "0.0.0.0";
     uint16_t    bind_port = 0;
 };
@@ -69,8 +68,7 @@ class server_mode_dispatcher : public basic_dispatcher_impl
 
         CPPH_INFO("opening acceptor for {}:{} ...", _init.bind_addr, _init.bind_port);
 
-        struct _accept_fn
-        {
+        struct _accept_fn {
             server_mode_dispatcher*      self;
             std::unique_ptr<tcp::socket> sock;
 

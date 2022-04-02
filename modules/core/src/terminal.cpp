@@ -122,8 +122,7 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd)
 {
     std::string cmdstr{cmd};
 
-    struct fn_op
-    {
+    struct fn_op {
         if_terminal* ref;
         std::string  logger_name;
 

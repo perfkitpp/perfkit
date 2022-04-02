@@ -59,15 +59,12 @@ enum class modal_type {
 using window_proc_fn = perfkit::function<void(wdc*)>;
 using texture_draw_fn = perfkit::function<void(dc*)>;
 
-struct modal_expired : std::exception
-{
-};
+struct modal_expired : std::exception {};
 
 /**
  * Generic vertex for material based mesh rendering
  */
-struct vertex3_0
-{
+struct vertex3_0 {
     math::vec3f position;
     math::vec2f uv0;
 };
@@ -75,8 +72,7 @@ struct vertex3_0
 /**
  * Vertex for debug instance rendering
  */
-struct vertex3_1
-{
+struct vertex3_1 {
     math::vec3f position;
     math::vec3f normal;
     math::vec4b albedo;  // rgba order
@@ -86,8 +82,7 @@ struct vertex3_1
 /**
  * Vertex for screen draw (especially for ImGUI forwarding)
  */
-struct vertex2_0
-{
+struct vertex2_0 {
     math::vec2f position;
     math::vec2f uv0;
 };
@@ -95,8 +90,7 @@ struct vertex2_0
 /**
  * Material definition
  */
-struct material
-{
+struct material {
     texture_handle albedo = {};          // f_rgb
     texture_handle normal = {};          // f_rgb
     texture_handle metalic = {};         // f_mono

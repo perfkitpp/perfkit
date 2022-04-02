@@ -50,14 +50,12 @@ std::string INDEXER_STR2(int order);
 };  // namespace perfkit::_configs_internal
 
 namespace perfkit {
-struct config_class
-{
+struct config_class {
     virtual ~config_class() = default;
     virtual std::shared_ptr<perfkit::config_registry> _rg() noexcept = 0;
 };
 
-struct config_class_hook : std::function<void(config_class*)>
-{
+struct config_class_hook : std::function<void(config_class*)> {
     using std::function<void(config_class*)>::function;
 };
 };  // namespace perfkit
@@ -181,8 +179,7 @@ struct config_class_hook : std::function<void(config_class*)>
    public:
 
 #define PERFKIT_T_CATEGORY(varname, ...)                                             \
-    struct varname : ::perfkit::config_class                                         \
-    {                                                                                \
+    struct varname : ::perfkit::config_class {                                       \
         INTERNAL_PERFKIT_T_CATEGORY_body(varname);                                   \
                                                                                      \
         explicit varname(std::string s) : _perfkit_INTERNAL_RG(                      \
@@ -193,8 +190,7 @@ struct config_class_hook : std::function<void(config_class*)>
 
 #define PERFKIT_T_SUBCATEGORY(varname, ...)                                    \
     static std::string _category_prev_##varname() { return _category_name(); } \
-    struct varname##_                                                          \
-    {                                                                          \
+    struct varname##_ {                                                        \
         INTERNAL_PERFKIT_T_SUBCATEGORY_body(varname);                          \
         __VA_ARGS__;                                                           \
     } varname{this};
@@ -210,8 +206,7 @@ struct config_class_hook : std::function<void(config_class*)>
                     __VA_ARGS__)
 
 #define PERFKIT_T_EXPAND_CATEGORY(varname, ...)          \
-    struct varname : ::perfkit::config_class             \
-    {                                                    \
+    struct varname : ::perfkit::config_class {           \
         INTERNAL_PERFKIT_T_CATEGORY_body(varname);       \
         explicit varname(::perfkit::config_class* other) \
                 : _perfkit_INTERNAL_RG(other->_rg()) {}  \

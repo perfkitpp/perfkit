@@ -35,8 +35,7 @@ namespace perfkit::terminal::net::detail {
 std::string                     try_fetch_input(int ms_to_wait);
 std::shared_ptr<spdlog::logger> nglog();
 
-struct proc_stat_t
-{
+struct proc_stat_t {
     double  cpu_usage_total_user;
     double  cpu_usage_total_system;
     double  cpu_usage_self_user;

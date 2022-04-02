@@ -172,8 +172,7 @@ bool tracer::_deliver_previous_result()
 }
 
 namespace {
-struct message_block_sorter
-{
+struct message_block_sorter {
     int         n;
     friend bool operator<(std::weak_ptr<tracer> ptr, message_block_sorter s)
     {
@@ -189,8 +188,7 @@ static auto lock_tracer_repo = [] {
 
 tracer::tracer(int order, std::string_view name) noexcept
         : _occurrence_order(order), _name(name)
-{
-}
+{}
 
 std::vector<std::weak_ptr<tracer>>& tracer::_all() noexcept
 {

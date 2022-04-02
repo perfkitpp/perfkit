@@ -29,5 +29,4 @@
 #pragma once
 
 class context
-{
-};
+{};

@@ -36,23 +36,16 @@
 
 namespace perfkit::commands {
 class registry;
-struct stroffset
-{
+struct stroffset {
     size_t position = {};
     size_t length = {};
 
     bool   should_wrap = {};
 };
 
-struct command_exception : std::exception
-{
-};
-struct command_already_exist_exception : std::exception
-{
-};
-struct command_name_invalid_exception : std::exception
-{
-};
+struct command_exception : std::exception {};
+struct command_already_exist_exception : std::exception {};
+struct command_name_invalid_exception : std::exception {};
 
 /**
  * Tokenize given string with os argc-argv rule.

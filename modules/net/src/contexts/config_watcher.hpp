@@ -70,8 +70,7 @@ class config_watcher : public if_watcher
     std::unique_ptr<asio::io_context> _ioc;
     perfkit::shared_null              _watcher_lifecycle;
 
-    struct _cache_type
-    {
+    struct _cache_type {
         std::vector<std::weak_ptr<perfkit::config_registry>>   regs;
         std::unordered_map<config_key_t, perfkit::config_wptr> confmap;
     } _cache;

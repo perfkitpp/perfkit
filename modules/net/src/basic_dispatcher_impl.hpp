@@ -61,32 +61,28 @@ using timestamp_t = std::chrono::steady_clock::time_point;
 using recv_archive_type = nlohmann::json;
 using send_archive_type = nlohmann::json;
 
-struct basic_dispatcher_impl_init_info
-{
+struct basic_dispatcher_impl_init_info {
     size_t                 buffer_size_hint = 65535;
     size_t                 message_size_limit = 1 << 20;
     std::vector<auth_info> auth;
 };
 
 #pragma pack(push, 4)
-struct message_header_t
-{
+struct message_header_t {
     char identifier[4] = {'o', '`', 'P', '%'};
     char buflen[4] = {};
 };
 static_assert(sizeof(message_header_t) == 8);
 #pragma pack(pop)
 
-struct message_in_t
-{
+struct message_in_t {
     std::string       route;
     recv_archive_type parameter;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(message_in_t, route, parameter);
 };
 
-struct message_out_t
-{
+struct message_out_t {
     std::string       route;
     uint64_t          fence;
     send_archive_type payload;
@@ -94,8 +90,7 @@ struct message_out_t
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(message_out_t, route, fence, payload);
 };
 
-struct connection_context_t
-{
+struct connection_context_t {
     std::unique_ptr<tcp::socket> socket;
     std::vector<char>            rdbuf;
     bool                         is_active = false;

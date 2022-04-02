@@ -56,8 +56,7 @@ using std::chrono::steady_clock;
 
 basic_interactive_terminal::basic_interactive_terminal()
         : _sink{std::make_shared<spdlog::sinks::stdout_color_sink_mt>()}
-{
-}
+{}
 
 std::optional<std::string> basic_interactive_terminal::fetch_command(milliseconds timeout)
 {

@@ -223,8 +223,7 @@ class config_node_builder
     }
 
    private:
-    struct _json_editor_builder
-    {
+    struct _json_editor_builder {
         config_ptr            cfg;
         bool                  allow_schema_modification;
         nlohmann::json        rootobj;

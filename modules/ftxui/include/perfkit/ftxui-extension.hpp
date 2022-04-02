@@ -45,8 +45,7 @@ namespace perfkit_ftxui {
 class if_subscriber
 {
    public:
-    struct update_param_type
-    {
+    struct update_param_type {
         std::string_view                      block_name;
 
         uint64_t                              hash = {};

@@ -42,9 +42,7 @@ using terminal_ptr = std::shared_ptr<if_terminal>;
 using std::chrono::milliseconds;
 
 /** An exception that is thrown when user requests program termination */
-struct termination : std::exception
-{
-};
+struct termination : std::exception {};
 
 /**
  * Provides common user interface functionality for control purpose

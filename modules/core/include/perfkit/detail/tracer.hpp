@@ -41,8 +41,7 @@
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/spinlock.hxx"
 
-namespace fmt {
-}
+namespace fmt {}
 
 namespace perfkit {
 class tracer;
@@ -54,8 +53,7 @@ using trace_variant_type = std::variant<
 using trace_key_t = basic_key<class tracer>;
 
 namespace _trace {
-struct trace
-{
+struct trace {
     std::optional<clock_type::duration> as_timer() const noexcept
     {
         if (auto ptr = std::get_if<clock_type::duration>(&data)) { return *ptr; }
@@ -103,8 +101,7 @@ struct trace
     std::atomic_bool* _is_folded = {};
 };
 
-struct _entity_ty
-{
+struct _entity_ty {
     trace                         body;
     std::string                   key_buffer;
     std::vector<std::string_view> hierarchy;

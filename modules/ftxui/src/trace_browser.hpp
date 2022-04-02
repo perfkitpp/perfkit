@@ -109,8 +109,7 @@ class tracer_instance_browser : public ComponentBase
     }
 
    private:
-    struct _data_label : ComponentBase
-    {
+    struct _data_label : ComponentBase {
        public:
         explicit _data_label(tracer_instance_browser* owner)
                 : _owner(owner)

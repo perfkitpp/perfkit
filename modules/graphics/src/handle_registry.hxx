@@ -42,15 +42,13 @@ constexpr size_t to_index(resource_type t) noexcept
 class handle_registry
 {
    public:
-    struct node
-    {
+    struct node {
         uint16_t index = 0;
         uint32_t hash_gen = 0;
         bool     checkout = false;
     };
 
-    struct slot
-    {
+    struct slot {
         vector<uint16_t> free_keys;
         vector<node>     keys;
     };

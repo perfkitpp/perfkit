@@ -84,8 +84,7 @@ std::string perfkit::terminal::net::detail::try_fetch_input(int ms_to_wait)
     return bytes;
 }
 
-static struct redirection_context_t
-{
+static struct redirection_context_t {
    private:
     int              _fd_org_stdout = -1;
     int              _fd_org_stderr = -1;
@@ -219,8 +218,7 @@ bool perfkit::terminal::net::detail::fetch_proc_stat(perfkit::terminal::net::det
             uptime = now;
         }
 
-        struct _all
-        {
+        struct _all {
             int64_t user = 0;
             int64_t system = 0;
             int64_t nice = 0;

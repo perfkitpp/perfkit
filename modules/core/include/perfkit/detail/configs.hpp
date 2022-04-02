@@ -60,8 +60,7 @@ using config_wptr = std::weak_ptr<detail::config_base>;
 using std::shared_ptr;
 using std::weak_ptr;
 
-struct config_attribute_t
-{
+struct config_attribute_t {
     nlohmann::json default_value;
     std::string    description;
 
@@ -295,8 +294,7 @@ template <typename Ty_>
 class config;
 
 template <typename Ty_>
-struct _config_attrib_data
-{
+struct _config_attrib_data {
     std::string                             description;
     std::function<bool(Ty_&)>               validate;
     std::function<bool(Ty_ const&)>         verify;
@@ -452,8 +450,7 @@ class _config_factory
     _config_attrib_data<Ty_> _data;
 
    public:
-    struct _init_info
-    {
+    struct _init_info {
         config_registry* dispatcher = {};
         std::string      full_key = {};
         Ty_              default_value = {};
@@ -624,20 +621,17 @@ class config
 
 //! \see https://stackoverflow.com/questions/24855160/how-to-tell-if-a-c-template-type-is-c-style-string
 template <typename Ty_, typename = void>
-struct _cvt_ty_impl
-{
+struct _cvt_ty_impl {
     using type = Ty_;
 };
 
 template <typename Ty_>
-struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char const*>>>
-{
+struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char const*>>> {
     using type = std::string;
 };
 
 template <typename Ty_>
-struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char*>>>
-{
+struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char*>>> {
     using type = std::string;
 };
 

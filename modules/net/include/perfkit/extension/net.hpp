@@ -57,8 +57,7 @@ enum class operation_mode {
     relay_server_provider,
 };
 
-struct auth_info
-{
+struct auth_info {
     std::string id;
     std::string password;
 
@@ -66,8 +65,7 @@ struct auth_info
     bool readonly_access = true;
 };
 
-struct terminal_init_info
-{
+struct terminal_init_info {
     /** Session name to introduce self */
     std::string const name;
 
@@ -81,8 +79,7 @@ struct terminal_init_info
     /**
      * Advanced configurations
      */
-    struct _adv_t
-    {
+    struct _adv_t {
         bool redirect_terminal = true;
     } advanced;
 

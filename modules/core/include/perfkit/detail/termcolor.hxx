@@ -29,10 +29,8 @@ namespace perfkit {
 enum class termcolors;
 
 /** Color info */
-struct termcolor
-{
-    union
-    {
+struct termcolor {
+    union {
         uint32_t code;
         struct
         {
