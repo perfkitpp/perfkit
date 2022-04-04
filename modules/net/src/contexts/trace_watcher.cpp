@@ -275,7 +275,7 @@ void trace_watcher::_on_destroy_tracer(perfkit::tracer* tracer)
 {
     CPPH_DEBUG("destroying watch for tracer {} ...", tracer->name());
     // Erase from list
-    _tracers.use(
+    _tracers.access(
             [&](decltype(_tracers)::value_type& v) {
                 v.erase(tracer->name());
             });

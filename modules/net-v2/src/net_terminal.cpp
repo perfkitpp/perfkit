@@ -191,7 +191,7 @@ void perfkit::net::terminal::_on_char_buf(const char* data, size_t size)
 {
     {
         lock_guard _lc_{_tty_lock};
-        _tty_buf.rotate_append(data, data + size);
+        _tty_buf.enqueue_n(data, size);
         _tty_fence += size;
     }
 
