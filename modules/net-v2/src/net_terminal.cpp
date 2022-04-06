@@ -89,13 +89,14 @@ void perfkit::net::terminal::_open_acceptor()
     _acceptor.set_option(asio::socket_base::reuse_address{true});
     _acceptor.bind(ep);
     CPPH_INFO("accept>> Bind successful. Starting listening ...");
+    _acceptor.listen();
 
     msgpack::rpc::session_config config;
     config.timeout = 10s;
     config.use_integer_key = true;
 
     // TODO: Implement accept logic
-    CPPH_INFO("accept>> Now listening ...");
+    CPPH_INFO("accept>> Now socket is listening ...");
 }
 
 void perfkit::net::terminal::_tick_worker()
@@ -104,11 +105,14 @@ void perfkit::net::terminal::_tick_worker()
         _event_proc.restart();
         _event_proc.run_for(2500ms);
     } catch (asio::system_error& ec) {
-        CPPH_ERROR("Socket error! ({}): {}", ec.code().value(), ec.what());
-        CPPH_ERROR("Sleep for 3 seconds before retry ...");
+        CPPH_ERROR("System error! ({}): {}", ec.code().value(), ec.what());
+        CPPH_ERROR("Sleep for 3 seconds before restart ...");
 
         std::this_thread::sleep_for(3s);
-        _event_proc.post(bind_front(&terminal::_open_acceptor, this));
+
+        if (not _acceptor.is_open()) {
+            _event_proc.post(bind_front(&terminal::_open_acceptor, this));
+        }
     }
 }
 
