@@ -32,7 +32,7 @@
 #include <list>
 
 #include "perfkit/common/refl/core.hxx"
-#include "perfkit/common/refl/msgpack-rpc/signature.hxx"
+#include "perfkit/common/refl/rpc/signature.hxx"
 
 namespace perfkit::msgpack::rpc {
 class context;
@@ -46,7 +46,7 @@ using std::vector;
 using msgpack_archive_t = binary<string>;
 
 #define DEFINE_RPC(Name, ...) \
-    static inline const auto Name = msgpack::rpc::create_signature<__VA_ARGS__>(#Name);
+    static inline const auto Name = rpc::create_signature<__VA_ARGS__>(#Name);
 
 /**
  * Shell output descriptor

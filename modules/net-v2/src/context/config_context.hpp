@@ -59,7 +59,7 @@ class config_context
     if_net_terminal_adapter* _host;
 
     asio::io_context*        _event_proc{_host->event_proc()};
-    msgpack::rpc::context*   _rpc{_host->rpc()};
+    rpc::session_group*      _rpc{_host->rpc()};
 
     registry_context_table_t _config_registries;
     config_key_table         _config_instances;

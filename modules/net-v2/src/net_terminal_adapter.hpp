@@ -31,8 +31,8 @@
 #pragma once
 #include "perfkit/common/functional.hxx"
 
-namespace perfkit::msgpack::rpc {
-struct session_profile;
+namespace perfkit::rpc {
+class session_profile;
 }
 
 namespace perfkit::net {
@@ -44,8 +44,8 @@ using std::vector;
 using std::weak_ptr;
 }  // namespace perfkit::net
 
-namespace perfkit::msgpack::rpc {
-class context;
+namespace perfkit::rpc {
+class session_group;
 }
 
 namespace asio {
@@ -58,12 +58,12 @@ class if_net_terminal_adapter
    public:
     virtual ~if_net_terminal_adapter() noexcept = default;
 
-    virtual bool has_basic_access(msgpack::rpc::session_profile const&) const = 0;
-    virtual bool has_admin_access(msgpack::rpc::session_profile const&) const = 0;
+    virtual bool has_basic_access(rpc::session_profile const*) const = 0;
+    virtual bool has_admin_access(rpc::session_profile const*) const = 0;
 
     //
-    virtual asio::io_context*      event_proc() = 0;
-    virtual msgpack::rpc::context* rpc() = 0;
+    virtual asio::io_context*   event_proc() = 0;
+    virtual rpc::session_group* rpc() = 0;
 
    public:
     auto fn_basic_access() const { return bind_front(&if_net_terminal_adapter::has_basic_access, this); }

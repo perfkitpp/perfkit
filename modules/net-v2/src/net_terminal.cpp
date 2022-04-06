@@ -34,6 +34,8 @@
 
 #include "perfkit/common/functional.hxx"
 #include "perfkit/common/refl/msgpack-rpc/asio.hxx"
+#include "perfkit/common/refl/rpc/rpc.hxx"
+#include "perfkit/common/refl/rpc/service.hxx"
 #include "perfkit/configs.h"
 #include "utils.hpp"
 
@@ -41,10 +43,7 @@ using namespace std::literals;
 
 perfkit::net::terminal::terminal(perfkit::net::terminal_info info) noexcept
         : _info(std::move(info)),
-          _rpc(
-                  _build_service(),
-                  [this](auto&& fn) { asio::post(_thread_pool, std::forward<decltype(fn)>(fn)); },
-                  _rpc_monitor)
+          _rpc_service(_build_service())
 {
     using namespace std::chrono;
     _session_info.epoch = duration_cast<milliseconds>(
@@ -95,7 +94,7 @@ void perfkit::net::terminal::_open_acceptor()
     config.timeout = 10s;
     config.use_integer_key = true;
 
-    msgpack::rpc::asio_ex::open_acceptor(_rpc, config, _acceptor);
+    // TODO: Implement accept logic
     CPPH_INFO("accept>> Now listening ...");
 }
 
@@ -120,7 +119,7 @@ perfkit::net::terminal::~terminal()
     _acceptor.close();
 
     // Disconnect all remote clients
-    _rpc.disconnect_all();
+    for (auto& s : _rpc.release()) { s->close(); }
 
     // Stop
     _event_proc_guard = {};
@@ -132,12 +131,12 @@ perfkit::net::terminal::~terminal()
     detail::input_rollback();
 }
 
-perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
+auto perfkit::net::terminal::_build_service() -> rpc::service
 {
     using namespace message;
 
-    msgpack::rpc::service_info service_desc{};
-    service_desc
+    auto service = rpc::service::empty_service();
+    rpc::service::builder{}
             .route(service::suggest, bind_front(&self_t::_rpc_handle_suggest, this))
             .route(service::invoke_command, bind_front(&self_t::_rpc_handle_command, this))
             .route(service::login, bind_front(&self_t::_rpc_handle_login, this))
@@ -169,7 +168,7 @@ perfkit::msgpack::rpc::service_info perfkit::net::terminal::_build_service()
                        _ctx_config.rpc_republish_all_registries();
                    });
 
-    return service_desc;
+    return service;
 }
 
 std::optional<std::string> perfkit::net::terminal::fetch_command(std::chrono::milliseconds timeout)
@@ -198,13 +197,13 @@ void perfkit::net::terminal::_on_char_buf(const char* data, size_t size)
     _tty_obuf.access([&](message::tty_output_t& buf) {
         buf.content.assign(data, size);
         buf.fence = _tty_fence;
-        message::notify::tty(_rpc).notify_all(buf);
+        message::notify::tty(&_rpc).notify(buf);
     });
 }
 
 void perfkit::net::terminal::_on_session_list_change()
 {
-    auto const num_sessions = _rpc.session_count();
+    auto const num_sessions = _rpc.size();
     CPPH_INFO("{} sessions are currently active.", num_sessions);
 
     bool const should_start_monitoring = num_sessions;
@@ -229,24 +228,23 @@ void perfkit::net::terminal::_on_session_list_change()
     }
 }
 
-bool perfkit::net::terminal::_has_admin_access(
-        const perfkit::msgpack::rpc::session_profile& profile) const
+bool perfkit::net::terminal::_has_admin_access(session_profile_view profile) const
 {
-    if (auto ptr = find_ptr(*_verified_sessions.lock(), &profile))
+    if (auto ptr = find_ptr(*_verified_sessions.lock(), profile))
         return ptr->second.has_admin_access;
     else
         return false;
 }
 
 void perfkit::net::terminal::_rpc_handle_login(
-        const perfkit::msgpack::rpc::session_profile& profile, message::auth_level_t* b, std::string& auth)
+        session_profile_view profile, message::auth_level_t* b, std::string& auth)
 {
     // TODO: Implement ID/PW authentication logic!
     {
-        CPPH_INFO("session {} requested login ... always given admin right!!", profile.peer_name);
+        CPPH_INFO("session {} requested login ... always given admin right!!", profile->peer_name);
 
         _verified_sessions.access([&](decltype(_verified_sessions)::value_type& ref) {
-            ref[&profile].has_admin_access = true;
+            ref[profile].has_admin_access = true;
         });
 
         *b = message::auth_level_t::admin_access;
@@ -257,23 +255,22 @@ void perfkit::net::terminal::_rpc_handle_login(
 }
 
 void perfkit::net::terminal::_rpc_handle_command(
-        session_profile const& profile, void*,
-        const std::string&     content)
+        session_profile_view profile, void*, const std::string& content)
 {
     _verify_admin_access(profile);
     this->push_command(content);
 }
 
-void perfkit::net::terminal::_verify_admin_access(const perfkit::msgpack::rpc::session_profile& profile) const
+void perfkit::net::terminal::_verify_admin_access(session_profile_view profile) const
 {
     if (not _has_admin_access(profile))
-        throw std::runtime_error("Non-admin peer: " + profile.peer_name);
+        throw std::runtime_error("Non-admin peer: "s.append(profile->peer_name));
 }
 
-void perfkit::net::terminal::_verify_basic_access(const perfkit::msgpack::rpc::session_profile& profile) const
+void perfkit::net::terminal::_verify_basic_access(session_profile_view profile) const
 {
     if (not _has_basic_access(profile))
-        throw std::runtime_error("Non-authorized peer: " + profile.peer_name);
+        throw std::runtime_error("Non-authorized peer: "s.append(profile->peer_name));
 }
 
 void perfkit::net::terminal::_publish_system_stat(asio::error_code ec)
@@ -302,27 +299,25 @@ void perfkit::net::terminal::_publish_system_stat(asio::error_code ec)
                    stat.num_threads,
                    out_rate, in_rate};
 
-        message::notify::session_status(_rpc).notify_all(message, _fn_basic_access());
+        message::notify::session_status(&_rpc).notify(message, _fn_basic_access());
     }
 
     _session_stat_timer.expires_after(2500ms);
     _session_stat_timer.async_wait(bind_front(&self_t::_publish_system_stat, this));
 }
 
-void perfkit::net::terminal_monitor::on_new_session(
-        const perfkit::msgpack::rpc::session_profile& profile) noexcept
+void perfkit::net::terminal_monitor::on_session_created(session_profile_view profile) noexcept
 {
-    CPPH_INFO("session [{}]>> Connected", profile.peer_name);
+    CPPH_INFO("session [{}]>> Connected", profile->peer_name);
     asio::post(_owner->_event_proc, bind_front(&terminal::_on_session_list_change, _owner));
 }
 
-void perfkit::net::terminal_monitor::on_dispose_session(
-        const perfkit::msgpack::rpc::session_profile& profile) noexcept
+void perfkit::net::terminal_monitor::on_session_expired(session_profile_view profile) noexcept
 {
-    if (_owner->_verified_sessions.lock()->erase(&profile))
-        CPPH_INFO("Authorized session [{}]>> Disconnecting ... ", profile.peer_name);
+    if (_owner->_verified_sessions.lock()->erase(profile))
+        CPPH_INFO("Authorized session [{}]>> Disconnecting ... ", profile->peer_name);
     else
-        CPPH_INFO("Unauthorized session [{}]>> Disconnecting ... ", profile.peer_name);
+        CPPH_INFO("Unauthorized session [{}]>> Disconnecting ... ", profile->peer_name);
 
     asio::post(_owner->_event_proc, bind_front(&terminal::_on_session_list_change, _owner));
 }

@@ -41,18 +41,20 @@
 #include "net_terminal_adapter.hpp"
 #include "perfkit/common/circular_queue.hxx"
 #include "perfkit/common/hasher.hxx"
-#include "perfkit/common/refl/msgpack-rpc/context.hxx"
+#include "perfkit/common/refl/rpc/rpc.hxx"
+#include "perfkit/common/refl/rpc/service.hxx"
 #include "perfkit/common/thread/locked.hxx"
 #include "perfkit/common/thread/notify_queue.hxx"
 #include "perfkit/common/thread/worker.hxx"
+#include "perfkit/common/timer.hxx"
 #include "perfkit/detail/commands.hpp"
 #include "perfkit/extension/net/protocol.hpp"
 #include "perfkit/logging.h"
 #include "perfkit/terminal.h"
 
 namespace perfkit::net {
-using msgpack::rpc::session_profile;
-using session_profile_view = msgpack::rpc::session_profile const&;
+using rpc::session_profile;
+using session_profile_view = rpc::session_profile_view;
 using std::optional;
 using std::shared_ptr;
 using std::string;
@@ -71,7 +73,7 @@ struct terminal_info {
     // TODO: Authentication
 };
 
-class terminal_monitor : public msgpack::rpc::if_context_monitor
+class terminal_monitor : public rpc::if_session_monitor
 {
     class terminal*     _owner;
     perfkit::logger_ptr _logger;
@@ -81,8 +83,8 @@ class terminal_monitor : public msgpack::rpc::if_context_monitor
             : _owner(owner), _logger(std::move(logger)) {}
 
    public:
-    void on_new_session(session_profile_view profile) noexcept override;
-    void on_dispose_session(session_profile_view profile) noexcept override;
+    void on_session_expired(session_profile_view view) noexcept override;
+    void on_session_created(session_profile_view view) noexcept override;
 
    private:
     auto CPPH_LOGGER() const { return &*_logger; }
@@ -106,10 +108,10 @@ class terminal : public if_terminal
         explicit adapter_t(terminal* owner) noexcept : _owner(owner) {}
 
        public:
-        bool                   has_basic_access(const session_profile& profile) const override { return _owner->_has_basic_access(profile); }
-        bool                   has_admin_access(const session_profile& profile) const override { return _owner->_has_admin_access(profile); }
-        asio::io_context*      event_proc() override { return &_owner->_event_proc; }
-        msgpack::rpc::context* rpc() override { return &_owner->_rpc; }
+        bool                has_basic_access(const session_profile* profile) const override { return _owner->_has_basic_access(profile); }
+        bool                has_admin_access(const session_profile* profile) const override { return _owner->_has_admin_access(profile); }
+        asio::io_context*   event_proc() override { return &_owner->_event_proc; }
+        rpc::session_group* rpc() override { return &_owner->_rpc; }
     };
 
    private:
@@ -128,7 +130,8 @@ class terminal : public if_terminal
 
     // RPC connection context
     shared_ptr<terminal_monitor> _rpc_monitor = std::make_shared<terminal_monitor>(this, _logging);
-    msgpack::rpc::context        _rpc;
+    rpc::session_group           _rpc;
+    rpc::service                 _rpc_service;
 
     // Connection
     asio::ip::tcp::acceptor _acceptor{_thread_pool};
@@ -143,7 +146,7 @@ class terminal : public if_terminal
     locked<message::tty_output_t> _tty_obuf;
 
     // Sessions
-    using session_table_t = std::unordered_map<session_profile const*, terminal_session_descriptor>;
+    using session_table_t = std::unordered_map<session_profile_view, terminal_session_descriptor>;
     locked<session_table_t> _verified_sessions;
 
     // States
@@ -166,7 +169,7 @@ class terminal : public if_terminal
    private:
     auto CPPH_LOGGER() const { return _logging.get(); }
     void _tick_worker();
-    auto _build_service() -> msgpack::rpc::service_info;
+    auto _build_service() -> rpc::service;
 
     void _on_char_buf(char const*, size_t);
 
@@ -178,7 +181,7 @@ class terminal : public if_terminal
     void _rpc_handle_suggest(session_profile_view profile, message::service::suggest_result_t*, string const& content, int cursor) {}
     void _rpc_handle_command(session_profile_view profile, void*, string const& content);
 
-    bool _has_basic_access(session_profile_view profile) const { return contains(*_verified_sessions.lock(), &profile); }
+    bool _has_basic_access(session_profile_view profile) const { return contains(*_verified_sessions.lock(), profile); }
     bool _has_admin_access(session_profile_view profile) const;
 
     auto _fn_basic_access() const { return bind_front(&self_t::_has_basic_access, this); }

@@ -34,7 +34,8 @@
 
 #include "asio/io_context.hpp"
 #include "asio/post.hpp"
-#include "perfkit/common/refl/msgpack-rpc/context.hxx"
+#include "perfkit/common/refl/object.hxx"
+#include "perfkit/common/refl/rpc/rpc.hxx"
 #include "perfkit/configs.h"
 #include "perfkit/logging.h"
 
@@ -111,7 +112,7 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
         registry_context->associated_keys.insert(config_key);
     }
 
-    message::notify::new_config_category(*_rpc).notify_all(rg->id(), key, root, _host->fn_basic_access());
+    message::notify::new_config_category(_rpc).notify(rg->id(), key, root, _host->fn_basic_access());
 
     rg->on_update.add_weak(
             _monitor_anchor,
@@ -127,7 +128,7 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
     rg->on_destroy.add_weak(
             _monitor_anchor,
             [this](config_registry* rg) {
-                message::notify::deleted_config_category(*_rpc).notify_all(rg->name());
+                message::notify::deleted_config_category(_rpc).notify(rg->name());
 
                 namespace views = ranges::views;
                 std::vector<int64_t> keys_all;
@@ -248,7 +249,7 @@ void config_context::_handle_update(
                         nlohmann::json::to_msgpack(content, nlohmann::detail::output_adapter<char>(*buf));
                     });
 
-                    message::notify::config_entity_update(*_rpc).notify_all(payload, _host->fn_basic_access());
+                    message::notify::config_entity_update(_rpc).notify(payload, _host->fn_basic_access());
                 }
 
                 _pending_updates.clear();
