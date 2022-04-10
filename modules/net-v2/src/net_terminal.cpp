@@ -35,8 +35,10 @@
 #include "perfkit/common/functional.hxx"
 #include "perfkit/common/refl/object.hxx"
 #include "perfkit/common/refl/rpc/connection/asio.hxx"
+#include "perfkit/common/refl/rpc/protocol/msgpack-rpc.hxx"
 #include "perfkit/common/refl/rpc/rpc.hxx"
 #include "perfkit/common/refl/rpc/service.hxx"
+#include "perfkit/common/refl/rpc/session_builder.hxx"
 #include "perfkit/common/template_utils.hxx"
 #include "perfkit/configs.h"
 #include "utils.hpp"
@@ -83,6 +85,8 @@ void perfkit::net::terminal::_start_()
 
 void perfkit::net::terminal::_open_acceptor()
 {
+    if (_acceptor.is_open()) { _acceptor.close(); }
+
     using namespace asio::ip;
     tcp::endpoint ep{make_address(_info.bind_ip), _info.bind_port};
     CPPH_INFO("accept>> Binding acceptor to {}:{} ...", _info.bind_ip, _info.bind_port);
@@ -93,12 +97,39 @@ void perfkit::net::terminal::_open_acceptor()
     CPPH_INFO("accept>> Bind successful. Starting listening ...");
     _acceptor.listen();
 
+    // Create event procedure
+
     // TODO: Implement accept logic
     auto fn_acpt = y_combinator{
-            [](auto&& self, auto&& ec) {
-                if (ec) {
+            [this](auto&& self, auto&& ec) {
+                if (ec) { throw asio::system_error(ec); }
+
+                {
+                    auto ep = _accept_socket.remote_endpoint();
+                    CPPH_INFO("accept>> Accepting new connection {}:{} ...",
+                              ep.address().to_string(), ep.port());
                 }
+
+                auto socket = exchange(_accept_socket, tcp::socket{_thread_pool});
+                auto session = rpc::session_ptr{};
+
+                //
+                archive::archive_config conf;
+                conf.use_integer_key = true;
+
+                rpc::session::builder{}
+                        .protocol(make_unique<rpc::protocol::msgpack>(conf, conf))
+                        .connection(make_unique<rpc::asio_stream<tcp>>(std::move(socket)))
+                        .event_procedure(_sess_evt_proc)
+                        .service(_rpc_service)
+                        .monitor(_rpc_monitor)
+                        .build_to(session);
+
+                _rpc.add_session(session);
+                _acceptor.async_accept(_accept_socket, self);
             }};
+
+    _acceptor.async_accept(_accept_socket, fn_acpt);
 
     CPPH_INFO("accept>> Now socket is listening ...");
 }
@@ -146,8 +177,8 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
 {
     using namespace message;
 
-    auto service = rpc::service::empty_service();
-    rpc::service::builder{}
+    auto builder = rpc::service::builder{};
+    builder
             .route(service::suggest, bind_front(&self_t::_rpc_handle_suggest, this))
             .route(service::invoke_command, bind_front(&self_t::_rpc_handle_command, this))
             .route(service::login, bind_front(&self_t::_rpc_handle_login, this))
@@ -179,7 +210,7 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
                        _ctx_config.rpc_republish_all_registries();
                    });
 
-    return service;
+    return builder.build();
 }
 
 std::optional<std::string> perfkit::net::terminal::fetch_command(std::chrono::milliseconds timeout)
@@ -214,7 +245,7 @@ void perfkit::net::terminal::_on_char_buf(const char* data, size_t size)
 
 void perfkit::net::terminal::_on_session_list_change()
 {
-    auto const num_sessions = _rpc.size();
+    auto const num_sessions = (_rpc.gc(), _rpc.size());
     CPPH_INFO("{} sessions are currently active.", num_sessions);
 
     bool const should_start_monitoring = num_sessions;
@@ -331,4 +362,19 @@ void perfkit::net::terminal_monitor::on_session_expired(session_profile_view pro
         CPPH_INFO("Unauthorized session [{}]>> Disconnecting ... ", profile->peer_name);
 
     asio::post(_owner->_event_proc, bind_front(&terminal::_on_session_list_change, _owner));
+}
+
+void perfkit::net::terminal::session_event_procedure_t::post_rpc_completion(perfkit::function<void()>&& fn)
+{
+    assert(false && "This may not be called as terminal never use RPC feature!");
+}
+
+void perfkit::net::terminal::session_event_procedure_t::post_handler_callback(perfkit::function<void()>&& fn)
+{
+    asio::post(_owner->_event_proc, std::move(fn));
+}
+
+void perfkit::net::terminal::session_event_procedure_t::post_internal_message(perfkit::function<void()>&& fn)
+{
+    asio::post(_owner->_thread_pool, std::move(fn));
 }

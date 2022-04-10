@@ -114,6 +114,19 @@ class terminal : public if_terminal
         rpc::session_group* rpc() override { return &_owner->_rpc; }
     };
 
+    class session_event_procedure_t : public rpc::if_event_proc
+    {
+        terminal* _owner;
+
+       public:
+        explicit session_event_procedure_t(terminal* owner) : _owner(owner) {}
+
+       public:
+        void post_rpc_completion(function<void()>&& fn) override;
+        void post_handler_callback(function<void()>&& fn) override;
+        void post_internal_message(function<void()>&& fn) override;
+    };
+
    private:
     adapter_t     _adapter{this};
     terminal_info _info;
@@ -135,7 +148,11 @@ class terminal : public if_terminal
 
     // Connection
     asio::ip::tcp::acceptor _acceptor{_event_proc};
-    asio::ip::tcp::socket   _acept_socket{_event_proc};
+    asio::ip::tcp::socket   _accept_socket{_thread_pool};
+
+    //
+    using session_event_procedure_ptr = shared_ptr<session_event_procedure_t>;
+    session_event_procedure_ptr _sess_evt_proc = make_shared<session_event_procedure_t>(this);
 
     // Commands that are pending execution
     notify_queue<string> _pending_commands;
