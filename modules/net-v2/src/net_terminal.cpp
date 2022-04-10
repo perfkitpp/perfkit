@@ -113,12 +113,8 @@ void perfkit::net::terminal::_open_acceptor()
                 auto socket = exchange(_accept_socket, tcp::socket{_thread_pool});
                 auto session = rpc::session_ptr{};
 
-                //
-                archive::archive_config conf;
-                conf.use_integer_key = true;
-
                 rpc::session::builder{}
-                        .protocol(make_unique<rpc::protocol::msgpack>(conf, conf))
+                        .protocol(make_unique<rpc::protocol::msgpack>())
                         .connection(make_unique<rpc::asio_stream<tcp>>(std::move(socket)))
                         .event_procedure(_sess_evt_proc)
                         .service(_rpc_service)
@@ -140,6 +136,9 @@ void perfkit::net::terminal::_tick_worker()
         _event_proc.restart();
         _event_proc.run_for(2500ms);
     } catch (asio::system_error& ec) {
+        if (ec.code().value() == asio::error::operation_aborted) { return; }
+        if (ec.code().value() == asio::error::connection_aborted) { return; }
+
         CPPH_ERROR("System error! ({}): {}", ec.code().value(), ec.what());
         CPPH_ERROR("Sleep for 3 seconds before restart ...");
 
