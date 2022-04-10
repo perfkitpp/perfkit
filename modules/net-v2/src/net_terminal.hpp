@@ -134,7 +134,8 @@ class terminal : public if_terminal
     rpc::service                 _rpc_service;
 
     // Connection
-    asio::ip::tcp::acceptor _acceptor{_thread_pool};
+    asio::ip::tcp::acceptor _acceptor{_event_proc};
+    asio::ip::tcp::socket   _acept_socket{_event_proc};
 
     // Commands that are pending execution
     notify_queue<string> _pending_commands;

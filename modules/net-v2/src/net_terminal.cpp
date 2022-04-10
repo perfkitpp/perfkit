@@ -33,9 +33,11 @@
 #include <spdlog/spdlog.h>
 
 #include "perfkit/common/functional.hxx"
+#include "perfkit/common/refl/object.hxx"
 #include "perfkit/common/refl/rpc/connection/asio.hxx"
 #include "perfkit/common/refl/rpc/rpc.hxx"
 #include "perfkit/common/refl/rpc/service.hxx"
+#include "perfkit/common/template_utils.hxx"
 #include "perfkit/configs.h"
 #include "utils.hpp"
 
@@ -92,6 +94,12 @@ void perfkit::net::terminal::_open_acceptor()
     _acceptor.listen();
 
     // TODO: Implement accept logic
+    auto fn_acpt = y_combinator{
+            [](auto&& self, auto&& ec) {
+                if (ec) {
+                }
+            }};
+
     CPPH_INFO("accept>> Now socket is listening ...");
 }
 
@@ -124,8 +132,11 @@ perfkit::net::terminal::~terminal()
     // Stop
     _event_proc_guard = {};
 
-    // Wait all async
+    // Wait all async operations
     _worker.join();
+
+    // Stop thread pool
+    _thread_pool.stop();
     _thread_pool.join();
 
     detail::input_rollback();
