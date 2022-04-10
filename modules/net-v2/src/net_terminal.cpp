@@ -33,7 +33,7 @@
 #include <spdlog/spdlog.h>
 
 #include "perfkit/common/functional.hxx"
-#include "perfkit/common/refl/msgpack-rpc/asio.hxx"
+#include "perfkit/common/refl/rpc/connection/asio.hxx"
 #include "perfkit/common/refl/rpc/rpc.hxx"
 #include "perfkit/common/refl/rpc/service.hxx"
 #include "perfkit/configs.h"
@@ -90,10 +90,6 @@ void perfkit::net::terminal::_open_acceptor()
     _acceptor.bind(ep);
     CPPH_INFO("accept>> Bind successful. Starting listening ...");
     _acceptor.listen();
-
-    msgpack::rpc::session_config config;
-    config.timeout = 10s;
-    config.use_integer_key = true;
 
     // TODO: Implement accept logic
     CPPH_INFO("accept>> Now socket is listening ...");
