@@ -27,6 +27,7 @@
 //
 #include <fstream>
 #include <list>
+#include <sstream>
 
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/range/conversion.hpp>
@@ -329,7 +330,11 @@ bool perfkit::configs::import_file(std::string_view path)
     }
 
     try {
-        auto js = json::parse(std::istream_iterator<char>{fs}, std::istream_iterator<char>{});
+        std::stringstream ss;
+        ss << fs.rdbuf();
+
+        auto js = json::parse(ss.str());
+
         if (js.is_object()) {
             return import_from(js);
         } else {
