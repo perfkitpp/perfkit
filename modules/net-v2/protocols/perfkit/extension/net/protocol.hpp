@@ -29,7 +29,9 @@
 //
 
 #pragma once
+#include <chrono>
 #include <list>
+#include <variant>
 
 #include "perfkit/common/refl/core.hxx"
 #include "perfkit/common/refl/rpc/signature.hxx"
@@ -42,6 +44,9 @@ namespace perfkit::net::message {
 using std::list;
 using std::string;
 using std::vector;
+
+using std::chrono::microseconds;
+using std::chrono::milliseconds;
 
 using msgpack_archive_t = binary<string>;
 
@@ -86,6 +91,47 @@ enum class auth_level_t {
     unauthorized,
     basic_access,
     admin_access
+};
+
+/**
+ * Trace descriptor
+ */
+struct tracer_descriptor_t {
+    CPPH_REFL_DECLARE_c;
+
+    uint64_t     tracer_id;
+    string       name;
+    int          priority;
+    milliseconds epoch;
+};
+
+using trace_payload_t = std::variant<nullptr_t, microseconds, int64_t, double, string, bool>;
+
+struct trace_info_t {
+    CPPH_REFL_DECLARE_c;
+
+    string   name;
+
+    uint64_t hash;             // Unique hash
+    uint64_t owner_tracer_id;  // Owning tracer's id
+    int      index;            // Unique occurrence order. As nodes never expires, this value can simply be used as index.
+    int      parent_index;     // Birth index of parent node. Required to build hierarchy. -1 if root.
+};
+
+struct trace_update_t {
+    CPPH_REFL_DECLARE_c;
+
+    uint64_t        index;  // To lookup corresponding information ...
+
+    int64_t         fence_value;
+    int             occurrence_order;
+
+    bool            flags[2];
+    trace_payload_t payload;
+
+   public:
+    auto& ref_subscr() { return flags[0]; }
+    auto& ref_fold() { return flags[1]; }
 };
 
 //
@@ -140,6 +186,10 @@ struct notify {
     /**
      * Trace update notification
      */
+    DEFINE_RPC(new_tracer, void(tracer_descriptor_t));
+    DEFINE_RPC(deleted_tracer, void(uint64_t tracer_id));
+    DEFINE_RPC(new_trace_node, void(uint64_t tracer_id, vector<trace_info_t>));
+    DEFINE_RPC(trace_node_update, void(uint64_t tracer_id, vector<trace_update_t>));
 
     /**
      * Graphic class changes
@@ -188,6 +238,23 @@ struct service {
     DEFINE_RPC(invoke_command, void(string));
 
     /**
+     * Request republish all registry lists.
+     */
+    DEFINE_RPC(request_republish_registries, void());
+
+    /**
+     * Request fetch trace from given fence.
+     *
+     * Set occurrence_index -1
+     */
+    DEFINE_RPC(trace_request_update, void(uint64_t tracer_id, int64_t fence, int occurrence_index));
+
+    /**
+     * Request trace state manipulation
+     */
+    DEFINE_RPC(trace_request_control, void(uint64_t tracer_id, int index, bool subscr, bool fold));
+
+    /**
      * Command suggest
      */
     struct suggest_result_t {
@@ -204,7 +271,6 @@ struct service {
      * Update config
      */
     DEFINE_RPC(update_config_entity, void(config_entity_update_t));
-    DEFINE_RPC(request_republish_config_registries, void());
 };
 
 #undef DEFINE_RPC

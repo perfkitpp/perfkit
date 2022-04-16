@@ -32,8 +32,10 @@
 
 #include "perfkit/common/refl/object.hxx"
 #include "perfkit/common/refl/types/binary.hxx"
+#include "perfkit/common/refl/types/chrono.hxx"
 #include "perfkit/common/refl/types/list.hxx"
 #include "perfkit/common/refl/types/tuple.hxx"
+#include "perfkit/common/refl/types/variant.hxx"
 
 namespace perfkit::net::message {
 CPPH_REFL_DEFINE_OBJECT_c(
@@ -72,4 +74,17 @@ CPPH_REFL_DEFINE_OBJECT_c(
 CPPH_REFL_DEFINE_OBJECT_c(
         service::suggest_result_t, (),
         (replace_range, 1), (replaced_content, 2), (candidate_words, 3));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        tracer_descriptor_t, (),
+        (tracer_id, 1), (name, 2), (priority, 3), (epoch, 4));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        trace_info_t, (),
+        (name, 1), (hash, 11), (owner_tracer_id, 2), (index, 3), (parent_index, 4));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        trace_update_t, (),
+        (index, 4), (fence_value, 1), (occurrence_order, 2), (flags, 3), (payload, 5));
+
 }  // namespace perfkit::net::message

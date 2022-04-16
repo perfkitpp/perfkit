@@ -97,9 +97,7 @@ void perfkit::net::terminal::_open_acceptor()
     CPPH_INFO("accept>> Bind successful. Starting listening ...");
     _acceptor.listen();
 
-    // Create event procedure
-
-    // TODO: Implement accept logic
+    // Implement accept logic
     auto fn_acpt = y_combinator{
             [this](auto&& self, auto&& ec) {
                 if (ec) { throw asio::system_error(ec); }
@@ -203,7 +201,7 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
                        _verify_admin_access(prof);
                        _ctx_config.rpc_update_request(content);
                    })
-            .route(service::request_republish_config_registries,
+            .route(service::request_republish_registries,
                    [this](auto&& prof, auto&&) {
                        _verify_basic_access(prof);
                        _ctx_config.rpc_republish_all_registries();
