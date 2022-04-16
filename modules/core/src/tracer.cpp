@@ -150,9 +150,20 @@ bool tracer::_deliver_previous_result()
 
     // copies all messages and put them to cache buffer to prevent memory reallocation
     // if any entity is folded, skip all of its subtree
-    this->_local_reused_memory.clear();
-    for (auto& [hash, entity] : _table) {
+    trace_fetch_proxy proxy{&_table, _fence_active};
+    on_fetch.invoke(proxy);
+
+    this->_fence_latest = this->_fence_active;
+    return true;
+}
+
+void tracer::trace_fetch_proxy::fetch_tree(tracer::fetched_traces* out) const
+{
+    out->clear();
+    for (auto& [hash, entity] : *_table) {
         bool folded = false;
+
+        // Find if any ancestor node is folded
         for (auto parent = entity.parent; parent; parent = parent->parent)
             if (parent->is_folded.load(std::memory_order_relaxed)) {
                 folded = true;
@@ -162,13 +173,25 @@ bool tracer::_deliver_previous_result()
         if (folded)
             continue;
 
-        this->_local_reused_memory.emplace_back(entity.body);
+        out->emplace_back(entity.body);
+    }
+}
+
+size_t tracer::trace_fetch_proxy::fetch_diff(tracer::fetched_traces* out, size_t begin) const
+{
+    out->clear();
+
+    for (auto& [hash, entity] : *_table) {
+        // Any obsolete node will not be included.
+        if (entity.body.fence < begin)
+            continue;
+
+        out->emplace_back(entity.body);
     }
 
-    on_fetch.invoke(_local_reused_memory);
-
-    this->_fence_latest = this->_fence_active;
-    return true;
+    // Return current fence. (Uses cached value to return actual fence value even if there's no
+    //  valid entity update with given fence range)
+    return _fence_latest;
 }
 
 namespace {

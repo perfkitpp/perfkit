@@ -63,7 +63,7 @@ class trace_watcher : public if_watcher
     void tweak(uint64_t key, bool const* subscr, bool const* fold);
 
    private:
-    void _dispatch_fetched_trace(std::weak_ptr<perfkit::tracer> tracer, tracer::fetched_traces const&);
+    void _dispatch_fetched_trace(std::weak_ptr<perfkit::tracer> tracer, tracer::trace_fetch_proxy);
     void _dispatcher_impl_on_io(const std::shared_ptr<perfkit::tracer>& tracer, tracer::fetched_traces& traces);
 
     void _on_new_tracer(perfkit::tracer* tracer);

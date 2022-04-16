@@ -276,7 +276,11 @@ class _trace_manip
         ref->on_fetch
                 += [promise = &promise,
                     valid = std::weak_ptr{valid_marker}]  //
-                (auto const& traces) {
+                (tracer::trace_fetch_proxy const& proxy) {
+                    tracer::fetched_traces traces;
+                    traces.reserve(64);
+                    proxy.fetch_tree(&traces);
+
                     if (not valid.expired())
                         promise->set_value(traces);
 

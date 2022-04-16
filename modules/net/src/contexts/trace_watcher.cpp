@@ -76,11 +76,11 @@ void trace_watcher::stop()
 }
 
 void trace_watcher::_dispatch_fetched_trace(
-        std::weak_ptr<perfkit::tracer>         tracer,
-        perfkit::tracer::fetched_traces const& traces)
+        std::weak_ptr<perfkit::tracer>     tracer,
+        perfkit::tracer::trace_fetch_proxy proxy)
 {
     auto buf = _pool_traces.checkout();
-    buf->assign(traces.begin(), traces.end());
+    proxy.fetch_tree(&*buf);
 
     io->dispatch(
             [this,

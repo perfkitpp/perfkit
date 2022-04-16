@@ -239,9 +239,61 @@ class tracer : public std::enable_shared_from_this<tracer>
     using _entity_ty = _trace::_entity_ty;
     using trace = _trace::trace;
     using proxy = tracer_proxy;
+    using trace_table_type = std::unordered_map<uint64_t, _trace::_entity_ty>;
 
     static_assert(std::is_nothrow_move_assignable_v<_trace::trace>);
     static_assert(std::is_nothrow_move_constructible_v<_trace::trace>);
+
+   private:
+    friend class tracer_proxy;
+
+    // 0. fork가 호출되면 시퀀스 번호가 1 증가
+    // 1. 새로운 문자열로 프록시 최초 생성 시 고정 슬롯 할당.
+    // 2. 프록시가 데이터 넣을 때마다(타이머는 소멸 시) 데이터 블록의 백 버퍼 맵에 이름-값 쌍 할당
+    // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
+    //    이 때 최신 시퀀스 넘버도 같이 받는다.
+    trace_table_type               _table;
+    size_t                         _fence_active = 0;  // active sequence number of back buffer.
+    size_t                         _fence_latest = 0;
+    size_t                         _interval_counter = 0;
+
+    int                            _order_active = 0;  // temporary variable for single iteration
+    std::atomic_bool               _pending_fetch;
+
+    int                            _occurrence_order;
+    std::string const              _name;
+
+    std::vector<_entity_ty const*> _stack;
+    clock_type::time_point         _last_fork;
+    clock_type::time_point         _birth = clock_type::now();
+
+    std::thread::id                _working_thread_id = {};
+
+   public:
+    // Provides fetching interface
+    class trace_fetch_proxy
+    {
+        friend class tracer;
+        trace_table_type* _table;
+        size_t            _fence_latest;
+
+       public:
+        explicit trace_fetch_proxy(
+                trace_table_type* table,
+                size_t            fence)
+                : _table(table),
+                  _fence_latest(fence) {}
+
+       public:
+        //! Fetch traces in tree form. Folded entities won't be fetched.
+        void fetch_tree(fetched_traces* out) const;
+
+        //! Fetch traces by diffs.
+        size_t fetch_diff(fetched_traces* out, size_t begin) const;
+
+        //! Simply get cached latest fence value
+        size_t fence() const noexcept { return _fence_latest; }
+    };
 
    public:
     /**
@@ -262,9 +314,9 @@ class tracer : public std::enable_shared_from_this<tracer>
     static std::vector<std::shared_ptr<tracer>> all() noexcept;
 
    public:
-    static event<tracer*>&       on_new_tracer();
-    event<tracer*>               on_destroy;
-    event<fetched_traces const&> on_fetch;
+    static event<tracer*>&   on_new_tracer();
+    event<tracer*>           on_destroy;
+    event<trace_fetch_proxy> on_fetch;
 
    public:
     /**
@@ -322,32 +374,6 @@ class tracer : public std::enable_shared_from_this<tracer>
     _trace::_entity_ty*                        _fork_branch(_trace::_entity_ty const* parent, std::string_view name, bool initial_subscribe_state);
     static std::vector<std::weak_ptr<tracer>>& _all() noexcept;
     void                                       _try_pop(_trace::_entity_ty const* body);
-
-   private:
-    friend class tracer_proxy;
-
-    // 0. fork가 호출되면 시퀀스 번호가 1 증가
-    // 1. 새로운 문자열로 프록시 최초 생성 시 고정 슬롯 할당.
-    // 2. 프록시가 데이터 넣을 때마다(타이머는 소멸 시) 데이터 블록의 백 버퍼 맵에 이름-값 쌍 할당
-    // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
-    //    이 때 최신 시퀀스 넘버도 같이 받는다.
-    std::unordered_map<uint64_t, _trace::_entity_ty> _table;
-    size_t                                           _fence_active = 0;  // active sequence number of back buffer.
-    size_t                                           _fence_latest = 0;
-    size_t                                           _interval_counter = 0;
-
-    int                                              _order_active = 0;  // temporary variable for single iteration
-    std::atomic_bool                                 _pending_fetch;
-    fetched_traces                                   _local_reused_memory;
-
-    int                                              _occurrence_order;
-    std::string const                                _name;
-
-    std::vector<_entity_ty const*>                   _stack;
-    clock_type::time_point                           _last_fork;
-    clock_type::time_point                           _birth = clock_type::now();
-
-    std::thread::id                                  _working_thread_id = {};
 };
 
 using tracer_ptr = std::shared_ptr<tracer>;
