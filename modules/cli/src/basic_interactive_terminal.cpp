@@ -56,7 +56,8 @@ using std::chrono::steady_clock;
 
 basic_interactive_terminal::basic_interactive_terminal()
         : _sink{std::make_shared<spdlog::sinks::stdout_color_sink_mt>()}
-{}
+{
+}
 
 std::optional<std::string> basic_interactive_terminal::fetch_command(milliseconds timeout)
 {
@@ -154,7 +155,7 @@ basic_interactive_terminal::basic_interactive_terminal()
         glog()->info("$TERM={}", env_term);
     }
 
-    _registry.root()->add_subcommand(
+    commands()->root()->add_subcommand(
             "history",
             [this](auto&&) -> bool {
                 auto pivot = _cmd_counter - _cmd_history.size();
@@ -166,7 +167,7 @@ basic_interactive_terminal::basic_interactive_terminal()
                 return true;
             });
 
-    _registry.add_invoke_hook(
+    commands()->add_invoke_hook(
             [this](std::string& s) {
                 if (s.empty()) { return false; }
                 if (s[0] == '!') {

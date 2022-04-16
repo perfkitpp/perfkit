@@ -41,7 +41,6 @@ class basic_interactive_terminal : public if_terminal
     basic_interactive_terminal();
 
    public:
-    commands::registry*        commands() override { return &_registry; }
     std::optional<std::string> fetch_command(milliseconds timeout) override;
     void                       write(std::string_view str) override;
     void                       push_command(std::string_view command) override;
@@ -51,7 +50,6 @@ class basic_interactive_terminal : public if_terminal
     void _unregister_autocomplete();
 
    private:
-    commands::registry                   _registry;
     std::shared_ptr<spdlog::sinks::sink> _sink;
 
     std::future<std::string>             _cmd;

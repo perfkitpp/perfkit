@@ -80,7 +80,7 @@ perfkit::terminal::net::terminal::terminal(
     _io.launch();
 
     // add command for dropping all connections
-    _commands.root()->add_subcommand("term-drop-all-connection", [this] { _io.close_all(); });
+    commands()->root()->add_subcommand("term-drop-all-connection", [this] { _io.close_all(); });
 }
 
 void perfkit::terminal::net::terminal::_char_handler(char c)
@@ -186,7 +186,7 @@ void perfkit::terminal::net::terminal::_on_suggest_request(
         perfkit::terminal::net::incoming::suggest_command&& s)
 {
     std::vector<std::string>  candidates;
-    auto                      nextstr = _commands.suggest(s.command, &candidates);
+    auto                      nextstr = commands()->suggest(s.command, &candidates);
 
     outgoing::suggest_command cmd;
     cmd.new_command = std::move(nextstr);

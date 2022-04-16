@@ -49,13 +49,20 @@ struct termination : std::exception {};
  */
 class if_terminal : public std::enable_shared_from_this<if_terminal>
 {
+   private:
+    std::unique_ptr<commands::registry> _command_registry;
+
+   public:
+    if_terminal();
+    virtual ~if_terminal();
+
    public:
     /**
      * Reference to registered command registry.
      *
      * @return reference to registered command registry.
      */
-    virtual commands::registry* commands() = 0;
+    commands::registry* commands() { return _command_registry.get(); }
 
     /**
      * Invoke command

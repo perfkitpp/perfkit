@@ -138,7 +138,6 @@ class terminal : public if_terminal
     thread::worker        _worker;
 
     // Basics
-    commands::registry _cmd;
     logger_ptr         _logging = share_logger("PERFKIT:NET");
 
     // RPC connection context
@@ -214,7 +213,6 @@ class terminal : public if_terminal
     optional<string>    fetch_command(milliseconds timeout) override;
     void                push_command(string_view command) override;
     void                write(string_view str) override;
-    commands::registry* commands() override { return &_cmd; }
 };
 
 }  // namespace perfkit::net

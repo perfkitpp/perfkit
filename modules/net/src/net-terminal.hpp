@@ -60,11 +60,6 @@ class terminal : public if_terminal
         _worker_user_command.joinable() && (_worker_user_command.join(), 0);
     }
 
-    commands::registry* commands() override
-    {
-        return &_commands;
-    }
-
     std::optional<std::string> fetch_command(milliseconds timeout) override
     {
         return _command_queue.try_pop(timeout);
@@ -119,7 +114,6 @@ class terminal : public if_terminal
     outgoing::session_reset   _init_msg;
 
     dispatcher                _io;
-    commands::registry        _commands;
 
     std::atomic_bool          _active = true;
 

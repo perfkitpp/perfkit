@@ -509,4 +509,11 @@ size_t perfkit::if_terminal::invoke_queued_commands(std::chrono::milliseconds ti
 
     return n_proc;
 }
+
+perfkit::if_terminal::if_terminal()
+        : _command_registry(make_unique<commands::registry>())
+{
+}
+
+perfkit::if_terminal::~if_terminal() = default;
 // namespace perfkit::terminal
