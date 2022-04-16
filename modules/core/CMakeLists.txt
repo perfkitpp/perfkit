@@ -18,6 +18,22 @@ target_sources(
         src/logging.cpp
 )
 
+if (WIN32)
+    target_sources(
+            ${PROJECT_NAME}
+
+            PRIVATE
+            src/terminal-windows.cpp
+    )
+else ()
+    target_sources(
+            ${PROJECT_NAME}
+
+            PRIVATE
+            src/terminal-linux.cpp
+    )
+endif ()
+
 
 target_include_directories(
         ${PROJECT_NAME}

@@ -55,23 +55,8 @@ int main(void)
     perfkit::terminal::register_conffile_io_commands(&*term);
 
     volatile bool running = true;
-    term->add_command(
-            "quit",
-            [&] {
-                running = false;
-            });
-
-    std::thread thr{
-            [&] {
-                for (;;) {
-                    char buf[2048];
-                    auto n = fgets(buf, sizeof buf, stdin);
-                    buf[strlen(buf) - 1] = 0;
-
-                    if (not running) { return; }
-                    term->push_command(buf);
-                }
-            }};
+    term->add_command("quit", [&] { running = false; });
+    term->launch_stdin_fetch_thread();
 
     while (running) {
         conf_global::update();
@@ -83,6 +68,4 @@ int main(void)
         spdlog::info("command: [{}]", *cmd);
         term->commands()->invoke_command(*cmd);
     }
-
-    thr.join();
 }

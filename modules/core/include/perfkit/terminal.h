@@ -50,7 +50,8 @@ struct termination : std::exception {};
 class if_terminal : public std::enable_shared_from_this<if_terminal>
 {
    private:
-    std::unique_ptr<commands::registry> _command_registry;
+    struct impl;
+    std::unique_ptr<impl> _self;
 
    public:
     if_terminal();
@@ -62,7 +63,7 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
      *
      * @return reference to registered command registry.
      */
-    commands::registry* commands() { return _command_registry.get(); }
+    commands::registry* commands();
 
     /**
      * Invoke command
@@ -94,6 +95,13 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
      * @return number of processed commands
      */
     size_t invoke_queued_commands(milliseconds timeout = {});
+
+    /**
+     * Launch asynchronous stdin fetcher thread.
+     *
+     * STDIN input will redirected to 'push_command()'
+     */
+    void launch_stdin_fetch_thread();
 
    private:
     using cmd_args_view = array_view<std::string_view>;

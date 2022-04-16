@@ -510,10 +510,47 @@ size_t perfkit::if_terminal::invoke_queued_commands(std::chrono::milliseconds ti
     return n_proc;
 }
 
-perfkit::if_terminal::if_terminal()
-        : _command_registry(make_unique<commands::registry>())
+struct perfkit::if_terminal::impl {
+    commands::registry commands;
+
+    std::thread        worker_stdin;
+    std::atomic_bool   is_shutting_down = false;
+};
+
+perfkit::if_terminal::if_terminal() : _self(make_unique<impl>())
 {
 }
 
-perfkit::if_terminal::~if_terminal() = default;
-// namespace perfkit::terminal
+perfkit::commands::registry* perfkit::if_terminal::commands()
+{
+    return &_self->commands;
+}
+
+namespace perfkit::platform {
+bool poll_stdin(int milliseconds, std::string* out_content);
+}
+
+void perfkit::if_terminal::launch_stdin_fetch_thread()
+{
+    // Multiple call to this function is permitted, but ignored.
+    if (_self->worker_stdin.joinable()) { return; }
+
+    auto fnWork
+            = [this] {
+                  std::string buffer;
+
+                  while (not _self->is_shutting_down.load(std::memory_order_acquire))
+                      if (platform::poll_stdin(500, &buffer)) {
+                          push_command(buffer);
+                          buffer.clear();
+                      }
+              };
+
+    _self->worker_stdin = std::thread{fnWork};
+}
+
+perfkit::if_terminal::~if_terminal()
+{
+    _self->is_shutting_down = true;
+    if (_self->worker_stdin.joinable()) { _self->worker_stdin.join(); }
+}
