@@ -477,7 +477,7 @@ class config
 
         // define serializer
         detail::config_base::serializer fn_d = [this](nlohmann::json& out, void const* in) {
-            nlohmann::to_json(out, *(Ty_ const*)in);
+            out = *(Ty_ const*)in;
         };
 
         // set reference attribute

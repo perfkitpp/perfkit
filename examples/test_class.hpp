@@ -34,8 +34,7 @@
 #include <perfkit/logging.h>
 #include <perfkit/traces.h>
 
-struct test_config_structure_nested
-{
+struct test_config_structure_nested {
     int                                     x = 0;
     int                                     y = 0;
     double                                  z = 0;
@@ -48,8 +47,7 @@ struct test_config_structure_nested
             x, y, z, flag, path, list);
 };
 
-struct test_config_structure
-{
+struct test_config_structure {
     int                          x = 0;
     int                          y = 0;
     double                       z = 0;
@@ -88,6 +86,10 @@ PERFKIT_T_CATEGORY(
         PERFKIT_T_CONFIGURE(t_intarray, std::array<int, 3>{})
                 .min({4, 3, 1})
                 .max({61, 88, 71})
+                .confirm();
+
+        PERFKIT_T_CONFIGURE(t_string_oneof, "")
+                .one_of({"hello", "string2", "string3", "string4", "ohoho"})
                 .confirm();
 
         PERFKIT_T_CONFIGURE(t_intvector, std::vector<int>{{3, 45, 1, 41}}).confirm();
