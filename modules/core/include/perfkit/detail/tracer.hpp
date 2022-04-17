@@ -41,22 +41,24 @@
 #include "perfkit/common/hasher.hxx"
 #include "perfkit/common/spinlock.hxx"
 
-namespace fmt {}
+namespace fmt {
+}
 
 namespace perfkit {
 class tracer;
 
-using clock_type = std::chrono::steady_clock;
+using std::chrono::steady_clock;
+using std::chrono::system_clock;
 using trace_variant_type = std::variant<
-        nullptr_t, clock_type::duration, int64_t, double, std::string, bool>;
+        nullptr_t, steady_clock::duration, int64_t, double, std::string, bool>;
 
 using trace_key_t = basic_key<class tracer>;
 
 namespace _trace {
 struct trace {
-    std::optional<clock_type::duration> as_timer() const noexcept
+    std::optional<steady_clock::duration> as_timer() const noexcept
     {
-        if (auto ptr = std::get_if<clock_type::duration>(&data)) { return *ptr; }
+        if (auto ptr = std::get_if<steady_clock::duration>(&data)) { return *ptr; }
         return {};
     }
 
@@ -117,7 +119,7 @@ constexpr bool is_duration_v = false;
 
 template <typename Ty_>
 constexpr bool is_duration_v<
-        Ty_, std::void_t<decltype(std::chrono::duration_cast<clock_type::duration>(
+        Ty_, std::void_t<decltype(std::chrono::duration_cast<steady_clock::duration>(
                      std::declval<Ty_>()))>> = true;
 
 class tracer_proxy
@@ -189,7 +191,7 @@ class tracer_proxy
         } else if constexpr (std::is_same_v<other_t, std::string_view>) {
             _string() = static_cast<std::string>(std::forward<Other_>(oty));
         } else if constexpr (is_duration_v<other_t>) {
-            _data() = std::chrono::duration_cast<clock_type::duration>(oty);
+            _data() = std::chrono::duration_cast<steady_clock::duration>(oty);
         }
         return *this;
     }
@@ -225,15 +227,15 @@ class tracer_proxy
     tracer_proxy() noexcept { (void)0; };
 
    private:
-    tracer*                _owner = nullptr;
-    _trace::_entity_ty*    _ref = nullptr;
-    clock_type::time_point _epoch_if_required = {};
+    tracer*                  _owner = nullptr;
+    _trace::_entity_ty*      _ref = nullptr;
+    steady_clock::time_point _epoch_if_required = {};
 };
 
 class tracer : public std::enable_shared_from_this<tracer>
 {
    public:
-    using clock_type = perfkit::clock_type;
+    using steady_clock = perfkit::steady_clock;
     using variant_type = trace_variant_type;
     using fetched_traces = std::vector<_trace::trace>;
     using _entity_ty = _trace::_entity_ty;
@@ -264,8 +266,8 @@ class tracer : public std::enable_shared_from_this<tracer>
     std::string const              _name;
 
     std::vector<_entity_ty const*> _stack;
-    clock_type::time_point         _last_fork;
-    clock_type::time_point         _birth = clock_type::now();
+    steady_clock::time_point       _last_fork;
+    steady_clock::time_point       _birth = steady_clock::now();
 
     std::thread::id                _working_thread_id = {};
 
@@ -274,25 +276,28 @@ class tracer : public std::enable_shared_from_this<tracer>
     class trace_fetch_proxy
     {
         friend class tracer;
-        trace_table_type* _table;
-        size_t            _fence_latest;
+        tracer* _owner;
 
        public:
         explicit trace_fetch_proxy(
-                trace_table_type* table,
-                size_t            fence)
-                : _table(table),
-                  _fence_latest(fence) {}
+                tracer* owner)
+                : _owner(owner) {}
 
        public:
+        //! Get owner
+        auto owner() const noexcept { return _owner; }
+
         //! Fetch traces in tree form. Folded entities won't be fetched.
         void fetch_tree(fetched_traces* out) const;
 
         //! Fetch traces by diffs.
-        size_t fetch_diff(fetched_traces* out, size_t begin) const;
+        void fetch_diff(fetched_traces* out, size_t begin) const;
 
         //! Simply get cached latest fence value
-        size_t fence() const noexcept { return _fence_latest; }
+        size_t fence() const noexcept { return _owner->_fence_active; }
+
+        //! Returns number of elements
+        size_t num_all_nodes() const noexcept { return _owner->_table.size(); }
     };
 
    public:
@@ -309,9 +314,9 @@ class tracer : public std::enable_shared_from_this<tracer>
     ~tracer() noexcept;
 
    public:
-    static auto                                 create(int order, std::string_view name) -> std::shared_ptr<tracer>;
-    static auto                                 create(std::string_view name) { return create(0, name); }
-    static std::vector<std::shared_ptr<tracer>> all() noexcept;
+    static auto create(int order, std::string_view name) -> std::shared_ptr<tracer>;
+    static auto create(std::string_view name) { return create(0, name); }
+    static auto all() noexcept -> std::vector<std::shared_ptr<tracer>>;
 
    public:
     static event<tracer*>&   on_new_tracer();
@@ -365,6 +370,15 @@ class tracer : public std::enable_shared_from_this<tracer>
 
     auto& name() const noexcept { return _name; }
     auto  order() const noexcept { return _occurrence_order; }
+
+    /**
+     * Epoch time
+     */
+    auto epoch() const noexcept
+    {
+        auto delta = _birth - steady_clock::now();
+        return system_clock::now() + delta;
+    }
 
    private:
     uint64_t _hash_active(_trace::_entity_ty const* parent, std::string_view top);

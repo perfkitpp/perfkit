@@ -205,8 +205,10 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
                    [this](auto&& prof, auto&&) {
                        _verify_basic_access(prof);
                        _ctx_config.rpc_republish_all_registries();
+                       _ctx_trace.rpc_republish_all_tracers();
                    });
 
+    _ctx_trace.build_service(builder);
     return builder.build();
 }
 
@@ -259,9 +261,11 @@ void perfkit::net::terminal::_on_session_list_change()
         weak_ptr anchor = _session_active_state_anchor;
 
         _ctx_config.start_monitoring(anchor);
+        _ctx_trace.start_monitoring(anchor);
     } else {
         CPPH_INFO("Last session disposed ... Stopping monitoring.");
         _ctx_config.stop_monitoring();
+        _ctx_trace.stop_monitoring();
 
         _session_active_state_anchor = nullptr;
     }

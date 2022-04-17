@@ -38,6 +38,7 @@
 #include <asio/thread_pool.hpp>
 
 #include "context/config_context.hpp"
+#include "context/trace_context.hpp"
 #include "net_terminal_adapter.hpp"
 #include "perfkit/common/circular_queue.hxx"
 #include "perfkit/common/hasher.hxx"
@@ -138,7 +139,7 @@ class terminal : public if_terminal
     thread::worker        _worker;
 
     // Basics
-    logger_ptr         _logging = share_logger("PERFKIT:NET");
+    logger_ptr _logging = share_logger("PERFKIT:NET");
 
     // RPC connection context
     shared_ptr<terminal_monitor> _rpc_monitor = std::make_shared<terminal_monitor>(this, _logging);
@@ -177,11 +178,12 @@ class terminal : public if_terminal
 
     // Contexts
     config_context _ctx_config{&_adapter};
+    trace_context  _ctx_trace{&_adapter};
 
    public:
     explicit terminal(terminal_info info) noexcept;
     void _start_();
-    ~terminal();
+    ~terminal() override;
 
    private:
     auto CPPH_LOGGER() const { return _logging.get(); }
@@ -210,9 +212,9 @@ class terminal : public if_terminal
     void _publish_system_stat(asio::error_code ec);
 
    public:
-    optional<string>    fetch_command(milliseconds timeout) override;
-    void                push_command(string_view command) override;
-    void                write(string_view str) override;
+    optional<string> fetch_command(milliseconds timeout) override;
+    void             push_command(string_view command) override;
+    void             write(string_view str) override;
 };
 
 }  // namespace perfkit::net

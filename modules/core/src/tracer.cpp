@@ -100,7 +100,7 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top)
 tracer_proxy tracer::fork(std::string_view n, size_t interval)
 {
     auto last_fork = _last_fork;
-    _last_fork = clock_type::now();
+    _last_fork = steady_clock::now();
 
     if (_fence_active > _fence_latest)  // only when update exist...
         _deliver_previous_result();
@@ -119,7 +119,7 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
     tracer_proxy prx;
     prx._owner = this;
     prx._ref = _fork_branch(nullptr, n, false);
-    prx._epoch_if_required = clock_type::now();
+    prx._epoch_if_required = steady_clock::now();
 
     auto thrd_hash = std::hash<std::thread::id>{}(_working_thread_id);
     char buf[perfkit::base64::encoded_size(sizeof thrd_hash)];
@@ -150,7 +150,7 @@ bool tracer::_deliver_previous_result()
 
     // copies all messages and put them to cache buffer to prevent memory reallocation
     // if any entity is folded, skip all of its subtree
-    trace_fetch_proxy proxy{&_table, _fence_active};
+    trace_fetch_proxy proxy{this};
     on_fetch.invoke(proxy);
 
     this->_fence_latest = this->_fence_active;
@@ -160,7 +160,7 @@ bool tracer::_deliver_previous_result()
 void tracer::trace_fetch_proxy::fetch_tree(tracer::fetched_traces* out) const
 {
     out->clear();
-    for (auto& [hash, entity] : *_table) {
+    for (auto& [hash, entity] : _owner->_table) {
         bool folded = false;
 
         // Find if any ancestor node is folded
@@ -177,21 +177,17 @@ void tracer::trace_fetch_proxy::fetch_tree(tracer::fetched_traces* out) const
     }
 }
 
-size_t tracer::trace_fetch_proxy::fetch_diff(tracer::fetched_traces* out, size_t begin) const
+void tracer::trace_fetch_proxy::fetch_diff(tracer::fetched_traces* out, size_t begin) const
 {
     out->clear();
 
-    for (auto& [hash, entity] : *_table) {
+    for (auto& [hash, entity] : _owner->_table) {
         // Any obsolete node will not be included.
         if (entity.body.fence < begin)
             continue;
 
         out->emplace_back(entity.body);
     }
-
-    // Return current fence. (Uses cached value to return actual fence value even if there's no
-    //  valid entity update with given fence range)
-    return _fence_latest;
 }
 
 namespace {
@@ -211,7 +207,8 @@ static auto lock_tracer_repo = [] {
 
 tracer::tracer(int order, std::string_view name) noexcept
         : _occurrence_order(order), _name(name)
-{}
+{
+}
 
 std::vector<std::weak_ptr<tracer>>& tracer::_all() noexcept
 {
@@ -295,7 +292,7 @@ void tracer::_try_pop(_trace::_entity_ty const* body)
 tracer_proxy tracer::timer(std::string_view name)
 {
     auto px = branch(name);
-    px._epoch_if_required = clock_type::now();
+    px._epoch_if_required = steady_clock::now();
     return px;
 }
 
@@ -324,7 +321,7 @@ tracer::proxy tracer::proxy::timer(std::string_view n) noexcept
     tracer_proxy px;
     px._owner = _owner;
     px._ref = _owner->_fork_branch(_ref, n, false);
-    px._epoch_if_required = clock_type::now();
+    px._epoch_if_required = steady_clock::now();
     return px;
 }
 
@@ -333,8 +330,8 @@ tracer_proxy::~tracer_proxy() noexcept
     if (!_owner) { return; }
     _owner->_try_pop(_ref);
 
-    if (_epoch_if_required != clock_type::time_point{}) {
-        _data() = clock_type::now() - _epoch_if_required;
+    if (_epoch_if_required != steady_clock::time_point{}) {
+        _data() = steady_clock::now() - _epoch_if_required;
     }
 
     // clear to prevent logic error
@@ -355,7 +352,7 @@ tracer_proxy& tracer_proxy::switch_to_timer(std::string_view name)
 
     _ref = owner->_fork_branch(parent, name, false);
     _owner = owner;
-    _epoch_if_required = clock_type::now();
+    _epoch_if_required = steady_clock::now();
 
     return *this;
 }
@@ -445,9 +442,9 @@ void tracer::trace::dump_data(std::string& s) const
             s = "[null]";
             break;
 
-        case 1:  //<clock_type::duration,
+        case 1:  //<steady_clock::duration,
         {
-            auto count = std::chrono::duration<double>{std::get<clock_type ::duration>(data)}.count();
+            auto count = std::chrono::duration<double>{std::get<steady_clock::duration>(data)}.count();
             s = fmt::format("{:.4f} ms", count * 1000.);
         } break;
 

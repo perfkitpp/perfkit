@@ -31,6 +31,7 @@
 #include "protocol.hpp"
 
 #include "perfkit/common/refl/object.hxx"
+#include "perfkit/common/refl/types/array.hxx"
 #include "perfkit/common/refl/types/binary.hxx"
 #include "perfkit/common/refl/types/chrono.hxx"
 #include "perfkit/common/refl/types/list.hxx"
@@ -86,5 +87,8 @@ CPPH_REFL_DEFINE_OBJECT_c(
 CPPH_REFL_DEFINE_OBJECT_c(
         trace_update_t, (),
         (index, 4), (fence_value, 1), (occurrence_order, 2), (flags, 3), (payload, 5));
+
+CPPH_REFL_DEFINE_OBJECT_c(
+        service::trace_control_t, (), (flags, 1));
 
 }  // namespace perfkit::net::message

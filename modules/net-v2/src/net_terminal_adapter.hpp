@@ -61,6 +61,21 @@ class if_net_terminal_adapter
     virtual bool has_basic_access(rpc::session_profile const*) const = 0;
     virtual bool has_admin_access(rpc::session_profile const*) const = 0;
 
+    void         post_to_event_procedure(function<void()>&& invocable);
+
+    template <typename Callable, typename... Args>
+    void post_weak(weak_ptr<void> weak, Callable&& callable, Args&&... args)
+    {
+        post_to_event_procedure(
+                bind_front_weak(std::move(weak), std::forward<Callable>(callable), std::forward<Args>(args)...));
+    }
+
+    template <typename Callable, typename... Args>
+    void post(Callable&& callable, Args&&... args)
+    {
+        post_to_event_procedure(bind(std::forward<Callable>(callable), std::forward<Args>(args)...));
+    }
+
     //
     virtual asio::io_context*   event_proc() = 0;
     virtual rpc::session_group* rpc() = 0;

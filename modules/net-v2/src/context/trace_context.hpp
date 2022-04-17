@@ -29,6 +29,73 @@
 //
 
 #pragma once
+#include <set>
 
+#include "../net_terminal_adapter.hpp"
+#include "perfkit/common/memory/pool.hxx"
+#include "perfkit/common/refl/rpc/core.hxx"
+#include "perfkit/detail/tracer.hpp"
+#include "perfkit/extension/net/protocol.hpp"
+#include "perfkit/fwd.hpp"
+
+namespace perfkit::net {
 class trace_context
-{};
+{
+   private:
+    struct tracer_info_t {
+        weak_ptr<tracer>      wref;
+        uint64_t              tracer_id;
+
+        vector<tracer::trace> traces;
+
+        // Stores local state.
+        struct {
+            size_t fence = 0;
+        } _;
+    };
+
+   private:
+    using self_type = trace_context;
+    using tracer_info_table_type = std::map<weak_ptr<tracer>, shared_ptr<tracer_info_t>, std::owner_less<>>;
+    using tracer_id_table_type = std::unordered_map<uint64_t, shared_ptr<tracer_info_t>>;
+
+   private:
+    if_net_terminal_adapter* _host;
+
+    // Monitoring is only valid for this reference's lifetime.
+    weak_ptr<void> _monitor_anchor;
+
+    // List of registered tracers
+    tracer_info_table_type _tracers;
+    tracer_id_table_type   _tracers_by_id;
+
+    // Stores fetched trace lists temporarily.
+    pool<tracer::fetched_traces> _trace_bufs;
+
+    // Unique ID generator
+    uint64_t _uid_gen = 0;
+
+   public:
+    explicit trace_context(if_net_terminal_adapter* host) : _host(host) {}
+
+   public:
+    void build_service(rpc::service_builder& target);
+
+    void start_monitoring(weak_ptr<void> anchor);
+    void stop_monitoring();
+
+    //! Possibly called from other thread.
+    void rpc_republish_all_tracers();
+
+   private:
+    void _publish_tracer_creation(tracer_info_t const&);
+    void _register_tracer(shared_ptr<tracer>);
+    void _unregister_tracer(weak_ptr<tracer> wp);
+    void _on_fetch(weak_ptr<tracer_info_t> const&, pool_ptr<tracer::fetched_traces>&, size_t max_index) {}
+
+   private:
+    //! RPC handlers, may called from different thread ...
+    void _rpc_request_update(uint64_t tracer_id, int64_t fence, int from_index) {}
+    void _rpc_request_control(uint64_t tracer_id, int index, message::service::trace_control_t const&) {}
+};
+}  // namespace perfkit::net
