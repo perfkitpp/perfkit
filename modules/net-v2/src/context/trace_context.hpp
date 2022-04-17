@@ -47,6 +47,7 @@ class trace_context
         uint64_t              tracer_id;
 
         vector<tracer::trace> traces;
+        size_t                remote_fence = 0;
 
         // Stores local state.
         struct {
@@ -91,11 +92,16 @@ class trace_context
     void _publish_tracer_creation(tracer_info_t const&);
     void _register_tracer(shared_ptr<tracer>);
     void _unregister_tracer(weak_ptr<tracer> wp);
-    void _on_fetch(weak_ptr<tracer_info_t> const&, pool_ptr<tracer::fetched_traces>&, size_t max_index) {}
+    void _on_fetch(
+            weak_ptr<tracer_info_t> const&,
+            pool_ptr<tracer::fetched_traces>&,
+            size_t fence,
+            size_t max_index);
 
    private:
     //! RPC handlers, may called from different thread ...
-    void _rpc_request_update(uint64_t tracer_id, int64_t fence, int from_index) {}
+    void _rpc_request_update(uint64_t tracer_id);
+    void _rpc_reset_cache(uint64_t tracer_id);
     void _rpc_request_control(uint64_t tracer_id, int index, message::service::trace_control_t const&) {}
 };
 }  // namespace perfkit::net

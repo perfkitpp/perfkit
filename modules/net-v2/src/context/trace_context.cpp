@@ -37,8 +37,9 @@
 
 void perfkit::net::trace_context::build_service(perfkit::rpc::service_builder& target)
 {
-    target.route(message::service::trace_request_update, bind_front(&self_type::_rpc_request_update, this));
     target.route(message::service::trace_request_control, bind_front(&self_type::_rpc_request_control, this));
+    target.route(message::service::trace_request_update, bind_front(&self_type::_rpc_request_update, this));
+    target.route(message::service::trace_reset_cache, bind_front(&self_type::_rpc_reset_cache, this));
 }
 
 void perfkit::net::trace_context::start_monitoring(std::weak_ptr<void> anchor)
@@ -111,7 +112,9 @@ void perfkit::net::trace_context::_register_tracer(std::shared_ptr<perfkit::trac
 
                 _host->post(
                         &self_type::_on_fetch, this,
-                        winfo, std::move(pbuf), proxy.num_all_nodes());
+                        winfo, std::move(pbuf),
+                        proxy.fence(),
+                        proxy.num_all_nodes());
             });
 
     _publish_tracer_creation(*pinfo);
@@ -142,4 +145,41 @@ void perfkit::net::trace_context::_unregister_tracer(std::weak_ptr<perfkit::trac
     _tracers_by_id.erase(pinfo->tracer_id);
 
     message::notify::deleted_tracer(_host->rpc()).notify(pinfo->tracer_id);
+}
+
+void perfkit::net::trace_context::_rpc_request_update(uint64_t tracer_id)
+{
+    _host->post(
+            [this, tracer_id] {
+                auto info = find_ptr(_tracers_by_id, tracer_id);
+                if (not info) { return; }
+
+                auto tracer = info->second->wref.lock();
+                if (not tracer) { return; }
+
+                tracer->request_fetch_data();
+            });
+}
+
+void perfkit::net::trace_context::_rpc_reset_cache(uint64_t tracer_id)
+{
+    _host->post(
+            [this, tracer_id] {
+                auto info = find_ptr(_tracers_by_id, tracer_id);
+                if (not info) { return; }
+
+                info->second->remote_fence = 0;
+            });
+}
+
+void perfkit::net::trace_context::_on_fetch(
+        const weak_ptr<tracer_info_t>&    winfo,
+        pool_ptr<tracer::fetched_traces>& pbuf,
+        size_t                            fence,
+        size_t                            max_index)
+{
+    auto info = winfo.lock();
+    if (not info) { return; }
+
+
 }

@@ -110,12 +110,12 @@ using trace_payload_t = std::variant<nullptr_t, microseconds, int64_t, double, s
 struct trace_info_t {
     CPPH_REFL_DECLARE_c;
 
-    string   name;
+    int      index;  // Unique occurrence order. As nodes never expires, this value can simply be used as index.
 
+    int      parent_index;     // Birth index of parent node. Required to build hierarchy. -1 if root.
+    string   name;
     uint64_t hash;             // Unique hash
     uint64_t owner_tracer_id;  // Owning tracer's id
-    int      index;            // Unique occurrence order. As nodes never expires, this value can simply be used as index.
-    int      parent_index;     // Birth index of parent node. Required to build hierarchy. -1 if root.
 };
 
 struct trace_update_t {
@@ -247,7 +247,14 @@ struct service {
      *
      * Set occurrence_index -1
      */
-    DEFINE_RPC(trace_request_update, void(uint64_t tracer_id, int64_t fence, int occurrence_index));
+    DEFINE_RPC(trace_request_update, void(uint64_t tracer_id));
+
+    /**
+     * Reset transfer cache levels.
+     *
+     * After this function call, all trace node will be transferred again from next notification.
+     */
+    DEFINE_RPC(trace_reset_cache, void(uint64_t tracer_id));
 
     /**
      * Request trace state manipulation
