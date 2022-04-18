@@ -235,7 +235,6 @@ class tracer_proxy
 class tracer : public std::enable_shared_from_this<tracer>
 {
    public:
-    using steady_clock = perfkit::steady_clock;
     using variant_type = trace_variant_type;
     using fetched_traces = std::vector<_trace::trace>;
     using _entity_ty = _trace::_entity_ty;

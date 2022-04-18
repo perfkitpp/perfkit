@@ -117,11 +117,9 @@ static void dump_trace(
                 if constexpr (std::is_same_v<type, nullptr_t>) {
                     node->value_type = TRACE_VALUE_NULLPTR;
                     node->value = "";
-                } else if constexpr (std::is_same_v<type, perfkit::tracer::clock_type::duration>) {
+                } else if constexpr (std::is_same_v<type, perfkit::steady_clock::duration>) {
                     node->value_type = TRACE_VALUE_DURATION_USEC;
-                    node->value = std::to_string(
-                            std::chrono::duration_cast<std::chrono::microseconds>(value)
-                                    .count());
+                    node->value = std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(value).count());
                 } else if constexpr (std::is_same_v<type, int64_t>) {
                     node->value_type = TRACE_VALUE_INTEGER;
                     node->value = std::to_string(value);

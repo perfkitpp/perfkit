@@ -47,6 +47,7 @@ using std::vector;
 
 using std::chrono::microseconds;
 using std::chrono::milliseconds;
+using std::chrono::steady_clock;
 
 using msgpack_archive_t = binary<string>;
 
@@ -105,14 +106,14 @@ struct tracer_descriptor_t {
     milliseconds epoch;
 };
 
-using trace_payload_t = std::variant<nullptr_t, microseconds, int64_t, double, string, bool>;
+using trace_payload_t = std::variant<nullptr_t, steady_clock::duration, int64_t, double, string, bool>;
 
 struct trace_info_t {
     CPPH_REFL_DECLARE_c;
 
     int      index;  // Unique occurrence order. As nodes never expires, this value can simply be used as index.
 
-    int      parent_index;     // Birth index of parent node. Required to build hierarchy. -1 if root.
+    int      parent_index;  // Birth index of parent node. Required to build hierarchy. -1 if root.
     string   name;
     uint64_t hash;             // Unique hash
     uint64_t owner_tracer_id;  // Owning tracer's id

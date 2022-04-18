@@ -47,7 +47,7 @@ class trace_context
         uint64_t              tracer_id;
 
         vector<tracer::trace> traces;
-        size_t                remote_fence = 0;
+        bool                  remote_up_to_date = false;
 
         // Stores local state.
         struct {
@@ -75,6 +75,10 @@ class trace_context
 
     // Unique ID generator
     uint64_t _uid_gen = 0;
+
+    // Reused message buffer
+    vector<message::trace_update_t> _buf_updates;
+    vector<message::trace_info_t>   _buf_info;
 
    public:
     explicit trace_context(if_net_terminal_adapter* host) : _host(host) {}

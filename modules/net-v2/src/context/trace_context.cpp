@@ -168,7 +168,7 @@ void perfkit::net::trace_context::_rpc_reset_cache(uint64_t tracer_id)
                 auto info = find_ptr(_tracers_by_id, tracer_id);
                 if (not info) { return; }
 
-                info->second->remote_fence = 0;
+                info->second->remote_up_to_date = false;
             });
 }
 
@@ -181,5 +181,73 @@ void perfkit::net::trace_context::_on_fetch(
     auto info = winfo.lock();
     if (not info) { return; }
 
+    _buf_updates.clear();
+    _buf_info.clear();
 
+    auto*        traces = &info->traces;
+    bool const   republish_all = not info->remote_up_to_date;
+    size_t const latest_order = traces->size();
+
+    //
+    auto fn_apnd_msg_info =
+            [this, tracer_id = info->tracer_id](tracer::trace const& e) {
+                auto* m = &_buf_info.emplace_back();
+                m->name = e.key;
+                m->hash = e.hash;
+                m->index = e.unique_order;
+                m->parent_index = e.owner_node ? e.owner_node->unique_order : -1;
+                m->owner_tracer_id = tracer_id;
+            };
+
+    auto fn_apnd_msg_update =
+            [this](tracer::trace const& e) {
+                auto* m = &_buf_updates.emplace_back();
+                m->index = e.active_order;
+                m->occurrence_order = e.active_order;
+                m->fence_value = e.fence;
+                m->ref_subscr() = e.subscribing();
+                m->ref_fold() = e.folded();
+                m->payload = e.data;
+            };
+
+    for (auto& entity : *pbuf) {
+        // Check if new entity was added
+        if (latest_order < entity.unique_order) {
+            if (entity.unique_order + 1 < traces->size())
+                traces->resize(entity.unique_order + 1);
+
+            // Add new entity to publish target if it's not republish all mode
+            if (not republish_all)
+                fn_apnd_msg_info(entity);
+        }
+
+        // Add updated entity to publish target if it's not republish all mode.
+        if (not republish_all)
+            fn_apnd_msg_update(entity);
+
+        // Apply update
+        auto* e = &(*traces)[entity.unique_order];
+        swap(*e, entity);
+    }
+
+    if (republish_all) {
+        // Publish all entities again
+        info->remote_up_to_date = true;
+
+        // Iterate all traces
+        for (auto& e : info->traces) {
+            fn_apnd_msg_info(e);
+            fn_apnd_msg_update(e);
+        }
+    }
+
+    // Publish updates if there's any.
+    if (not _buf_info.empty()) {
+        message::notify::new_trace_node(_host->rpc())
+                .notify(info->tracer_id, _buf_info, _host->fn_admin_access());
+    }
+    if (not _buf_updates.empty()) {
+        message::notify::trace_node_update(_host->rpc())
+                .notify(info->tracer_id, _buf_updates, _host->fn_admin_access());
+    }
 }
