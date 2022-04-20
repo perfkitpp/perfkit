@@ -70,7 +70,7 @@ tracer::_entity_ty* tracer::_fork_branch(
         parent && (data.hierarchy = parent->hierarchy, 0);  // only includes parent hierarchy.
         data.hierarchy.push_back(data.key_buffer);
         data.body.hierarchy = data.hierarchy;
-        data.body.unique_order = _table.size();
+        data.body.unique_order = _table.size() - 1;
         parent && (data.body.owner_node = &parent->body);
     }
 

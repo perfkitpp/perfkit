@@ -186,7 +186,7 @@ void perfkit::net::trace_context::_on_fetch(
 
     auto*        traces = &info->traces;
     bool const   republish_all = not info->remote_up_to_date;
-    size_t const latest_order = traces->size();
+    size_t const latest_size = traces->size();
 
     //
     auto fn_apnd_msg_info =
@@ -212,8 +212,8 @@ void perfkit::net::trace_context::_on_fetch(
 
     for (auto& entity : *pbuf) {
         // Check if new entity was added
-        if (latest_order < entity.unique_order) {
-            if (entity.unique_order + 1 < traces->size())
+        if (latest_size < entity.unique_order + 1) {
+            if (traces->size() <= entity.unique_order)
                 traces->resize(entity.unique_order + 1);
 
             // Add new entity to publish target if it's not republish all mode
