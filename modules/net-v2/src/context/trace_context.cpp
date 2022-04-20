@@ -76,8 +76,10 @@ void perfkit::net::trace_context::rpc_republish_all_tracers()
 {
     auto fn_publish_all =
             [this] {
-                for (auto& [k, v] : _tracers)
+                for (auto& [k, v] : _tracers) {
+                    v->remote_up_to_date = false;
                     _publish_tracer_creation(*v);
+                }
             };
 
     _host->post_weak(_monitor_anchor, fn_publish_all);
