@@ -58,9 +58,9 @@ struct termcolor {
     constexpr termcolor& operator=(termcolor const&) noexcept = default;
     constexpr termcolor& operator=(termcolor&&) noexcept = default;
 
-    constexpr bool       operator==(termcolor const& r) const noexcept { return code == r.code; }
-    constexpr bool       operator!=(termcolor const& r) const noexcept { return code != r.code; }
-    constexpr bool       operator<(termcolor const& r) const noexcept { return code < r.code; }
+    constexpr bool operator==(termcolor const& r) const noexcept { return code == r.code; }
+    constexpr bool operator!=(termcolor const& r) const noexcept { return code != r.code; }
+    constexpr bool operator<(termcolor const& r) const noexcept { return code < r.code; }
 
     template <typename OutIt_>
     void append_xterm_256(OutIt_ out, bool fg = true) noexcept

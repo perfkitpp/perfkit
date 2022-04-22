@@ -30,14 +30,14 @@
 #include <spdlog/fwd.h>
 
 namespace perfkit::net::detail {
-std::string     try_fetch_input(int ms_to_wait);
+std::string try_fetch_input(int ms_to_wait);
 spdlog::logger* nglog();
 
 struct proc_stat_t {
-    double  cpu_usage_total_user;
-    double  cpu_usage_total_system;
-    double  cpu_usage_self_user;
-    double  cpu_usage_self_system;
+    double cpu_usage_total_user;
+    double cpu_usage_total_system;
+    double cpu_usage_self_user;
+    double cpu_usage_self_system;
 
     int64_t memory_usage_virtual;
     int64_t memory_usage_resident;

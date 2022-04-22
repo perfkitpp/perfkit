@@ -63,7 +63,7 @@ class tracer_instance_browser : public ComponentBase
    public:
     Element Render() override
     {
-        auto  title = hbox(spinner(15, _latest_fence), text(" "), _title->Render());
+        auto title = hbox(spinner(15, _latest_fence), text(" "), _title->Render());
         Pixel sep;
         sep.character = ".";
         sep.dim = true;
@@ -215,15 +215,15 @@ class tracer_instance_browser : public ComponentBase
         }
 
        public:
-        std::string              _c_name;
-        std::string              _c_value;
+        std::string _c_name;
+        std::string _c_value;
 
         tracer_instance_browser* _owner;
-        Component                _control_toggle;
-        tracer::trace            _data;
+        Component _control_toggle;
+        tracer::trace _data;
 
-        bool                     _folding = false;
-        bool                     _subscribing = false;
+        bool _folding = false;
+        bool _subscribing = false;
     };
 
     void _regenerate()
@@ -233,7 +233,7 @@ class tracer_instance_browser : public ComponentBase
 
         array_view<std::string_view> skipping = {};
 
-        size_t                       max_fence = 0;
+        size_t max_fence = 0;
         for (auto& trace : _traces) {
             max_fence = std::max(max_fence, trace.fence);
 
@@ -253,7 +253,7 @@ class tracer_instance_browser : public ComponentBase
                 skipping = trace.hierarchy;
             }
 
-            auto       subscribing = trace.subscribing();
+            auto subscribing = trace.subscribing();
             bool const update_subscr = subscribing && trace.fence > _latest_fence;
             bool const trigger_subscr = subscribing && *manip_mod < 2;
 
@@ -308,22 +308,22 @@ class tracer_instance_browser : public ComponentBase
     }
 
    private:
-    Component                                 _container;
-    Component                                 _title;
-    Component                                 _outer;
+    Component _container;
+    Component _title;
+    Component _outer;
 
-    bool                                      _is_fetching = false;
-    std::set<uint64_t>                        _folded_entities;
-    std::map<uint64_t, int>                   _cached_modes;
+    bool _is_fetching = false;
+    std::set<uint64_t> _folded_entities;
+    std::map<uint64_t, int> _cached_modes;
 
     std::vector<std::shared_ptr<_data_label>> _pool;
 
-    tracer*                                   _target;
-    tracer::fetched_traces                    _traces;
-    tracer::future_result                     _async_result;
-    size_t                                    _latest_fence = 0;
+    tracer* _target;
+    tracer::fetched_traces _traces;
+    tracer::future_result _async_result;
+    size_t _latest_fence = 0;
 
-    std::shared_ptr<if_subscriber>            _monitor;
+    std::shared_ptr<if_subscriber> _monitor;
 };
 
 // 1. 루트 트레이스 -> 각 tracer 인스턴스에 대한 fetch content 활성 제어

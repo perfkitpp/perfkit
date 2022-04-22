@@ -146,8 +146,8 @@ void perfkit::terminal::net::terminal::_user_command_fetch_fn()
             auto delta_in = in - _bytes_io_prev.first;
             auto delta_out = out - _bytes_io_prev.second;
             auto dt = tmr.delta().count();
-            int  in_rate = delta_in / dt;
-            int  out_rate = delta_out / dt;
+            int in_rate = delta_in / dt;
+            int out_rate = delta_out / dt;
             _bytes_io_prev.first = in;
             _bytes_io_prev.second = out;
 
@@ -185,8 +185,8 @@ void perfkit::terminal::net::terminal::_on_configure(
 void perfkit::terminal::net::terminal::_on_suggest_request(
         perfkit::terminal::net::incoming::suggest_command&& s)
 {
-    std::vector<std::string>  candidates;
-    auto                      nextstr = commands()->suggest(s.command, &candidates);
+    std::vector<std::string> candidates;
+    auto nextstr = commands()->suggest(s.command, &candidates);
 
     outgoing::suggest_command cmd;
     cmd.new_command = std::move(nextstr);

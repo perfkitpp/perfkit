@@ -124,7 +124,7 @@ class config_node_builder
         }
     }
 
-    bool             is_content() const { return !!_content; }
+    bool is_content() const { return !!_content; }
 
     ftxui::Component build(
             std::shared_ptr<std::function<void(bool)>> parent_fold = nullptr)
@@ -147,8 +147,8 @@ class config_node_builder
 
             // expose subnodes as individual buttons, which extended/collapsed when clicked.
             for (auto snode : subnode_ptr) {
-                auto           label_cont = Container::Vertical({});
-                auto           state_boolean = std::make_shared<bool>();
+                auto label_cont = Container::Vertical({});
+                auto state_boolean = std::make_shared<bool>();
 
                 CheckboxOption opts;
                 if (snode->second.is_content()) {
@@ -224,12 +224,12 @@ class config_node_builder
 
    private:
     struct _json_editor_builder {
-        config_ptr            cfg;
-        bool                  allow_schema_modification;
-        nlohmann::json        rootobj;
+        config_ptr cfg;
+        bool allow_schema_modification;
+        nlohmann::json rootobj;
         std::function<void()> on_change;
 
-        Component             _iter(nlohmann::json* obj)
+        Component _iter(nlohmann::json* obj)
         {
             switch (obj->type()) {
                 case nlohmann::detail::value_t::null:
@@ -302,7 +302,7 @@ class config_node_builder
 
                     opt.on_enter = [pwstr, this, obj] {
                         double value = 0;
-                        auto   str = ftxui::to_string(*pwstr);
+                        auto str = ftxui::to_string(*pwstr);
 
                         try {
                             auto result = std::stod(str);
@@ -329,11 +329,11 @@ class config_node_builder
 
     Component _build_content_modifier()
     {
-        auto      cfg = _content;
+        auto cfg = _content;
 
         Component inner;
-        auto      proto = _content->serialize();
-        auto      ptr = std::make_shared<_json_editor_builder>();
+        auto proto = _content->serialize();
+        auto ptr = std::make_shared<_json_editor_builder>();
         ptr->on_change = [cfg, ptr] { cfg->request_modify(ptr->rootobj); };
         ptr->cfg = cfg;
         ptr->rootobj = proto;
@@ -357,8 +357,8 @@ class config_node_builder
 
    private:
     std::map<std::string, config_node_builder, std::less<>> _subnodes;
-    std::string_view                                        _reference_key;
-    config_ptr                                              _content;
+    std::string_view _reference_key;
+    config_ptr _content;
 };
 
 class config_browser : public ftxui::ComponentBase

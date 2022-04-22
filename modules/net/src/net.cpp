@@ -51,10 +51,10 @@ static void parse_auth(std::string_view auth, std::vector<auth_info>* out)
         try {
             auto id = token.substr(0, token.find_first_of(':'));
             token = token.substr(id.size() + 1);
-            auto  pw = token.substr(0, token.find_first_of(':'));
-            auto  access = token.substr(pw.size() + 1);
+            auto pw = token.substr(0, token.find_first_of(':'));
+            auto access = token.substr(pw.size() + 1);
 
-            bool  is_admin = access.find_first_of("wW") == 0;
+            bool is_admin = access.find_first_of("wW") == 0;
 
             auto& info = out->emplace_back();
             info.id = id;
@@ -79,7 +79,7 @@ static void parse_auth(std::string_view auth, std::vector<auth_info>* out)
 perfkit::terminal_ptr perfkit::terminal::net::create(profile const& cfg)
 {
     terminal_init_info init{*cfg.session_name};
-    auto               CPPH_LOGGER = [] { return detail::nglog(); };
+    auto CPPH_LOGGER = [] { return detail::nglog(); };
 
     CPPH_INFO("creating network session: {}", *cfg.session_name);
     init.description = cfg.session_description.ref();

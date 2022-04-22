@@ -62,7 +62,7 @@ struct tty_output_t {
     CPPH_REFL_DECLARE_c;
 
     int64_t fence = 0;
-    string  content;
+    string content;
 };
 
 /**
@@ -71,10 +71,10 @@ struct tty_output_t {
 struct config_entity_t {
     CPPH_REFL_DECLARE_c;
 
-    string            name;
-    uint64_t          config_key;
+    string name;
+    uint64_t config_key;
 
-    string            description;
+    string description;
     msgpack_archive_t initial_value;
 
     msgpack_archive_t opt_min;
@@ -85,7 +85,7 @@ struct config_entity_t {
 struct config_entity_update_t {
     CPPH_REFL_DECLARE_c;
 
-    uint64_t          config_key;
+    uint64_t config_key;
     msgpack_archive_t content_next;  // msgpack data chunk for supporting 'any'
 };
 
@@ -101,9 +101,9 @@ enum class auth_level_t {
 struct tracer_descriptor_t {
     CPPH_REFL_DECLARE_c;
 
-    uint64_t     tracer_id;
-    string       name;
-    int          priority;
+    uint64_t tracer_id;
+    string name;
+    int priority;
     milliseconds epoch;
 };
 
@@ -112,10 +112,10 @@ using trace_payload_t = std::variant<nullptr_t, steady_clock::duration, int64_t,
 struct trace_info_t {
     CPPH_REFL_DECLARE_c;
 
-    int      index;  // Unique occurrence order. As nodes never expires, this value can simply be used as index.
+    int index;  // Unique occurrence order. As nodes never expires, this value can simply be used as index.
 
-    int      parent_index;  // Birth index of parent node. Required to build hierarchy. -1 if root.
-    string   name;
+    int parent_index;  // Birth index of parent node. Required to build hierarchy. -1 if root.
+    string name;
     uint64_t hash;             // Unique hash
     uint64_t owner_tracer_id;  // Owning tracer's id
 };
@@ -123,12 +123,12 @@ struct trace_info_t {
 struct trace_update_t {
     CPPH_REFL_DECLARE_c;
 
-    uint64_t        index;  // To lookup corresponding information ...
+    uint64_t index;  // To lookup corresponding information ...
 
-    int64_t         fence_value;
-    int             occurrence_order;
+    int64_t fence_value;
+    int occurrence_order;
 
-    bool            flags[2];
+    bool flags[2];
     trace_payload_t payload;
 
    public:
@@ -146,10 +146,10 @@ struct notify {
     struct session_status_t {
         CPPH_REFL_DECLARE_c;
 
-        double  cpu_usage_total_user;
-        double  cpu_usage_total_system;
-        double  cpu_usage_self_user;
-        double  cpu_usage_self_system;
+        double cpu_usage_total_user;
+        double cpu_usage_total_system;
+        double cpu_usage_self_user;
+        double cpu_usage_self_system;
 
         int64_t memory_usage_virtual;
         int64_t memory_usage_resident;
@@ -177,9 +177,9 @@ struct notify {
     struct config_category_t {
         CPPH_REFL_DECLARE_c;
 
-        string                  name;
+        string name;
         list<config_category_t> subcategories;
-        list<config_entity_t>   entities;
+        list<config_entity_t> entities;
     };
 
     DEFINE_RPC(new_config_category, void(uint64_t instance_hash, string registry_key, config_category_t root));
@@ -209,11 +209,11 @@ struct service {
     struct session_info_t {
         CPPH_REFL_DECLARE_c;
 
-        string  name;
-        string  hostname;
-        string  keystr;
+        string name;
+        string hostname;
+        string keystr;
         int64_t epoch;
-        string  description;
+        string description;
         int32_t num_cores;
     };
 
@@ -266,8 +266,8 @@ struct service {
 
         std::array<bool, 2> flags;
 
-        auto&               ref_subscr() { return flags[0]; }
-        auto&               ref_fold() { return flags[1]; }
+        auto& ref_subscr() { return flags[0]; }
+        auto& ref_fold() { return flags[1]; }
     };
 
     DEFINE_RPC(trace_request_control, void(uint64_t tracer_id, int index, trace_control_t));
@@ -279,8 +279,8 @@ struct service {
         CPPH_REFL_DECLARE_c;
 
         std::pair<int, int> replace_range;
-        string              replaced_content;
-        vector<string>      candidate_words;
+        string replaced_content;
+        vector<string> candidate_words;
     };
 
     DEFINE_RPC(suggest, suggest_result_t(string command, int cursor));

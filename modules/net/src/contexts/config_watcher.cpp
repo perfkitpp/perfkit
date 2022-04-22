@@ -59,14 +59,14 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
 {
     outgoing::new_config_class message;
 
-    auto&                      all = rg->bk_all();
+    auto& all = rg->bk_all();
     message.key = rg->name();
 
     for (auto& [_, config] : all) {
         if (config->is_hidden())
             continue;  // dont' publish hidden ones
 
-        auto  hierarchy = config->tokenized_display_key();
+        auto hierarchy = config->tokenized_display_key();
         auto* level = &message.root;
 
         for (auto category : make_iterable(hierarchy.begin(), hierarchy.end() - 1)) {
@@ -104,7 +104,7 @@ void config_watcher::_publish_registry(perfkit::config_registry* rg)
     // Subscribe changes
     rg->on_update.add_weak(
             _watcher_lifecycle,
-            [this](perfkit::config_registry*                          rg,
+            [this](perfkit::config_registry* rg,
                    perfkit::array_view<perfkit::detail::config_base*> updates) {
                 auto wptr = rg->weak_from_this();
 
@@ -191,7 +191,7 @@ void config_watcher::update_entity(uint64_t key, nlohmann::json&& value)
 }
 
 void config_watcher::_on_update(
-        std::weak_ptr<config_registry>             wrg,
+        std::weak_ptr<config_registry> wrg,
         std::vector<perfkit::detail::config_base*> args)
 {
     auto rg = wrg.lock();

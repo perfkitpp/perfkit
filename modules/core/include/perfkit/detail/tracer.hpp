@@ -86,17 +86,17 @@ struct trace {
     void dump_data(std::string&) const;
 
    public:
-    std::string_view             key;
-    uint64_t                     hash;
+    std::string_view key;
+    uint64_t hash;
 
-    size_t                       fence = 0;
-    size_t                       unique_order = 0;
-    int                          active_order = 0;
+    size_t fence = 0;
+    size_t unique_order = 0;
+    int active_order = 0;
     array_view<std::string_view> hierarchy;
-    trace const*                 owner_node = nullptr;
-    trace const*                 self_node = nullptr;
+    trace const* owner_node = nullptr;
+    trace const* self_node = nullptr;
 
-    trace_variant_type           data;
+    trace_variant_type data;
 
    private:
     friend class ::perfkit::tracer;
@@ -105,13 +105,13 @@ struct trace {
 };
 
 struct _entity_ty {
-    trace                         body;
-    std::string                   key_buffer;
+    trace body;
+    std::string key_buffer;
     std::vector<std::string_view> hierarchy;
 
-    std::atomic_bool              is_subscribed{false};
-    std::atomic_bool              is_folded{false};
-    _entity_ty const*             parent = nullptr;
+    std::atomic_bool is_subscribed{false};
+    std::atomic_bool is_folded{false};
+    _entity_ty const* parent = nullptr;
 };
 }  // namespace _trace
 
@@ -134,8 +134,8 @@ class tracer_proxy
     tracer_proxy branch(std::string_view n) noexcept;
     tracer_proxy timer(std::string_view n) noexcept;
 
-    void         subscribe() noexcept { _ref ? (_ref->is_subscribed = true, (void)0) : (void)0; }
-    void         unsubscribe() noexcept { _ref ? (_ref->is_subscribed = false, (void)0) : (void)0; }
+    void subscribe() noexcept { _ref ? (_ref->is_subscribed = true, (void)0) : (void)0; }
+    void unsubscribe() noexcept { _ref ? (_ref->is_subscribed = false, (void)0) : (void)0; }
 
     template <size_t N_>
     tracer_proxy operator[](char const (&s)[N_]) noexcept
@@ -213,7 +213,7 @@ class tracer_proxy
 
     tracer_proxy& switch_to_timer(std::string_view name);
 
-                  operator bool() const noexcept
+    operator bool() const noexcept
     {
         return is_valid() && _ref->is_subscribed.load(std::memory_order_consume);
     }
@@ -228,8 +228,8 @@ class tracer_proxy
     tracer_proxy() noexcept { (void)0; };
 
    private:
-    tracer*                  _owner = nullptr;
-    _trace::_entity_ty*      _ref = nullptr;
+    tracer* _owner = nullptr;
+    _trace::_entity_ty* _ref = nullptr;
     steady_clock::time_point _epoch_if_required = {};
 };
 
@@ -254,22 +254,22 @@ class tracer : public std::enable_shared_from_this<tracer>
     // 2. 프록시가 데이터 넣을 때마다(타이머는 소멸 시) 데이터 블록의 백 버퍼 맵에 이름-값 쌍 할당
     // 3. 컨슈머는 data_block의 데이터를 복사 및 컨슈머 내의 버퍼 맵에 머지.
     //    이 때 최신 시퀀스 넘버도 같이 받는다.
-    trace_table_type               _table;
-    size_t                         _fence_active = 0;  // active sequence number of back buffer.
-    size_t                         _fence_latest = 0;
-    size_t                         _interval_counter = 0;
+    trace_table_type _table;
+    size_t _fence_active = 0;  // active sequence number of back buffer.
+    size_t _fence_latest = 0;
+    size_t _interval_counter = 0;
 
-    int                            _order_active = 0;  // temporary variable for single iteration
-    std::atomic_bool               _pending_fetch;
+    int _order_active = 0;  // temporary variable for single iteration
+    std::atomic_bool _pending_fetch;
 
-    int                            _occurrence_order;
-    std::string const              _name;
+    int _occurrence_order;
+    std::string const _name;
 
     std::vector<_entity_ty const*> _stack;
-    steady_clock::time_point       _last_fork;
-    steady_clock::time_point       _birth = steady_clock::now();
+    steady_clock::time_point _last_fork;
+    steady_clock::time_point _birth = steady_clock::now();
 
-    std::thread::id                _working_thread_id = {};
+    std::thread::id _working_thread_id = {};
 
    public:
     // Provides fetching interface
@@ -319,8 +319,8 @@ class tracer : public std::enable_shared_from_this<tracer>
     static auto all() noexcept -> std::vector<std::shared_ptr<tracer>>;
 
    public:
-    static event<tracer*>&   on_new_tracer();
-    event<tracer*>           on_destroy;
+    static event<tracer*>& on_new_tracer();
+    event<tracer*> on_destroy;
     event<trace_fetch_proxy> on_fetch;
 
    public:
@@ -366,10 +366,10 @@ class tracer : public std::enable_shared_from_this<tracer>
     /**
      * Reserves for async data sort
      */
-    void  request_fetch_data();
+    void request_fetch_data();
 
     auto& name() const noexcept { return _name; }
-    auto  order() const noexcept { return _occurrence_order; }
+    auto order() const noexcept { return _occurrence_order; }
 
     /**
      * Epoch time
@@ -382,12 +382,12 @@ class tracer : public std::enable_shared_from_this<tracer>
 
    private:
     uint64_t _hash_active(_trace::_entity_ty const* parent, std::string_view top);
-    bool     _deliver_previous_result();
+    bool _deliver_previous_result();
 
     // Create new or find existing.
-    _trace::_entity_ty*                        _fork_branch(_trace::_entity_ty const* parent, std::string_view name, bool initial_subscribe_state);
+    _trace::_entity_ty* _fork_branch(_trace::_entity_ty const* parent, std::string_view name, bool initial_subscribe_state);
     static std::vector<std::weak_ptr<tracer>>& _all() noexcept;
-    void                                       _try_pop(_trace::_entity_ty const* body);
+    void _try_pop(_trace::_entity_ty const* body);
 };
 
 using tracer_ptr = std::shared_ptr<tracer>;

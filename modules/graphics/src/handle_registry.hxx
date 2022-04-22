@@ -45,22 +45,22 @@ class handle_registry
     struct node {
         uint16_t index = 0;
         uint32_t hash_gen = 0;
-        bool     checkout = false;
+        bool checkout = false;
     };
 
     struct slot {
         vector<uint16_t> free_keys;
-        vector<node>     keys;
+        vector<node> keys;
     };
 
    public:
     template <typename Handle_>
     Handle_ checkout() noexcept
     {
-        Handle_      result;
+        Handle_ result;
         handle_data* data = &result;
 
-        slot&        slot = _slots.at(to_index(Handle_::type));
+        slot& slot = _slots.at(to_index(Handle_::type));
         data->_type = Handle_::type;
 
         if (not slot.free_keys.empty()) {
@@ -95,7 +95,7 @@ class handle_registry
     {
         slot& slot = _slots.at(data.resource_index());
 
-        auto  node = &slot.keys.at(data._index);
+        auto node = &slot.keys.at(data._index);
         assert(node->hash_gen == data._hash);
         assert(node->checkout);
         assert(node->index == data._index);

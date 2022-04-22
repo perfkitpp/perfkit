@@ -154,7 +154,7 @@ void initialize_with_basic_commands(if_terminal* ref);
  * @param cmd_read usage: cmd_read [path]. if path is not specified, previous path will be used.
  */
 void register_conffile_io_commands(
-        if_terminal*     ref,
+        if_terminal* ref,
         std::string_view cmd_load = "load-config",  // e.g. "ld"
         std::string_view cmd_store = "save-config",
         std::string_view initial_path = {});  // e.g. "w"
@@ -175,7 +175,7 @@ void register_conffile_io_commands(
  *
  */
 void register_config_manip_command(
-        if_terminal*     ref,
+        if_terminal* ref,
         std::string_view cmd = "config");
 
 /**
@@ -190,7 +190,7 @@ void register_config_manip_command(
  *      <cmd> <trace> subscribe
  */
 void register_trace_manip_command(
-        if_terminal*     ref,
+        if_terminal* ref,
         std::string_view cmd = "trace");
 
 /**
@@ -205,7 +205,7 @@ void register_trace_manip_command(
  *      <cmd> set [logger]: sets loglevel of given logger. set none, applies to global
  */
 void register_logging_manip_command(
-        if_terminal*     ref,
+        if_terminal* ref,
         std::string_view cmd = "logging");
 
 }  // namespace terminal

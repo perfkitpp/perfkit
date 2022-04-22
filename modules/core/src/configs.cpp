@@ -50,7 +50,7 @@ namespace perfkit::detail {
 auto _all_repos()
 {
     static config_registry::container _inst;
-    static spinlock                   _lock;
+    static spinlock _lock;
     return std::make_pair(&_inst, std::unique_lock{_lock});
 }
 }  // namespace perfkit::detail
@@ -126,7 +126,7 @@ auto perfkit::config_registry::bk_find_reg(std::string_view name) noexcept
 namespace perfkit::configs::_io {
 auto _loaded()
 {
-    static json     _all;
+    static json _all;
     static spinlock _lock;
 
     return std::make_pair(&_all, std::unique_lock{_lock});
@@ -299,7 +299,7 @@ bool perfkit::config_registry::update()
         }
     }
 
-    bool                                      has_valid_update = false;
+    bool has_valid_update = false;
     std::optional<decltype(_pending_updates)> update;
 
     {
@@ -422,8 +422,8 @@ perfkit::detail::config_base::config_base(
         config_registry* owner,
         void* raw, std::string full_key,
         perfkit::detail::config_base::deserializer fn_deserial,
-        perfkit::detail::config_base::serializer   fn_serial,
-        config_attribute_t&&                       attribute)
+        perfkit::detail::config_base::serializer fn_serial,
+        config_attribute_t&& attribute)
         : _owner(owner),
           _full_key(std::move(full_key)),
           _raw(raw),

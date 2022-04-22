@@ -53,6 +53,6 @@ class watcher
 
    public:
     mutable std::unordered_map<detail::config_base*, uint64_t> _table;
-    mutable perfkit::spinlock                                  _lock;
+    mutable perfkit::spinlock _lock;
 };
 }  // namespace perfkit::configs

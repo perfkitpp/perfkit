@@ -30,8 +30,8 @@
 #include <functional>
 #include <memory>
 
-#include <nlohmann/json.hpp>
 #include <cpph/event.hxx>
+#include <nlohmann/json.hpp>
 #include <perfkit/extension/net.hpp>
 
 namespace perfkit::terminal::net::detail {
@@ -83,12 +83,12 @@ class dispatcher
     void close_all();
 
     std::pair<size_t, size_t>
-                         num_bytes_in_out() const noexcept;
+    num_bytes_in_out() const noexcept;
 
     perfkit::event<int>& on_new_connection();
-    perfkit::event<>&    on_no_connection();
+    perfkit::event<>& on_no_connection();
 
-    void                 launch();
+    void launch();
 
    private:
     void _register_recv(
@@ -97,13 +97,13 @@ class dispatcher
 
     void _send(
             std::string_view route,
-            int64_t          fence,
-            void const*      userobj,
+            int64_t fence,
+            void const* userobj,
             void (*payload)(send_archive_type*, void const*));
 
    private:
     std::unique_ptr<detail::basic_dispatcher_impl> self;
-    int64_t                                        _fence = 0;
+    int64_t _fence = 0;
 };
 
 }  // namespace perfkit::terminal::net

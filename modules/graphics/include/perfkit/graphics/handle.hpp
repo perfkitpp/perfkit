@@ -53,15 +53,15 @@ struct handle_data {
    public:
     uint16_t index() const noexcept { return _index; }
     uint32_t hash() const noexcept { return _hash; }
-    uint8_t  resource_index() const noexcept { return (uint8_t)_type - 1; }
+    uint8_t resource_index() const noexcept { return (uint8_t)_type - 1; }
 
    public:
     resource_type _type = {};
 
-    uint8_t       _padding = {};
+    uint8_t _padding = {};
 
-    uint16_t      _index = {};
-    uint32_t      _hash = {};
+    uint16_t _index = {};
+    uint32_t _hash = {};
 };
 
 /**
@@ -71,7 +71,7 @@ template <resource_type Resource_>
 struct _handle_base : handle_data {
     static constexpr auto type = Resource_;
 
-    static _handle_base   from(handle_data data)
+    static _handle_base from(handle_data data)
     {
         if (not data)
             throw std::logic_error("invalid type!");

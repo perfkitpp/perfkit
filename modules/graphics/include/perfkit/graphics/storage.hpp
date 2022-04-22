@@ -101,7 +101,7 @@ class storage : std::enable_shared_from_this<storage>
     void draw(
             texture_handle handle,
             size2 size, pixel_format format,
-            void const*            base_buffer = nullptr,
+            void const* base_buffer = nullptr,
             texture_draw_fn const& draw_fn = perfkit::default_function);
 
     /**
@@ -122,7 +122,7 @@ class storage : std::enable_shared_from_this<storage>
     bool try_draw(
             texture_handle handle,
             size2 size, pixel_format format,
-            void const*            base_buffer = nullptr,
+            void const* base_buffer = nullptr,
             texture_draw_fn const& draw_fn = perfkit::default_function);
 
     /**
@@ -134,7 +134,7 @@ class storage : std::enable_shared_from_this<storage>
      * @param wnd_proc
      */
     void show(
-            window_handle         handle,
+            window_handle handle,
             window_proc_fn const& wnd_proc);
 
     /**
@@ -145,7 +145,7 @@ class storage : std::enable_shared_from_this<storage>
      * @param wnd_proc
      */
     bool try_show(
-            window_handle         handle,
+            window_handle handle,
             window_proc_fn const& wnd_proc);
 
     /**
@@ -158,8 +158,8 @@ class storage : std::enable_shared_from_this<storage>
      * @param wnd_proc
      */
     modal_result
-    modal(window_handle         handle,
-          modal_type            type,
+    modal(window_handle handle,
+          modal_type type,
           window_proc_fn const& wnd_proc);
 
    public:

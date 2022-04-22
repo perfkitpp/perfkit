@@ -95,13 +95,13 @@ struct vertex2_0 {
  * Material definition
  */
 struct material {
-    texture_handle albedo = {};          // f_rgb
-    texture_handle normal = {};          // f_rgb
-    texture_handle metalic = {};         // f_mono
-    texture_handle rouhness = {};        // f_mono
-    texture_handle opacity = {};         // f_mono
-    texture_handle emissive = {};        // f_rgb
-    bool           binary_alpha = true;  // if set true, alpha channel will work as simple mask.
+    texture_handle albedo = {};    // f_rgb
+    texture_handle normal = {};    // f_rgb
+    texture_handle metalic = {};   // f_mono
+    texture_handle rouhness = {};  // f_mono
+    texture_handle opacity = {};   // f_mono
+    texture_handle emissive = {};  // f_rgb
+    bool binary_alpha = true;      // if set true, alpha channel will work as simple mask.
 };
 
 }  // namespace perfkit::graphics

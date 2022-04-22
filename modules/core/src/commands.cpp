@@ -47,10 +47,10 @@ const static std::regex rg_cmd_token{R"(^\S(.*\S|$))"};
 }  // namespace
 
 perfkit::commands::registry::node* perfkit::commands::registry::node::_add_subcommand(
-        std::string             cmd,
-        invoke_fn               handler,
+        std::string cmd,
+        invoke_fn handler,
         autocomplete_suggest_fn suggest,
-        bool                    name_constant)
+        bool name_constant)
 {
     lock_guard _{*_subcmd_lock};
 
@@ -187,10 +187,10 @@ bool check_unique_prefix(std::string_view cmp, Rng_&& candidates)
 
 std::string perfkit::commands::registry::node::suggest(
         perfkit::array_view<std::string_view> full_tokens,
-        std::vector<std::string>&             out_candidates,
-        bool                                  space_after_last_token,
-        int*                                  target_token_index,
-        bool*                                 out_has_unique_match)
+        std::vector<std::string>& out_candidates,
+        bool space_after_last_token,
+        int* target_token_index,
+        bool* out_has_unique_match)
 {
     lock_guard _{*_subcmd_lock};
     if (_hook_pre_op) { _hook_pre_op(this, full_tokens); }
@@ -340,9 +340,9 @@ void perfkit::commands::registry::node::reset_opreation_hook(
 }
 
 void perfkit::commands::tokenize_by_argv_rule(
-        std::string*                   io,
+        std::string* io,
         std::vector<std::string_view>& tokens,
-        std::vector<stroffset>*        token_indexes)
+        std::vector<stroffset>* token_indexes)
 {
     auto const src = *io;
     io->clear(), io->reserve(src.size());
@@ -355,7 +355,7 @@ void perfkit::commands::tokenize_by_argv_rule(
         if (!match.ready()) { continue; }
 
         size_t n = 0, position, length;
-        bool   wrapped_with_quote = false;
+        bool wrapped_with_quote = false;
         if (match[1].matched) {
             n = 1;
             wrapped_with_quote = true;
@@ -373,10 +373,10 @@ void perfkit::commands::tokenize_by_argv_rule(
         }
 
         // correct escapes
-        std::string             str = src.substr(position, length);
+        std::string str = src.substr(position, length);
         const static std::regex rg_escape{R"(\\([ \\"']))"};
 
-        auto                    end = std::regex_replace(str.begin(), str.begin(), str.end(), rg_escape, "$1");
+        auto end = std::regex_replace(str.begin(), str.begin(), str.end(), rg_escape, "$1");
         str.resize(end - str.begin());
 
         tokens.emplace_back(io->c_str() + io->size(), str.size());
@@ -402,7 +402,7 @@ intptr_t perfkit::commands::registry::add_invoke_hook(std::function<bool(std::st
     assert(hook);
 
     static intptr_t _idgen = 0;
-    auto            id = ++_idgen;
+    auto id = ++_idgen;
     _invoke_hooks.emplace_back(id, std::move(hook));
     return id;
 }
@@ -425,17 +425,17 @@ std::string perfkit::commands::registry::suggest(
         std::string line, std::vector<std::string>* candidates)
 {
     using namespace std::literals;
-    int                              position = 0;
-    auto                             rg = root();
+    int position = 0;
+    auto rg = root();
 
-    std::string                      str = line;
-    std::vector<std::string_view>    tokens;
+    std::string str = line;
+    std::vector<std::string_view> tokens;
     std::vector<commands::stroffset> offsets;
-    std::vector<std::string>         suggests;
+    std::vector<std::string> suggests;
 
     commands::tokenize_by_argv_rule(&str, tokens, &offsets);
 
-    int  target_token = 0;
+    int target_token = 0;
     bool has_unique_match;
     auto sharing = rg->suggest(
             tokens, suggests,

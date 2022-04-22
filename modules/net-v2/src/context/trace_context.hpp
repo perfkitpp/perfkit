@@ -43,11 +43,11 @@ class trace_context
 {
    private:
     struct tracer_info_t {
-        weak_ptr<tracer>      wref;
-        uint64_t              tracer_id;
+        weak_ptr<tracer> wref;
+        uint64_t tracer_id;
 
         vector<tracer::trace> traces;
-        bool                  remote_up_to_date = false;
+        bool remote_up_to_date = false;
 
         // Stores local state.
         struct {
@@ -68,7 +68,7 @@ class trace_context
 
     // List of registered tracers
     tracer_info_table_type _tracers;
-    tracer_id_table_type   _tracers_by_id;
+    tracer_id_table_type _tracers_by_id;
 
     // Stores fetched trace lists temporarily.
     pool<tracer::fetched_traces> _trace_bufs;
@@ -78,7 +78,7 @@ class trace_context
 
     // Reused message buffer
     vector<message::trace_update_t> _buf_updates;
-    vector<message::trace_info_t>   _buf_info;
+    vector<message::trace_info_t> _buf_info;
 
    public:
     explicit trace_context(if_net_terminal_adapter* host) : _host(host) {}

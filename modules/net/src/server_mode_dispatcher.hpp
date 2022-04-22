@@ -35,7 +35,7 @@
 namespace perfkit::terminal::net::detail {
 struct server_mode_dispatcher_init_info {
     std::string bind_addr = "0.0.0.0";
-    uint16_t    bind_port = 0;
+    uint16_t bind_port = 0;
 };
 
 class server_mode_dispatcher : public basic_dispatcher_impl
@@ -69,10 +69,10 @@ class server_mode_dispatcher : public basic_dispatcher_impl
         CPPH_INFO("opening acceptor for {}:{} ...", _init.bind_addr, _init.bind_port);
 
         struct _accept_fn {
-            server_mode_dispatcher*      self;
+            server_mode_dispatcher* self;
             std::unique_ptr<tcp::socket> sock;
 
-            void                         operator()(asio::error_code const& ec)
+            void operator()(asio::error_code const& ec)
             {
                 auto CPPH_LOGGER = [this] { return self->CPPH_LOGGER(); };
 
@@ -108,8 +108,8 @@ class server_mode_dispatcher : public basic_dispatcher_impl
     }
 
    private:
-    init_info                      _init;
-    uint64_t                       _unique_id_gen = 0;
+    init_info _init;
+    uint64_t _unique_id_gen = 0;
     std::unique_ptr<tcp::acceptor> _acceptor;
 };
 }  // namespace perfkit::terminal::net::detail

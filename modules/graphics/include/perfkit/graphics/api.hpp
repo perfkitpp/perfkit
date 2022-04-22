@@ -23,9 +23,9 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include "cpph/functional.hxx"
 #include "fwd.hpp"
 #include "handle.hpp"
-#include "cpph/functional.hxx"
 #include "types.hpp"
 
 namespace perfkit::graphics {

@@ -76,7 +76,7 @@ void trace_watcher::stop()
 }
 
 void trace_watcher::_dispatch_fetched_trace(
-        std::weak_ptr<perfkit::tracer>     tracer,
+        std::weak_ptr<perfkit::tracer> tracer,
         perfkit::tracer::trace_fetch_proxy proxy)
 {
     auto buf = _pool_traces.checkout();
@@ -101,7 +101,7 @@ void trace_watcher::_dispatch_fetched_trace(
 }
 
 static void dump_trace(
-        perfkit::tracer::trace const&                          v,
+        perfkit::tracer::trace const& v,
         perfkit::terminal::net::outgoing::traces::node_scheme* node)
 {
     node->trace_key = v.unique_id().value;
@@ -148,7 +148,7 @@ void trace_watcher::_dispatcher_impl_on_io(
     outgoing::traces trc;
     trc.class_name = tracer->name();
 
-    std::vector<decltype(&trc.root)>           stack;
+    std::vector<decltype(&trc.root)> stack;
     std::vector<perfkit::tracer::trace const*> hierarchy;
 
     stack.reserve(10);

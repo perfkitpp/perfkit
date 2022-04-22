@@ -326,8 +326,8 @@ void perfkit::net::terminal::_publish_system_stat(asio::error_code ec)
         auto delta_in = in - _session_prev_bytes[0];
         auto delta_out = out - _session_prev_bytes[1];
         auto dt = _session_state_delta_timer.elapsed().count();
-        int  in_rate = delta_in / dt;
-        int  out_rate = delta_out / dt;
+        int in_rate = delta_in / dt;
+        int out_rate = delta_out / dt;
         _session_state_delta_timer.reset();
         _session_prev_bytes[0] = in;
         _session_prev_bytes[1] = out;

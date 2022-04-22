@@ -175,10 +175,10 @@ void perfkit::net::trace_context::_rpc_reset_cache(uint64_t tracer_id)
 }
 
 void perfkit::net::trace_context::_on_fetch(
-        const weak_ptr<tracer_info_t>&    winfo,
+        const weak_ptr<tracer_info_t>& winfo,
         pool_ptr<tracer::fetched_traces>& pbuf,
-        size_t                            fence,
-        size_t                            max_index)
+        size_t fence,
+        size_t max_index)
 {
     auto info = winfo.lock();
     if (not info) { return; }
@@ -186,8 +186,8 @@ void perfkit::net::trace_context::_on_fetch(
     _buf_updates.clear();
     _buf_info.clear();
 
-    auto*        traces = &info->traces;
-    bool const   republish_all = not info->remote_up_to_date;
+    auto* traces = &info->traces;
+    bool const republish_all = not info->remote_up_to_date;
     size_t const latest_size = traces->size();
 
     //

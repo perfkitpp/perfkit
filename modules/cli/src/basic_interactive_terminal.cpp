@@ -61,7 +61,7 @@ basic_interactive_terminal::basic_interactive_terminal()
 
 std::optional<std::string> basic_interactive_terminal::fetch_command(milliseconds timeout)
 {
-    auto                       until = steady_clock::now() + timeout;
+    auto until = steady_clock::now() + timeout;
     std::optional<std::string> entered;
 
     if (std::unique_lock _{_cmd_queue_lock}; not _cmd_queued.empty()) {
@@ -173,12 +173,12 @@ basic_interactive_terminal::basic_interactive_terminal()
                 if (s[0] == '!') {
                     if (_cmd_history.empty()) { return false; }
 
-                    std::string                   tok = s;
+                    std::string tok = s;
                     std::vector<std::string_view> tokens;
                     commands::tokenize_by_argv_rule(&tok, tokens);
 
                     tok.assign(tokens[0].begin() + 1, tokens[0].end());
-                    int  hidx = 0;
+                    int hidx = 0;
                     auto r_conv = std::from_chars(tok.c_str(), tok.c_str() + tok.size(), hidx);
                     bool is_number = r_conv.ec != std::errc::invalid_argument
                                   && r_conv.ptr == tok.c_str() + tok.size();
@@ -214,7 +214,7 @@ basic_interactive_terminal::basic_interactive_terminal()
 
 static auto locked_command_registry = std::atomic<commands::registry*>{};
 
-void        basic_interactive_terminal::_register_autocomplete()
+void basic_interactive_terminal::_register_autocomplete()
 {
     if (linenoiseIsUnsupportedTerm()) { return; }
 
@@ -225,19 +225,19 @@ void        basic_interactive_terminal::_register_autocomplete()
     }
 
     auto completion = [](char const* buf, linenoiseCompletions* lc) -> int {
-        int                              position = 0;
+        int position = 0;
 
-        auto                             rg = locked_command_registry.load()->root();
+        auto rg = locked_command_registry.load()->root();
 
-        std::string                      str = buf;
-        auto                             srclen = str.size();
-        std::vector<std::string_view>    tokens;
+        std::string str = buf;
+        auto srclen = str.size();
+        std::vector<std::string_view> tokens;
         std::vector<commands::stroffset> offsets;
-        std::vector<std::string>         suggests;
+        std::vector<std::string> suggests;
 
         commands::tokenize_by_argv_rule(&str, tokens, &offsets);
 
-        int  target_token = 0;
+        int target_token = 0;
         bool has_unique_match;
         rg->suggest(tokens, suggests,
                     srclen > 0 && buf[srclen - 1] == ' ',

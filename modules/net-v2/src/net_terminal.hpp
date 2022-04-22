@@ -39,7 +39,6 @@
 
 #include "context/config_context.hpp"
 #include "context/trace_context.hpp"
-#include "net_terminal_adapter.hpp"
 #include "cpph/circular_queue.hxx"
 #include "cpph/hasher.hxx"
 #include "cpph/refl/rpc/rpc.hxx"
@@ -48,6 +47,7 @@
 #include "cpph/thread/notify_queue.hxx"
 #include "cpph/thread/worker.hxx"
 #include "cpph/timer.hxx"
+#include "net_terminal_adapter.hpp"
 #include "perfkit/detail/commands.hpp"
 #include "perfkit/extension/net/protocol.hpp"
 #include "perfkit/logging.h"
@@ -65,10 +65,10 @@ using std::weak_ptr;
 using std::chrono::steady_clock;
 
 struct terminal_info {
-    string   name;
-    string   description;
+    string name;
+    string description;
 
-    string   bind_ip;
+    string bind_ip;
     uint16_t bind_port;
 
     // TODO: Authentication
@@ -76,7 +76,7 @@ struct terminal_info {
 
 class terminal_monitor : public rpc::if_session_monitor
 {
-    class terminal*     _owner;
+    class terminal* _owner;
     perfkit::logger_ptr _logger;
 
    public:
@@ -109,9 +109,9 @@ class terminal : public if_terminal
         explicit adapter_t(terminal* owner) noexcept : _owner(owner) {}
 
        public:
-        bool                has_basic_access(const session_profile* profile) const override { return _owner->_has_basic_access(profile); }
-        bool                has_admin_access(const session_profile* profile) const override { return _owner->_has_admin_access(profile); }
-        asio::io_context*   event_proc() override { return &_owner->_event_proc; }
+        bool has_basic_access(const session_profile* profile) const override { return _owner->_has_basic_access(profile); }
+        bool has_admin_access(const session_profile* profile) const override { return _owner->_has_admin_access(profile); }
+        asio::io_context* event_proc() override { return &_owner->_event_proc; }
         rpc::session_group* rpc() override { return &_owner->_rpc; }
     };
 
@@ -129,26 +129,26 @@ class terminal : public if_terminal
     };
 
    private:
-    adapter_t     _adapter{this};
+    adapter_t _adapter{this};
     terminal_info _info;
 
     // Thread pool
-    asio::io_context      _event_proc;
+    asio::io_context _event_proc;
     asio::any_io_executor _event_proc_guard = asio::require(_event_proc.get_executor(), asio::execution::outstanding_work_t::tracked);
-    asio::thread_pool     _thread_pool{4};
-    thread::worker        _worker;
+    asio::thread_pool _thread_pool{4};
+    thread::worker _worker;
 
     // Basics
     logger_ptr _logging = share_logger("PERFKIT:NET");
 
     // RPC connection context
     shared_ptr<terminal_monitor> _rpc_monitor = std::make_shared<terminal_monitor>(this, _logging);
-    rpc::session_group           _rpc;
-    rpc::service                 _rpc_service;
+    rpc::session_group _rpc;
+    rpc::service _rpc_service;
 
     // Connection
     asio::ip::tcp::acceptor _acceptor{_event_proc};
-    asio::ip::tcp::socket   _accept_socket{_thread_pool};
+    asio::ip::tcp::socket _accept_socket{_thread_pool};
 
     //
     using session_event_procedure_ptr = shared_ptr<session_event_procedure_t>;
@@ -158,9 +158,9 @@ class terminal : public if_terminal
     notify_queue<string> _pending_commands;
 
     // TTY
-    spinlock                      _tty_lock;
-    circular_queue<char>          _tty_buf{2 << 20};
-    int64_t                       _tty_fence = 0;
+    spinlock _tty_lock;
+    circular_queue<char> _tty_buf{2 << 20};
+    int64_t _tty_fence = 0;
     locked<message::tty_output_t> _tty_obuf;
 
     // Sessions
@@ -169,16 +169,16 @@ class terminal : public if_terminal
 
     // States
     shared_ptr<void> _session_active_state_anchor;
-    size_t           _session_prev_bytes[2] = {};
-    stopwatch        _session_state_delta_timer = {};
+    size_t _session_prev_bytes[2] = {};
+    stopwatch _session_state_delta_timer = {};
 
     // Misc
     message::service::session_info_t _session_info;
-    asio::steady_timer               _session_stat_timer{_thread_pool};
+    asio::steady_timer _session_stat_timer{_thread_pool};
 
     // Contexts
     config_context _ctx_config{&_adapter};
-    trace_context  _ctx_trace{&_adapter};
+    trace_context _ctx_trace{&_adapter};
 
    public:
     explicit terminal(terminal_info info) noexcept;
@@ -213,8 +213,8 @@ class terminal : public if_terminal
 
    public:
     optional<string> fetch_command(milliseconds timeout) override;
-    void             push_command(string_view command) override;
-    void             write(string_view str) override;
+    void push_command(string_view command) override;
+    void write(string_view str) override;
 };
 
 }  // namespace perfkit::net

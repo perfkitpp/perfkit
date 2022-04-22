@@ -11,8 +11,8 @@ bool poll_stdin(int ms_to_wait, std::string* out_content)
 {
     auto& buffer = *out_content;
 
-    auto  now = [] { return std::chrono::steady_clock::now(); };
-    auto  until = 1ms * ms_to_wait + now();
+    auto now = [] { return std::chrono::steady_clock::now(); };
+    auto until = 1ms * ms_to_wait + now();
 
     while (now() < until) {
         if (_kbhit()) {

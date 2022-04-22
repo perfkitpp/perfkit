@@ -84,7 +84,7 @@ class _config_saveload_manager
                 it, end, std::inserter(cands, cands.end()),
                 [](auto&& p) {
                     fs::path path = p.path();
-                    auto&&   str = path.string();
+                    auto&& str = path.string();
                     std::replace(str.begin(), str.end(), '\\', '/');
 
                     return fs::is_directory(path) ? str.append("/") : str;
@@ -97,9 +97,9 @@ class _config_saveload_manager
 
 void register_conffile_io_commands(
         perfkit::if_terminal* ref,
-        std::string_view      cmd_load,
-        std::string_view      cmd_store,
-        std::string_view      initial_path)
+        std::string_view cmd_load,
+        std::string_view cmd_store,
+        std::string_view initial_path)
 {
     auto manip = std::make_shared<_config_saveload_manager>();
     manip->_latest = initial_path;
@@ -124,9 +124,9 @@ void register_logging_manip_command(if_terminal* ref, std::string_view cmd)
 
     struct fn_op {
         if_terminal* ref;
-        std::string  logger_name;
+        std::string logger_name;
 
-        bool         operator()(args_view args)
+        bool operator()(args_view args)
         {
             spdlog::logger* logger = {};
             if (logger_name.empty()) {
@@ -239,7 +239,7 @@ class _trace_manip
             }
         }
 
-        std::string         pattern{".*"};
+        std::string pattern{".*"};
         std::optional<bool> setter;
 
         if (args.size() > 1) { pattern.assign(args[1].begin(), args[1].end()); }
@@ -270,8 +270,8 @@ class _trace_manip
     void _async_request(std::shared_ptr<tracer> ref, std::string pattern, std::optional<bool> setter)
     {
         std::promise<perfkit::tracer::fetched_traces> promise;
-        auto                                          fut = promise.get_future();
-        auto                                          valid_marker = std::make_shared<nullptr_t>();
+        auto fut = promise.get_future();
+        auto valid_marker = std::make_shared<nullptr_t>();
 
         ref->on_fetch
                 += [promise = &promise,
@@ -297,12 +297,12 @@ class _trace_manip
         tracer::fetched_traces result = fut.get();
 
         using namespace ranges;
-        std::regex  match{pattern};
+        std::regex match{pattern};
         std::string output;
         output << "\n"_fmt.s();
 
         array_view<std::string_view> current_hierarchy = {};
-        std::string                  hierarchy_key, data_str, full_key;
+        std::string hierarchy_key, data_str, full_key;
         for (auto& item : result) {
             auto hierarchy = item.hierarchy.subspan(0, item.hierarchy.size() - 1);
 
@@ -337,7 +337,7 @@ class _trace_manip
     }
 
    private:
-    if_terminal*      _ref;
+    if_terminal* _ref;
     std::future<void> _async;
 };
 
@@ -495,8 +495,8 @@ void perfkit::if_terminal::_add_subcommand(
 
 size_t perfkit::if_terminal::invoke_queued_commands(std::chrono::milliseconds timeout)
 {
-    auto   now = [] { return std::chrono::steady_clock::now(); };
-    auto   until = now() + timeout;
+    auto now = [] { return std::chrono::steady_clock::now(); };
+    auto until = now() + timeout;
 
     size_t n_proc = 0;
     do {
@@ -513,8 +513,8 @@ size_t perfkit::if_terminal::invoke_queued_commands(std::chrono::milliseconds ti
 struct perfkit::if_terminal::impl {
     commands::registry commands;
 
-    std::thread        worker_stdin;
-    std::atomic_bool   is_shutting_down = false;
+    std::thread worker_stdin;
+    std::atomic_bool is_shutting_down = false;
 };
 
 perfkit::if_terminal::if_terminal() : _self(make_unique<impl>())

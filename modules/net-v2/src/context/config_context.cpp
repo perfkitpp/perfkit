@@ -57,8 +57,8 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
     CPPH_DEBUG("Publishing registry '{}'", rg->name());
 
     auto& all = rg->bk_all();
-    auto  key = rg->name();
-    auto  root = message::notify::config_category_t{};
+    auto key = rg->name();
+    auto root = message::notify::config_category_t{};
     root.name = key;
 
     // Always try destroy registries before
@@ -71,7 +71,7 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
         if (config->is_hidden())
             continue;  // dont' publish hidden ones
 
-        auto  hierarchy = config->tokenized_display_key();
+        auto hierarchy = config->tokenized_display_key();
         auto* level = &root;
 
         for (auto category : make_iterable(hierarchy.begin(), hierarchy.end() - 1)) {
@@ -98,7 +98,7 @@ void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
                 };
 
         auto* dst = &level->entities.emplace_back();
-        auto  config_key = config_key_t::hash(&*config);
+        auto config_key = config_key_t::hash(&*config);
         dst->name = config->tokenized_display_key().back();
         dst->description = config->description();
         dst->config_key = config_key.value;
@@ -158,10 +158,10 @@ void config_context::rpc_update_request(const message::config_entity_update_t& c
             [this, content = content] {
                 try {
                     auto& str = content.content_next;
-                    auto  json_content = nlohmann::json::from_msgpack(str);
+                    auto json_content = nlohmann::json::from_msgpack(str);
 
-                    auto  config_key = config_key_t{content.config_key};
-                    auto  wptr = _config_instances.at(config_key);
+                    auto config_key = config_key_t{content.config_key};
+                    auto wptr = _config_instances.at(config_key);
 
                     if (auto cfg = wptr.lock()) {
                         cfg->request_modify(std::move(json_content));
@@ -219,7 +219,7 @@ void config_context::_handle_registry_destruction(const string& name)
 }
 
 void config_context::_handle_update(
-        config_registry*                             rg,
+        config_registry* rg,
         vector<perfkit::detail::config_base*> const& changes)
 {
     bool const is_waiting = not _pending_updates.empty();

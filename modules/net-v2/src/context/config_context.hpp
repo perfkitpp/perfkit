@@ -58,18 +58,18 @@ class config_context
    private:
     if_net_terminal_adapter* _host;
 
-    asio::io_context*        _event_proc{_host->event_proc()};
-    rpc::session_group*      _rpc{_host->rpc()};
+    asio::io_context* _event_proc{_host->event_proc()};
+    rpc::session_group* _rpc{_host->rpc()};
 
     registry_context_table_t _config_registries;
-    config_key_table         _config_instances;
+    config_key_table _config_instances;
 
-    weak_ptr<void>           _monitor_anchor;
+    weak_ptr<void> _monitor_anchor;
 
     //
-    asio::steady_timer                         _lazy_update_publish{*_event_proc};
+    asio::steady_timer _lazy_update_publish{*_event_proc};
     std::vector<weak_ptr<detail::config_base>> _pending_updates;
-    message::config_entity_update_t            _buf_payload;
+    message::config_entity_update_t _buf_payload;
 
    public:
     explicit config_context(if_net_terminal_adapter* host) : _host(host) {}

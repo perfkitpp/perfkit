@@ -59,7 +59,7 @@ perfkit::terminal::net::dispatcher::dispatcher(
 }
 
 void perfkit::terminal::net::dispatcher::_register_recv(
-        std::string                                   route,
+        std::string route,
         std::function<bool(const recv_archive_type&)> fn)
 {
     self->register_recv(std::move(route), std::move(fn));
@@ -67,8 +67,8 @@ void perfkit::terminal::net::dispatcher::_register_recv(
 
 void perfkit::terminal::net::dispatcher::_send(
         std::string_view route,
-        int64_t          fence,
-        void const*      userobj,
+        int64_t fence,
+        void const* userobj,
         void (*payload)(send_archive_type*, void const*))
 {
     self->send(route, fence, userobj, payload);

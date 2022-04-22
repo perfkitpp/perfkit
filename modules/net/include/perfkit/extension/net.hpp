@@ -123,8 +123,8 @@ struct terminal_init_info {
    private:
     friend class dispatcher;  // internal use
     operation_mode _mode = operation_mode::invalid;
-    std::string    _string_param;
-    uint16_t       _port_param = 0;
+    std::string _string_param;
+    uint16_t _port_param = 0;
 
    public:
     explicit terminal_init_info(std::string session_name) : name{std::move(session_name)} {};

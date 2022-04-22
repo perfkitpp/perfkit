@@ -35,7 +35,6 @@
 #include <asio/ip/tcp.hpp>
 #include <asio/read.hpp>
 #include <asio/write.hpp>
-#include <nlohmann/json.hpp>
 #include <cpph/algorithm/base64.hxx>
 #include <cpph/algorithm/std.hxx>
 #include <cpph/assert.hxx>
@@ -45,6 +44,7 @@
 #include <cpph/helper/nlohmann_json_macros.hxx>
 #include <cpph/memory/pool.hxx>
 #include <cpph/timer.hxx>
+#include <nlohmann/json.hpp>
 #include <perfkit/extension/net.hpp>
 #include <perfkit/logging.h>
 #include <spdlog/spdlog.h>
@@ -62,8 +62,8 @@ using recv_archive_type = nlohmann::json;
 using send_archive_type = nlohmann::json;
 
 struct basic_dispatcher_impl_init_info {
-    size_t                 buffer_size_hint = 65535;
-    size_t                 message_size_limit = 1 << 20;
+    size_t buffer_size_hint = 65535;
+    size_t message_size_limit = 1 << 20;
     std::vector<auth_info> auth;
 };
 
@@ -76,15 +76,15 @@ static_assert(sizeof(message_header_t) == 8);
 #pragma pack(pop)
 
 struct message_in_t {
-    std::string       route;
+    std::string route;
     recv_archive_type parameter;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(message_in_t, route, parameter);
 };
 
 struct message_out_t {
-    std::string       route;
-    uint64_t          fence;
+    std::string route;
+    uint64_t fence;
     send_archive_type payload;
 
     CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(message_out_t, route, fence, payload);
@@ -92,10 +92,10 @@ struct message_out_t {
 
 struct connection_context_t {
     std::unique_ptr<tcp::socket> socket;
-    std::vector<char>            rdbuf;
-    bool                         is_active = false;
+    std::vector<char> rdbuf;
+    bool is_active = false;
 
-    timestamp_t                  recv_latest;
+    timestamp_t recv_latest;
 };
 
 class basic_dispatcher_impl
@@ -166,7 +166,7 @@ class basic_dispatcher_impl
     }
 
     void register_recv(
-            std::string                                             route,
+            std::string route,
             std::function<bool(recv_archive_type const& parameter)> handler)
     {
         auto lc{std::lock_guard{_mtx_modify}};
@@ -177,8 +177,8 @@ class basic_dispatcher_impl
 
     void send(
             std::string_view route,
-            int64_t          fence,
-            void const*      userobj,
+            int64_t fence,
+            void const* userobj,
             void (*payload)(send_archive_type*, void const*))
     {
         // iterate all active sockets and push payload
@@ -222,11 +222,11 @@ class basic_dispatcher_impl
     }
 
     perfkit::event<int> on_new_connection;
-    perfkit::event<>    on_no_connection;
+    perfkit::event<> on_no_connection;
 
-    auto*               io() { return &_io; }
+    auto* io() { return &_io; }
 
-    void                close_all()
+    void close_all()
     {
         std::vector<socket_id_t> keys;
 
@@ -277,7 +277,7 @@ class basic_dispatcher_impl
 
         {
             std::lock_guard lc{_mtx_modify};
-            auto            it = _connections.find(id);
+            auto it = _connections.find(id);
 
             if (it == _connections.end()) {
                 CPPH_WARN("socket {} already destroyed.", id.value);
@@ -369,8 +369,8 @@ class basic_dispatcher_impl
         }
         _perf_in(n_read);
 
-        bool             login_success = false;
-        bool             access_readonly = true;
+        bool login_success = false;
+        bool access_readonly = true;
         std::string_view auth_id = "<none>";
 
         if (_auth.empty()) {
@@ -555,26 +555,26 @@ class basic_dispatcher_impl
     spdlog::logger* CPPH_LOGGER() const { return _logger.get(); }
 
    private:
-    init_info                                             _cfg;
-    std::map<std::string, auth_info>                      _auth;
+    init_info _cfg;
+    std::map<std::string, auth_info> _auth;
 
-    asio::io_context                                      _io{1};
+    asio::io_context _io{1};
     std::unordered_map<socket_id_t, connection_context_t> _connections;
-    std::vector<tcp::socket*>                             _sockets_active;
+    std::vector<tcp::socket*> _sockets_active;
 
-    std::atomic_bool                                      _alive{false};
-    std::thread                                           _io_worker;
+    std::atomic_bool _alive{false};
+    std::thread _io_worker;
 
-    pool<std::string>                                     _send_pool;
-    poll_timer                                            _perf_timer{1s};
-    size_t                                                _perf_bytes_out = 0;
-    size_t                                                _perf_bytes_in = 0;
+    pool<std::string> _send_pool;
+    poll_timer _perf_timer{1s};
+    size_t _perf_bytes_out = 0;
+    size_t _perf_bytes_in = 0;
 
-    std::string                                           _token;       // login token to compare with.
-    std::mutex                                            _mtx_modify;  // locks when modification (socket add/remove) occurs.
+    std::string _token;      // login token to compare with.
+    std::mutex _mtx_modify;  // locks when modification (socket add/remove) occurs.
 
     std::map<std::string, std::function<bool(recv_archive_type const& parameter)>>
-               _recv_routes;
+            _recv_routes;
 
     logger_ptr _logger = share_logger("PERFKIT:NET");
 };

@@ -62,7 +62,7 @@ using std::weak_ptr;
 
 struct config_attribute_t {
     nlohmann::json default_value;
-    std::string    description;
+    std::string description;
 
     nlohmann::json one_of;
     nlohmann::json min;
@@ -95,57 +95,57 @@ class config_base : public std::enable_shared_from_this<config_base>
 
    private:
     friend class perfkit::config_registry;
-    perfkit::config_registry*     _owner;
+    perfkit::config_registry* _owner;
 
-    std::string                   _full_key;
-    std::string                   _display_key;
-    void*                         _raw;
-    std::atomic_bool              _dirty = true;  // default true to trigger initialization
-    std::atomic_bool              _latest_marshal_failed = false;
+    std::string _full_key;
+    std::string _display_key;
+    void* _raw;
+    std::atomic_bool _dirty = true;  // default true to trigger initialization
+    std::atomic_bool _latest_marshal_failed = false;
 
-    std::atomic_size_t            _fence_modified = 0;
-    std::atomic_size_t            _fence_serialized = ~size_t{};
-    config_attribute_t            _attribute;
-    nlohmann::json                _cached_serialized;
+    std::atomic_size_t _fence_modified = 0;
+    std::atomic_size_t _fence_serialized = ~size_t{};
+    config_attribute_t _attribute;
+    nlohmann::json _cached_serialized;
 
     std::vector<std::string_view> _categories;
 
-    deserializer                  _deserialize;
-    serializer                    _serialize;
+    deserializer _deserialize;
+    serializer _serialize;
 
    public:
     config_base(class config_registry* owner,
-                void*                  raw,
-                std::string            full_key,
-                deserializer           fn_deserial,
-                serializer             fn_serial,
-                config_attribute_t&&   attribute);
+                void* raw,
+                std::string full_key,
+                deserializer fn_deserial,
+                serializer fn_serial,
+                config_attribute_t&& attribute);
 
     /**
      * @warning this function is not re-entrant!
      * @return
      */
-    nlohmann::json        serialize();
-    void                  serialize(nlohmann::json&);
-    void                  serialize(std::function<void(nlohmann::json const&)> const&);
+    nlohmann::json serialize();
+    void serialize(nlohmann::json&);
+    void serialize(std::function<void(nlohmann::json const&)> const&);
 
-    auto const&           attribute() const noexcept { return _attribute; }
+    auto const& attribute() const noexcept { return _attribute; }
     nlohmann::json const& default_value() const { return _attribute.default_value; }
 
-    bool                  consume_dirty() { return _dirty.exchange(false); }
+    bool consume_dirty() { return _dirty.exchange(false); }
 
-    auto const&           full_key() const { return _full_key; }
-    auto const&           display_key() const { return _display_key; }
-    auto const&           description() const { return _attribute.description; }
-    auto                  tokenized_display_key() const { return make_view(_categories); }
-    void                  request_modify(nlohmann::json js);
+    auto const& full_key() const { return _full_key; }
+    auto const& display_key() const { return _display_key; }
+    auto const& description() const { return _attribute.description; }
+    auto tokenized_display_key() const { return make_view(_categories); }
+    void request_modify(nlohmann::json js);
 
-    size_t                num_modified() const { return _fence_modified; };
-    size_t                num_serialized() const { return _fence_serialized; }
+    size_t num_modified() const { return _fence_modified; };
+    size_t num_serialized() const { return _fence_serialized; }
 
-    bool                  can_export() const noexcept { return _attribute.can_export; }
-    bool                  can_import() const noexcept { return _attribute.can_import; }
-    bool                  is_hidden() const noexcept { return _attribute.hidden; }
+    bool can_export() const noexcept { return _attribute.can_export; }
+    bool can_import() const noexcept { return _attribute.can_import; }
+    bool is_hidden() const noexcept { return _attribute.hidden; }
 
     /**
      * Check if latest marshalling result was invalid
@@ -157,7 +157,7 @@ class config_base : public std::enable_shared_from_this<config_base>
     }
 
    private:
-    bool        _try_deserialize(nlohmann::json const& value);
+    bool _try_deserialize(nlohmann::json const& value);
     static void _split_categories(std::string_view view, std::vector<std::string_view>& out);
 };
 }  // namespace detail
@@ -179,14 +179,14 @@ struct schema_mismatch : parse_error { using parse_error::parse_error; };
 using flag_binding_table = std::map<std::string, config_shared_ptr, std::less<>>;
 flag_binding_table& _flags() noexcept;
 
-void                parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
-void                parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
+void parse_args(int* argc, char*** argv, bool consume, bool ignore_undefined = false);
+void parse_args(std::vector<std::string_view>* args, bool consume, bool ignore_undefined = false);
 
-bool                import_from(json const& data);
-json                export_all();
+bool import_from(json const& data);
+json export_all();
 
-bool                import_file(std::string_view path);
-bool                export_to(std::string_view path);
+bool import_file(std::string_view path);
+bool export_to(std::string_view path);
 
 /** wait until any configuration update is applied. */
 perfkit::event<perfkit::config_registry*>&
@@ -213,18 +213,18 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     };
 
    private:
-    static inline std::atomic_size_t  IDGEN = 0;
+    static inline std::atomic_size_t IDGEN = 0;
 
-    size_t const                      _id = ++IDGEN;
-    std::string                       _name;
-    config_table                      _entities;
-    string_view_table                 _disp_keymap;
+    size_t const _id = ++IDGEN;
+    std::string _name;
+    config_table _entities;
+    string_view_table _disp_keymap;
     std::vector<detail::config_base*> _pending_updates;
-    perfkit::spinlock                 _update_lock;
+    perfkit::spinlock _update_lock;
 
     // this value is used for identifying config registry's schema type, as config registry's
     //  layout never changes after updated once.
-    std::type_info const*  _schema_class;
+    std::type_info const* _schema_class;
     configs::schema_hash_t _schema_hash{hasher::FNV_OFFSET_BASE};
 
     // since configurations can be loaded before registry instance loaded, this flag makes
@@ -238,25 +238,25 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     ~config_registry() noexcept;
 
    public:
-    size_t      id() const noexcept { return _id; }
+    size_t id() const noexcept { return _id; }
 
-    bool        update();
-    void        export_to(nlohmann::json*);
-    void        import_from(nlohmann::json);
+    bool update();
+    void export_to(nlohmann::json*);
+    void import_from(nlohmann::json);
 
     auto const& name() const { return _name; }
 
    public:
-    bool             bk_queue_update_value(std::string_view full_key, json value);
+    bool bk_queue_update_value(std::string_view full_key, json value);
     std::string_view bk_find_key(std::string_view display_key);
-    auto const&      bk_all() const noexcept { return _entities; }
-    auto             bk_schema_class() const noexcept { return _schema_class; }
-    auto             bk_schema_hash() const noexcept { return _schema_hash; }
+    auto const& bk_all() const noexcept { return _entities; }
+    auto bk_schema_class() const noexcept { return _schema_class; }
+    auto bk_schema_hash() const noexcept { return _schema_hash; }
 
     using update_event_t = event<config_registry*, array_view<detail::config_base*>>;
     using destroy_event_t = event<config_registry*>;
 
-    update_event_t  on_update;
+    update_event_t on_update;
     destroy_event_t on_destroy;
 
    public:
@@ -295,17 +295,17 @@ class config;
 
 template <typename Ty_>
 struct _config_attrib_data {
-    std::string                             description;
-    std::function<bool(Ty_&)>               validate;
-    std::function<bool(Ty_ const&)>         verify;
-    std::optional<Ty_>                      min;
-    std::optional<Ty_>                      max;
-    std::optional<std::set<Ty_>>            one_of;
-    std::string                             env_name;
-    bool                                    hidden = false;
+    std::string description;
+    std::function<bool(Ty_&)> validate;
+    std::function<bool(Ty_ const&)> verify;
+    std::optional<Ty_> min;
+    std::optional<Ty_> max;
+    std::optional<std::set<Ty_>> one_of;
+    std::string env_name;
+    bool hidden = false;
 
     std::optional<std::vector<std::string>> flag_binding;
-    _config_io_type                         transient_type = _config_io_type::persistent;
+    _config_io_type transient_type = _config_io_type::persistent;
 };
 
 template <typename Ty_, uint64_t Flags_ = 0>
@@ -452,8 +452,8 @@ class _config_factory
    public:
     struct _init_info {
         config_registry* dispatcher = {};
-        std::string      full_key = {};
-        Ty_              default_value = {};
+        std::string full_key = {};
+        Ty_ default_value = {};
     };
 
     std::shared_ptr<_init_info> _pinfo;
@@ -467,9 +467,9 @@ class config
     template <uint64_t Flags_>
     config(
             std::integral_constant<uint64_t, Flags_>,
-            config_registry&         repo,
-            std::string              full_key,
-            Ty_&&                    default_value,
+            config_registry& repo,
+            std::string full_key,
+            Ty_&& default_value,
             _config_attrib_data<Ty_> attribute) noexcept
             : _owner(&repo), _value(std::forward<Ty_>(default_value))
     {
@@ -517,8 +517,8 @@ class config
         detail::config_base::deserializer fn_m = [attrib = std::move(attribute)]  //
                 (nlohmann::json const& in, void* out) {
                     try {
-                        Ty_                             parsed;
-                        bool                            okay = true;
+                        Ty_ parsed;
+                        bool okay = true;
 
                         _config_attrib_data<Ty_> const& attr = attrib;
 
@@ -591,32 +591,32 @@ class config
      * @return
      */
     [[deprecated]] Ty_ const& get() const noexcept { return _value; }
-    Ty_                       value() const noexcept { return _copy(); }
-    Ty_ const&                ref() const noexcept { return _value; }
+    Ty_ value() const noexcept { return _copy(); }
+    Ty_ const& ref() const noexcept { return _value; }
 
     /**
      * Provides thread-safe access for configuration.
      *
      * @return
      */
-    Ty_                 _copy() const noexcept { return _owner->_access_lock(), Ty_{_value}; }
+    Ty_ _copy() const noexcept { return _owner->_access_lock(), Ty_{_value}; }
 
-    Ty_ const&          operator*() const noexcept { return ref(); }
-    Ty_ const*          operator->() const noexcept { return &ref(); }
-                        operator Ty_() const noexcept { return _copy(); }
+    Ty_ const& operator*() const noexcept { return ref(); }
+    Ty_ const* operator->() const noexcept { return &ref(); }
+    operator Ty_() const noexcept { return _copy(); }
 
     [[deprecated]] bool check_dirty_and_consume() const { return _opt->consume_dirty(); }
     [[deprecated]] void async_modify(Ty_ v) { commit(std::move(v)); }
-    bool                check_update() const { return _opt->consume_dirty(); }
-    void                commit(Ty_ v) { _owner->bk_queue_update_value(_opt->full_key(), std::move(v)); }
+    bool check_update() const { return _opt->consume_dirty(); }
+    void commit(Ty_ v) { _owner->bk_queue_update_value(_opt->full_key(), std::move(v)); }
 
-    auto&               base() const { return *_opt; }
+    auto& base() const { return *_opt; }
 
    private:
     config_shared_ptr _opt;
 
-    config_registry*  _owner;
-    Ty_               _value;
+    config_registry* _owner;
+    Ty_ _value;
 };
 
 //! \see https://stackoverflow.com/questions/24855160/how-to-tell-if-a-c-template-type-is-c-style-string
@@ -640,8 +640,8 @@ using _cvt_ty = typename _cvt_ty_impl<std::decay_t<Ty_>>::type;
 
 template <typename Ty_>
 auto configure(config_registry& dispatcher,
-               std::string&&    full_key,
-               Ty_&&            default_value) noexcept
+               std::string&& full_key,
+               Ty_&& default_value) noexcept
 {
     _config_factory<_cvt_ty<Ty_>> attribute;
     attribute._pinfo = std::make_shared<typename _config_factory<_cvt_ty<Ty_>>::_init_info>();

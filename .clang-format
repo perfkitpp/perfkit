@@ -7,7 +7,7 @@ AlignAfterOpenBracket: Align
 AlignConsecutiveMacros: Consecutive
 AlignConsecutiveAssignments: None
 AlignConsecutiveBitFields: AcrossEmptyLines
-AlignConsecutiveDeclarations: AcrossEmptyLines
+AlignConsecutiveDeclarations: None
 AlignEscapedNewlines: Left
 AlignOperands: AlignAfterOperator
 AlignTrailingComments: true

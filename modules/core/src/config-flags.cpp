@@ -245,7 +245,7 @@ class initial_state : public if_state
     void _build_help()
     {
         std::map<detail::config_base*, std::list<std::string_view>>
-                    flag_mappings;
+                flag_mappings;
 
         std::string str;
 

@@ -192,7 +192,7 @@ void tracer::trace_fetch_proxy::fetch_diff(tracer::fetched_traces* out, size_t b
 
 namespace {
 struct message_block_sorter {
-    int         n;
+    int n;
     friend bool operator<(std::weak_ptr<tracer> ptr, message_block_sorter s)
     {
         return s.n < ptr.lock()->order();
