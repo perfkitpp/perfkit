@@ -37,10 +37,6 @@
 #include "cpph/refl/rpc/signature.hxx"
 #include "perfkit/fwd.hpp"
 
-namespace perfkit::msgpack::rpc {
-class context;
-}
-
 namespace perfkit::net::message {
 using std::list;
 using std::string;
@@ -53,7 +49,7 @@ using std::chrono::steady_clock;
 using msgpack_archive_t = binary<string>;
 
 #define DEFINE_RPC(Name, ...) \
-    static inline const auto Name = rpc::create_signature<__VA_ARGS__>(#Name);
+    static inline const auto Name = cpph::rpc::create_signature<__VA_ARGS__>(#Name);
 
 /**
  * Shell output descriptor
