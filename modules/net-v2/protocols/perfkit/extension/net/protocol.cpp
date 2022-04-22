@@ -30,13 +30,13 @@
 
 #include "protocol.hpp"
 
-#include "perfkit/common/refl/object.hxx"
-#include "perfkit/common/refl/types/array.hxx"
-#include "perfkit/common/refl/types/binary.hxx"
-#include "perfkit/common/refl/types/chrono.hxx"
-#include "perfkit/common/refl/types/list.hxx"
-#include "perfkit/common/refl/types/tuple.hxx"
-#include "perfkit/common/refl/types/variant.hxx"
+#include "cpph/refl/object.hxx"
+#include "cpph/refl/types/array.hxx"
+#include "cpph/refl/types/binary.hxx"
+#include "cpph/refl/types/chrono.hxx"
+#include "cpph/refl/types/list.hxx"
+#include "cpph/refl/types/tuple.hxx"
+#include "cpph/refl/types/variant.hxx"
 
 namespace perfkit::net::message {
 CPPH_REFL_DEFINE_OBJECT_c(

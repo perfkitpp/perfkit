@@ -33,8 +33,9 @@
 #include <list>
 #include <variant>
 
-#include "perfkit/common/refl/core.hxx"
-#include "perfkit/common/refl/rpc/signature.hxx"
+#include "cpph/refl/core.hxx"
+#include "cpph/refl/rpc/signature.hxx"
+#include "perfkit/fwd.hpp"
 
 namespace perfkit::msgpack::rpc {
 class context;

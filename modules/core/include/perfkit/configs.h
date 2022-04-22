@@ -23,7 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "perfkit/common/template_utils.hxx"
+#include "cpph/template_utils.hxx"
 #include "perfkit/detail/configs.hpp"
 #include "perfkit/fwd.hpp"
 

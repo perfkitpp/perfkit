@@ -24,9 +24,12 @@
 
 #pragma once
 
+namespace cpph {
+}
+
 namespace perfkit {
-struct trace_variant_type;
-};
+using namespace cpph;
+};  // namespace perfkit
 
 namespace perfkit::util {
 class command_registry;

@@ -43,8 +43,3 @@ add_subdirectory(modules)
 if (perfkit_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif ()
-
-if (perfkit_BUILD_CPPHEADERS_TEST)
-    message("[${PROJECT_NAME}]: Configuring imported cppheaders tests ...")
-    add_subdirectory(third/cpph/include/perfkit/common)
-endif ()

@@ -35,12 +35,12 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
-#include "perfkit/common/algorithm/base64.hxx"
-#include "perfkit/common/assert.hxx"
-#include "perfkit/common/hasher.hxx"
-#include "perfkit/common/macros.hxx"
-#include "perfkit/common/template_utils.hxx"
-#include "perfkit/common/utility/singleton.hxx"
+#include "cpph/algorithm/base64.hxx"
+#include "cpph/assert.hxx"
+#include "cpph/hasher.hxx"
+#include "cpph/macros.hxx"
+#include "cpph/template_utils.hxx"
+#include "cpph/utility/singleton.hxx"
 #include "perfkit/detail/base.hpp"
 
 #define CPPH_LOGGER() perfkit::glog()

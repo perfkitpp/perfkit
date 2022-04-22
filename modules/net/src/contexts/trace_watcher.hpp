@@ -28,10 +28,10 @@
 
 #pragma once
 #include "if_watcher.hpp"
-#include "perfkit/common/memory/pool.hxx"
-#include "perfkit/common/thread/locked.hxx"
-#include "perfkit/common/thread/worker.hxx"
-#include "perfkit/common/timer.hxx"
+#include "cpph/memory/pool.hxx"
+#include "cpph/thread/locked.hxx"
+#include "cpph/thread/worker.hxx"
+#include "cpph/timer.hxx"
 #include "perfkit/traces.h"
 
 namespace perfkit::terminal::net::context {

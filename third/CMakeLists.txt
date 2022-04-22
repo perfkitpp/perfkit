@@ -17,6 +17,5 @@ if (NOT TARGET nlohmann::json)
     target_include_directories(json INTERFACE json)
 endif ()
 
-add_subdirectory(
-        cpph
-)
+add_subdirectory(cppheaders)
+add_library(perfkit::cpph ALIAS cppheaders)

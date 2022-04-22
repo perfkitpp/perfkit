@@ -36,10 +36,10 @@
 #include <range/v3/view.hpp>
 #include <spdlog/spdlog.h>
 
-#include "perfkit/common/format.hxx"
-#include "perfkit/common/hasher.hxx"
-#include "perfkit/common/macros.hxx"
-#include "perfkit/common/utility/singleton.hxx"
+#include "cpph/format.hxx"
+#include "cpph/hasher.hxx"
+#include "cpph/macros.hxx"
+#include "cpph/utility/singleton.hxx"
 #include "perfkit/perfkit.h"
 
 #define CPPH_LOGGER() perfkit::glog()

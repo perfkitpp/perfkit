@@ -30,9 +30,9 @@
 
 #include "trace_context.hpp"
 
-#include "perfkit/common/refl/object.hxx"
-#include "perfkit/common/refl/rpc/rpc.hxx"
-#include "perfkit/common/refl/rpc/service.hxx"
+#include "cpph/refl/object.hxx"
+#include "cpph/refl/rpc/rpc.hxx"
+#include "cpph/refl/rpc/service.hxx"
 #include "perfkit/detail/tracer.hpp"
 
 void perfkit::net::trace_context::build_service(perfkit::rpc::service_builder& target)

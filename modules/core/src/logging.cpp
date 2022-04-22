@@ -24,8 +24,12 @@
 
 #include "perfkit/detail/logging.hpp"
 
-#include <perfkit/common/spinlock.hxx>
+#include <cpph/spinlock.hxx>
 #include <spdlog/spdlog.h>
+
+namespace perfkit {
+using namespace cpph;
+}
 
 perfkit::logger_ptr perfkit::share_logger(std::string const& name)
 {

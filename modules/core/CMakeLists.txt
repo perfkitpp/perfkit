@@ -18,6 +18,13 @@ target_sources(
         src/logging.cpp
 )
 
+target_precompile_headers(
+        ${PROJECT_NAME}
+
+        PUBLIC
+        fix.hpp
+)
+
 if (WIN32)
     target_sources(
             ${PROJECT_NAME}

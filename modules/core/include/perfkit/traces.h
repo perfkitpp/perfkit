@@ -23,7 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "perfkit/common/utility/ownership.hxx"
+#include "cpph/utility/ownership.hxx"
 #include "perfkit/detail/tracer.hpp"
 
 #define INTERNAL_PERFKIT_TRACER_STRINGIFY2(X) #X

@@ -25,7 +25,7 @@
 #pragma once
 #include "fwd.hpp"
 #include "handle.hpp"
-#include "perfkit/common/functional.hxx"
+#include "cpph/functional.hxx"
 #include "types.hpp"
 
 namespace perfkit::graphics {

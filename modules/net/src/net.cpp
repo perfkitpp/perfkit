@@ -24,7 +24,7 @@
 
 #include "perfkit/extension/net.hpp"
 
-#include <perfkit/common/algorithm/base64.hxx>
+#include <cpph/algorithm/base64.hxx>
 #include <perfkit/configs.h>
 #include <perfkit/extension/netconf.h>
 

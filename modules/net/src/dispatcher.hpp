@@ -31,7 +31,7 @@
 #include <memory>
 
 #include <nlohmann/json.hpp>
-#include <perfkit/common/event.hxx>
+#include <cpph/event.hxx>
 #include <perfkit/extension/net.hpp>
 
 namespace perfkit::terminal::net::detail {

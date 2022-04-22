@@ -27,6 +27,8 @@
 
 #include <spdlog/fwd.h>
 
+#include "perfkit/detail/fwd.hpp"
+
 namespace perfkit {
 namespace detail {
 class config_base;

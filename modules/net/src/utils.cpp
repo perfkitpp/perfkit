@@ -30,13 +30,13 @@
 
 #include <spdlog/spdlog.h>
 
-#include "perfkit/common/assert.hxx"
-#include "perfkit/common/counter.hxx"
-#include "perfkit/common/futils.hxx"
-#include "perfkit/common/macros.hxx"
-#include "perfkit/common/timer.hxx"
-#include "perfkit/common/utility/ownership.hxx"
-#include "perfkit/common/zip.hxx"
+#include "cpph/assert.hxx"
+#include "cpph/counter.hxx"
+#include "cpph/futils.hxx"
+#include "cpph/macros.hxx"
+#include "cpph/timer.hxx"
+#include "cpph/utility/ownership.hxx"
+#include "cpph/zip.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/logging.hpp"
 
@@ -331,7 +331,7 @@ void perfkit::terminal::net::detail::write(const char* buffer, size_t n)
 #    include <conio.h>
 #    include <spdlog/sinks/base_sink.h>
 
-#    include "perfkit/common/algorithm/std.hxx"
+#    include "cpph/algorithm/std.hxx"
 
 using namespace std::literals;
 

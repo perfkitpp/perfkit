@@ -40,7 +40,6 @@
 #include "perfkit/perfkit.h"
 
 namespace {
-using std::lock_guard;
 using std::unique_lock;
 
 const static std::regex rg_argv_token{R"RG((?:"((?:\\.|[^"\\])*)"|((?:[^\s\\]|\\.)+)))RG"};

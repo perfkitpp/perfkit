@@ -29,11 +29,11 @@
 #pragma once
 
 #include "if_watcher.hpp"
-#include "perfkit/common/hasher.hxx"
-#include "perfkit/common/template_utils.hxx"
-#include "perfkit/common/thread/notify_queue.hxx"
-#include "perfkit/common/thread/worker.hxx"
-#include "perfkit/common/timer.hxx"
+#include "cpph/hasher.hxx"
+#include "cpph/template_utils.hxx"
+#include "cpph/thread/notify_queue.hxx"
+#include "cpph/thread/worker.hxx"
+#include "cpph/timer.hxx"
 #include "perfkit/detail/configs.hpp"
 #include "perfkit/extension/net-internals/messages.hpp"
 

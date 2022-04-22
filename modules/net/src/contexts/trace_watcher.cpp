@@ -31,10 +31,10 @@
 #include <spdlog/spdlog.h>
 
 #include "../utils.hpp"
-#include "perfkit/common/algorithm/std.hxx"
-#include "perfkit/common/macros.hxx"
-#include "perfkit/common/template_utils.hxx"
-#include "perfkit/common/thread/utility.hxx"
+#include "cpph/algorithm/std.hxx"
+#include "cpph/macros.hxx"
+#include "cpph/template_utils.hxx"
+#include "cpph/thread/utility.hxx"
 #include "perfkit/extension/net-internals/messages.hpp"
 
 #define CPPH_LOGGER() perfkit::terminal::net::detail::nglog()

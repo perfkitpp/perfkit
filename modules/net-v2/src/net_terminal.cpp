@@ -32,14 +32,14 @@
 
 #include <spdlog/spdlog.h>
 
-#include "perfkit/common/functional.hxx"
-#include "perfkit/common/refl/object.hxx"
-#include "perfkit/common/refl/rpc/connection/asio.hxx"
-#include "perfkit/common/refl/rpc/protocol/msgpack-rpc.hxx"
-#include "perfkit/common/refl/rpc/rpc.hxx"
-#include "perfkit/common/refl/rpc/service.hxx"
-#include "perfkit/common/refl/rpc/session_builder.hxx"
-#include "perfkit/common/template_utils.hxx"
+#include "cpph/functional.hxx"
+#include "cpph/refl/object.hxx"
+#include "cpph/refl/rpc/connection/asio.hxx"
+#include "cpph/refl/rpc/protocol/msgpack-rpc.hxx"
+#include "cpph/refl/rpc/rpc.hxx"
+#include "cpph/refl/rpc/service.hxx"
+#include "cpph/refl/rpc/session_builder.hxx"
+#include "cpph/template_utils.hxx"
 #include "perfkit/configs.h"
 #include "utils.hpp"
 

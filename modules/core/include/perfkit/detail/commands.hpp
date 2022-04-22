@@ -32,7 +32,8 @@
 #include <mutex>
 #include <set>
 
-#include "perfkit/common/array_view.hxx"
+#include "cpph/array_view.hxx"
+#include "perfkit/detail/fwd.hpp"
 
 namespace perfkit::commands {
 class registry;

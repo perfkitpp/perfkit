@@ -36,10 +36,11 @@
 #include <variant>
 #include <vector>
 
-#include "perfkit/common/array_view.hxx"
-#include "perfkit/common/event.hxx"
-#include "perfkit/common/hasher.hxx"
-#include "perfkit/common/spinlock.hxx"
+#include "cpph/array_view.hxx"
+#include "cpph/event.hxx"
+#include "cpph/hasher.hxx"
+#include "cpph/spinlock.hxx"
+#include "perfkit/fwd.hpp"
 
 namespace fmt {
 }

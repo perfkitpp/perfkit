@@ -22,11 +22,15 @@
 //
 // project home: https://github.com/perfkitpp
 #pragma once
+#include "cpph/functional.hxx"
+#include "cpph/math/matrix.hxx"
+#include "cpph/math/rectangle.hxx"
 #include "fwd.hpp"
 #include "handle.hpp"
-#include "perfkit/common/functional.hxx"
-#include "perfkit/common/math/matrix.hxx"
-#include "perfkit/common/math/rectangle.hxx"
+
+namespace perfkit {
+using namespace cpph;
+}
 
 namespace perfkit::graphics {
 using point2 = math::vec2i;

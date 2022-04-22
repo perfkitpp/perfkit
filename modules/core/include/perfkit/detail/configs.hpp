@@ -39,12 +39,12 @@
 
 #include <nlohmann/json.hpp>
 
-#include "perfkit/common/array_view.hxx"
-#include "perfkit/common/event.hxx"
-#include "perfkit/common/hasher.hxx"
-#include "perfkit/common/macros.hxx"
-#include "perfkit/common/spinlock.hxx"
-#include "perfkit/common/template_utils.hxx"
+#include "cpph/array_view.hxx"
+#include "cpph/event.hxx"
+#include "cpph/hasher.hxx"
+#include "cpph/macros.hxx"
+#include "cpph/spinlock.hxx"
+#include "cpph/template_utils.hxx"
 #include "perfkit/utils/config_watcher.hpp"
 
 namespace perfkit {

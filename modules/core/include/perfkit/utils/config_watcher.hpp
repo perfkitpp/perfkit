@@ -25,7 +25,7 @@
 #pragma once
 #include <mutex>
 
-#include "perfkit/common/spinlock.hxx"
+#include "cpph/spinlock.hxx"
 
 namespace perfkit::detail {
 class config_base;

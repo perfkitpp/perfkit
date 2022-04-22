@@ -25,4 +25,4 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #define DOCTEST_CONFIG_NO_EXCEPTIONS
 
-#include "perfkit/common/third/doctest.h"
+#include "cpph/third/doctest.h"

@@ -37,7 +37,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
-#include "perfkit/common/format.hxx"
+#include "cpph/format.hxx"
 #include "perfkit/detail/base.hpp"
 
 using namespace perfkit;

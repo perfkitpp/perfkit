@@ -27,7 +27,7 @@
 #include <tuple>
 
 #include <nlohmann/json.hpp>
-#include <perfkit/common/helper/nlohmann_json_macros.hxx>
+#include <cpph/helper/nlohmann_json_macros.hxx>
 
 namespace perfkit::terminal::net::outgoing {
 struct session_reset {

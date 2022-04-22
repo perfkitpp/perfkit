@@ -32,8 +32,8 @@
 #include <set>
 
 #include "../net_terminal_adapter.hpp"
-#include "perfkit/common/memory/pool.hxx"
-#include "perfkit/common/refl/rpc/core.hxx"
+#include "cpph/memory/pool.hxx"
+#include "cpph/refl/rpc/core.hxx"
 #include "perfkit/detail/tracer.hpp"
 #include "perfkit/extension/net/protocol.hpp"
 #include "perfkit/fwd.hpp"

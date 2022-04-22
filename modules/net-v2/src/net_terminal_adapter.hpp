@@ -29,10 +29,12 @@
 //
 
 #pragma once
-#include "perfkit/common/functional.hxx"
+#include "cpph/functional.hxx"
+#include "perfkit/detail/fwd.hpp"
 
-namespace perfkit::rpc {
+namespace cpph::rpc {
 class session_profile;
+class session_group;
 }
 
 namespace perfkit::net {
@@ -43,10 +45,6 @@ using std::unique_ptr;
 using std::vector;
 using std::weak_ptr;
 }  // namespace perfkit::net
-
-namespace perfkit::rpc {
-class session_group;
-}
 
 namespace asio {
 class io_context;
