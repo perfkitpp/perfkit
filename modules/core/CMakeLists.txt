@@ -73,7 +73,7 @@ target_link_libraries(
         PUBLIC
         spdlog::spdlog
         perfkit::cpph
-        nlohmann::json
+        nlohmann_json::nlohmann_json
 
         PRIVATE
         range-v3::range-v3
