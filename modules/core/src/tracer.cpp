@@ -31,7 +31,6 @@
 #include <mutex>
 #include <variant>
 
-#include <nlohmann/detail/conversions/from_json.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
