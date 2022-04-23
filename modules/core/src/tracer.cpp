@@ -88,8 +88,6 @@ uint64_t tracer::_hash_active(_entity_ty const* parent, std::string_view top)
     auto hash = hasher::FNV_OFFSET_BASE;
     if (parent) {
         hash = parent->body.hash;
-    } else {
-        return hash;  // parent==nullptr -> root trace. always return same hash.
     }
 
     for (auto c : top) { hash = hasher::fnv1a_byte(c, hash); }

@@ -86,7 +86,8 @@ void test_class::start()
                         CPPH_INFO("Reloading tracer 2 ");
                     }
 
-                    auto trc_root = _tracer->fork("time_all");
+                    thread_local static int sequencer = 0;
+                    auto trc_root = _tracer->fork(fmt::format("tracer # {}", ++sequencer % 5));
                     auto& trc = *_tracer;
 
                     trc.timer("global-update"), tc::update();
