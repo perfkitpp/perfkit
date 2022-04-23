@@ -30,6 +30,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "cpph/timer.hxx"
+
 PERFKIT_CATEGORY(test_global_category)
 {
     PERFKIT_CONFIGURE(int_config, 1).confirm();
@@ -64,9 +66,10 @@ void test_class::start()
 {
     _loop_active.store(true);
     _worker = std::thread{
-            [&]() {
+            [this]() {
                 CPPH_INFO("worker thread created.");
                 bool reload_tracer_next_frame = false;
+                cpph::poll_timer sleep;
 
                 while (_loop_active.load()) {
                     if (_cfg.t_boolean) {
@@ -89,17 +92,24 @@ void test_class::start()
                     trc.timer("global-update"), tc::update();
                     trc.timer("sleep-interval"),
                             trc.branch("duration-ms") = tc::class_control::interval_ms.value(),
-                            std::this_thread::sleep_for(
-                                    1ms * tc::class_control::interval_ms.value());
+                            (sleep.check() ? (void)0 : std::this_thread::sleep_until(sleep.next_point()));
 
                     _cfg->update();
                     _cfg.t_increment.commit(*_cfg.t_increment + 1);
 
+                    if (auto to = 1ms * tc::class_control::interval_ms; to != sleep.interval())
+                        sleep.reset(to);
+
                     if (auto tr0 = trc.timer("tree-0")) {
                         auto tr1 = trc.timer("tree-1");
-                        tr1["integer"] = _cfg.t_int.ref();
+                        auto t = tr1["integer"];
+
+                        static int my_var = 0;
+                        t = t ? ++my_var : my_var;
+
                         tr1["double"] = _cfg.t_double.value();
                         tr1["str"] = _cfg.t_string.value();
+                        tr1["diffname"] = _cfg.t_string.value();
 
                         spdlog::info("한글 로그");
                     }

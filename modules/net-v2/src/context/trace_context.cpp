@@ -221,7 +221,7 @@ void perfkit::net::trace_context::_on_fetch(
     auto fn_apnd_msg_update =
             [this](tracer::trace const& e) {
                 auto* m = &_buf_updates.emplace_back();
-                m->index = e.active_order;
+                m->index = e.unique_order;
                 m->occurrence_order = e.active_order;
                 m->fence_value = e.fence;
                 m->ref_subscr() = e.subscribing();
