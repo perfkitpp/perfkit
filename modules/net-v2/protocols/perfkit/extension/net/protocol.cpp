@@ -89,6 +89,6 @@ CPPH_REFL_DEFINE_OBJECT_c(
         (index, 4), (fence_value, 1), (occurrence_order, 2), (flags, 3), (payload, 5));
 
 CPPH_REFL_DEFINE_OBJECT_c(
-        service::trace_control_t, (), (flags, 1));
+        service::trace_control_t, (), (subscribe, 2), (fold, 3));
 
 }  // namespace perfkit::net::message

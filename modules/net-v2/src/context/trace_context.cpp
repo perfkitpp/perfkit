@@ -174,6 +174,23 @@ void perfkit::net::trace_context::_rpc_reset_cache(uint64_t tracer_id)
             });
 }
 
+void perfkit::net::trace_context::_rpc_request_control(
+        uint64_t tracer_id, int index, const perfkit::net::message::service::trace_control_t& arg)
+{
+    _host->post(
+            [this, tracer_id, index, arg] {
+                auto info = find_ptr(_tracers_by_id, tracer_id);
+                if (not info) { return; }
+
+                try {
+                    auto e = &info->second->traces.at(index);
+                    if (arg.subscribe) e->subscribe(*arg.subscribe);
+                    if (arg.fold) e->fold(*arg.fold);
+                } catch (std::exception&) {
+                }
+            });
+}
+
 void perfkit::net::trace_context::_on_fetch(
         const weak_ptr<tracer_info_t>& winfo,
         pool_ptr<tracer::fetched_traces>& pbuf,

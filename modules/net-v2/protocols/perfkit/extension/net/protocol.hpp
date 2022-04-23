@@ -260,10 +260,8 @@ struct service {
     struct trace_control_t {
         CPPH_REFL_DECLARE_c;
 
-        std::array<bool, 2> flags;
-
-        auto& ref_subscr() { return flags[0]; }
-        auto& ref_fold() { return flags[1]; }
+        optional<bool> subscribe;
+        optional<bool> fold;
     };
 
     DEFINE_RPC(trace_request_control, void(uint64_t tracer_id, int index, trace_control_t));

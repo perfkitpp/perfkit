@@ -106,6 +106,6 @@ class trace_context
     //! RPC handlers, may called from different thread ...
     void _rpc_request_update(uint64_t tracer_id);
     void _rpc_reset_cache(uint64_t tracer_id);
-    void _rpc_request_control(uint64_t tracer_id, int index, message::service::trace_control_t const&) {}
+    void _rpc_request_control(uint64_t tracer_id, int index, message::service::trace_control_t const&);
 };
 }  // namespace perfkit::net
