@@ -92,7 +92,7 @@ void test_class::start()
                     trc.timer("global-update"), tc::update();
                     trc.timer("sleep-interval"),
                             trc.branch("duration-ms") = tc::class_control::interval_ms.value(),
-                            (sleep.check() ? (void)0 : std::this_thread::sleep_until(sleep.next_point()));
+                            (sleep.check(), std::this_thread::sleep_until(sleep.next_point()));
 
                     _cfg->update();
                     _cfg.t_increment.commit(*_cfg.t_increment + 1);
