@@ -185,7 +185,7 @@ struct notify {
      * Trace update notification
      */
     DEFINE_RPC(new_tracer, void(tracer_descriptor_t));
-    DEFINE_RPC(deleted_tracer, void(uint64_t tracer_id));
+    DEFINE_RPC(validate_tracer_list, void(vector<uint64_t> active_tracers));
     DEFINE_RPC(new_trace_node, void(uint64_t tracer_id, vector<trace_info_t>));
     DEFINE_RPC(trace_node_update, void(uint64_t tracer_id, vector<trace_update_t>));
 

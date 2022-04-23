@@ -34,6 +34,7 @@
 #include "cpph/refl/rpc/rpc.hxx"
 #include "cpph/refl/rpc/service.hxx"
 #include "perfkit/detail/tracer.hpp"
+#include "range/v3/view/map.hpp"
 
 void perfkit::net::trace_context::build_service(perfkit::rpc::service_builder& target)
 {
@@ -80,6 +81,8 @@ void perfkit::net::trace_context::rpc_republish_all_tracers()
                     v->remote_up_to_date = false;
                     _publish_tracer_creation(*v);
                 }
+
+                _publish_tracer_id_list();
             };
 
     _host->post_weak(_monitor_anchor, fn_publish_all);
@@ -139,14 +142,13 @@ void perfkit::net::trace_context::_publish_tracer_creation(
 
 void perfkit::net::trace_context::_unregister_tracer(std::weak_ptr<perfkit::tracer> wp)
 {
-    auto pair = find_ptr(_tracers, wp);
-    if (not pair) { return; }
+    if (auto pair = find_ptr(_tracers, wp)) {
+        auto pinfo = pair->second;
+        _tracers.erase(wp);
+        _tracers_by_id.erase(pinfo->tracer_id);
+    }
 
-    auto pinfo = pair->second;
-    _tracers.erase(wp);
-    _tracers_by_id.erase(pinfo->tracer_id);
-
-    message::notify::deleted_tracer(_host->rpc()).notify(pinfo->tracer_id);
+    _publish_tracer_id_list();
 }
 
 void perfkit::net::trace_context::_rpc_request_update(uint64_t tracer_id)
@@ -269,4 +271,13 @@ void perfkit::net::trace_context::_on_fetch(
         message::notify::trace_node_update(_host->rpc())
                 .notify(info->tracer_id, _buf_updates, _host->fn_admin_access());
     }
+}
+
+void perfkit::net::trace_context::_publish_tracer_id_list()
+{
+    vector<uint64_t> tracers;
+    tracers.reserve(_tracers_by_id.size());
+    copy(_tracers_by_id | ranges::views::keys, back_inserter(tracers));
+
+    message::notify::validate_tracer_list(_host->rpc()).notify(tracers);
 }

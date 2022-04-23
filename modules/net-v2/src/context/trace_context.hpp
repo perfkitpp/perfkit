@@ -94,6 +94,7 @@ class trace_context
 
    private:
     void _publish_tracer_creation(tracer_info_t const&);
+    void _publish_tracer_id_list();
     void _register_tracer(shared_ptr<tracer>);
     void _unregister_tracer(weak_ptr<tracer> wp);
     void _on_fetch(
