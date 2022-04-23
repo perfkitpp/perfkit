@@ -62,7 +62,7 @@ void trace_watcher::start()
                     }));
 
     perfkit::tracer::on_new_tracer()
-            .add_weak(_event_lifespan, CPPH_BIND(_on_new_tracer));
+            .add_weak(_event_lifespan, bind_front(&trace_watcher::_on_new_tracer, this));
 }
 
 void trace_watcher::stop()
@@ -260,7 +260,7 @@ void trace_watcher::_on_new_tracer_impl(
 
     // register destroy event
     tracer->on_destroy
-            .add_weak(_event_lifespan, CPPH_BIND(_on_destroy_tracer));
+            .add_weak(_event_lifespan, bind_front(&self_t::_on_destroy_tracer, this));
 
     // register update event
     tracer->on_fetch.add_weak(
