@@ -254,7 +254,7 @@ auto tracer::create(int order, std::string_view name) -> std::shared_ptr<tracer>
     return entity;
 }
 
-void tracer::destroy_tracer()
+void tracer::unregister()
 {
     if (_destroied.exchange(true))
         return;
@@ -278,7 +278,7 @@ void tracer::destroy_tracer()
 
 tracer::~tracer() noexcept
 {
-    destroy_tracer();
+    unregister();
 }
 
 void tracer::_try_pop(_trace::_entity_ty const* body)

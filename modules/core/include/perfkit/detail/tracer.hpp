@@ -330,7 +330,7 @@ class tracer : public std::enable_shared_from_this<tracer>
      *
      * Useful when quick reloading of this tracer is required.
      */
-    void destroy_tracer();
+    void unregister();
 
     /**
      * Fork new proxy.

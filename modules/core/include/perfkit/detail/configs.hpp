@@ -230,6 +230,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     // since configurations can be loaded before registry instance loaded, this flag makes
     //  the first update of registry to apply loaded configurations.
     std::atomic<update_state> _initial_update_state{update_state::none};
+    std::atomic_flag _unregistered = {};
 
    private:
     explicit config_registry(std::string name);
@@ -239,6 +240,10 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
    public:
     size_t id() const noexcept { return _id; }
+
+    //! Manually unregister config registry.
+    //! Useful when reload same-named
+    bool unregister();
 
     bool update();
     void export_to(nlohmann::json*);

@@ -76,11 +76,21 @@ auto perfkit::config_registry::create(std::string name, std::type_info const* sc
 
 perfkit::config_registry::~config_registry() noexcept
 {
-    CPPH_DEBUG("destroying config registry {}", name());
+    unregister();
+}
+
+bool perfkit::config_registry::unregister()
+{
+    if (_unregistered.test_and_set())
+        return false;
+
+    CPPH_DEBUG("Unregistering config registry {}", name());
     on_destroy.invoke(this);
 
     auto [all, _] = detail::_all_repos();
     all->erase(all->find(name()));
+
+    return true;
 }
 
 auto perfkit::config_registry::bk_enumerate_registries(bool filter_complete) noexcept

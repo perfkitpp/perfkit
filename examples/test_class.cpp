@@ -74,11 +74,11 @@ void test_class::start()
                     }
 
                     if (std::exchange(reload_tracer_next_frame, false)) {
-                        _tracer->destroy_tracer();
+                        _tracer->unregister();
                         _tracer.reset(), _tracer = perfkit::tracer::create(1024, _id);
                         CPPH_INFO("Reloading tracer 1");
 
-                        _tracer->destroy_tracer();
+                        _tracer->unregister();
                         _tracer.reset(), _tracer = perfkit::tracer::create(1024, _id);
                         CPPH_INFO("Reloading tracer 2 ");
                     }
