@@ -270,6 +270,7 @@ class tracer : public std::enable_shared_from_this<tracer>
     steady_clock::time_point _birth = steady_clock::now();
 
     std::thread::id _working_thread_id = {};
+    std::atomic_bool _destroied = false;
 
    public:
     // Provides fetching interface
@@ -324,6 +325,13 @@ class tracer : public std::enable_shared_from_this<tracer>
     event<trace_fetch_proxy> on_fetch;
 
    public:
+    /**
+     * Destroy this tracer explicitly.
+     *
+     * Useful when quick reloading of this tracer is required.
+     */
+    void destroy_tracer();
+
     /**
      * Fork new proxy.
      *

@@ -254,8 +254,11 @@ auto tracer::create(int order, std::string_view name) -> std::shared_ptr<tracer>
     return entity;
 }
 
-tracer::~tracer() noexcept
+void tracer::destroy_tracer()
 {
+    if (_destroied.exchange(true))
+        return;
+
     on_destroy.invoke(this);
 
     auto _{lock_tracer_repo()};
@@ -271,6 +274,11 @@ tracer::~tracer() noexcept
     } else {
         CPPH_DEBUG("logic error: tracer invalid! {}", _name);
     }
+}
+
+tracer::~tracer() noexcept
+{
+    destroy_tracer();
 }
 
 void tracer::_try_pop(_trace::_entity_ty const* body)

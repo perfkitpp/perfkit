@@ -66,13 +66,24 @@ void test_class::start()
     _worker = std::thread{
             [&]() {
                 CPPH_INFO("worker thread created.");
+                bool reload_tracer_next_frame = false;
 
                 while (_loop_active.load()) {
                     if (_cfg.t_boolean) {
                         CPPH_INFO("LOOPLOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512!are412512");
                     }
 
-                    auto  trc_root = _tracer->fork("time_all");
+                    if (std::exchange(reload_tracer_next_frame, false)) {
+                        _tracer->destroy_tracer();
+                        _tracer.reset(), _tracer = perfkit::tracer::create(1024, _id);
+                        CPPH_INFO("Reloading tracer 1");
+
+                        _tracer->destroy_tracer();
+                        _tracer.reset(), _tracer = perfkit::tracer::create(1024, _id);
+                        CPPH_INFO("Reloading tracer 2 ");
+                    }
+
+                    auto trc_root = _tracer->fork("time_all");
                     auto& trc = *_tracer;
 
                     trc.timer("global-update"), tc::update();
@@ -106,15 +117,8 @@ void test_class::start()
                     }
 
                     if (auto branch = trc.branch("reload")) {
+                        reload_tracer_next_frame = true;
                         branch.unsubscribe();
-                        _tracer.reset(), _tracer = perfkit::tracer::create(1024, _id);
-                        CPPH_INFO("Reloading tracer 1");
-
-                        _tracer.reset(), _tracer = perfkit::tracer::create(1024, _id);
-                        CPPH_INFO("Reloading tracer 2 ... wait for 3s");
-
-                        std::this_thread::sleep_for(3s);
-                        CPPH_INFO("Wait done. ");
                     }
                 }
 
