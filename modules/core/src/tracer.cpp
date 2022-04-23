@@ -113,20 +113,55 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
     _order_active = 0;
     _stack.clear();
 
+    {
+        tracer_proxy total;
+        total._owner = this;
+        total._ref = _fork_branch(nullptr, "[[summary]]", false);
+
+        {
+            auto thrd_hash = std::hash<std::thread::id>{}(_working_thread_id);
+            char buf[perfkit::base64::encoded_size(sizeof thrd_hash)];
+            perfkit::base64::encode_one(thrd_hash, buf);
+            total = std::string_view{buf, sizeof buf};
+        }
+        {
+            auto seconds = std::chrono::duration_cast<decltype(1s)>(steady_clock::now() - _birth).count();
+            char buf[64];
+            auto head = buf;
+            auto fn_append =
+                    [&head](int c, char const* name) mutable {
+                        head += sprintf(head, "%d %s%s ", c, name, c > 1 ? "s" : "");
+                    };
+
+            enum {
+                SEC_DAY = 3600 * 24,
+                SEC_WEEK = SEC_DAY * 7,
+            };
+
+            if (auto val = seconds / SEC_WEEK; val)
+                fn_append(val, "week"), seconds -= val * SEC_WEEK;
+
+            if (auto val = seconds / SEC_DAY; val)
+                fn_append(val, "day"), seconds -= val * SEC_DAY;
+
+            if (auto val = seconds / 3600; val)
+                fn_append(val, "hour"), seconds -= val * 3600;
+
+            if (auto val = seconds / 60; val)
+                head += sprintf(head, "%d min", (int)val), seconds -= val * 60;
+
+            head += sprintf(head, "%d sec", (int)seconds);
+            branch("age") = std::string_view(buf);
+        }
+        branch("interval")._epoch_if_required = last_fork;
+        branch("sequence", _fence_active);
+        branch("branches", _table.size());
+    }
+
     tracer_proxy prx;
     prx._owner = this;
     prx._ref = _fork_branch(nullptr, n, false);
     prx._epoch_if_required = steady_clock::now();
-
-    auto thrd_hash = std::hash<std::thread::id>{}(_working_thread_id);
-    char buf[perfkit::base64::encoded_size(sizeof thrd_hash)];
-    perfkit::base64::encode_one(thrd_hash, buf);
-    tracer_proxy total
-            = branch("[[internals]]", std::string_view{buf, sizeof buf});
-    branch("age")._epoch_if_required = _birth;
-    branch("interval")._epoch_if_required = last_fork;
-    branch("sequence", _fence_active);
-    branch("branches", _table.size());
 
     return prx;
 }
