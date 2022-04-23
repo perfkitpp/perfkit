@@ -71,6 +71,8 @@ perfkit::net::terminal::terminal(perfkit::net::terminal_info info) noexcept
 
 void perfkit::net::terminal::_start_()
 {
+    _rpc_monitor = std::make_shared<terminal_monitor>(std::static_pointer_cast<terminal>(shared_from_this()), _logging);
+
     detail::input_redirect(bind_front(&terminal::_on_char_buf, this));
 
     CPPH_INFO("Starting session [{}] ...", _info.name);
@@ -352,17 +354,20 @@ void perfkit::net::terminal::_publish_system_stat(asio::error_code ec)
 void perfkit::net::terminal_monitor::on_session_created(session_profile_view profile) noexcept
 {
     CPPH_INFO("session [{}]>> Connected", profile->peer_name);
-    asio::post(_owner->_event_proc, bind_front(&terminal::_on_session_list_change, _owner));
+    if (auto lc = _owner.lock())
+        asio::post(lc->_event_proc, bind_front(&terminal::_on_session_list_change, lc.get()));
 }
 
 void perfkit::net::terminal_monitor::on_session_expired(session_profile_view profile) noexcept
 {
-    if (_owner->_verified_sessions.lock()->erase(profile))
-        CPPH_INFO("Authorized session [{}]>> Disconnecting ... ", profile->peer_name);
-    else
-        CPPH_INFO("Unauthorized session [{}]>> Disconnecting ... ", profile->peer_name);
+    if (auto lc = _owner.lock()) {
+        if (lc->_verified_sessions.lock()->erase(profile))
+            CPPH_INFO("Authorized session [{}]>> Disconnecting ... ", profile->peer_name);
+        else
+            CPPH_INFO("Unauthorized session [{}]>> Disconnecting ... ", profile->peer_name);
 
-    asio::post(_owner->_event_proc, bind_front(&terminal::_on_session_list_change, _owner));
+        asio::post(lc->_event_proc, bind_front(&terminal::_on_session_list_change, lc.get()));
+    }
 }
 
 void perfkit::net::terminal::session_event_procedure_t::post_rpc_completion(perfkit::function<void()>&& fn)

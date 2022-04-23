@@ -74,14 +74,16 @@ struct terminal_info {
     // TODO: Authentication
 };
 
+class terminal;
+
 class terminal_monitor : public rpc::if_session_monitor
 {
-    class terminal* _owner;
+    weak_ptr<terminal> _owner;
     perfkit::logger_ptr _logger;
 
    public:
-    explicit terminal_monitor(terminal* owner, logger_ptr logger)
-            : _owner(owner), _logger(std::move(logger)) {}
+    explicit terminal_monitor(weak_ptr<terminal> owner, logger_ptr logger)
+            : _owner(std::move(owner)), _logger(std::move(logger)) {}
 
    public:
     void on_session_expired(session_profile_view view) noexcept override;
@@ -142,7 +144,7 @@ class terminal : public if_terminal
     logger_ptr _logging = share_logger("PERFKIT:NET");
 
     // RPC connection context
-    shared_ptr<terminal_monitor> _rpc_monitor = std::make_shared<terminal_monitor>(this, _logging);
+    shared_ptr<terminal_monitor> _rpc_monitor;
     rpc::session_group _rpc;
     rpc::service _rpc_service;
 
