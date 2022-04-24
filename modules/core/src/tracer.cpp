@@ -148,7 +148,7 @@ tracer_proxy tracer::fork(std::string_view n, size_t interval)
                 fn_append(val, "hour"), seconds -= val * 3600;
 
             if (auto val = seconds / 60; val)
-                head += sprintf(head, "%d min", (int)val), seconds -= val * 60;
+                head += sprintf(head, "%d min ", (int)val), seconds -= val * 60;
 
             head += sprintf(head, "%d sec", (int)seconds);
             branch("age") = std::string_view(buf);
