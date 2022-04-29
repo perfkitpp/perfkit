@@ -132,6 +132,15 @@ struct trace_update_t {
     auto& ref_fold() { return flags[1]; }
 };
 
+constexpr uint16_t find_me_port = 19423;
+
+struct find_me_t {
+    CPPH_REFL_DECLARE_c;
+
+    string alias;
+    uint16_t port;
+};
+
 //
 // SHELL
 //

@@ -99,6 +99,32 @@ void perfkit::net::terminal::_open_acceptor()
     CPPH_INFO("accept>> Bind successful. Starting listening ...");
     _acceptor.listen();
 
+    // Open find_me socket
+    if (_info.enable_find_me and not _findme_socket.is_open()) {
+        try {
+            using asio::ip::udp;
+            _findme_socket.open(udp::v4());
+
+            _findme_socket.set_option(udp::socket::reuse_address{true});
+            _findme_socket.set_option(udp::socket::broadcast{true});
+        } catch (asio::system_error& e) {
+            CPPH_INFO("findme>> Socket configuration failed: ({}) {}", e.code().value(), e.what());
+            asio::error_code ec;
+            _findme_socket.close(ec);
+        }
+    }
+
+    {
+        // Cache find_me payload
+        message::find_me_t find_me;
+        find_me.alias = _info.name;
+        find_me.port = _acceptor.local_endpoint().port();
+
+        streambuf::stringbuf buf{&_findme_payload};
+        archive::json::writer writer{&buf};
+        writer << find_me;
+    }
+
     // Implement accept logic
     auto fn_acpt = y_combinator{
             [this](auto&& self, auto&& ec) {
@@ -322,6 +348,7 @@ void perfkit::net::terminal::_publish_system_stat(asio::error_code ec)
 {
     if (ec) { return; }
 
+    // Publish status changes
     if (detail::proc_stat_t stat = {}; _session_active_state_anchor && detail::fetch_proc_stat(&stat)) {
         size_t in, out;
         _rpc.totals(&in, &out);
@@ -345,6 +372,12 @@ void perfkit::net::terminal::_publish_system_stat(asio::error_code ec)
                    out_rate, in_rate};
 
         message::notify::session_status(&_rpc).notify(message, _fn_basic_access());
+    }
+
+    // Publish find_me packet
+    if (_findme_socket.is_open()) {
+        auto ep = asio::ip::udp::endpoint{asio::ip::address_v4::broadcast(), message::find_me_port};
+        _findme_socket.send_to(asio::buffer(_findme_payload), ep);
     }
 
     _session_stat_timer.expires_after(2500ms);

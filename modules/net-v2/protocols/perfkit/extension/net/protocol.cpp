@@ -91,4 +91,7 @@ CPPH_REFL_DEFINE_OBJECT_c(
 CPPH_REFL_DEFINE_OBJECT_c(
         service::trace_control_t, (), (subscribe, 2), (fold, 3));
 
+CPPH_REFL_DEFINE_OBJECT_c(
+        find_me_t, (), (alias, 1), (port, 2));
+
 }  // namespace perfkit::net::message

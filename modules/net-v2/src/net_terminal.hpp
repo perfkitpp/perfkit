@@ -34,6 +34,7 @@
 #include <utility>
 
 #include <asio/ip/tcp.hpp>
+#include <asio/ip/udp.hpp>
 #include <asio/steady_timer.hpp>
 #include <asio/thread_pool.hpp>
 
@@ -72,6 +73,7 @@ struct terminal_info {
     uint16_t bind_port;
 
     // TODO: Authentication
+    bool enable_find_me;
 };
 
 class terminal;
@@ -151,6 +153,8 @@ class terminal : public if_terminal
     // Connection
     asio::ip::tcp::acceptor _acceptor{_event_proc};
     asio::ip::tcp::socket _accept_socket{_thread_pool};
+    asio::ip::udp::socket _findme_socket{_thread_pool};
+    string _findme_payload;
 
     //
     using session_event_procedure_ptr = shared_ptr<session_event_procedure_t>;

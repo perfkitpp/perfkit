@@ -54,8 +54,13 @@ PERFKIT_T_CATEGORY(
                 .env("PERFKIT_NET_IPADDR")
                 .confirm();
 
-        PERFKIT_T_CONFIGURE(bind_port, 15572)
+        PERFKIT_T_CONFIGURE(bind_port, 0)
                 .env("PERFKIT_NET_PORT")
-                .confirm(););
+                .confirm();
+
+        PERFKIT_T_CONFIGURE(enable_find_me, true)
+                .confirm();
+
+);
 
 }  // namespace perfkit::terminal::net
