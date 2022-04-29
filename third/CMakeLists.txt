@@ -13,10 +13,6 @@ target_include_directories(
         PicoSHA2 INTERFACE PicoSHA2/
 )
 
-### Try find prebuild packages
-find_package(fmt QUIET)
-find_package(spdlog QUIET)
-
 ### CONFIGURE fmt
 if (NOT TARGET fmt::fmt)
     message("[${PROJECT_NAME}] fmt::fmt not found, fetching ... ")
