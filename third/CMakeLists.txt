@@ -13,6 +13,19 @@ target_include_directories(
         PicoSHA2 INTERFACE PicoSHA2/
 )
 
+### Try find prebuild packages
+find_package(fmt QUIET)
+find_package(spdlog QUIET)
+
+### CONFIGURE fmt
+if (NOT TARGET fmt::fmt)
+    message("[${PROJECT_NAME}] fmt::fmt not found, fetching ... ")
+
+    FetchContent_Declare(fmt URL https://github.com/fmtlib/fmt/archive/refs/tags/8.1.1.zip)
+    FetchContent_Populate(fmt)
+    add_subdirectory(${fmt_SOURCE_DIR} ${fmt_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif ()
+
 ### CONFIGURE JSON
 if (NOT TARGET nlohmann_json::nlohmann_json)
     message("[${PROJECT_NAME}] nlohmann::json not found, fetching ...")
