@@ -205,6 +205,11 @@ struct config_class_hook : std::function<void(config_class*)> {
         {                                                                         \
         }                                                                         \
                                                                                   \
+        ~varname()                                                                \
+        {                                                                         \
+            _perfkit_INTERNAL_RG->unregister();                                   \
+        }                                                                         \
+                                                                                  \
         __VA_ARGS__;                                                              \
     }
 
