@@ -539,11 +539,11 @@ void perfkit::if_terminal::launch_stdin_fetch_thread()
             = [this] {
                   std::string buffer;
 
-                  while (not _self->is_shutting_down.load(std::memory_order_acquire))
-                      if (platform::poll_stdin(500, &buffer)) {
-                          push_command(buffer);
-                          buffer.clear();
-                      }
+                  do {
+                      auto do_push = platform::poll_stdin(500, &buffer);
+                      if (_self->is_shutting_down) { break; }
+                      if (do_push) { push_command(buffer), buffer.clear(); }
+                  } while (true);
               };
 
     _self->worker_stdin = std::thread{fnWork};
