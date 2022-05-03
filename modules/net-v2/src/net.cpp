@@ -43,6 +43,7 @@ terminal_ptr create(const profile& cfg)
 
     return term;
 }
+
 perfkit::terminal_ptr create(std::string config_name)
 {
     return create(profile(std::move(config_name)));

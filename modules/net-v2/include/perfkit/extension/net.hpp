@@ -33,7 +33,7 @@ namespace perfkit::terminal::net {
 struct profile;
 
 perfkit::terminal_ptr create(profile const& cfg);
-perfkit::terminal_ptr create(std::string config_name);
+perfkit::terminal_ptr create(std::string config_name = "__NETCFG__");
 
 PERFKIT_T_CATEGORY(
         profile,
