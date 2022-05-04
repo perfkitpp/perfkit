@@ -46,7 +46,9 @@ terminal_ptr create(const profile& cfg)
 
 perfkit::terminal_ptr create(std::string config_name)
 {
-    return create(profile(std::move(config_name)));
+    profile pf{std::move(config_name)};
+    pf->update();
+    return create(pf);
 }
 
 }  // namespace perfkit::terminal::net
