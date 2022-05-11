@@ -4,7 +4,6 @@ set(TARGET_CONTEXT_NAME)
 add_executable(
         perfkit-automated-test
 
-        automation.cpp
         automation-argparse.cpp
 )
 
@@ -14,6 +13,7 @@ target_link_libraries(
         PRIVATE
         perfkit::core
         range-v3::range-v3
+        doctest_with_main
 )
 
 # ======================================================================================================================
