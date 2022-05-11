@@ -96,7 +96,8 @@ void perfkit::net::terminal::_open_acceptor()
     _acceptor.open(ep.protocol());
     _acceptor.set_option(asio::socket_base::reuse_address{true});
     _acceptor.bind(ep);
-    CPPH_INFO("accept>> Bind successful. Starting listening ...");
+    ep = _acceptor.local_endpoint();
+    CPPH_INFO("accept>> Binding successful. Starting listening on {}:{} ...", _info.bind_ip, ep.port());
     _acceptor.listen();
 
     // Open find_me socket

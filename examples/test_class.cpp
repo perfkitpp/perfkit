@@ -35,7 +35,7 @@
 PERFKIT_CATEGORY(test_global_category)
 {
     PERFKIT_CONFIGURE(int_config, 1).confirm();
-    PERFKIT_CONFIGURE(double_config, .1).confirm();
+    PERFKIT_CONFIGURE(double_config_with_long_text_name_example, .1).confirm();
     PERFKIT_CONFIGURE(bool_config, false)
             .description(
                     "장문의 한글 설명: 역사를 그들에게 보이는 쓸쓸하랴? 크고 석가는 얼음이 인생에 수 소리다."
