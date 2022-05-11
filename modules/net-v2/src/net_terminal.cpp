@@ -377,7 +377,6 @@ void perfkit::net::terminal::_publish_system_stat(asio::error_code ec)
     // Publish find_me packet
     if (_findme_socket.is_open()) {
         auto ep = asio::ip::udp::endpoint{asio::ip::address_v4::broadcast(), message::find_me_port};
-        asio::error_code ec;
         _findme_socket.send_to(asio::buffer(_findme_payload), ep, {}, ec);
 
         if (ec) {
