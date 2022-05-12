@@ -16,6 +16,7 @@ target_sources(
         src/terminal.cpp
         src/config-flags.cpp
         src/logging.cpp
+        src/configs-v2.cpp
 )
 
 target_precompile_headers(
