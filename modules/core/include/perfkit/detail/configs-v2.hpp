@@ -315,6 +315,16 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
     auto const& name() const;
 
+    //! Add item/remove item.
+    //! All added item will be serialized to global context on first update after insertion
+    void item_add(config_base_ptr arg);
+    void item_remove(config_base_wptr arg);
+
+    //! adding and removing individual items won't trigger remote session update request
+    //!  due to performance reasons. You must explicitly notify after adding series of
+    //!  configuration items.
+    void item_notify();
+
    public:
     bool _internal_commit_value(config_base_wptr ref, refl::object_const_view_t);
     void const* _internal_unique_address() { return this; }
