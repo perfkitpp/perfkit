@@ -37,7 +37,7 @@ struct config_attribute;
 
 using config_base_ptr = shared_ptr<config_base>;
 using config_base_wptr = weak_ptr<config_base>;
-using config_registry_ptr = weak_ptr<config_registry>;
+using config_registry_ptr = shared_ptr<config_registry>;
 using config_raw_data_ptr = unique_ptr<void, void (*)(void*)>;
 using config_attribute_ptr = shared_ptr<config_attribute const>;
 
@@ -234,8 +234,9 @@ class config_base : public std::enable_shared_from_this<config_base>
  *
  *      PERFKIT_CONFIG_CATEGORY(MySubCategoryType)
  *      {
- *
- *      } MySubCategory{this};
+ *          PERFKIT_DEFINE_CONFIG_CATEGORY();
+ *      } MySubCategory{this}; // Linked list로 서브카테고리 리스트 관리 ...
+ *                             // super->last->next = this, super->last = this
  *
  *      PERFKIT_CONFIG_ITEM(my_entity, 3.315)
  *          .min(0)
@@ -266,7 +267,7 @@ class config_base : public std::enable_shared_from_this<config_base>
  * perfkit::_config::category<MyConfigCategory>
  *   -> static MyConfigCategory create(key_str, ...) 정의
  *   -> static MyConfigCategory create(registry, prefix_str, ...) 정의
- *   -> static vector<> 정의
+ *   -> static  정의
  *
  */
 class config_registry : public std::enable_shared_from_this<config_registry>
@@ -421,5 +422,47 @@ void fofof()
 {
     fofo(4);
 }
+
+namespace _configs {
+class category_base
+{
+   protected:
+    shared_ptr<config_registry> _internal_RG;
+    category_base* _internal_next = nullptr;
+    string _internal_prefix;
+
+    void _internal_link_to(category_base* base)
+    {
+        auto r = &base->_internal_next;
+        for (; *r != nullptr; *r = (*r)->_internal_next) {}
+
+        *r = this;
+    }
+};
+
+template <typename ImplType>
+class category : public category_base
+{
+   public:
+    //! May throw logic_error on registry creation fails.
+    //! Create new config registry
+    explicit category(string key);
+
+    //! Append this category to existing registry.
+    explicit category(config_registry_ptr existing, string prefix = "");
+
+   protected:
+    //! Only for category usage ...
+    explicit category(category_base* base, string prefix)
+    {
+        _internal_link_to(base);
+        _internal_prefix = move(prefix);
+    }
+
+   public:
+    config_registry& operator*() const noexcept { return *_internal_RG; }
+    config_registry* operator->() const noexcept { return _internal_RG.get(); }
+};
+}  // namespace _configs
 
 }  // namespace perfkit::configs_v2
