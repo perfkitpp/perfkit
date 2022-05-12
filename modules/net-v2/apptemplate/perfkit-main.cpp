@@ -14,7 +14,7 @@ static std::atomic_bool g_server_is_alive = true;
 static void sigint_handler(int signum)
 {
     static int times = 5;
-    spdlog::info("SIGINT received. Force exit: {} / {}", --times / 5);
+    spdlog::info("SIGINT received. Force exit: {} / {}", --times, 5);
     g_server_is_alive = false;
 
     if (times == 0) {
