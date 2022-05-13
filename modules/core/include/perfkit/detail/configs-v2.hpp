@@ -205,6 +205,16 @@ class config_base : public std::enable_shared_from_this<config_base>
  *    #define PERFKIT_T_CONFIGURE(VarName, ...)
  *      config<type_from_default<decltype(__VA_ARGS__)>> VarName{
  *          *_internal_RG, INTERNAL_PERFKIT_CONCAT(_attr_, VarName), FULL_KEY_GENERATED, __VA_ARGS__ };
+ *      static inline auto const INTERNAL_PERFKIT_CONCAT(_register_, VarName)
+ *          = [this] {
+ *              using self_t = decay_t<decltype(*this)>;
+ *              _internal_initops()->emplace_back(
+ *                  offsetof(self_t, VarName),
+ *                  [](config_registry*, void* ptr) {
+ *
+ *                  }
+ *              );
+ *          };
  *      static inline auto const INTERNAL_PERFKIT_CONCAT(_attr_, VarName)
  *          = ::perfkit::config_details::attribute_factory{}
  *  USAGE:
@@ -226,17 +236,18 @@ class config_base : public std::enable_shared_from_this<config_base>
  *
  *      MySubCategory subc1{this};
  *      MySubCategory subc2{this};
+ *
+ *
  * };
  *
  * PERFKIT_CONFIG_CATEGORY(MyCategoryName)
  * {
- *      PERFKIT_DEFINE_CONFIG_CATEGORY();
- *
  *      PERFKIT_CONFIG_CATEGORY(MySubCategoryType)
  *      {
- *          PERFKIT_DEFINE_CONFIG_CATEGORY();
- *      } MySubCategory{this}; // Linked list로 서브카테고리 리스트 관리 ...
- *                             // super->last->next = this, super->last = this
+ *      }; // Linked list로 서브카테고리 리스트 관리 ...
+ *         // super->last->next = this, super->last = this
+ *
+ *      PERFKIT_CONFIG_SUBCATEGORY_ITEM(MySubCategoryType, my_sub_category);
  *
  *      PERFKIT_CONFIG_ITEM(my_entity, 3.315)
  *          .min(0)
@@ -413,66 +424,154 @@ class config
     void const* _internal_unique_address() const { return _ref; }
 };
 
-// TODO: HINT! Use lambda excessively!
-template <class MyTy>
-struct jojo {
-    jojo(int r);
-};
-
-struct fofo : jojo<fofo> {
-    using jojo::jojo;
-
-    int arg = 3;
-    int vars = [this] {
-        return arg;
-    }();
-};
-
-void fofof()
-{
-    fofo(4);
-}
-
 namespace _configs {
-class category_base
+class config_set_base
 {
    protected:
+    struct initops_t {
+        size_t property_offset;
+        void (*fn_init)(config_set_base* base, void* prop_addr);
+    };
+
+   protected:
     shared_ptr<config_registry> _internal_RG;
-    category_base* _internal_next = nullptr;
     string _internal_prefix;
 
-    void _internal_link_to(category_base* base)
+   public:
+    static auto _internal_initops() -> vector<initops_t>*
     {
-        auto r = &base->_internal_next;
-        for (; *r != nullptr; *r = (*r)->_internal_next) {}
-
-        *r = this;
+        static vector<initops_t> _inst;
+        return &_inst;
     }
+
+   protected:
+    static void _internal_perform_initops(config_set_base* base_addr, array_view<initops_t const> initops)
+    {
+        //! Perform init ops
+        for (auto& op : initops) {
+            void* property = (char*)base_addr + op.property_offset;
+            op.fn_init(base_addr, property);
+        }
+    }
+
+    static auto _internal_retrieve_RG(config_set_base* b) { return b->_internal_RG; }
 };
 
 template <typename ImplType>
-class category : public category_base
+class config_set : public config_set_base
 {
+   protected:
+    using _internal_self_t = ImplType;
+
    public:
     //! May throw logic_error on registry creation fails.
     //! Create new config registry
-    explicit category(string key);
+    static ImplType create(string key)
+    {
+        ImplType s;
+        s._internal_RG = config_registry::create(move(key));
+        s._internal_RG->register_to_global();
+
+        _internal_perform_initops(&s, *_internal_initops());
+        return s;
+    }
 
     //! Append this category to existing registry.
-    explicit category(config_registry_ptr existing, string prefix = "");
-
-   protected:
-    //! Only for category usage ...
-    explicit category(category_base* base, string prefix)
+    static ImplType create(config_registry_ptr existing, string prefix = "")
     {
-        _internal_link_to(base);
-        _internal_prefix = move(prefix);
+        ImplType s;
+        s._internal_RG = move(existing);
+        s._internal_prefix = move(prefix);
+
+        _internal_perform_initops(&s, *_internal_initops());
+        return s;
+    }
+
+   public:
+    //! Only for category subprocess usage ...
+    static ImplType _bk_make_subobj(config_set_base* base, string_view memvar_name, string_view user_provide = "")
+    {
+        ImplType s;
+        s._internal_RG = _internal_retrieve_RG(base);
+        s._internal_prefix = user_provide.empty() ? memvar_name : user_provide;
+
+        // Do not perform initops on construction.
+        // Initops will be deferred until superset initops iteration
+        // _internal_perform_initops(&s, *_internal_initops());
+        return s;
     }
 
    public:
     config_registry& operator*() const noexcept { return *_internal_RG; }
     config_registry* operator->() const noexcept { return _internal_RG.get(); }
 };
+
+template <class ObjClass, typename ValTy>
+size_t offset_of(ValTy ObjClass::*mptr)
+{
+    return reinterpret_cast<size_t>(&(reinterpret_cast<ObjClass const volatile*>(0)->*mptr));
+}
+
+template <typename ConfigSet, typename Config>
+nullptr_t register_conf_function(Config ConfigSet::*mptr)
+{
+    auto storage = ConfigSet::_internal_initops();
+    auto initop = &storage->emplace_back();
+    initop->property_offset = offset_of(mptr);
+    initop->fn_init = [](config_set_base* b, void* p) {
+        auto instance = (Config*)p;
+
+        // TODO: Register config instance to registry
+    };
+
+    return nullptr;
+}
+
+template <typename ConfigSet, typename Subset>
+nullptr_t register_subset_function(Subset ConfigSet::*mptr)
+{
+    auto storage = ConfigSet::_internal_initops();
+    auto initop = &storage->emplace_back();
+    initop->property_offset = offset_of(mptr);
+    initop->fn_init = [](config_set_base* b, void* p) {
+        auto instance = (Subset*)p;
+
+        // Perform subset initops here
+    };
+
+    return nullptr;
+}
+
+#if 1
+class MyConf : public config_set<MyConf>
+{
+    int rgg = _internal_perfkit_attribute_rgg;
+    static inline auto const _internal_perfkit_register_conf_rgg
+            = register_conf_function(&_internal_self_t::rgg);
+    static inline auto const _internal_perfkit_attribute_rgg
+            = 3;
+
+    class MySubConf : public config_set<MySubConf>
+    {
+        int rgg = _internal_perfkit_attribute;
+        static inline auto const _internal_perfkit_register_conf_rgg
+                = register_conf_function(&_internal_self_t::rgg);
+        static inline auto const _internal_perfkit_attribute
+                = 3;
+    };
+
+    // #define PERFKIT_CFG_SUBSET(SetType, VarName, ...) ...(this, #VarName, ##__VA_ARGS__) ...
+    MySubConf myconf = MySubConf::_bk_make_subobj(this, "myconf", "MYSUBCONF");
+    static inline auto const _internal_perfkit_register_conf_myconf
+            = register_subset_function(&_internal_self_t::myconf);
+};
+
+void foof()
+{
+    auto r = MyConf::create("hell");
+}
+#endif
+
 }  // namespace _configs
 
 }  // namespace perfkit::configs_v2
