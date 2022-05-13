@@ -22,6 +22,7 @@
 //
 // project home: https://github.com/perfkitpp
 
+#include <cpph/refl/object.hxx>
 #include <perfkit/configs-v2.h>
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/extension/net.hpp>
@@ -38,6 +39,12 @@ PERFKIT_CATEGORY(conf_global)
             .one_of({"hello", "my name", "is john"})
             .confirm();
 }
+
+PERFKIT_CFG(MyCfg)
+{
+    PERFKIT_CFG_ITEM(MyInt, 1, "Raw").confirm();
+    PERFKIT_CFG_ITEM(MyString, "string", "MyStringValue").confirm();
+};
 
 int main(void)
 {

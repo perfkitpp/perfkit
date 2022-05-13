@@ -32,20 +32,65 @@
 #define INTL_PERFKIT_NS_0 ::perfkit::v2
 #define INTL_PERFKIT_NS_1 ::perfkit::v2::_configs
 
-#define PERFKIT_CFG(ClassName) class ClassName : public INTL_PERFKIT_NS_1::config_set<ClassName>
+#define PERFKIT_CFG(ClassName) class ClassName : public INTL_PERFKIT_NS_0::config_set<ClassName>
 
 /**
  * Defines subset
  */
-#define PERFKIT_CFG_SUBSET(ClassName, InstanceName, ...)
+#define PERFKIT_CFG_SUBSET(ClassName, InstanceName, ...)                                                 \
+    ClassName InstanceName = ClassName::_bk_make_subobj(                                                 \
+            (INTERNAL_CPPH_CONCAT(_internal_perfkit_register_conf_, InstanceName)(), this),              \
+            "#InstanceName", "##__VA_ARGS__");                                                           \
+                                                                                                         \
+    static void INTERNAL_CPPH_CONCAT(_internal_perfkit_register_conf_, InstanceName)()                   \
+    {                                                                                                    \
+        static auto once = INTL_PERFKIT_NS_1::register_subset_function(&_internal_self_t::InstanceName); \
+    }
 
 /**
  * Default config item definition macro
  */
-#define PERFKIT_CFG_ITEM(VarName, DefaultValue, UserKey /*={}*/, ... /*AttributeDecorators*/)
+#define PERFKIT_CFG_ITEM_LAZY(VarName, DefaultValue, UserKey /*={}*/, ... /*AttributeDecorators*/)               \
+    INTL_PERFKIT_NS_0::config<INTL_PERFKIT_NS_1::deduced_t<decltype(DefaultValue)>> VarName                      \
+            = {(INTERNAL_CPPH_CONCAT(_internal_perfkit_register_conf_, VarName)(),                               \
+                INTERNAL_CPPH_CONCAT(_internal_perfkit_attribute_, VarName)())};                                 \
+                                                                                                                 \
+    static void INTERNAL_CPPH_CONCAT(_internal_perfkit_register_conf_, VarName)()                                \
+    {                                                                                                            \
+        static auto once = INTL_PERFKIT_NS_1::register_conf_function(&_internal_self_t::VarName);                \
+    }                                                                                                            \
+                                                                                                                 \
+    static INTL_PERFKIT_NS_0::config_attribute_ptr INTERNAL_CPPH_CONCAT(_internal_perfkit_attribute_, VarName)() \
+    {                                                                                                            \
+        static auto instance                                                                                     \
+                = INTL_PERFKIT_NS_0::config_attribute_factory<decltype(VarName)::value_type>{#VarName, UserKey}  \
+                          ._internal_default_value(DefaultValue)                                                 \
+                                  __VA_ARGS__                                                                    \
+                          .confirm();                                                                            \
+                                                                                                                 \
+        return instance;                                                                                         \
+    }
+
+#define PERFKIT_CFG_ITEM_LAZY2(VarName, DefaultValue, ...) PERFKIT_CFG_ITEM_LAZY(VarName, DefaultValue, {}, __VA_ARGS__)
 
 /**
- * For legacy compatibility ... This defines attribute variable as static inline, which causes
- *  overhead on uninitialized
+ * This defines attribute variable as static inline, which causes overhead on program startup.
+ *
+ * NOTE: On porting from legacy perfkit, default value must be
  */
-#define PERFKIT_CFG_LEGACY_ITEM(VarName, ...)
+#define PERFKIT_CFG_ITEM(VarName, ...)                                                                                                               \
+    INTL_PERFKIT_NS_0::config<                                                                                                                       \
+            INTL_PERFKIT_NS_1::deduced_t<                                                                                                            \
+                    decltype(INTL_PERFKIT_NS_1::default_from_va_arg(__VA_ARGS__))>>                                                                  \
+            VarName                                                                                                                                  \
+            = {(INTERNAL_CPPH_CONCAT(_internal_perfkit_register_conf_, VarName)(),                                                                   \
+                INTERNAL_CPPH_CONCAT(_internal_perfkit_attribute_, VarName))};                                                                       \
+                                                                                                                                                     \
+    static void INTERNAL_CPPH_CONCAT(_internal_perfkit_register_conf_, VarName)()                                                                    \
+    {                                                                                                                                                \
+        static auto once = INTL_PERFKIT_NS_1::register_conf_function(&_internal_self_t::VarName);                                                    \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    static inline auto const INTERNAL_CPPH_CONCAT(_internal_perfkit_attribute_, VarName)                                                             \
+            = INTL_PERFKIT_NS_0::config_attribute_factory<decltype(VarName)::value_type>{#VarName, INTL_PERFKIT_NS_1::name_from_va_arg(__VA_ARGS__)} \
+                      ._internal_default_value(INTL_PERFKIT_NS_1::default_from_va_arg(__VA_ARGS__))

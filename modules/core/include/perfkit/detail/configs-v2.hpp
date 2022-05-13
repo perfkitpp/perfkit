@@ -295,6 +295,10 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 template <typename ValueType>
 class config
 {
+   public:
+    using value_type = ValueType;
+
+   private:
     shared_ptr<config_registry> _owner;
     config_base_ptr _base;
 
@@ -303,7 +307,7 @@ class config
 
    public:
     config() noexcept = default;
-    config(config_attribute_ptr attrib, ValueType default_value)
+    config(config_attribute_ptr attrib)
     {
     }
 
@@ -373,6 +377,7 @@ class config
 namespace _configs {
 void parse_full_key(string const& full_key, string* o_display_key, vector<string_view>* o_hierarchy);
 void verify_flag_string(string_view str);
+
 }  // namespace _configs
 
 template <typename ValTy>
@@ -570,6 +575,7 @@ class config_attribute_factory
     /** Confirm attribute instance creation */
     auto confirm() noexcept
     {
+        fflush(stdout);
         return move(_ref);
     }
 };
@@ -593,6 +599,17 @@ struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char
 
 template <typename Ty_>
 using deduced_t = typename _cvt_ty_impl<std::decay_t<Ty_>>::type;
+
+template <typename RawVal>
+auto default_from_va_arg(RawVal&& v, char const* msg = nullptr) -> deduced_t<RawVal>
+{
+    return {v};
+}
+template <typename RawVal>
+char const* name_from_va_arg(RawVal&&, char const* name = nullptr)
+{
+    return name;
+}
 }  // namespace _configs
 
 class config_set_base
@@ -709,7 +726,7 @@ nullptr_t register_conf_function(Config ConfigSet::*mptr) noexcept
 }
 
 template <typename ConfigSet, typename Subset>
-nullptr_t register_subset_function(Subset ConfigSet::*mptr, string* ref_prefix_str) noexcept
+nullptr_t register_subset_function(Subset ConfigSet::*mptr) noexcept
 {
     auto storage = ConfigSet::_internal_initops();
     auto initop = &storage->emplace_back();
@@ -718,7 +735,7 @@ nullptr_t register_subset_function(Subset ConfigSet::*mptr, string* ref_prefix_s
         auto instance = (Subset*)p;
 
         // Perform subset initops here
-        Subset::_internal_perform_initops(instance, Subset::_internal_initops());
+        Subset::_internal_perform_initops(instance, *Subset::_internal_initops());
     };
 
     return nullptr;
