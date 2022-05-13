@@ -26,4 +26,77 @@
 
 #include "perfkit/detail/configs-v2.hpp"
 
+#include "perfkit/configs-v2.h"
 #include "perfkit/detail/configs-v2-backend.hpp"
+
+namespace perfkit::v2 {
+namespace _configs {
+void parse_full_key(
+        const string& full_key, string* o_display_key, vector<string_view>* o_hierarchy)
+{
+    // TODO: Parse full_key to display key
+}
+
+void verify_flag_string(string_view str)
+{
+    // TODO: if any character other than -_[a-z][A-Z][0-9], and --no- prefixed, and 'h' is not allowed
+}
+}  // namespace _configs
+}  // namespace perfkit::v2
+
+#if 1
+#    include <cpph/refl/object.hxx>
+
+#    define DefaultValue 3
+#    define InstanceName MySubSet
+
+class MyConf : public INTL_PERFKIT_NS_0::config_set<MyConf>
+{
+    INTL_PERFKIT_NS_0::config<INTL_PERFKIT_NS_1::deduced_t<decltype(DefaultValue)>> VarName
+            = {(_internal_perfkit_register_conf_VarName(),
+                _internal_perfkit_attribute_VarName()),
+               DefaultValue};
+
+    static void _internal_perfkit_register_conf_VarName()
+    {
+        static auto once = INTL_PERFKIT_NS_1::register_conf_function(&_internal_self_t::VarName);
+    }
+
+    static INTL_PERFKIT_NS_0::config_attribute_ptr _internal_perfkit_attribute_VarName()
+    {
+        static auto instance
+                = INTL_PERFKIT_NS_0::config_attribute_factory<int>{"VarName", "## __VA_ARGS__"}
+                          ._internal_default_value(DefaultValue)
+                          .edit_mode(perfkit::v2::edit_mode::path)
+                          .clamp(-4, 11)
+                          .validate([](int& g) { return g > 0; })
+                          .verify([](int const& r) { return r != 0; })
+                          .one_of({1, 2, 3})
+                          .description("Hello!")
+                          .flags("g", 'g', "GetMyFlag")
+                          .confirm();
+
+        return instance;
+    }
+
+    class ClassName : public config_set<ClassName>
+    {
+    };
+
+    // #define PERFKIT_CFG_SUBSET(SetType, VarName, ...) ...(this, #VarName, ##__VA_ARGS__) ...
+    ClassName InstanceName = ClassName::_bk_make_subobj(
+            (INTERNAL_CPPH_CONCAT(_internal_perfkit_register_conf_, InstanceName)(), this),
+            "#InstanceName", "##__VA_ARGS__");
+
+    static void INTERNAL_CPPH_CONCAT(_internal_perfkit_register_conf_, InstanceName)()
+    {
+        static auto once = INTL_PERFKIT_NS_1::register_conf_function(&_internal_self_t::VarName);
+    }
+};
+
+void foof()
+{
+    auto r = MyConf::create("hell");
+}
+
+#endif

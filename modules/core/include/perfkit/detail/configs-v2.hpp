@@ -33,6 +33,7 @@
 namespace perfkit::v2 {
 class config_registry;
 class config_base;
+class config_set_base;
 struct config_attribute;
 
 using config_base_ptr = shared_ptr<config_base>;
@@ -62,6 +63,10 @@ struct config_attribute {
     // Remote session can utilize this for attribute information caching.
     uint64_t unique_attribute_id;
 
+    // Keys
+    string full_key_chain;  // May contain multiple tokens
+    string_view name;       // Last token from full key chain
+
     //
     refl::shared_object_ptr default_value;
 
@@ -82,17 +87,10 @@ struct config_attribute {
     vector<string> flag_bindings;
     string env_binding;
 
-    // Keys
-    string full_key;
-    string display_key;
-
     // For remote session ...
     bool hidden = false;
     v2::edit_mode edit_mode;
     string description;
-
-    // Array view hierarchy
-    vector<string_view> hierarchy;
 };
 
 /**
@@ -133,8 +131,6 @@ class config_update_monitor
 
 /**
  * basic config class
- *
- * TODO: Attribute retrieval for config class
  */
 class config_base : public std::enable_shared_from_this<config_base>
 {
@@ -143,15 +139,17 @@ class config_base : public std::enable_shared_from_this<config_base>
         // Raw data pointer
         refl::shared_object_ptr raw_data;
 
-        // Unique key in registry scope
-        std::string prefix;
-
         // Absolute
         config_attribute_ptr attribute;
     };
 
    private:
+    std::atomic_uint64_t _idgen = 0;
+    const uint64_t _id = ++_idgen;
     context_t _context;
+
+    //! Provides prefix
+    config_set_base* _host = nullptr;
 
     std::atomic_bool _latest_marshal_failed = false;
     std::atomic_size_t _fence_modified = 0;            // Actual modification count
@@ -164,11 +162,11 @@ class config_base : public std::enable_shared_from_this<config_base>
     auto const& attribute() const noexcept { return _context.attribute; }
     auto const& default_value() const { return attribute()->default_value; }
 
-    auto const& prefix() const noexcept { return _context.prefix; }
-    auto const& full_key() const { return attribute()->full_key; }
-    auto const& display_key() const { return attribute()->display_key; }
+    //! Returns config id. Id is unique for process scope.
+    auto id() const { return _id; }
+
+    auto const& name() const { return attribute()->name; }
     auto const& description() const { return attribute()->description; }
-    auto tokenized_display_key() const { return make_view(attribute()->hierarchy); }
 
     size_t num_modified() const { return acquire(_fence_modified); };
     size_t num_serialized() const { return _fence_serialized; }
@@ -177,13 +175,23 @@ class config_base : public std::enable_shared_from_this<config_base>
     bool can_import() const noexcept { return attribute()->can_import; }
     bool is_hidden() const noexcept { return attribute()->hidden; }
 
+    void get_keys_by_token(vector<string_view>* out) {}
+    void get_full_key(string* out) {}  // TODO: Recursively refer _host, and construct full key.
+
     /**
      * Check if latest marshalling result was invalid
      * @return
      */
-    bool latest_marshal_failed() const
+    bool latest_marshal_failed() const { return acquire(_latest_marshal_failed); }
+
+   public:
+    // On initop ...
+    void _internal_init_host(config_set_base* host) noexcept
     {
-        return _latest_marshal_failed.load(std::memory_order_relaxed);
+        assert(_host == nullptr);
+        assert(_context.attribute != nullptr);
+
+        _host = host;
     }
 };
 
@@ -200,84 +208,8 @@ class config_base : public std::enable_shared_from_this<config_base>
  *  - PREFKIT_CONFIGURE 등 모든 config 매크로 호환되어야 함
  *  - config.h include 시 호환성 문제 없어야 함
  *
- * TODO: 레거시 호환 Macro 정의 시 ...
- *    #define PERFKIT_T_CONFIGURE(VarName, ...)
- *      config<type_from_default<decltype(__VA_ARGS__)>> VarName{
- *          *_internal_RG, INTERNAL_PERFKIT_CONCAT(_attr_, VarName), FULL_KEY_GENERATED, __VA_ARGS__ };
- *      static inline auto const INTERNAL_PERFKIT_CONCAT(_register_, VarName)
- *          = [this] {
- *              using self_t = decay_t<decltype(*this)>;
- *              _internal_initops()->emplace_back(
- *                  offsetof(self_t, VarName),
- *                  [](config_registry*, void* ptr) {
- *
- *                  }
- *              );
- *          };
- *      static inline auto const INTERNAL_PERFKIT_CONCAT(_attr_, VarName)
- *          = ::perfkit::config_details::attribute_factory{}
  *  USAGE:
  *    PERFKIT_T_CONFIGURE(MY_NAME, 3.314).confirm();
- *
- * TODO:
- *  PERFKIT_T_CATEGORY 생성자 변경 ->
- *      - Create with string: New instance
- *      - Create with existing registry + string: Append to existing registry with prefix
- *
- * class MyConfigCategory : public perfkit::_config::category<MyConfigCategory>
- * {
- *      using perfkit::_config::category::category;
- *
- *      class MySubCategory : public perfkit::_config::category<MySubCategory>
- *      {
- *          using perfkit::_config::category::category;
- *      };
- *
- *      MySubCategory subc1{this};
- *      MySubCategory subc2{this};
- *
- *
- * };
- *
- * PERFKIT_CONFIG_CATEGORY(MyCategoryName)
- * {
- *      PERFKIT_CONFIG_CATEGORY(MySubCategoryType)
- *      {
- *      }; // Linked list로 서브카테고리 리스트 관리 ...
- *         // super->last->next = this, super->last = this
- *
- *      PERFKIT_CONFIG_SUBCATEGORY_ITEM(MySubCategoryType, my_sub_category);
- *
- *      PERFKIT_CONFIG_ITEM(my_entity, 3.315)
- *          .min(0)
- *          .max(1.4)
- *          .flags("f,g,flow-control")
- *          .description("hell, world!")
- *          .confirm();
- *
- *      PERFKIT_CONFIG_ITEM(my_array, array<int, 3>{})
- *          .edit_mode(perfkit::edit_mode::color_b) // 0~ 255 per channel
- *          .confirm();
- *
- *      PERFKIT_CONFIG_ITEM(my_array, array<float, 3>{})
- *          .edit_mode(perfkit::edit_mode::color_f) // 0.~ 1.~ per channel
- *          .confirm();
- *
- *      PERFKIT_CONFIG_ITEM(my_pat, "")
- *          .edit_mode(edit_mode::path_file) // path_file_multi, path_dir, path_dir_multi
- *          .confirm();
- *
- *      PERFKIT_CONFIG_ITEM(my_script, "...")
- *          .edit_mode(edit_mode::script) // path_file_multi, path_dir, path_dir_multi
- *          .confirm();
- * };
- *
- *
- *
- * perfkit::_config::category<MyConfigCategory>
- *   -> static MyConfigCategory create(key_str, ...) 정의
- *   -> static MyConfigCategory create(registry, prefix_str, ...) 정의
- *   -> static  정의
  *
  */
 class config_registry : public std::enable_shared_from_this<config_registry>
@@ -293,13 +225,14 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     shared_ptr<backend_t> _self;
 
    private:
-    explicit config_registry(std::string name);
+    explicit config_registry(std::string name) {}
 
    public:
-    ~config_registry() noexcept;
+    ~config_registry() noexcept {}
 
    public:
     //! Mark this registry as transient. It won't be exported.
+    //! Call this before first update() procedure call!
     void set_transient() {}
 
     //! Unmark this registry from transient state. Updates will be exported.
@@ -356,7 +289,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 /**
  * 실제 사용자가 상호작용할 option 클래스
  *
- * TODO: 복사 가능. 복사된 인스턴스끼리는 update state를 공유하지 않는다.
+ * 복사 가능. 복사된 인스턴스끼리는 update state를 공유하지 않는다.
  *
  */
 template <typename ValueType>
@@ -368,15 +301,13 @@ class config
     ValueType const* _ref = nullptr;
     mutable size_t _update_check_fence = 0;
 
-   private:
-    // TODO: friend factory class ...
-    struct construction_constraint_t {};
+   public:
+    config() noexcept = default;
+    config(config_attribute_ptr attrib, ValueType default_value)
+    {
+    }
 
    public:
-    explicit config(construction_constraint_t) {}
-
-   public:
-    // TODO: ... getters / commit / check_update ...
     void commit(ValueType const& val) const
     {
         _owner->_internal_commit_value(_base, {val});
@@ -423,20 +354,25 @@ class config
         return _base;
     }
 
+    void register_to(config_registry_ptr rg)
+    {
+        if (_owner) {
+            _owner->item_remove(_base);
+        }
+
+        _owner.reset();
+        _owner = rg;
+
+        _owner->item_add(_base);
+    }
+
    public:
     void const* _internal_unique_address() const { return _ref; }
 };
 
 namespace _configs {
-void parse_full_key(string const& full_key, string* o_display_key, vector<string_view>* o_hierarchy)
-{
-    // TODO: Parse full_key to display key
-}
-
-void verify_flag_string(string_view str)
-{
-    // TODO: if any character other than -_[a-z][A-Z][0-9], and --no- prefixed, and 'h' is not allowed
-}
+void parse_full_key(string const& full_key, string* o_display_key, vector<string_view>* o_hierarchy);
+void verify_flag_string(string_view str);
 }  // namespace _configs
 
 template <typename ValTy>
@@ -450,13 +386,11 @@ class config_attribute_factory
 
    public:
     //! Full key will automatically be parsed into display keys
-    explicit config_attribute_factory(string full_key) noexcept : _ref(make_shared<config_attribute>())
+    explicit config_attribute_factory(string key, string_view user_alias = "") noexcept : _ref(make_shared<config_attribute>())
     {
         static std::atomic_uint64_t _idgen = 0;
-        _ref->full_key = move(full_key);
+        _ref->name = user_alias.empty() ? move(key) : user_alias;
         _ref->unique_attribute_id = ++_idgen;
-
-        _configs::parse_full_key(_ref->full_key, &_ref->display_key, &_ref->hierarchy);
     }
 
     //! Sets default value. Will automatically be called internal
@@ -641,6 +575,26 @@ class config_attribute_factory
 };
 
 namespace _configs {
+//! \see https://stackoverflow.com/questions/24855160/how-to-tell-if-a-c-template-type-is-c-style-string
+template <typename Ty_, typename = void>
+struct _cvt_ty_impl {
+    using type = Ty_;
+};
+
+template <typename Ty_>
+struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char const*>>> {
+    using type = std::string;
+};
+
+template <typename Ty_>
+struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char*>>> {
+    using type = std::string;
+};
+
+template <typename Ty_>
+using deduced_t = typename _cvt_ty_impl<std::decay_t<Ty_>>::type;
+}  // namespace _configs
+
 class config_set_base
 {
    protected:
@@ -651,6 +605,7 @@ class config_set_base
 
    protected:
     shared_ptr<config_registry> _internal_RG;
+    config_set_base* _internal_parent = nullptr;
     string _internal_prefix;
 
    public:
@@ -660,7 +615,7 @@ class config_set_base
         return &_inst;
     }
 
-   protected:
+   public:
     static void _internal_perform_initops(config_set_base* base_addr, array_view<initops_t const> initops)
     {
         //! Perform init ops
@@ -670,7 +625,10 @@ class config_set_base
         }
     }
 
-    static auto _internal_retrieve_RG(config_set_base* b) { return b->_internal_RG; }
+   public:
+    static auto _internal_get_RG(config_set_base* b) { return b->_internal_RG; }
+    static auto _internal_get_parent(config_set_base* b) { return b->_internal_parent; }
+    static auto const& _internal_get_prefix(config_set_base* b) { return b->_internal_prefix; }
 };
 
 template <typename ImplType>
@@ -705,11 +663,12 @@ class config_set : public config_set_base
 
    public:
     //! Only for category subprocess usage ...
-    static ImplType _bk_make_subobj(config_set_base* base, string_view memvar_name, string_view user_provide = "")
+    static ImplType _bk_make_subobj(config_set_base* base, char const* memvar, char const* user_provided = nullptr)
     {
         ImplType s;
-        s._internal_RG = _internal_retrieve_RG(base);
-        s._internal_prefix = user_provide.empty() ? memvar_name : user_provide;
+        s._internal_RG = _internal_get_RG(base);
+        s._internal_parent = base;
+        s._internal_prefix = user_provided ? user_provided : memvar;
 
         // Do not perform initops on construction.
         // Initops will be deferred until superset initops iteration
@@ -722,6 +681,7 @@ class config_set : public config_set_base
     config_registry* operator->() const noexcept { return _internal_RG.get(); }
 };
 
+namespace _configs {
 template <class ObjClass, typename ValTy>
 size_t offset_of(ValTy ObjClass::*mptr)
 {
@@ -736,70 +696,32 @@ nullptr_t register_conf_function(Config ConfigSet::*mptr) noexcept
     initop->property_offset = offset_of(mptr);
     initop->fn_init = [](config_set_base* b, void* p) {
         auto instance = (Config*)p;
+        config_base_ptr base = instance->base();
 
-        // TODO: Register config instance to registry
+        // Initialize with host reference
+        base->_internal_init_host(b);
+
+        // Register config instance to registry
+        instance->register_to(config_set_base::_internal_get_RG(b));
     };
 
     return nullptr;
 }
 
 template <typename ConfigSet, typename Subset>
-nullptr_t register_subset_function(Subset ConfigSet::*mptr) noexcept
+nullptr_t register_subset_function(Subset ConfigSet::*mptr, string* ref_prefix_str) noexcept
 {
     auto storage = ConfigSet::_internal_initops();
     auto initop = &storage->emplace_back();
     initop->property_offset = offset_of(mptr);
-    initop->fn_init = [](config_set_base* b, void* p) {
+    initop->fn_init = [](config_set_base*, void* p) {
         auto instance = (Subset*)p;
 
         // Perform subset initops here
+        Subset::_internal_perform_initops(instance, Subset::_internal_initops());
     };
 
     return nullptr;
 }
-
 }  // namespace _configs
-
 }  // namespace perfkit::v2
-
-#if 1
-#    include <cpph/refl/object.hxx>
-namespace perfkit::v2::_configs {
-class MyConf : public config_set<MyConf>
-{
-    int rgg = (_internal_perfkit_attribute_rgg, 3);
-    static inline auto const _internal_perfkit_register_conf_rgg
-            = register_conf_function(&_internal_self_t::rgg);
-    static inline auto const _internal_perfkit_attribute_rgg
-            = config_attribute_factory<int>{"MyFullKey"}
-                      .edit_mode(edit_mode::path)
-                      .clamp(-4, 11)
-                      .validate([](int& g) { return g > 0; })
-                      .verify([](int const& r) { return r != 0; })
-                      .one_of({1, 2, 3})
-                      .description("Hello!")
-                      .flags("g", 'g', "GetMyFlag")
-                      .confirm();
-
-    class MySubConf : public config_set<MySubConf>
-    {
-        int rgg = _internal_perfkit_attribute;
-        static inline auto const _internal_perfkit_register_conf_rgg
-                = register_conf_function(&_internal_self_t::rgg);
-        static inline auto const _internal_perfkit_attribute
-                = 3;
-    };
-
-    // #define PERFKIT_CFG_SUBSET(SetType, VarName, ...) ...(this, #VarName, ##__VA_ARGS__) ...
-    MySubConf myconf = MySubConf::_bk_make_subobj(this, "myconf", "MYSUBCONF");
-    static inline auto const _internal_perfkit_register_conf_myconf
-            = register_subset_function(&_internal_self_t::myconf);
-};
-
-void foof()
-{
-    auto r = MyConf::create("hell");
-}
-
-}  // namespace perfkit::v2::_configs
-#endif

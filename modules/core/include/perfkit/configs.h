@@ -23,6 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
+#include "configs-v2.h"
 #include "cpph/template_utils.hxx"
 #include "perfkit/detail/configs.hpp"
 #include "perfkit/fwd.hpp"
@@ -30,24 +31,8 @@
 namespace perfkit::_configs_internal {
 std::string INDEXER_STR(int order);
 std::string INDEXER_STR2(int order);
-
-//// no use anymore ... leaving just for reference
-// template <typename TypeName_>
-// static auto configure(
-//         ::perfkit::config_registry* rg,
-//         std::string name,
-//         TypeName_&& default_value)
-//         -> decltype(::perfkit::configure(
-//                 std::declval<::perfkit::config_registry&>(),
-//                 std::declval<std::string>(),
-//                 std::declval<TypeName_>())) {
-//   return ::perfkit::configure(
-//           *rg,
-//           std::move(name),
-//           std::forward<TypeName_>(default_value));
-// };
-
 };  // namespace perfkit::_configs_internal
+
 
 namespace perfkit {
 struct config_class {

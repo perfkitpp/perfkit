@@ -412,7 +412,7 @@ bool perfkit::commands::registry::remove_invoke_hook(intptr_t id)
     using namespace ranges;
     auto names = _invoke_hooks | views::keys;
 
-    auto it = find(names, id);
+    auto it = ranges::find(names, id);
     if (it == names.end()) { return false; }
 
     auto index = it - names.begin();

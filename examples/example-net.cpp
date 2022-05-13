@@ -22,6 +22,7 @@
 //
 // project home: https://github.com/perfkitpp
 
+#include <perfkit/configs-v2.h>
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/extension/net.hpp>
 #include <perfkit/terminal.h>
