@@ -95,190 +95,6 @@ struct config_attribute {
     vector<string_view> hierarchy;
 };
 
-template <typename ValTy>
-class config_attribute_factory
-{
-   public:
-    using self_reference = config_attribute_factory&;
-
-   private:
-    shared_ptr<config_attribute> _ref;
-
-   public:
-    //! Full key will automatically be parsed into display keys
-    explicit config_attribute_factory(string full_key) noexcept : _ref(make_shared<config_attribute>())
-    {
-        static std::atomic_uint64_t _idgen = 0;
-        _ref->full_key = move(full_key);
-        _ref->unique_attribute_id = ++_idgen;
-
-        // TODO: Parse full_key to display key
-    }
-
-    //! Sets default value. Will automatically be called internal
-    self_reference _internal_default_value(ValTy&& value) noexcept { return *this; }
-
-   public:
-    /** Description to this property */
-    self_reference description(string content) noexcept
-    {
-        _ref->description = move(content);
-        return *this;
-    }
-
-    /** Editing type specifier. */
-    self_reference edit_mode(edit_mode mode) noexcept
-    {
-        assert(mode != edit_mode::none);
-        assert(_ref->edit_mode == edit_mode::none);
-
-        _ref->edit_mode = mode;
-        return *this;
-    }
-
-    /** Value bottom limit */
-    self_reference min(ValTy value) noexcept
-    {
-        assert(_ref->min == nullptr);
-        _ref->min = {make_shared<ValTy>(move(value))};
-        return *this;
-    }
-
-    /** Value maximum limit */
-    self_reference max(ValTy value) noexcept
-    {
-        assert(_ref->max == nullptr);
-        _ref->max = {make_shared<ValTy>(move(value))};
-        return *this;
-    }
-
-    /** minmax Helper */
-    self_reference clamp(ValTy minv, ValTy maxv) noexcept
-    {
-        return min(move(minv)), max(move(maxv));
-    }
-
-    /**
-     * Only one of the given elements can be selected.
-     */
-    template <typename Iterable>
-    self_reference one_of(Iterable&& iterable) noexcept
-    {
-        auto values = make_shared<vector<ValTy>>();
-
-        for (auto&& e : iterable)
-            values->emplace(forward<decltype(e)>(e));
-
-        _ref->one_of = {values};
-        _ref->fn_validate
-                = [values = values.get()](refl::object_const_view_t v) {
-                      auto value = refl::get_ptr<ValTy>(v);
-                      assert(value);
-                  };
-
-        return *this;
-    }
-
-    // Overloaded version of one_of for initializer_list
-    self_reference one_of(initializer_list<ValTy> v) noexcept
-    {
-        return one_of(array_view{&v.begin()[0], v.size()});
-    }
-
-    /**
-     * Hidden element hint. Hidden element commonly won't be displayed to terminal remote endpoint.
-     */
-    self_reference hide() noexcept
-    {
-        _ref->hidden = true;
-        return *this;
-    }
-
-    /**
-     * validate function makes value assignable to destination.
-     * if callback returns false, change won't be applied (same as verify())
-     */
-    template <typename Pred>
-    auto& validate(Pred&& pred) noexcept
-    {
-        assert(not _ref->fn_validate);
-
-        if constexpr (std::is_invocable_r_v<bool, Pred, ValTy&>) {
-            _ref->fn_validate
-                    = [pred = forward<Pred>(pred)](refl::object_view_t v) {
-                          return pred(refl::get<ValTy>(v));
-                      };
-        } else if constexpr (std::is_invocable_v<Pred, ValTy&>) {
-            _ref->fn_validate
-                    = [pred = forward<Pred>(pred)](refl::object_view_t v) {
-                          pred(refl::get<ValTy>(v));
-                          return true;
-                      };
-        } else {
-            pred->STATIC_ERROR_INVALID_CALLABLE;
-        }
-
-        return *this;
-    }
-
-    /** verify function will discard updated value on verification failure. */
-    template <typename Pred, typename = enable_if_t<is_invocable_r_v<bool, Pred, ValTy const&>>>
-    auto& verify(Pred&& pred) noexcept
-    {
-        assert(not _ref->fn_verify);
-
-        _ref->fn_verify
-                = [pred = forward<Pred>(pred)](refl::object_const_view_t v) {
-                      return pred(refl::get<ValTy const>(v));
-                  };
-
-        return *this;
-    }
-
-    /** expose entities as flags. configs MUST NOT BE field of any config template class! */
-    template <typename... Str_>
-    auto& flags(Str_&&... args) noexcept
-    {
-        static_assert(sizeof...(args) > 0);
-        assert(_ref->flag_bindings.empty());
-
-        vector<string> flags;
-        (flags.emplace_back(std::forward<Str_>(args)), ...);
-
-        _ref->flag_bindings = move(flags);
-        return *this;
-    }
-
-    /** transient marked configs won't be saved or loaded from config files. */
-    auto& transient() noexcept
-    {
-        assert(_ref->can_export && _ref->can_import);  // Maybe there was readonly() or another transient() call?
-        _ref->can_import = _ref->can_export = false;
-    }
-
-    /** readonly marked configs won't be exported, but still can be imported from config files. */
-    auto& readonly() noexcept
-    {
-        assert(_ref->can_export && _ref->can_import);  // Maybe there was readonly() or another transient() call?
-        _ref->can_import = true;
-        _ref->can_export = false;
-    }
-
-    /** initialize from environment variable */
-    auto& env(string s) noexcept
-    {
-        assert(_ref->env_binding.empty());
-        _ref->env_binding = move(s);
-    }
-
-   public:
-    /** Confirm attribute instance creation */
-    auto confirm() noexcept
-    {
-        return move(_ref);
-    }
-};
-
 /**
  * If multiple consumer access same config instance,
  *
@@ -610,6 +426,197 @@ class config
 
    public:
     void const* _internal_unique_address() const { return _ref; }
+};
+
+namespace _configs {
+void parse_full_key(string const& full_key, string* o_display_key, vector<string_view>* o_hierarchy)
+{
+    // TODO: Parse full_key to display key
+}
+}  // namespace _configs
+
+template <typename ValTy>
+class config_attribute_factory
+{
+   public:
+    using self_reference = config_attribute_factory&;
+
+   private:
+    shared_ptr<config_attribute> _ref;
+
+   public:
+    //! Full key will automatically be parsed into display keys
+    explicit config_attribute_factory(string full_key) noexcept : _ref(make_shared<config_attribute>())
+    {
+        static std::atomic_uint64_t _idgen = 0;
+        _ref->full_key = move(full_key);
+        _ref->unique_attribute_id = ++_idgen;
+
+        _configs::parse_full_key(_ref->full_key, &_ref->display_key, &_ref->hierarchy);
+    }
+
+    //! Sets default value. Will automatically be called internal
+    self_reference _internal_default_value(ValTy&& value) noexcept { return *this; }
+
+   public:
+    /** Description to this property */
+    self_reference description(string content) noexcept
+    {
+        _ref->description = move(content);
+        return *this;
+    }
+
+    /** Editing type specifier. */
+    self_reference edit_mode(edit_mode mode) noexcept
+    {
+        assert(mode != edit_mode::none);
+        assert(_ref->edit_mode == edit_mode::none);
+
+        _ref->edit_mode = mode;
+        return *this;
+    }
+
+    /** Value bottom limit */
+    self_reference min(ValTy value) noexcept
+    {
+        assert(_ref->min == nullptr);
+        _ref->min = {make_shared<ValTy>(move(value))};
+        return *this;
+    }
+
+    /** Value maximum limit */
+    self_reference max(ValTy value) noexcept
+    {
+        assert(_ref->max == nullptr);
+        _ref->max = {make_shared<ValTy>(move(value))};
+        return *this;
+    }
+
+    /** minmax Helper */
+    self_reference clamp(ValTy minv, ValTy maxv) noexcept
+    {
+        return min(move(minv)), max(move(maxv));
+    }
+
+    /**
+     * Only one of the given elements can be selected.
+     */
+    template <typename Iterable>
+    self_reference one_of(Iterable&& iterable) noexcept
+    {
+        auto values = make_shared<vector<ValTy>>();
+
+        for (auto&& e : iterable)
+            values->emplace(forward<decltype(e)>(e));
+
+        _ref->one_of = {values};
+        _ref->fn_validate
+                = [values = values.get()](refl::object_const_view_t v) {
+                      auto value = refl::get_ptr<ValTy>(v);
+                      assert(value);
+                  };
+
+        return *this;
+    }
+
+    // Overloaded version of one_of for initializer_list
+    self_reference one_of(initializer_list<ValTy> v) noexcept
+    {
+        return one_of(array_view{&v.begin()[0], v.size()});
+    }
+
+    /**
+     * Hidden element hint. Hidden element commonly won't be displayed to terminal remote endpoint.
+     */
+    self_reference hide() noexcept
+    {
+        _ref->hidden = true;
+        return *this;
+    }
+
+    /**
+     * validate function makes value assignable to destination.
+     * if callback returns false, change won't be applied (same as verify())
+     */
+    template <typename Pred>
+    auto& validate(Pred&& pred) noexcept
+    {
+        assert(not _ref->fn_validate);
+
+        if constexpr (std::is_invocable_r_v<bool, Pred, ValTy&>) {
+            _ref->fn_validate
+                    = [pred = forward<Pred>(pred)](refl::object_view_t v) {
+                          return pred(refl::get<ValTy>(v));
+                      };
+        } else if constexpr (std::is_invocable_v<Pred, ValTy&>) {
+            _ref->fn_validate
+                    = [pred = forward<Pred>(pred)](refl::object_view_t v) {
+                          pred(refl::get<ValTy>(v));
+                          return true;
+                      };
+        } else {
+            pred->STATIC_ERROR_INVALID_CALLABLE;
+        }
+
+        return *this;
+    }
+
+    /** verify function will discard updated value on verification failure. */
+    template <typename Pred, typename = enable_if_t<is_invocable_r_v<bool, Pred, ValTy const&>>>
+    auto& verify(Pred&& pred) noexcept
+    {
+        assert(not _ref->fn_verify);
+
+        _ref->fn_verify
+                = [pred = forward<Pred>(pred)](refl::object_const_view_t v) {
+                      return pred(refl::get<ValTy const>(v));
+                  };
+
+        return *this;
+    }
+
+    /** expose entities as flags. configs MUST NOT BE field of any config template class! */
+    template <typename... Str_>
+    auto& flags(Str_&&... args) noexcept
+    {
+        static_assert(sizeof...(args) > 0);
+        assert(_ref->flag_bindings.empty());
+
+        vector<string> flags;
+        (flags.emplace_back(std::forward<Str_>(args)), ...);
+
+        _ref->flag_bindings = move(flags);
+        return *this;
+    }
+
+    /** transient marked configs won't be saved or loaded from config files. */
+    auto& transient() noexcept
+    {
+        assert(_ref->can_export && _ref->can_import);  // Maybe there was readonly() or another transient() call?
+        _ref->can_import = _ref->can_export = false;
+    }
+
+    /** readonly marked configs won't be exported, but still can be imported from config files. */
+    auto& readonly() noexcept
+    {
+        assert(_ref->can_export && _ref->can_import);  // Maybe there was readonly() or another transient() call?
+        _ref->can_import = true;
+        _ref->can_export = false;
+    }
+
+    /** initialize from environment variable */
+    auto& env(string s) noexcept
+    {
+        assert(_ref->env_binding.empty());
+        _ref->env_binding = move(s);
+    }
+
+   public:
+    /** Confirm attribute instance creation */
+    auto confirm() noexcept
+    {
+        return move(_ref);
+    }
 };
 
 namespace _configs {
