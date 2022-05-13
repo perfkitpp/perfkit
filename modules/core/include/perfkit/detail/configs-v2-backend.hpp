@@ -29,8 +29,16 @@
 #include "cpph/refl/core.hxx"
 #include "nlohmann/json_fwd.hpp"
 
-namespace perfkit::configs_v2 {
-class config_registry_body
+namespace perfkit::v2 {
+class config_registry::backend_t
 {
+    friend class config_registry;
+    config_registry* _self;
+
+   public:
+    static auto enumerate_registries(vector<config_registry_ptr>*);
+    void find_key(string_view display_key, string* out_full_key) {}
+    void all_items(vector<config_base_ptr>*) const noexcept {}
+
 };
-}  // namespace perfkit::configs_v2
+}  // namespace perfkit::v2

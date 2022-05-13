@@ -30,18 +30,17 @@
 #include "cpph/threading.hxx"
 #include "nlohmann/json_fwd.hpp"
 
-namespace perfkit::configs_v2 {
-class config_registry_proxy;
-class config_registry_body;
+namespace perfkit::v2 {
+class config_registry;
 class config_base;
 struct config_attribute;
 
 using config_base_ptr = shared_ptr<config_base>;
 using config_base_wptr = weak_ptr<config_base>;
-using config_registry_ptr = shared_ptr<config_registry_proxy>;
-using config_raw_data_ptr = unique_ptr<void, void (*)(void*)>;
+using config_registry_ptr = shared_ptr<config_registry>;
 using config_attribute_ptr = shared_ptr<config_attribute const>;
 
+//
 using config_data = binary<string>;
 
 enum class edit_mode {
@@ -59,18 +58,19 @@ enum class edit_mode {
 };
 
 struct config_attribute {
-    refl::object_metadata_t metadata;
+    //
+    refl::shared_object_ptr default_value;
 
-    config_data default_value;
-    string description;
+    // Optional properties ...
+    refl::shared_object_ptr one_of;
+    refl::shared_object_ptr min;
+    refl::shared_object_ptr max;
 
-    config_data one_of;
-    config_data min;
-    config_data max;
+    // Validation functions
+    function<bool(refl::object_view_t)> fn_validate;
+    function<bool(refl::object_const_view_t)> fn_verify;
 
     //
-    bool has_custom_validator = false;
-
     bool can_import = true;
     bool can_export = true;
 
@@ -83,9 +83,25 @@ struct config_attribute {
     // Keys
     string full_key;
     string display_key;
+    string description;
 
     // Array view hierarchy
     vector<string_view> hierarchy;
+};
+
+template <typename ValTy>
+class config_attribute_factory
+{
+   public:
+    using self_reference = config_attribute_factory&;
+
+   private:
+    config_attribute_ptr _ref;
+
+   public:
+    //! Full key will automatically be parsed into
+    explicit config_attribute_factory(string key) {}
+    self_reference _internal_default_value(ValTy&& value) { return *this; }
 };
 
 /**
@@ -134,7 +150,7 @@ class config_base : public std::enable_shared_from_this<config_base>
    public:
     struct context_t {
         // Raw data pointer
-        config_raw_data_ptr raw_data;
+        refl::shared_object_ptr raw_data;
 
         // Unique key in registry scope
         std::string prefix;
@@ -153,7 +169,7 @@ class config_base : public std::enable_shared_from_this<config_base>
     std::atomic_size_t _fence_serialized = ~size_t{};  // Serialization is dirty when _fence_modify_requested != _fence_serialized
 
    public:
-    explicit config_base(context_t&& info);
+    explicit config_base(context_t&& info) noexcept : _context(move(info)) {}
 
     auto const& attribute() const noexcept { return _context.attribute; }
     auto const& default_value() const { return attribute()->default_value; }
@@ -202,7 +218,7 @@ class config_base : public std::enable_shared_from_this<config_base>
  *              using self_t = decay_t<decltype(*this)>;
  *              _internal_initops()->emplace_back(
  *                  offsetof(self_t, VarName),
- *                  [](config_registry_proxy*, void* ptr) {
+ *                  [](config_registry*, void* ptr) {
  *
  *                  }
  *              );
@@ -273,22 +289,23 @@ class config_base : public std::enable_shared_from_this<config_base>
  *   -> static  정의
  *
  */
-class config_registry_proxy : public std::enable_shared_from_this<config_registry_proxy>
+class config_registry : public std::enable_shared_from_this<config_registry>
 {
    public:
     using config_table = map<string_view, shared_ptr<config_base>>;
     using string_view_table = map<string_view, string_view>;
-    using container = map<string, weak_ptr<config_registry_proxy>, std::less<>>;
+    using container = map<string, weak_ptr<config_registry>, std::less<>>;
 
    private:
    private:
-    shared_ptr<config_registry_body> _data;
+    class backend_t;
+    shared_ptr<backend_t> _self;
 
    private:
-    explicit config_registry_proxy(std::string name);
+    explicit config_registry(std::string name);
 
    public:
-    ~config_registry_proxy() noexcept;
+    ~config_registry() noexcept;
 
    public:
     //! Mark this registry as transient. It won't be exported.
@@ -331,12 +348,10 @@ class config_registry_proxy : public std::enable_shared_from_this<config_registr
     void _internal_register_to_global() {}
 
     //! Create unregistered config registry.
-    static auto _internal_create(std::string name) -> shared_ptr<config_registry_proxy>;
+    static auto _internal_create(std::string name) -> shared_ptr<config_registry>;
 
-    void bk_find_key(string_view display_key, string* out_full_key) {}
-    void bk_all(vector<config_base_ptr>*) const noexcept {}
-
-    auto& bk_data() const noexcept { return _data; }
+    //! Backend data provider
+    auto* backend() const noexcept { return _self.get(); }
 
    public:
     //! Protects value from update
@@ -344,8 +359,8 @@ class config_registry_proxy : public std::enable_shared_from_this<config_registr
     void _internal_value_access_unlock() {}
 
    public:
-    static void bk_enumerate_registries(vector<shared_ptr<config_registry_proxy>>* out_regs, bool filter_complete = false) noexcept {}
-    static auto bk_find_registry(string_view name) noexcept -> shared_ptr<config_registry_proxy> { return {}; }
+    static void bk_enumerate_registries(vector<shared_ptr<config_registry>>* out_regs, bool filter_complete = false) noexcept {}
+    static auto bk_find_registry(string_view name) noexcept -> shared_ptr<config_registry> { return {}; }
 };
 
 /**
@@ -357,7 +372,7 @@ class config_registry_proxy : public std::enable_shared_from_this<config_registr
 template <typename ValueType>
 class config
 {
-    shared_ptr<config_registry_proxy> _owner;
+    shared_ptr<config_registry> _owner;
     config_base_ptr _base;
 
     ValueType const* _ref = nullptr;
@@ -427,7 +442,7 @@ class config_set_base
     };
 
    protected:
-    shared_ptr<config_registry_proxy> _internal_RG;
+    shared_ptr<config_registry> _internal_RG;
     string _internal_prefix;
 
    public:
@@ -462,7 +477,7 @@ class config_set : public config_set_base
     static ImplType create(string key)
     {
         ImplType s;
-        s._internal_RG = config_registry_proxy::_internal_create(move(key));
+        s._internal_RG = config_registry::_internal_create(move(key));
         s._internal_RG->_internal_register_to_global();
 
         _internal_perform_initops(&s, *_internal_initops());
@@ -495,8 +510,8 @@ class config_set : public config_set_base
     }
 
    public:
-    config_registry_proxy& operator*() const noexcept { return *_internal_RG; }
-    config_registry_proxy* operator->() const noexcept { return _internal_RG.get(); }
+    config_registry& operator*() const noexcept { return *_internal_RG; }
+    config_registry* operator->() const noexcept { return _internal_RG.get(); }
 };
 
 template <class ObjClass, typename ValTy>
@@ -567,4 +582,4 @@ void foof()
 
 }  // namespace _configs
 
-}  // namespace perfkit::configs_v2
+}  // namespace perfkit::v2
