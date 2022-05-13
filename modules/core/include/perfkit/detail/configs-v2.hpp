@@ -306,8 +306,11 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     void unset_transient() {}
 
     //! Manually unregister config registry.
-    //! Useful when
+    //! Useful when recreate registry immediately with same name
     bool unregister() { return false; }
+
+    //! Check if this registry is unregistered from global repository.
+    bool is_registered() const { return false; }
 
     //! Flush queued changes to individual
     bool update() { return false; }
@@ -348,10 +351,6 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //! Protects value from update
     void _internal_value_access_lock() {}
     void _internal_value_access_unlock() {}
-
-   public:
-    static void bk_enumerate_registries(vector<shared_ptr<config_registry>>* out_regs, bool filter_complete = false) noexcept {}
-    static auto bk_find_registry(string_view name) noexcept -> shared_ptr<config_registry> { return {}; }
 };
 
 /**
@@ -367,7 +366,7 @@ class config
     config_base_ptr _base;
 
     ValueType const* _ref = nullptr;
-    size_t _update_check_fence = 0;
+    mutable size_t _update_check_fence = 0;
 
    private:
     // TODO: friend factory class ...
@@ -378,7 +377,7 @@ class config
 
    public:
     // TODO: ... getters / commit / check_update ...
-    void commit(ValueType const& val)
+    void commit(ValueType const& val) const
     {
         _owner->_internal_commit_value(_base, {val});
     }
@@ -412,7 +411,7 @@ class config
         return value();
     }
 
-    bool check_update() noexcept
+    bool check_update() const noexcept
     {
         auto fence = _base->num_modified();
         return exchange(_update_check_fence, fence) != fence;
@@ -432,6 +431,11 @@ namespace _configs {
 void parse_full_key(string const& full_key, string* o_display_key, vector<string_view>* o_hierarchy)
 {
     // TODO: Parse full_key to display key
+}
+
+void verify_flag_string(string_view str)
+{
+    // TODO: if any character other than -_[a-z][A-Z][0-9], and --no- prefixed, and 'h' is not allowed
 }
 }  // namespace _configs
 
@@ -456,7 +460,11 @@ class config_attribute_factory
     }
 
     //! Sets default value. Will automatically be called internal
-    self_reference _internal_default_value(ValTy&& value) noexcept { return *this; }
+    self_reference _internal_default_value(ValTy value) noexcept
+    {
+        _ref->default_value.reset(make_shared<ValTy>(move(value)));
+        return *this;
+    }
 
    public:
     /** Description to this property */
@@ -480,7 +488,7 @@ class config_attribute_factory
     self_reference min(ValTy value) noexcept
     {
         assert(_ref->min == nullptr);
-        _ref->min = {make_shared<ValTy>(move(value))};
+        _ref->min.reset(make_shared<ValTy>(move(value)));
         return *this;
     }
 
@@ -488,13 +496,14 @@ class config_attribute_factory
     self_reference max(ValTy value) noexcept
     {
         assert(_ref->max == nullptr);
-        _ref->max = {make_shared<ValTy>(move(value))};
+        _ref->max.reset(make_shared<ValTy>(move(value)));
         return *this;
     }
 
     /** minmax Helper */
     self_reference clamp(ValTy minv, ValTy maxv) noexcept
     {
+        assert(std::less<>{}(minv, maxv));
         return min(move(minv)), max(move(maxv));
     }
 
@@ -507,13 +516,16 @@ class config_attribute_factory
         auto values = make_shared<vector<ValTy>>();
 
         for (auto&& e : iterable)
-            values->emplace(forward<decltype(e)>(e));
+            values->emplace_back(forward<decltype(e)>(e));
 
-        _ref->one_of = {values};
+        _ref->one_of.reset(values);
         _ref->fn_validate
                 = [values = values.get()](refl::object_const_view_t v) {
                       auto value = refl::get_ptr<ValTy>(v);
                       assert(value);
+
+                      auto iter = find(*values, *value);
+                      return iter != values->end();
                   };
 
         return *this;
@@ -583,7 +595,16 @@ class config_attribute_factory
         assert(_ref->flag_bindings.empty());
 
         vector<string> flags;
-        (flags.emplace_back(std::forward<Str_>(args)), ...);
+        auto fn_put_elem =
+                [&](auto&& elem) {
+                    using elem_type = decay_t<decltype(elem)>;
+                    if constexpr (is_same_v<char, elem_type>)
+                        flags.emplace_back(elem, 1);
+                    else
+                        flags.emplace_back(forward<decltype(elem)>(elem));
+                };
+
+        (fn_put_elem(std::forward<Str_>(args)), ...);
 
         _ref->flag_bindings = move(flags);
         return *this;
@@ -708,7 +729,7 @@ size_t offset_of(ValTy ObjClass::*mptr)
 }
 
 template <typename ConfigSet, typename Config>
-nullptr_t register_conf_function(Config ConfigSet::*mptr)
+nullptr_t register_conf_function(Config ConfigSet::*mptr) noexcept
 {
     auto storage = ConfigSet::_internal_initops();
     auto initop = &storage->emplace_back();
@@ -723,7 +744,7 @@ nullptr_t register_conf_function(Config ConfigSet::*mptr)
 }
 
 template <typename ConfigSet, typename Subset>
-nullptr_t register_subset_function(Subset ConfigSet::*mptr)
+nullptr_t register_subset_function(Subset ConfigSet::*mptr) noexcept
 {
     auto storage = ConfigSet::_internal_initops();
     auto initop = &storage->emplace_back();
@@ -737,14 +758,28 @@ nullptr_t register_subset_function(Subset ConfigSet::*mptr)
     return nullptr;
 }
 
+}  // namespace _configs
+
+}  // namespace perfkit::v2
+
 #if 1
+#    include <cpph/refl/object.hxx>
+namespace perfkit::v2::_configs {
 class MyConf : public config_set<MyConf>
 {
     int rgg = (_internal_perfkit_attribute_rgg, 3);
     static inline auto const _internal_perfkit_register_conf_rgg
             = register_conf_function(&_internal_self_t::rgg);
     static inline auto const _internal_perfkit_attribute_rgg
-            = 3;
+            = config_attribute_factory<int>{"MyFullKey"}
+                      .edit_mode(edit_mode::path)
+                      .clamp(-4, 11)
+                      .validate([](int& g) { return g > 0; })
+                      .verify([](int const& r) { return r != 0; })
+                      .one_of({1, 2, 3})
+                      .description("Hello!")
+                      .flags("g", 'g', "GetMyFlag")
+                      .confirm();
 
     class MySubConf : public config_set<MySubConf>
     {
@@ -765,8 +800,6 @@ void foof()
 {
     auto r = MyConf::create("hell");
 }
+
+}  // namespace perfkit::v2::_configs
 #endif
-
-}  // namespace _configs
-
-}  // namespace perfkit::v2

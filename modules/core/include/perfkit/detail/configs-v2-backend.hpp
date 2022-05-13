@@ -36,9 +36,11 @@ class config_registry::backend_t
     config_registry* _self;
 
    public:
-    static auto enumerate_registries(vector<config_registry_ptr>*);
     void find_key(string_view display_key, string* out_full_key) {}
     void all_items(vector<config_base_ptr>*) const noexcept {}
 
+   public:
+    static void enumerate_registries(vector<shared_ptr<config_registry>>* o_regs, bool filter_complete = false) noexcept {}
+    static auto find_registry(string_view name) noexcept -> shared_ptr<config_registry> { return {}; }
 };
 }  // namespace perfkit::v2
