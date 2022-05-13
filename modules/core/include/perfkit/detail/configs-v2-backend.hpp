@@ -30,7 +30,7 @@
 #include "nlohmann/json_fwd.hpp"
 
 namespace perfkit::configs_v2 {
-struct config_registry::data_t {
-
+class config_registry_body
+{
 };
 }  // namespace perfkit::configs_v2
