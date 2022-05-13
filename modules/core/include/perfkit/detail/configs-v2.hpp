@@ -43,21 +43,25 @@ using config_attribute_ptr = shared_ptr<config_attribute const>;
 //
 using config_data = binary<string>;
 
-enum class edit_mode {
+enum class edit_mode : uint8_t {
     none,
 
     path = 10,
-    path_file,
-    path_file_multi,
-    path_dir,
+    path_file = 11,
+    path_file_multi = 12,
+    path_dir = 13,
 
-    script,  // usually long text
+    script = 20,  // usually long text
 
-    color_b,  // maximum 4 ch, 0~255 color range per channel
-    color_f,  // maximum 4 ch, usually 0.~1. range. Channel can exceed 1.
+    color_b = 31,  // maximum 4 ch, 0~255 color range per channel
+    color_f = 32,  // maximum 4 ch, usually 0.~1. range. Channel can exceed 1.
 };
 
 struct config_attribute {
+    // Unique id for single process instance.
+    // Remote session can utilize this for attribute information caching.
+    uint64_t unique_attribute_id;
+
     //
     refl::shared_object_ptr default_value;
 
@@ -74,15 +78,17 @@ struct config_attribute {
     bool can_import = true;
     bool can_export = true;
 
-    bool has_flag = false;
-    bool hidden = false;
-
-    //
-    vector<std::string> flag_bindings;
+    // Config source bindings
+    vector<string> flag_bindings;
+    string env_binding;
 
     // Keys
     string full_key;
     string display_key;
+
+    // For remote session ...
+    bool hidden = false;
+    v2::edit_mode edit_mode;
     string description;
 
     // Array view hierarchy
@@ -96,12 +102,181 @@ class config_attribute_factory
     using self_reference = config_attribute_factory&;
 
    private:
-    config_attribute_ptr _ref;
+    shared_ptr<config_attribute> _ref;
 
    public:
-    //! Full key will automatically be parsed into
-    explicit config_attribute_factory(string key) {}
-    self_reference _internal_default_value(ValTy&& value) { return *this; }
+    //! Full key will automatically be parsed into display keys
+    explicit config_attribute_factory(string full_key) noexcept : _ref(make_shared<config_attribute>())
+    {
+        static std::atomic_uint64_t _idgen = 0;
+        _ref->full_key = move(full_key);
+        _ref->unique_attribute_id = ++_idgen;
+
+        // TODO: Parse full_key to display key
+    }
+
+    //! Sets default value. Will automatically be called internal
+    self_reference _internal_default_value(ValTy&& value) noexcept { return *this; }
+
+   public:
+    /** Description to this property */
+    self_reference description(string content) noexcept
+    {
+        _ref->description = move(content);
+        return *this;
+    }
+
+    /** Editing type specifier. */
+    self_reference edit_mode(edit_mode mode) noexcept
+    {
+        assert(mode != edit_mode::none);
+        assert(_ref->edit_mode == edit_mode::none);
+
+        _ref->edit_mode = mode;
+        return *this;
+    }
+
+    /** Value bottom limit */
+    self_reference min(ValTy value) noexcept
+    {
+        assert(_ref->min == nullptr);
+        _ref->min = {make_shared<ValTy>(move(value))};
+        return *this;
+    }
+
+    /** Value maximum limit */
+    self_reference max(ValTy value) noexcept
+    {
+        assert(_ref->max == nullptr);
+        _ref->max = {make_shared<ValTy>(move(value))};
+        return *this;
+    }
+
+    /** minmax Helper */
+    self_reference clamp(ValTy minv, ValTy maxv) noexcept
+    {
+        return min(move(minv)), max(move(maxv));
+    }
+
+    /**
+     * Only one of the given elements can be selected.
+     */
+    template <typename Iterable>
+    self_reference one_of(Iterable&& iterable) noexcept
+    {
+        auto values = make_shared<vector<ValTy>>();
+
+        for (auto&& e : iterable)
+            values->emplace(forward<decltype(e)>(e));
+
+        _ref->one_of = {values};
+        _ref->fn_validate
+                = [values = values.get()](refl::object_const_view_t v) {
+                      auto value = refl::get_ptr<ValTy>(v);
+                      assert(value);
+                  };
+
+        return *this;
+    }
+
+    // Overloaded version of one_of for initializer_list
+    self_reference one_of(initializer_list<ValTy> v) noexcept
+    {
+        return one_of(array_view{&v.begin()[0], v.size()});
+    }
+
+    /**
+     * Hidden element hint. Hidden element commonly won't be displayed to terminal remote endpoint.
+     */
+    self_reference hide() noexcept
+    {
+        _ref->hidden = true;
+        return *this;
+    }
+
+    /**
+     * validate function makes value assignable to destination.
+     * if callback returns false, change won't be applied (same as verify())
+     */
+    template <typename Pred>
+    auto& validate(Pred&& pred) noexcept
+    {
+        assert(not _ref->fn_validate);
+
+        if constexpr (std::is_invocable_r_v<bool, Pred, ValTy&>) {
+            _ref->fn_validate
+                    = [pred = forward<Pred>(pred)](refl::object_view_t v) {
+                          return pred(refl::get<ValTy>(v));
+                      };
+        } else if constexpr (std::is_invocable_v<Pred, ValTy&>) {
+            _ref->fn_validate
+                    = [pred = forward<Pred>(pred)](refl::object_view_t v) {
+                          pred(refl::get<ValTy>(v));
+                          return true;
+                      };
+        } else {
+            pred->STATIC_ERROR_INVALID_CALLABLE;
+        }
+
+        return *this;
+    }
+
+    /** verify function will discard updated value on verification failure. */
+    template <typename Pred, typename = enable_if_t<is_invocable_r_v<bool, Pred, ValTy const&>>>
+    auto& verify(Pred&& pred) noexcept
+    {
+        assert(not _ref->fn_verify);
+
+        _ref->fn_verify
+                = [pred = forward<Pred>(pred)](refl::object_const_view_t v) {
+                      return pred(refl::get<ValTy const>(v));
+                  };
+
+        return *this;
+    }
+
+    /** expose entities as flags. configs MUST NOT BE field of any config template class! */
+    template <typename... Str_>
+    auto& flags(Str_&&... args) noexcept
+    {
+        static_assert(sizeof...(args) > 0);
+        assert(_ref->flag_bindings.empty());
+
+        vector<string> flags;
+        (flags.emplace_back(std::forward<Str_>(args)), ...);
+
+        _ref->flag_bindings = move(flags);
+        return *this;
+    }
+
+    /** transient marked configs won't be saved or loaded from config files. */
+    auto& transient() noexcept
+    {
+        assert(_ref->can_export && _ref->can_import);  // Maybe there was readonly() or another transient() call?
+        _ref->can_import = _ref->can_export = false;
+    }
+
+    /** readonly marked configs won't be exported, but still can be imported from config files. */
+    auto& readonly() noexcept
+    {
+        assert(_ref->can_export && _ref->can_import);  // Maybe there was readonly() or another transient() call?
+        _ref->can_import = true;
+        _ref->can_export = false;
+    }
+
+    /** initialize from environment variable */
+    auto& env(string s) noexcept
+    {
+        assert(_ref->env_binding.empty());
+        _ref->env_binding = move(s);
+    }
+
+   public:
+    /** Confirm attribute instance creation */
+    auto confirm() noexcept
+    {
+        return move(_ref);
+    }
 };
 
 /**
@@ -163,7 +338,6 @@ class config_base : public std::enable_shared_from_this<config_base>
     context_t _context;
 
     std::atomic_bool _latest_marshal_failed = false;
-
     std::atomic_size_t _fence_modified = 0;            // Actual modification count
     std::atomic_size_t _fence_modify_requested = 0;    // Modification request count
     std::atomic_size_t _fence_serialized = ~size_t{};  // Serialization is dirty when _fence_modify_requested != _fence_serialized
@@ -174,6 +348,7 @@ class config_base : public std::enable_shared_from_this<config_base>
     auto const& attribute() const noexcept { return _context.attribute; }
     auto const& default_value() const { return attribute()->default_value; }
 
+    auto const& prefix() const noexcept { return _context.prefix; }
     auto const& full_key() const { return attribute()->full_key; }
     auto const& display_key() const { return attribute()->display_key; }
     auto const& description() const { return attribute()->description; }
@@ -416,6 +591,11 @@ class config
         return *_ref;
     }
 
+    operator ValueType() const noexcept
+    {
+        return value();
+    }
+
     bool check_update() noexcept
     {
         auto fence = _base->num_modified();
@@ -553,7 +733,7 @@ nullptr_t register_subset_function(Subset ConfigSet::*mptr)
 #if 1
 class MyConf : public config_set<MyConf>
 {
-    int rgg = _internal_perfkit_attribute_rgg;
+    int rgg = (_internal_perfkit_attribute_rgg, 3);
     static inline auto const _internal_perfkit_register_conf_rgg
             = register_conf_function(&_internal_self_t::rgg);
     static inline auto const _internal_perfkit_attribute_rgg
