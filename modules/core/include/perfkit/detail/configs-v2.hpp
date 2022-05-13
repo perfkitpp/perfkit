@@ -33,7 +33,6 @@
 namespace perfkit::v2 {
 class config_registry;
 class config_base;
-class config_set_base;
 struct config_attribute;
 
 using config_base_ptr = shared_ptr<config_base>;
@@ -148,9 +147,6 @@ class config_base : public std::enable_shared_from_this<config_base>
     const uint64_t _id = ++_idgen;
     context_t _context;
 
-    //! Provides prefix
-    config_set_base* _host = nullptr;
-
     std::atomic_bool _latest_marshal_failed = false;
     std::atomic_size_t _fence_modified = 0;            // Actual modification count
     std::atomic_size_t _fence_modify_requested = 0;    // Modification request count
@@ -185,14 +181,6 @@ class config_base : public std::enable_shared_from_this<config_base>
     bool latest_marshal_failed() const { return acquire(_latest_marshal_failed); }
 
    public:
-    // On initop ...
-    void _internal_init_host(config_set_base* host) noexcept
-    {
-        assert(_host == nullptr);
-        assert(_context.attribute != nullptr);
-
-        _host = host;
-    }
 };
 
 /*
@@ -358,7 +346,7 @@ class config
         return _base;
     }
 
-    void register_to(config_registry_ptr rg)
+    void register_to(config_registry_ptr rg, string prefix = "")
     {
         if (_owner) {
             _owner->item_remove(_base);
@@ -606,7 +594,7 @@ auto default_from_va_arg(RawVal&& v, char const* msg = nullptr) -> deduced_t<Raw
     return {v};
 }
 template <typename RawVal>
-char const* name_from_va_arg(RawVal&&, char const* name = nullptr)
+char const* name_from_va_arg(RawVal&&, char const* name = "")
 {
     return name;
 }
@@ -615,25 +603,28 @@ char const* name_from_va_arg(RawVal&&, char const* name = nullptr)
 class config_set_base
 {
    protected:
-    struct initops_t {
+    struct _internal_initops_t {
         size_t property_offset;
         void (*fn_init)(config_set_base* base, void* prop_addr);
     };
 
+    struct _internal_pfx_node {
+        string content;
+        weak_ptr<_internal_pfx_node> parent;
+
+        _internal_pfx_node(string content, weak_ptr<_internal_pfx_node> parent = {})
+                : content(move(content)), parent(parent) {}
+    };
+
    protected:
-    shared_ptr<config_registry> _internal_RG;
-    config_set_base* _internal_parent = nullptr;
-    string _internal_prefix;
+    static thread_local inline shared_ptr<config_registry> _internal_RG_next;
+    static thread_local inline shared_ptr<_internal_pfx_node> _internal_prefix_next;
+
+    shared_ptr<config_registry> _internal_RG = exchange(_internal_RG_next, nullptr);
+    shared_ptr<_internal_pfx_node> _internal_prefix = exchange(_internal_prefix_next, nullptr);
 
    public:
-    static auto _internal_initops() -> vector<initops_t>*
-    {
-        static vector<initops_t> _inst;
-        return &_inst;
-    }
-
-   public:
-    static void _internal_perform_initops(config_set_base* base_addr, array_view<initops_t const> initops)
+    static void _internal_perform_initops(config_set_base* base_addr, array_view<_internal_initops_t const> initops)
     {
         //! Perform init ops
         for (auto& op : initops) {
@@ -644,7 +635,6 @@ class config_set_base
 
    public:
     static auto _internal_get_RG(config_set_base* b) { return b->_internal_RG; }
-    static auto _internal_get_parent(config_set_base* b) { return b->_internal_parent; }
     static auto const& _internal_get_prefix(config_set_base* b) { return b->_internal_prefix; }
 };
 
@@ -655,24 +645,35 @@ class config_set : public config_set_base
     using _internal_self_t = ImplType;
 
    public:
+    static auto _internal_initops() -> vector<_internal_initops_t>*
+    {
+        // Contains information for registering properties / subset initializations
+        static vector<_internal_initops_t> _inst;
+        return &_inst;
+    }
+
+   public:
     //! May throw logic_error on registry creation fails.
     //! Create new config registry
     static ImplType create(string key)
     {
+        config_set_base::_internal_RG_next = config_registry::_internal_create(move(key));
         ImplType s;
-        s._internal_RG = config_registry::_internal_create(move(key));
-        s._internal_RG->_internal_register_to_global();
 
         _internal_perform_initops(&s, *_internal_initops());
+        s._internal_RG->_internal_register_to_global();
         return s;
     }
 
     //! Append this category to existing registry.
     static ImplType create(config_registry_ptr existing, string prefix = "")
     {
+        config_set_base::_internal_RG_next = move(existing);
         ImplType s;
-        s._internal_RG = move(existing);
-        s._internal_prefix = move(prefix);
+
+        if (not prefix.empty()) {
+            s._internal_prefix = make_shared<_internal_pfx_node>(move(prefix));
+        }
 
         _internal_perform_initops(&s, *_internal_initops());
         return s;
@@ -682,15 +683,22 @@ class config_set : public config_set_base
     //! Only for category subprocess usage ...
     static ImplType _bk_make_subobj(config_set_base* base, char const* memvar, char const* user_provided = nullptr)
     {
+        auto base_prefix = config_set_base::_internal_get_prefix(base);
+
+        config_set_base::_internal_RG_next = _internal_get_RG(base);
+        config_set_base::_internal_prefix_next = make_shared<_internal_pfx_node>(
+                user_provided ? user_provided : memvar, base_prefix);
         ImplType s;
-        s._internal_RG = _internal_get_RG(base);
-        s._internal_parent = base;
-        s._internal_prefix = user_provided ? user_provided : memvar;
 
         // Do not perform initops on construction.
         // Initops will be deferred until superset initops iteration
-        // _internal_perform_initops(&s, *_internal_initops());
+        // - _internal_perform_initops(&s, *_internal_initops());
         return s;
+    }
+
+    static ImplType _bk_create_global(config_registry_ptr existing, char const* memvar, char const* user_alias = nullptr)
+    {
+        return create(move(existing), user_alias ? user_alias : memvar);
     }
 
    public:
@@ -715,11 +723,20 @@ nullptr_t register_conf_function(Config ConfigSet::*mptr) noexcept
         auto instance = (Config*)p;
         config_base_ptr base = instance->base();
 
-        // Initialize with host reference
-        base->_internal_init_host(b);
+        // Build prefix string
+        string prefix;
+        for (auto node = config_set_base::_internal_get_prefix(b); node;) {
+            auto const& pfx = node->content;
+            prefix.reserve(prefix.size() + 1 + pfx.size());
+            prefix += '|';
+            prefix.append(pfx.rbegin(), pfx.rend());
+
+            node = node->parent.lock();
+        }
+        reverse(prefix);
 
         // Register config instance to registry
-        instance->register_to(config_set_base::_internal_get_RG(b));
+        instance->register_to(config_set_base::_internal_get_RG(b), move(prefix));
     };
 
     return nullptr;

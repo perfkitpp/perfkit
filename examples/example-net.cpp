@@ -23,6 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #include <cpph/refl/object.hxx>
+#include <cpph/refl/types/tuple.hxx>
 #include <perfkit/configs-v2.h>
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/extension/net.hpp>
@@ -43,11 +44,25 @@ PERFKIT_CATEGORY(conf_global)
 PERFKIT_CFG(MyCfg)
 {
     PERFKIT_CFG_ITEM(MyInt, 1, "Raw").confirm();
-    PERFKIT_CFG_ITEM(MyString, "string", "MyStringValue").confirm();
+    PERFKIT_CFG_ITEM(MyString, "string").confirm();
+    PERFKIT_CFG_ITEM(Vodif, std::vector<std::pair<int, double>>{}, "string").confirm();
+};
+
+PERFKIT_CFG(OtherCfg)
+{
+    PERFKIT_CFG_SUBSET(MyCfg, Cfg1);
+};
+
+PERFKIT_CFG(OtherCfg2)
+{
+    PERFKIT_CFG_SUBSET(OtherCfg, Cfg0);
 };
 
 int main(void)
 {
+    auto f = OtherCfg2::create("hola!");
+    f->update();
+
     spdlog::set_level(spdlog::level::debug);
 
     test_class test1{"test1"};

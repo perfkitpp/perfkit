@@ -27,7 +27,6 @@
 #pragma once
 #include "configs-v2.hpp"
 #include "cpph/refl/core.hxx"
-#include "nlohmann/json_fwd.hpp"
 
 namespace perfkit::v2 {
 class config_registry::backend_t
@@ -43,4 +42,5 @@ class config_registry::backend_t
     static void enumerate_registries(vector<shared_ptr<config_registry>>* o_regs, bool filter_complete = false) noexcept {}
     static auto find_registry(string_view name) noexcept -> shared_ptr<config_registry> { return {}; }
 };
+
 }  // namespace perfkit::v2

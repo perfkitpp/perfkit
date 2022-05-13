@@ -42,9 +42,28 @@ void verify_flag_string(string_view str)
     // TODO: if any character other than -_[a-z][A-Z][0-9], and --no- prefixed, and 'h' is not allowed
 }
 }  // namespace _configs
+
+auto config_registry::_internal_create(std::string name) -> shared_ptr<config_registry>
+{
+    return shared_ptr<config_registry>();
+}
+
 }  // namespace perfkit::v2
 
+//
+//
+//
+//
+//
 #if 1
+#endif
+
+//
+// PERFKIT_CFG MACRO DEFINITION
+// * Reference code for macro definition
+//
+//
+#if 0
 #    include <cpph/refl/object.hxx>
 
 #    define DefaultValue 3
