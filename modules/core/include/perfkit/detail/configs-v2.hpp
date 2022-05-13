@@ -25,6 +25,8 @@
  ******************************************************************************/
 
 #pragma once
+#include <utility>
+
 #include "cpph/container/sorted_vector.hxx"
 #include "cpph/refl/core.hxx"
 #include "cpph/threading.hxx"
@@ -208,15 +210,15 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     using container = map<string, weak_ptr<config_registry>, std::less<>>;
 
    private:
-   private:
     class backend_t;
+    struct ctor_constraint_t {};
+
+   private:
     shared_ptr<backend_t> _self;
 
-   private:
-    explicit config_registry(std::string name) {}
-
    public:
-    ~config_registry() noexcept {}
+    explicit config_registry(ctor_constraint_t, std::string name);
+    ~config_registry() noexcept;
 
    public:
     //! Mark this registry as transient. It won't be exported.
@@ -241,11 +243,6 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //! Name of this registery
     string_view name() const { return ""; }
 
-    //! Add item/remove item.
-    //! All added item will be serialized to global context on first update after insertion
-    void item_add(config_base_ptr arg) {}
-    void item_remove(config_base_wptr arg) {}
-
     //! adding and removing individual items won't trigger remote session update request
     //!  due to performance reasons. You must explicitly notify after adding series of
     //!  configuration items.
@@ -267,6 +264,11 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
     //! Backend data provider
     auto* backend() const noexcept { return _self.get(); }
+
+    //! Add item/remove item.
+    //! All added item will be serialized to global context on first update after insertion
+    void _internal_item_add(config_base_ptr arg, string prefix = "") {}
+    void _internal_item_remove(config_base_wptr arg) {}
 
    public:
     //! Protects value from update
@@ -346,16 +348,22 @@ class config
         return _base;
     }
 
-    void register_to(config_registry_ptr rg, string prefix = "")
+    void activate(config_registry_ptr rg, string prefix = "")
     {
-        if (_owner) {
-            _owner->item_remove(_base);
-        }
+        deactivate();
 
         _owner.reset();
-        _owner = rg;
+        _owner = move(rg);
 
-        _owner->item_add(_base);
+        _owner->_internal_item_add(_base, move(prefix));
+    }
+
+    void deactivate()
+    {
+        if (_owner) {
+            _owner->_internal_item_remove(_base);
+            _owner.reset();
+        }
     }
 
    public:
@@ -696,7 +704,7 @@ class config_set : public config_set_base
         return s;
     }
 
-    static ImplType _bk_create_global(config_registry_ptr existing, char const* memvar, char const* user_alias = nullptr)
+    static ImplType _bk_create_va_arg(config_registry_ptr existing, char const* memvar, char const* user_alias = nullptr)
     {
         return create(move(existing), user_alias ? user_alias : memvar);
     }
@@ -736,7 +744,7 @@ nullptr_t register_conf_function(Config ConfigSet::*mptr) noexcept
         reverse(prefix);
 
         // Register config instance to registry
-        instance->register_to(config_set_base::_internal_get_RG(b), move(prefix));
+        instance->activate(config_set_base::_internal_get_RG(b), move(prefix));
     };
 
     return nullptr;

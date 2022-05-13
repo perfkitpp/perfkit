@@ -45,7 +45,15 @@ void verify_flag_string(string_view str)
 
 auto config_registry::_internal_create(std::string name) -> shared_ptr<config_registry>
 {
-    return shared_ptr<config_registry>();
+    return make_shared<config_registry>(ctor_constraint_t{}, move(name));
+}
+
+config_registry::config_registry(ctor_constraint_t, std::string name)
+{
+}
+
+config_registry::~config_registry() noexcept
+{
 }
 
 }  // namespace perfkit::v2

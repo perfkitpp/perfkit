@@ -41,6 +41,21 @@ PERFKIT_CATEGORY(conf_global)
             .confirm();
 }
 
+PERFKIT_CFG_G_SUBCAT(MyGCAT::MySUBCAT) {}
+
+#define DefaultValue 3
+
+PERFKIT_CFG_G_CAT_body(MyGCAT)
+{
+    PERFKIT_CFG_G_SUBCAT_body(MySUBCAT)
+    {
+        PERFKIT_CFG_G_SUBCAT_body(MySUBCAT2)
+        {
+            PERFKIT_CFG_ITEM_g(MyItem, 3.143, .clamp(0.1, 151.4));
+        }
+    }
+}
+
 PERFKIT_CFG(MyCfg)
 {
     PERFKIT_CFG_ITEM(MyInt, 1, "Raw").confirm();
