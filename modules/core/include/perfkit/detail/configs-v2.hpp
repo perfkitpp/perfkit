@@ -356,7 +356,7 @@ class config
 
     void activate(config_registry_ptr rg, string prefix = "")
     {
-        deactivate();
+        force_deactivate();
 
         _rg.reset();
         _rg = move(rg);
@@ -364,7 +364,7 @@ class config
         _rg->_internal_item_add(_base, move(prefix));
     }
 
-    void deactivate()
+    void force_deactivate()
     {
         if (_rg) {
             _rg->_internal_item_remove(_base);

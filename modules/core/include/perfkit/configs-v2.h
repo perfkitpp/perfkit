@@ -36,7 +36,7 @@ class config_set_base
     struct _internal_initops_t {
         size_t property_offset;
         void (*fn_init)(config_set_base* base, void* prop_addr);
-        void (*fn_deinit)(void* prop_addr);
+        void (*fn_deinit)(void* prop_addr);  // TODO: Logics for deactivation ...
     };
 
     struct _internal_pfx_node {
@@ -116,6 +116,13 @@ class config_set : public config_set_base
      *
      * @warning This method is not reentrant!
      */
+    void force_deactivate()
+    {
+        for (auto& op : *_internal_initops()) {
+            void* property = (char*)this + op.property_offset;
+            op.fn_deinit(property);
+        }
+    }
 
    public:
     //! Only for category subprocess usage ...
@@ -176,6 +183,9 @@ nullptr_t register_conf_function(Config ConfigSet::*mptr) noexcept
         // Register config instance to registry
         instance->activate(config_set_base::_internal_get_RG(b), move(prefix));
     };
+    initop->fn_deinit = [](void* p) {
+        ((Config*)p)->force_deactivate();
+    };
 
     return nullptr;
 }
@@ -191,6 +201,9 @@ nullptr_t register_subset_function(Subset ConfigSet::*mptr) noexcept
 
         // Perform subset initops here
         Subset::_internal_perform_initops(instance, *Subset::_internal_initops());
+    };
+    initop->fn_deinit = [](void* p) {
+        ((Subset*)p)->force_deactivate();
     };
 
     return nullptr;
