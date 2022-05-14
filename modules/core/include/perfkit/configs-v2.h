@@ -30,7 +30,6 @@
 #include "detail/configs-v2-frontend.hpp"
 #include "detail/configs-v2.hpp"
 
-
 #define INTL_PERFKIT_NS_0 ::perfkit::v2
 #define INTL_PERFKIT_NS_1 ::perfkit::v2::_configs
 
@@ -73,7 +72,7 @@
 /**
  *
  */
-#define PERFKIT_CFG_G_CAT(hierarchy)                 \
+#define PERFKIT_GCAT_ROOT(hierarchy)             \
     namespace hierarchy {                            \
     ::std::string _perfkit_INTERNAL_CATNAME();       \
     ::std::string _perfkit_INTERNAL_CATNAME_2();     \
@@ -86,7 +85,7 @@
 /**
  *
  */
-#define PERFKIT_CFG_G_SUBCAT(hierarchy)             \
+#define PERFKIT_GCAT(hierarchy)                 \
     namespace hierarchy {                           \
     ::std::string _perfkit_INTERNAL_CATNAME_2();    \
     INTL_PERFKIT_NS_0::config_registry& registry(); \
@@ -96,7 +95,7 @@
 /**
  * Default config item definition macro
  */
-#define PERFKIT_CFG_ITEM_g(VarName, DefaultValue, ... /*AttributeDecorators*/)                         \
+#define PERFKIT_GCAT_ITEM(VarName, DefaultValue, ... /*AttributeDecorators*/)                      \
     static INTL_PERFKIT_NS_0::config_attribute_ptr                                                     \
             INTERNAL_CPPH_CONCAT(_internal_perfkit_attribute_, VarName)();                             \
                                                                                                        \
@@ -124,7 +123,7 @@
 /**
  * Globally accessible repository. Place this somwhere of your program exactly once!
  */
-#define PERFKIT_CFG_G_CAT_body(Namespace)                                                    \
+#define PERFKIT_GCAT_ROOT_body(Namespace)                                                \
     namespace Namespace {                                                                    \
     ::std::string _perfkit_INTERNAL_CATNAME()                                                \
     {                                                                                        \
@@ -149,7 +148,7 @@
 /**
  * NEVER PLACE body after SUBCAT!
  */
-#define PERFKIT_CFG_G_SUBCAT_body(Namespace)                                                    \
+#define PERFKIT_GCAT_body(Namespace)                                                        \
     namespace Namespace {                                                                       \
     static inline auto constexpr _perfkit_INTERNAL_CATNAME_BEFORE = &_perfkit_INTERNAL_CATNAME; \
                                                                                                 \
@@ -159,7 +158,7 @@
     }                                                                                           \
     ::std::string _perfkit_INTERNAL_CATNAME()                                                   \
     {                                                                                           \
-        assert(_perfkit_INTERNAL_CATNAME_BEFORE != &_perfkit_INTERNAL_CATNAME);          \
+        assert(_perfkit_INTERNAL_CATNAME_BEFORE != &_perfkit_INTERNAL_CATNAME);                 \
         return Namespace::_perfkit_INTERNAL_CATNAME_BEFORE() + #Namespace "|";                  \
     }                                                                                           \
     ::std::string _perfkit_INTERNAL_CATNAME_2()                                                 \
