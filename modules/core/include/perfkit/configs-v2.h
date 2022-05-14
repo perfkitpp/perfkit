@@ -159,7 +159,7 @@
     }                                                                                           \
     ::std::string _perfkit_INTERNAL_CATNAME()                                                   \
     {                                                                                           \
-        static_assert(_perfkit_INTERNAL_CATNAME_BEFORE != &_perfkit_INTERNAL_CATNAME);          \
+        assert(_perfkit_INTERNAL_CATNAME_BEFORE != &_perfkit_INTERNAL_CATNAME);          \
         return Namespace::_perfkit_INTERNAL_CATNAME_BEFORE() + #Namespace "|";                  \
     }                                                                                           \
     ::std::string _perfkit_INTERNAL_CATNAME_2()                                                 \
