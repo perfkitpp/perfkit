@@ -59,25 +59,36 @@ enum class edit_mode : uint8_t {
     color_f = 32,  // maximum 4 ch, usually 0.~1. range. Channel can exceed 1.
 };
 
+/**
+ * Key rules
+ *
+ * example: +dsa32|MyCategory|SubRoutine|+1451|214.fdaso
+ * - Tokens are separated by '|' character
+ * - Any token starts with '+' character will be ignored, but referred by display order.
+ */
 struct config_attribute {
     // Unique id for single process instance.
     // Remote session can utilize this for attribute information caching.
     uint64_t unique_attribute_id;
 
     // Keys
-    string full_key_chain;  // May contain multiple tokens
+    string full_key_chain;  // May contain multiple tokens divided with |.
     string_view name;       // Last token from full key chain
 
     //
-    refl::shared_object_ptr default_value;
+    refl::shared_object_const_ptr default_value;
+
+    // Creates default value's clone. Used for update.
+    function<auto(void)->refl::shared_object_ptr> clone_default;
 
     // Optional properties ...
-    refl::shared_object_ptr one_of;
-    refl::shared_object_ptr min;
-    refl::shared_object_ptr max;
+    refl::shared_object_const_ptr one_of;
+    refl::shared_object_const_ptr min;
+    refl::shared_object_const_ptr max;
 
     // Validation functions
     function<bool(refl::object_view_t)> fn_validate;
+    function<bool(refl::object_const_view_t)> fn_minmax_verify;
     function<bool(refl::object_const_view_t)> fn_verify;
 
     //
