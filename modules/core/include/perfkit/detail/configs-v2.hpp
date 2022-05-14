@@ -79,7 +79,7 @@ struct config_attribute {
     refl::shared_object_const_ptr default_value;
 
     // Creates default value's clone. Used for update.
-    function<auto(void)->refl::shared_object_ptr> clone_default;
+    function<auto(void)->refl::shared_object_ptr> clone_empty;
 
     // Optional properties ...
     refl::shared_object_const_ptr one_of;

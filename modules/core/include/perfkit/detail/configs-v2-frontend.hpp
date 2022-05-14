@@ -227,17 +227,22 @@ class config_attribute_factory
 
    public:
     //! Full key will automatically be parsed into display keys
-    explicit config_attribute_factory(string key, string_view user_alias = "") noexcept : _ref(make_shared<config_attribute>())
+    explicit config_attribute_factory(string_view key, string_view user_alias = "") noexcept : _ref(make_shared<config_attribute>())
     {
         static std::atomic_uint64_t _idgen = 0;
-        _ref->name = user_alias.empty() ? move(key) : user_alias;
+        _ref->full_key_chain = user_alias.empty() ? move(key) : user_alias;
         _ref->unique_attribute_id = ++_idgen;
     }
 
     //! Sets default value. Will automatically be called internal
     self_reference _internal_default_value(ValTy value) noexcept
     {
-        _ref->default_value.reset(make_shared<ValTy>(move(value)));
+        auto shared_default = make_shared<ValTy const>(move(value));
+        _ref->default_value.reset(shared_default);
+        _ref->clone_empty =
+                [] {
+                    return refl::shared_object_ptr{make_shared<ValTy>()};
+                };
         return *this;
     }
 
