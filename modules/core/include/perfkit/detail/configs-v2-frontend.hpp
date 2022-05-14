@@ -244,7 +244,29 @@ class config_attribute_factory
    private:
     void _use_minmax()
     {
-        if (_ref->fn_minmax_verify) { return; }
+        if (_ref->fn_minmax_validate) { return; }
+
+        _ref->fn_minmax_validate
+                = [ref = _ref.get()](refl::object_view_t pdata) {
+                      auto& data = refl::get<ValTy>(pdata);
+                      bool untouched = true;
+
+                      if (ref->min) {
+                          auto& min = refl::get<ValTy>(ref->min);
+                          if (data < min) {
+                              untouched = false, data = min;
+                          }
+                      }
+
+                      if (ref->max) {
+                          auto& max = refl::get<ValTy>(ref->max);
+                          if (max < data) {
+                              untouched = false, data = max;
+                          }
+                      }
+
+                      return untouched;
+                  };
     }
 
    public:
@@ -269,6 +291,7 @@ class config_attribute_factory
     self_reference min(ValTy value) noexcept
     {
         assert(_ref->min == nullptr);
+        _use_minmax();
         _ref->min.reset(make_shared<ValTy>(move(value)));
         return *this;
     }
@@ -277,6 +300,7 @@ class config_attribute_factory
     self_reference max(ValTy value) noexcept
     {
         assert(_ref->max == nullptr);
+        _use_minmax();
         _ref->max.reset(make_shared<ValTy>(move(value)));
         return *this;
     }
@@ -294,13 +318,15 @@ class config_attribute_factory
     template <typename Iterable>
     self_reference one_of(Iterable&& iterable) noexcept
     {
+        assert(not _ref->fn_one_of_validate);
+
         auto values = make_shared<vector<ValTy>>();
 
         for (auto&& e : iterable)
             values->emplace_back(forward<decltype(e)>(e));
 
         _ref->one_of.reset(values);
-        _ref->fn_validate
+        _ref->fn_one_of_validate
                 = [values = values.get()](refl::object_const_view_t v) {
                       auto value = refl::get_ptr<ValTy>(v);
                       assert(value);

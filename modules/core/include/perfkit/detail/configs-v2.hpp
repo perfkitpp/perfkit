@@ -88,7 +88,8 @@ struct config_attribute {
 
     // Validation functions
     function<bool(refl::object_view_t)> fn_validate;
-    function<bool(refl::object_const_view_t)> fn_minmax_verify;
+    function<bool(refl::object_view_t)> fn_minmax_validate;
+    function<bool(refl::object_view_t)> fn_one_of_validate;
     function<bool(refl::object_const_view_t)> fn_verify;
 
     //
