@@ -29,7 +29,7 @@
 #pragma once
 #include <list>
 
-#include <cpph/helper/nlohmann_json_macros.hxx>
+#include <cpph/refl/types/nlohmann-json.hxx>
 #include <perfkit/configs.h>
 #include <perfkit/logging.h>
 #include <perfkit/traces.h>

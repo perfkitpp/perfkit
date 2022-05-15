@@ -27,7 +27,6 @@
 #include "cpph/refl/object.hxx"
 #include "cpph/refl/types/array.hxx"
 #include "cpph/refl/types/list.hxx"
-#include "cpph/refl/types/nlohmann-json.hxx"
 #include "cpph/refl/types/tuple.hxx"
 #include "cpph/refl/types/unordered.hxx"
 #include "perfkit/fwd.hpp"
