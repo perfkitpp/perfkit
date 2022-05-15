@@ -77,11 +77,14 @@ struct config_attribute {
     config_attribute_id_t unique_attribute_id;
 
     // Keys
-    string full_key_chain;  // May contain multiple tokens divided with |.
-    string_view name;       // Last token from full key chain
+    string name;  // Last token from full key chain
 
     //
     refl::shared_object_const_ptr default_value;
+
+    // Creates empty object for various usage
+    refl::shared_object_ptr (*fn_construct)(void);
+    void (*fn_swap_value)(refl::shared_object_ptr, refl::shared_object_ptr);
 
     // Optional properties ...
     refl::shared_object_const_ptr one_of;
@@ -91,8 +94,6 @@ struct config_attribute {
     // Validation functions
     function<bool(refl::object_view_t)> fn_validate;
     function<bool(refl::object_view_t)> fn_minmax_validate;
-    function<bool(refl::object_view_t)> fn_one_of_validate;
-    function<bool(refl::object_const_view_t)> fn_verify;
 
     //
     bool can_import = true;
@@ -282,7 +283,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     config_registry_id_t id() const noexcept;
 
    public:
-    void _internal_commit_value_user(config_base_ptr ref, refl::object_const_view_t);
+    bool _internal_commit_value_user(config_base_ptr ref, refl::shared_object_ptr);
     void const* _internal_unique_address() { return this; }
 
     //! Called once after creation.
@@ -349,10 +350,10 @@ class config
     }
 
    public:
-    void commit(ValueType const& val) const
+    void commit(ValueType val) const
     {
         assert(_rg);
-        _rg->_internal_commit_value_user(_base, {val});
+        _rg->_internal_commit_value_user(_base, make_shared<ValueType>(move(val)));
     }
 
     ValueType value() const noexcept

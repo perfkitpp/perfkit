@@ -241,8 +241,10 @@ class config_attribute_factory
     explicit config_attribute_factory(string_view key, string_view user_alias = "") noexcept : _ref(make_shared<config_attribute>())
     {
         static std::atomic_uint64_t _idgen = 0;
-        _ref->full_key_chain = user_alias.empty() ? move(key) : user_alias;
+        _ref->name = user_alias.empty() ? move(key) : user_alias;
         _ref->unique_attribute_id.value = ++_idgen;
+        _ref->fn_construct = [] { return refl::shared_object_ptr{make_shared<ValTy>()}; };
+        _ref->fn_swap_value = [](auto a, auto b) { swap(refl::get<ValTy>(a), refl::get<ValTy>(b)); };
     }
 
     //! Sets default value. Will automatically be called internal
@@ -349,15 +351,14 @@ class config_attribute_factory
     template <typename Iterable>
     self_reference one_of(Iterable&& iterable) noexcept
     {
-        assert(not _ref->fn_one_of_validate);
-
+        assert(size(iterable) > 0);
         auto values = make_shared<vector<ValTy>>();
 
         for (auto&& e : iterable)
             values->emplace_back(forward<decltype(e)>(e));
 
         _ref->one_of.reset(values);
-        _ref->fn_one_of_validate
+        _ref->fn_validate
                 = [values = values.get()](refl::object_const_view_t v) {
                       auto value = refl::get_ptr<ValTy>(v);
                       assert(value);
@@ -415,9 +416,9 @@ class config_attribute_factory
     template <typename Pred, typename = enable_if_t<is_invocable_r_v<bool, Pred, ValTy const&>>>
     auto& verify(Pred&& pred) noexcept
     {
-        assert(not _ref->fn_verify);
+        assert(not _ref->fn_validate);
 
-        _ref->fn_verify
+        _ref->fn_validate
                 = [pred = forward<Pred>(pred)](refl::object_const_view_t v) {
                       return pred(refl::get<ValTy const>(v));
                   };
@@ -478,6 +479,9 @@ class config_attribute_factory
     /** Confirm attribute instance creation */
     auto confirm() noexcept
     {
+        assert(bool(_ref->one_of) && not _ref->fn_minmax_validate);
+        assert(bool(_ref->one_of) && not _ref->fn_validate);
+
         return _ref;
     }
 

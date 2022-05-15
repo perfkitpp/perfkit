@@ -31,7 +31,6 @@
 #include "configs-v2.hpp"
 #include "cpph/event.hxx"
 #include "cpph/memory/pool.hxx"
-#include "cpph/refl/archive/msgpack-reader.hxx"
 #include "cpph/refl/core.hxx"
 #include "cpph/streambuf/string.hxx"
 #include "cpph/thread/event_queue.hxx"
@@ -42,8 +41,16 @@ using std::list;
 
 namespace perfkit::v2 {
 struct config_entity_context {
+    friend class config_registry;
+
+   public:
+    config_base_wptr reference;
+
     size_t sort_order = 0;
-    pool_ptr<string> next_value;
+    string full_key = {};
+
+   private:
+    refl::shared_object_ptr _staged;
 };
 
 class config_registry::backend_t
@@ -51,7 +58,7 @@ class config_registry::backend_t
     friend class config_registry;
 
    private:
-    config_registry* _self;
+    config_registry* _owner;
     string _name;
 
     // Unique id for this registry
@@ -60,6 +67,8 @@ class config_registry::backend_t
 
     // Flag for global repository registering
     std::once_flag _register_once_flag;
+    atomic_bool _is_registered = false;
+    atomic_bool _is_transient = false;
 
     // Event queue for event joining
     event_queue _events{1024};
@@ -71,15 +80,11 @@ class config_registry::backend_t
     atomic_size_t _fence = 0;
     atomic_size_t _sort_id_gen = 0;
 
-    // Serialization Management
-    pool<string> _pool_update_buffer;
-
     // All active config entities.
     std::unordered_map<config_id_t, config_entity_context> _configs;
 
     // Set of queued updates
-    spinlock _mtx_refreshed;
-    vector<config_id_t> _refreshed;
+    vector<config_id_t> _refreshed_items;
 
     // Item insertion/deletions management
     bool _flag_add_remove_notified = false;
@@ -93,22 +98,21 @@ class config_registry::backend_t
     static inline event<void(config_registry_ptr)> g_evt_registered;
     static inline event<void(config_registry_ptr)> g_evt_unregistered;
 
-    event<void(config_registry*, list<config_base_ptr> const&)> evt_updated_entities;
-    event<void(config_registry*, list<config_base_ptr> const&)> evt_update_failed_entities;
-    event<void(config_registry*, list<config_base_ptr> const&)> evt_item_added;
-    event<void(config_registry*, list<config_base_ptr> const&)> evt_item_removed;
+    event<config_registry*, list<config_base_ptr> const&> evt_updated_entities;
+    event<config_registry*> evt_structure_changed;
 
    private:
     void _register_to_global_repo() {}
-    void _commit_serial(config_id_t, pool_ptr<string>);
+    void _do_update();
+    bool _commit(config_base_ptr, refl::shared_object_ptr);
 
    public:
-    explicit backend_t(config_registry* self, string name) : _self(self), _name(move(name)) {}
+    explicit backend_t(config_registry* self, string name) : _owner(self), _name(move(name)) {}
 
    public:
     void find_key(string_view display_key, string* out_full_key) {}
     void all_items(vector<config_base_ptr>*) const noexcept {}
-    void bk_commit(config_id_t, string* io_msgpack_content);
+    bool bk_commit(config_base_ptr, archive::if_reader* content);
 
    public:
     static void enumerate_registries(vector<shared_ptr<config_registry>>* o_regs, bool filter_complete = false) noexcept {}

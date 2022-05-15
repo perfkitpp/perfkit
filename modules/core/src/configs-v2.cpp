@@ -26,9 +26,17 @@
 
 #include "perfkit/detail/configs-v2.hpp"
 
+#include <fmt/core.h>
+
 #include "cpph/refl/archive/msgpack-writer.hxx"
 #include "perfkit/configs-v2.h"
 #include "perfkit/detail/configs-v2-backend.hpp"
+
+//*
+#define print fmt::print("[{}:{}] ({}): ", __FILE__, __LINE__, __func__), fmt::print
+/*/
+#define primt(...)
+//*/
 
 namespace perfkit::v2 {
 namespace _configs {
@@ -97,46 +105,11 @@ void config_registry::item_notify()
 
 bool config_registry::update()
 {
-    // If it's first call after creation, register this to global repository.
-    std::call_once(_self->_register_once_flag, &backend_t::_register_to_global_repo, _self.get());
+    // Perform update from backend reference
+    _self->_do_update();
 
-    // Event entities ...
-    list<config_base_ptr> insertions;
-    list<config_base_ptr> deletions;
-    list<config_base_ptr> updates;
-
-    auto pool = &_self->_free_evt_nodes;
-    auto checkout_push =
-            [pool](list<config_base_ptr>* to, auto&& ptr) {
-                auto iter = pool->empty() ? pool->emplace(pool->end()) : pool->begin();
-                *iter = forward<decltype(ptr)>(ptr);
-                to->splice(to->end(), *pool, iter);
-            };
-
-    // Perform update inside protected scope
-    if (CPPH_TMPVAR = lock_guard{_self->_mtx_access}; true) {
-        _self->_events.flush();
-
-        // Check for insertion / deletions
-        if (exchange(_self->_flag_add_remove_notified, false)) {
-            // Check for deletions
-            for (auto& wp : _self->_config_removed) {
-                auto conf = wp.lock();
-                if (not conf) { continue; }  // Disposed between epoch ~ invoke gap
-
-                _self->_configs.erase(conf->_id);  // Erase from all list
-                checkout_push(&deletions, move(conf));
-            }
-
-            // Check for additions
-
-            // Collect garbage
-        }
-
-        // Check for refreshed entities ...
-    }
-
-    return false;
+    // update() includes call to check_update(), which manages local cache for modification fence.
+    return check_update();
 }
 
 size_t config_registry::fence() const
@@ -149,40 +122,134 @@ config_registry_id_t config_registry::id() const noexcept
     return _self->_id;
 }
 
-void config_registry::_internal_commit_value_user(
-        config_base_ptr ref, refl::object_const_view_t view)
+bool config_registry::_internal_commit_value_user(
+        config_base_ptr ref, refl::shared_object_ptr view)
 {
-    auto memory = _self->_pool_update_buffer.checkout();
+    return _self->_commit(move(ref), move(view));
+}
 
-    {
-        streambuf::stringbuf sbuf{memory.get()};
-        archive::msgpack::writer{&sbuf} << view;
+bool config_registry::backend_t::_commit(config_base_ptr ref, refl::shared_object_ptr candidate)
+{
+    auto& attrib = ref->attribute();
+    if (
+            (not attrib->fn_minmax_validate || attrib->fn_minmax_validate(candidate.view()))  //
+            &&                                                                                //
+            (not attrib->fn_validate || attrib->fn_validate(candidate.view()))                //
+    ) {
+        CPPH_TMPVAR{lock_guard{_mtx_access}};
+        auto ctx = find_ptr(_configs, ref->id());
+        if (not ctx) { return false; }  // Possibly removed during validation
+
+        attrib->fn_swap_value(ctx->second._staged, candidate);
+        set_push(_refreshed_items, ref->id());
+
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool config_registry::backend_t::bk_commit(config_base_ptr ref, archive::if_reader* content)
+{
+    auto object = ref->_context.attribute->fn_construct();
+
+    try {
+        *content >> object.view();
+    } catch (std::exception& e) {
+        return false;
     }
 
-    _self->_commit_serial(ref->id(), move(memory));
+    return _commit(move(ref), move(object));
 }
 
-void config_registry::backend_t::bk_commit(config_id_t id, string* content)
+void config_registry::backend_t::_do_update()
 {
-    auto memory = _pool_update_buffer.checkout();
-    swap(*memory, *content);
+    // If it's first call after creation, register this to global repository.
+    std::call_once(_register_once_flag, &backend_t::_register_to_global_repo, this);
 
-    _commit_serial(id, move(memory));
-}
+    // Event entities ...
+    bool has_structure_change = false;
+    list<config_base_ptr> updates;
 
-void config_registry::backend_t::_commit_serial(config_id_t id, pool_ptr<string> memory)
-{
+    auto pool = &_free_evt_nodes;
+    auto checkout_push =
+            [pool](list<config_base_ptr>* to, decltype(updates)::value_type ptr) {
+                auto iter = pool->empty() ? pool->emplace(pool->end()) : pool->begin();
+                *iter = forward<decltype(ptr)>(ptr);
+                to->splice(to->end(), *pool, iter);
+            };
+
+    // Perform update inside protected scope
     {
         CPPH_TMPVAR = lock_guard{_mtx_access};
-        auto context = find_ptr(_configs, id);
-        if (not context) { return; }
 
-        context->second.next_value = move(memory);
+        _events.flush();
+
+        // Check for insertion / deletions
+        if (exchange(_flag_add_remove_notified, false)) {
+            // Check for deletions
+            for (auto& wp : _config_removed) {
+                auto conf = wp.lock();
+                if (not conf) { continue; }  // Disposed between epoch ~ invoke gap
+
+                _configs.erase(conf->_id);  // Erase from 'all' list
+                has_structure_change = true;
+            }
+
+            // Check for additions
+            for (auto& [wp, tup] : _config_added) {
+                auto& [sort_order, prefix] = tup;
+                auto conf = wp.lock();
+                if (not conf) { continue; }
+
+                auto [iter, is_new] = _configs.try_emplace(conf->id());
+                assert(not is_new || ptr_equals(iter->second.reference, conf) && "Reference must not change!");
+                has_structure_change |= is_new;
+
+                iter->second.reference;
+                iter->second.sort_order = sort_order;
+                iter->second.full_key = move(prefix.append(conf->name()));
+            }
+
+            _config_added.clear();
+            _config_removed.clear();
+        }
+
+        // Check for updates
+        if (not _refreshed_items.empty()) {
+            for (auto id : _refreshed_items) {
+                auto iter = _configs.find(id);
+                if (iter == _configs.end()) { continue; }
+
+                auto conf = iter->second.reference.lock();
+                if (not conf) {
+                    // Configuration is expired ... collect garbage.
+                    has_structure_change = true;
+                    _configs.erase(iter);
+                    continue;
+                }
+
+                // Perform actual update
+                assert(iter->second._staged && "Staged data must be prepared!");
+                conf->attribute()->fn_swap_value(conf->_context.raw_data, iter->second._staged);
+                iter->second._staged.reset();  // Clear staged data
+
+                // Append to 'updated' list.
+                checkout_push(&updates, move(conf));
+            }
+
+            _refreshed_items.clear();
+        }
+
+        // If there is any update, increase fence once.
+        if (has_structure_change || not updates.empty()) {
+            _fence.fetch_add(1, std::memory_order_relaxed);
+        }
     }
-    {
-        CPPH_TMPVAR = lock_guard{_mtx_refreshed};
-        set_push(_refreshed, id);
-    }
+
+    // Publish updates to subscribers
+    if (has_structure_change) { evt_structure_changed.invoke(_owner); }
+    if (not updates.empty()) { evt_updated_entities.invoke(_owner, updates); }
 }
 
 }  // namespace perfkit::v2
