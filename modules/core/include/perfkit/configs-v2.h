@@ -33,7 +33,7 @@
 #define INTL_PERFKIT_NS_0 ::perfkit::v2
 #define INTL_PERFKIT_NS_1 ::perfkit::v2::_configs
 
-#define PERFKIT_CFG_CLASS(ClassName) class ClassName : public INTL_PERFKIT_NS_0::config_set<ClassName>
+#define PERFKIT_CFG_CLASS(ClassName) struct ClassName : public INTL_PERFKIT_NS_0::config_set<ClassName>
 
 /**
  * Defines subset
@@ -101,7 +101,7 @@
     using INTERNAL_CPPH_CONCAT(_internal_type_, VarName)                                                   \
             = INTL_PERFKIT_NS_1::deduced_t<decltype(DefaultValue)>;                                        \
                                                                                                            \
-    extern INTL_PERFKIT_NS_0::config<INTERNAL_CPPH_CONCAT(_internal_type_, VarName)>                       \
+    INTL_PERFKIT_NS_0::config<INTERNAL_CPPH_CONCAT(_internal_type_, VarName)>                              \
             INTERNAL_CPPH_CONCAT(_internal_cfg_inst_, VarName);                                            \
     auto const& VarName = INTERNAL_CPPH_CONCAT(_internal_cfg_inst_, VarName);                              \
                                                                                                            \

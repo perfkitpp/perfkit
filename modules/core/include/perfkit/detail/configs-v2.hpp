@@ -321,7 +321,7 @@ class config
     void commit(ValueType const& val) const
     {
         assert(_rg);
-        _rg->_internal_commit_value(_base, {val});
+        _rg->_internal_commit_value(_base, refl::object_const_view_t{val});
     }
 
     ValueType value() const noexcept

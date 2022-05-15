@@ -36,7 +36,7 @@
 #include "asio/post.hpp"
 #include "cpph/refl/object.hxx"
 #include "cpph/refl/rpc/rpc.hxx"
-#include "perfkit/configs.h"
+#include "perfkit/detail/configs.hpp"
 #include "perfkit/logging.h"
 
 using namespace perfkit::net;

@@ -33,19 +33,9 @@
 
 #include <perfkit/detail/base.hpp>
 
-#include "perfkit/configs.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/stdout_sinks.h"
 #include "spdlog/spdlog.h"
-
-std::string perfkit::_configs_internal::INDEXER_STR(int order)
-{
-    return fmt::format("{:->5}", order);
-}
-std::string perfkit::_configs_internal::INDEXER_STR2(int order)
-{
-    return fmt::format("+{:->5}|", order);
-}
 
 std::shared_ptr<spdlog::logger> perfkit::glog()
 {

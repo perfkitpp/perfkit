@@ -33,18 +33,20 @@
 #include "test_class.hpp"
 
 using namespace std::literals;
-//
-//PERFKIT_CATEGORY(conf_global)
-//{
-//    PERFKIT_CONFIGURE(some_selectible, "hello")
-//            .one_of({"hello", "my name", "is john"})
-//            .confirm();
-//}
+
+PERFKIT_CATEGORY(conf_global)
+{
+    PERFKIT_CONFIGURE(some_selectible, "hello")
+            .one_of({"hello", "my name", "is john"})
+            .confirm();
+}
 
 PERFKIT_GCFG_CAT(MyGCAT::MySUBCAT)
 {
     PERFKIT_GCFG(MyGc, 3.41);
 }
+
+PERFKIT_GCFG_CAT_ROOT_def(MyGCAT::MySUBCAT) {}
 
 #define DefaultValue 3
 
@@ -89,7 +91,7 @@ int main(void)
     term->launch_stdin_fetch_thread();
 
     while (running) {
-        // conf_global::update();
+        conf_global::update();
 
         auto cmd = term->fetch_command(1s);
         if (not cmd || cmd->empty())

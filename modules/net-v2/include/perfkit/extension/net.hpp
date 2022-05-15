@@ -35,32 +35,24 @@ struct profile;
 perfkit::terminal_ptr create(profile const& cfg);
 perfkit::terminal_ptr create(std::string config_name = "__NETCFG__");
 
-PERFKIT_T_CATEGORY(
-        profile,
+PERFKIT_CFG_CLASS(profile)
+{
+    PERFKIT_T_CONFIGURE(session_name, "default")
+            .env("PERFKIT_NET_SESSION_NAME");
 
-        PERFKIT_T_CONFIGURE(session_name, "default")
-                .env("PERFKIT_NET_SESSION_NAME")
-                .confirm();
+    PERFKIT_T_CONFIGURE(session_description, "");
 
-        PERFKIT_T_CONFIGURE(session_description, "")
-                .confirm();
+    PERFKIT_T_CONFIGURE(auth, "")
+            .description("ID:PW:ACCESS;ID:PW:ACCESS;...")
+            .env("PERFKIT_NET_AUTH");
 
-        PERFKIT_T_CONFIGURE(auth, "")
-                .description("ID:PW:ACCESS;ID:PW:ACCESS;...")
-                .env("PERFKIT_NET_AUTH")
-                .confirm();
+    PERFKIT_T_CONFIGURE(bind_address, "0.0.0.0")
+            .env("PERFKIT_NET_IPADDR");
 
-        PERFKIT_T_CONFIGURE(bind_address, "0.0.0.0")
-                .env("PERFKIT_NET_IPADDR")
-                .confirm();
+    PERFKIT_T_CONFIGURE(bind_port, 0)
+            .env("PERFKIT_NET_PORT");
 
-        PERFKIT_T_CONFIGURE(bind_port, 0)
-                .env("PERFKIT_NET_PORT")
-                .confirm();
-
-        PERFKIT_T_CONFIGURE(enable_find_me, true)
-                .confirm();
-
-);
+    PERFKIT_T_CONFIGURE(enable_find_me, true);
+};
 
 }  // namespace perfkit::terminal::net

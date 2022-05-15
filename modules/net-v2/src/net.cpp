@@ -46,7 +46,7 @@ terminal_ptr create(const profile& cfg)
 
 perfkit::terminal_ptr create(std::string config_name)
 {
-    profile pf{std::move(config_name)};
+    profile pf = profile::create(std::move(config_name));
     pf->update();
     return create(pf);
 }

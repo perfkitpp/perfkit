@@ -26,7 +26,6 @@
 
 #include "perfkit/detail/configs-v2.hpp"
 
-#include "cpph/refl/object.hxx"
 #include "perfkit/configs-v2.h"
 #include "perfkit/detail/configs-v2-backend.hpp"
 

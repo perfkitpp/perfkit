@@ -220,6 +220,8 @@ nullptr_t register_subset_function(Subset ConfigSet::*mptr) noexcept
 
     return nullptr;
 }
+
+CPPH_SFINAE_EXPR(is_comparable, T, std::less<>(declval<T>(), declval<T>()));
 }  // namespace _configs
 
 template <typename ValTy>
@@ -273,29 +275,31 @@ class config_attribute_factory
    private:
     void _use_minmax()
     {
-        if (_ref->fn_minmax_validate) { return; }
+        if constexpr (_configs::is_comparable_v<ValTy>) {
+            if (_ref->fn_minmax_validate) { return; }
 
-        _ref->fn_minmax_validate
-                = [ref = _ref.get()](refl::object_view_t pdata) {
-                      auto& data = refl::get<ValTy>(pdata);
-                      bool untouched = true;
+            _ref->fn_minmax_validate
+                    = [ref = _ref.get()](refl::object_view_t pdata) {
+                          auto& data = refl::get<ValTy>(pdata);
+                          bool untouched = true;
 
-                      if (ref->min) {
-                          auto& min = refl::get<ValTy>(ref->min);
-                          if (data < min) {
-                              untouched = false, data = min;
+                          if (ref->min) {
+                              auto& min = refl::get<ValTy>(ref->min);
+                              if (data < min) {
+                                  untouched = false, data = min;
+                              }
                           }
-                      }
 
-                      if (ref->max) {
-                          auto& max = refl::get<ValTy>(ref->max);
-                          if (max < data) {
-                              untouched = false, data = max;
+                          if (ref->max) {
+                              auto& max = refl::get<ValTy>(ref->max);
+                              if (max < data) {
+                                  untouched = false, data = max;
+                              }
                           }
-                      }
 
-                      return untouched;
-                  };
+                          return untouched;
+                      };
+        }
     }
 
    public:
@@ -451,6 +455,7 @@ class config_attribute_factory
     {
         assert(_ref->can_export && _ref->can_import);  // Maybe there was readonly() or another transient() call?
         _ref->can_import = _ref->can_export = false;
+        return *this;
     }
 
     /** readonly marked configs won't be exported, but still can be imported from config files. */
@@ -459,6 +464,7 @@ class config_attribute_factory
         assert(_ref->can_export && _ref->can_import);  // Maybe there was readonly() or another transient() call?
         _ref->can_import = true;
         _ref->can_export = false;
+        return *this;
     }
 
     /** initialize from environment variable */
