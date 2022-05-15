@@ -140,7 +140,7 @@ bool config_registry::backend_t::_commit(config_base_ptr ref, refl::shared_objec
         auto ctx = find_ptr(_configs, ref->id());
         if (not ctx) { return false; }  // Possibly removed during validation
 
-        attrib->fn_swap_value(ctx->second._staged, candidate);
+        swap(ctx->second._staged, candidate);
         set_push(_refreshed_items, ref->id());
 
         return true;
@@ -189,26 +189,26 @@ void config_registry::backend_t::_do_update()
         if (exchange(_flag_add_remove_notified, false)) {
             // Check for deletions
             for (auto& wp : _config_removed) {
-                auto conf = wp.lock();
-                if (not conf) { continue; }  // Disposed between epoch ~ invoke gap
-
-                _configs.erase(conf->_id);  // Erase from 'all' list
-                has_structure_change = true;
+                if (auto conf = wp.lock()) {
+                    _configs.erase(conf->_id);  // Erase from 'all' list
+                    has_structure_change = true;
+                }
             }
 
             // Check for additions
             for (auto& [wp, tup] : _config_added) {
-                auto& [sort_order, prefix] = tup;
-                auto conf = wp.lock();
-                if (not conf) { continue; }
+                if (auto conf = wp.lock()) {
+                    auto& [sort_order, prefix] = tup;
+                    if (not conf) { continue; }
 
-                auto [iter, is_new] = _configs.try_emplace(conf->id());
-                assert(not is_new || ptr_equals(iter->second.reference, conf) && "Reference must not change!");
-                has_structure_change |= is_new;
+                    auto [iter, is_new] = _configs.try_emplace(conf->id());
+                    assert(is_new || ptr_equals(iter->second.reference, conf) && "Reference must not change!");
+                    has_structure_change |= is_new;
 
-                iter->second.reference;
-                iter->second.sort_order = sort_order;
-                iter->second.full_key = move(prefix.append(conf->name()));
+                    iter->second.reference = conf;
+                    iter->second.sort_order = sort_order;
+                    iter->second.full_key = move(prefix.append(conf->name()));
+                }
             }
 
             _config_added.clear();
@@ -218,9 +218,11 @@ void config_registry::backend_t::_do_update()
         // Check for updates
         if (not _refreshed_items.empty()) {
             for (auto id : _refreshed_items) {
+                // Check if config is erased
                 auto iter = _configs.find(id);
                 if (iter == _configs.end()) { continue; }
 
+                // Check if config is expired
                 auto conf = iter->second.reference.lock();
                 if (not conf) {
                     // Configuration is expired ... collect garbage.
@@ -253,14 +255,6 @@ void config_registry::backend_t::_do_update()
 }
 
 }  // namespace perfkit::v2
-
-//
-//
-//
-//
-//
-#if 1
-#endif
 
 //
 // PERFKIT_CFG_CLASS MACRO DEFINITION
@@ -342,5 +336,4 @@ void foof()
 {
     auto r = MyConf::create("hell");
 }
-
 #endif

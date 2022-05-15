@@ -100,4 +100,7 @@ int main(void)
         spdlog::info("command: [{}]", *cmd);
         term->commands()->invoke_command(*cmd);
     }
+
+    spdlog::info("Now shutting down ...");
+    return 0;
 }

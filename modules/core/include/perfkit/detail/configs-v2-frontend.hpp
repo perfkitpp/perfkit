@@ -241,7 +241,7 @@ class config_attribute_factory
     explicit config_attribute_factory(string_view key, string_view user_alias = "") noexcept : _ref(make_shared<config_attribute>())
     {
         static std::atomic_uint64_t _idgen = 0;
-        _ref->name = user_alias.empty() ? move(key) : user_alias;
+        _ref->name = user_alias.empty() ? key : user_alias;
         _ref->unique_attribute_id.value = ++_idgen;
         _ref->fn_construct = [] { return refl::shared_object_ptr{make_shared<ValTy>()}; };
         _ref->fn_swap_value = [](auto a, auto b) { swap(refl::get<ValTy>(a), refl::get<ValTy>(b)); };
@@ -352,6 +352,7 @@ class config_attribute_factory
     self_reference one_of(Iterable&& iterable) noexcept
     {
         assert(size(iterable) > 0);
+        assert(not _ref->fn_validate);
         auto values = make_shared<vector<ValTy>>();
 
         for (auto&& e : iterable)
@@ -479,8 +480,7 @@ class config_attribute_factory
     /** Confirm attribute instance creation */
     auto confirm() noexcept
     {
-        assert(bool(_ref->one_of) && not _ref->fn_minmax_validate);
-        assert(bool(_ref->one_of) && not _ref->fn_validate);
+        assert(not _ref->one_of || not _ref->fn_minmax_validate);
 
         return _ref;
     }

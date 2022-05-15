@@ -162,7 +162,7 @@ class config_base : public std::enable_shared_from_this<config_base>
     };
 
    private:
-    std::atomic_uint64_t _idgen = 0;
+    static inline std::atomic_uint64_t _idgen = 0;
     const config_id_t _id = {++_idgen};
     context_t _context;
 
