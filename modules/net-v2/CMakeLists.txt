@@ -66,6 +66,3 @@ target_include_directories(
         PUBLIC
         include
 )
-
-# ================================ TARGET: App Template
-add_subdirectory(apptemplate)

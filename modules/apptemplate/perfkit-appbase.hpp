@@ -23,6 +23,11 @@ class AppBase
     virtual void S05_SetInitialCommands(if_terminal*) {}
     virtual void Tick_Application(float delta_time) {}
     virtual void P01_DisposeApplication() {}
+
+   public:
+    //! Invokes right after S02_PostLoadConfigs
+    virtual auto CreatePerfkitTerminal() -> perfkit::terminal_ptr = 0;
+    virtual auto DesiredTickInterval() const -> milliseconds { return milliseconds{200}; }
 };
 }  // namespace perfkit
 

@@ -4,7 +4,7 @@
 #include "cpph/timer.hxx"
 #include "perfkit-appbase.hpp"
 #include "perfkit/configs.h"
-#include "perfkit/extension/net.hpp"
+#include "perfkit/terminal.h"
 #include "spdlog/spdlog.h"
 
 // Turn off
@@ -67,9 +67,8 @@ int main(int argc, char** argv)
     spdlog::info("APP INIT 1 - PostLoadConfigs");
     app->S02_PostLoadConfigs();
 
-    auto term = perfkit::terminal::net::create();
+    auto term = app->CreatePerfkitTerminal();
     perfkit::terminal::register_conffile_io_commands(term.get());
-    term->launch_stdin_fetch_thread();
 
     // Install signal handler
     signal(SIGINT, &sigint_handler);
@@ -92,11 +91,10 @@ int main(int argc, char** argv)
 
     while (g_server_is_alive) {
         app->Tick_Application(sw.elapsed().count()), sw.reset();
-        auto cmd = term->fetch_command(200ms);
-        if (not cmd) { continue; }
-
-        spdlog::info("CMD: {}", *cmd);
-        term->invoke_command(move(*cmd));
+        term->invoke_queued_commands(
+                app->DesiredTickInterval(),
+                [] { return g_server_is_alive.load(); },
+                [](auto cmd) { spdlog::info("CMD: {}", cmd); });
     }
 
     spdlog::info("Disposing application");

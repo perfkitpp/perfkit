@@ -79,8 +79,31 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
      *
      * @return number of processed commands
      */
+    template <typename Duration,
+              typename PredContinue = bool (*)(void),
+              typename FnRecvCommand = void (*)(string_view)>
     size_t invoke_queued_commands(
-            milliseconds duration = {}, std::function<bool()> fn_continue = [] { return true; });
+            Duration&& duration = {},
+            PredContinue&& fn_continue = [] { return true; },
+            FnRecvCommand&& fn_recv = [](auto) {})
+    {
+        auto now = [] { return std::chrono::steady_clock::now(); };
+        auto until = now() + duration;
+
+        _call_once_init_stdin_receiver();
+
+        size_t n_proc = 0;
+        do {
+            auto cmd = fetch_command(std::chrono::duration_cast<std::chrono::milliseconds>(until - now()));
+            if (not cmd || cmd->empty()) { continue; }
+
+            fn_recv(*cmd);
+            invoke_command(std::move(*cmd));
+            ++n_proc;
+        } while (now() < until && fn_continue());
+
+        return n_proc;
+    }
 
    protected:
     /**
@@ -108,6 +131,7 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
     using cmd_invoke_function = std::function<bool(cmd_args_view full_tokens)>;
 
     void _add_subcommand(std::string name, cmd_invoke_function handler);
+    void _call_once_init_stdin_receiver();
 
    public:
     /**

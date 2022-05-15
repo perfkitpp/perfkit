@@ -90,7 +90,8 @@ int main(void)
     term->add_command("quit", [&] { running = false; });
     while (running) {
         conf_global::update();
-        auto ncmd = term->invoke_queued_commands(1h, [&] { return running; });
+        auto ncmd = term->invoke_queued_commands(
+                1h, [&] { return running; }, [](auto cmd) { spdlog::info("cmd: {}", cmd); });
         spdlog::info("{} commands invoked", ncmd);
     }
 

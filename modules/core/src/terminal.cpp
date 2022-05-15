@@ -384,26 +384,6 @@ void perfkit::if_terminal::_add_subcommand(
     commands()->root()->add_subcommand(std::move(name), std::move(handler));
 }
 
-size_t perfkit::if_terminal::invoke_queued_commands(
-        std::chrono::milliseconds timeout, std::function<bool()> fn_continue)
-{
-    auto now = [] { return std::chrono::steady_clock::now(); };
-    auto until = now() + timeout;
-
-    call_once(_self->flag_first_fetch_command, &if_terminal::launch_stdin_fetch_thread, this);
-
-    size_t n_proc = 0;
-    do {
-        auto cmd = fetch_command(std::chrono::duration_cast<std::chrono::milliseconds>(until - now()));
-        if (not cmd || cmd->empty()) { continue; }
-
-        invoke_command(std::move(*cmd));
-        ++n_proc;
-    } while (now() < until && fn_continue());
-
-    return n_proc;
-}
-
 perfkit::if_terminal::if_terminal() : _self(make_unique<impl>())
 {
 }
@@ -440,4 +420,9 @@ perfkit::if_terminal::~if_terminal()
 {
     _self->is_shutting_down = true;
     if (_self->worker_stdin.joinable()) { _self->worker_stdin.join(); }
+}
+
+void perfkit::if_terminal::_call_once_init_stdin_receiver()
+{
+    call_once(_self->flag_first_fetch_command, &if_terminal::launch_stdin_fetch_thread, this);
 }
