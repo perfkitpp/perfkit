@@ -98,7 +98,8 @@ class config_set : public config_set_base
         ImplType s;
 
         _internal_perform_initops(&s, *_internal_initops());
-        s._internal_RG->_internal_register_to_global();
+        s._internal_RG->_internal_init_registry();
+        s._internal_RG->item_notify();
         return s;
     }
 
@@ -113,6 +114,7 @@ class config_set : public config_set_base
         }
 
         _internal_perform_initops(&s, *_internal_initops());
+        s._internal_RG->item_notify();
         return s;
     }
 
@@ -445,6 +447,7 @@ class config_attribute_factory
                 };
 
         (fn_put_elem(std::forward<Str_>(args)), ...);
+        for (auto& str : flags) { _configs::verify_flag_string(str); }
 
         _ref->flag_bindings = move(flags);
         return *this;

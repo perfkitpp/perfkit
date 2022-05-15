@@ -43,17 +43,58 @@ void verify_flag_string(string_view str)
 }
 }  // namespace _configs
 
-auto config_registry::_internal_create(std::string name) -> shared_ptr<config_registry>
-{
-    return make_shared<config_registry>(ctor_constraint_t{}, move(name));
-}
-
 config_registry::config_registry(ctor_constraint_t, std::string name)
+        : _self(make_unique<backend_t>(this, move(name)))
 {
 }
 
 config_registry::~config_registry() noexcept
 {
+    unregister();
+}
+
+string const& config_registry::name() const
+{
+    return _self->_name;
+}
+
+void config_registry::_internal_value_read_lock() { _self->_mtx_access.lock_shared(); }
+void config_registry::_internal_value_read_unlock() { _self->_mtx_access.unlock_shared(); }
+void config_registry::_internal_value_write_lock() { _self->_mtx_access.lock(); }
+void config_registry::_internal_value_write_unlock() { _self->_mtx_access.unlock(); }
+
+void config_registry::_internal_item_add(config_base_wptr arg, string prefix)
+{
+    _self->_events.post([arg = move(arg), prefix = move(prefix)] {
+
+    });
+}
+
+void config_registry::_internal_item_remove(config_base_wptr arg)
+{
+    // TODO
+}
+
+bool config_registry::update()
+{
+    // If it's first call after creation, register this to global repository.
+    std::call_once(_self->_register_once_flag, &backend_t::_register_to_global_repo, _self.get());
+
+    //
+
+    // Perform update inside protected scope
+    if (CPPH_TMPVAR = lock_guard{_self->_mtx_update}; true) {
+        _self->_events.flush();
+
+        // Check for refreshed entities ...
+    }
+
+    return false;
+}
+
+size_t config_registry::fence() const
+{
+    return acquire(_self->_fence);
 }
 
 }  // namespace perfkit::v2

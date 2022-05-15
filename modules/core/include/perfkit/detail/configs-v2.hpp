@@ -28,6 +28,7 @@
 #include <utility>
 
 #include "cpph/container/sorted_vector.hxx"
+#include "cpph/hasher.hxx"
 #include "cpph/refl/core.hxx"
 #include "cpph/threading.hxx"
 #include "nlohmann/json_fwd.hpp"
@@ -41,6 +42,8 @@ using config_base_ptr = shared_ptr<config_base>;
 using config_base_wptr = weak_ptr<config_base>;
 using config_registry_ptr = shared_ptr<config_registry>;
 using config_attribute_ptr = shared_ptr<config_attribute const>;
+
+CPPH_UNIQUE_KEY_TYPE(config_id_t);
 
 //
 using config_data = binary<string>;
@@ -107,7 +110,7 @@ struct config_attribute {
 };
 
 /**
- * If multiple consumer access same config instance,
+ * If multiple consumer access same config instance, config update can be checked via this.
  *
  * @tparam Mutex
  */
@@ -163,7 +166,6 @@ class config_base : public std::enable_shared_from_this<config_base>
     const uint64_t _id = ++_idgen;
     context_t _context;
 
-    std::atomic_bool _latest_marshal_failed = false;
     std::atomic_size_t _fence_modified = 0;            // Actual modification count
     std::atomic_size_t _fence_modify_requested = 0;    // Modification request count
     std::atomic_size_t _fence_serialized = ~size_t{};  // Serialization is dirty when _fence_modify_requested != _fence_serialized
@@ -180,7 +182,8 @@ class config_base : public std::enable_shared_from_this<config_base>
     auto const& name() const { return attribute()->name; }
     auto const& description() const { return attribute()->description; }
 
-    size_t num_modified() const { return acquire(_fence_modified); };
+    size_t num_modified() const { return acquire(_fence_modified); }
+    size_t fence() const { return num_modified(); }
     size_t num_serialized() const { return _fence_serialized; }
 
     bool can_export() const noexcept { return attribute()->can_export; }
@@ -189,14 +192,6 @@ class config_base : public std::enable_shared_from_this<config_base>
 
     void get_keys_by_token(vector<string_view>* out) {}
     void get_full_key(string* out) {}  // TODO: Recursively refer _host, and construct full key.
-
-    /**
-     * Check if latest marshalling result was invalid
-     * @return
-     */
-    bool latest_marshal_failed() const { return acquire(_latest_marshal_failed); }
-
-   public:
 };
 
 /*
@@ -229,6 +224,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
    private:
     shared_ptr<backend_t> _self;
+    mutable size_t _fence_cached = 0;
 
    public:
     explicit config_registry(ctor_constraint_t, std::string name);
@@ -236,7 +232,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
    public:
     //! Mark this registry as transient. It won't be exported.
-    //! Call this before first update() procedure call!
+    //! Call this before the first update() procedure call!
     void set_transient() {}
 
     //! Unmark this registry from transient state. Updates will be exported.
@@ -249,13 +245,28 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //! Check if this registry is unregistered from global repository.
     bool is_registered() const { return false; }
 
-    //! Flush queued changes to individual
-    bool update() { return false; }
+    //! Flush queued changes.
+    //! If it's first call to creation, it'll register itself to global repository.
+    bool update();
+
+    //! Check if there was any update, without actual update() call.
+    //! Return value is valid for each registry() instances.
+    bool check_update() const
+    {
+        if (auto f = fence(); f != _fence_cached) {
+            _fence_cached = f;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    //! Export/Import changes to storage
     void export_to(archive::if_writer*) {}
     void import_from(archive::if_reader*) {}
 
     //! Name of this registery
-    string_view name() const { return ""; }
+    string const& name() const;
 
     //! adding and removing individual items won't trigger remote session update request
     //!  due to performance reasons. You must explicitly notify after adding series of
@@ -265,29 +276,37 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //! Retrieve serialized data from config
     void retrieve_serialized_data(config_base_ptr const&, config_data* out) {}
 
+    //! Number of actual modification count.
+    size_t fence() const;
+
    public:
     bool _internal_commit_value(config_base_wptr ref, refl::object_const_view_t) { return false; }
     void const* _internal_unique_address() { return this; }
 
-    //! Register config registry to global repository
-    //! Global configs registry update will be deferred until first update() of this class.
-    void _internal_register_to_global() {}
+    //! Called once after creation.
+    //! Just for reservation ...
+    void _internal_init_registry() { (void)0; }
 
     //! Create unregistered config registry.
-    static auto _internal_create(std::string name) -> shared_ptr<config_registry>;
+    static auto _internal_create(std::string name) -> shared_ptr<config_registry>
+    {
+        return make_shared<config_registry>(ctor_constraint_t{}, move(name));
+    }
 
     //! Backend data provider
     auto* backend() const noexcept { return _self.get(); }
 
     //! Add item/remove item.
     //! All added item will be serialized to global context on first update after insertion
-    void _internal_item_add(config_base_ptr arg, string prefix = "") {}
-    void _internal_item_remove(config_base_wptr arg) {}
+    void _internal_item_add(config_base_wptr arg, string prefix = "");
+    void _internal_item_remove(config_base_wptr arg);
 
    public:
     //! Protects value from update
-    void _internal_value_access_lock() {}
-    void _internal_value_access_unlock() {}
+    void _internal_value_read_lock();
+    void _internal_value_read_unlock();
+    void _internal_value_write_lock();
+    void _internal_value_write_unlock();
 };
 
 /**
@@ -313,23 +332,33 @@ class config
     config() noexcept = default;
     explicit config(config_attribute_ptr attrib)
     {
-        // TODO: Retrieve default value from attribute
-        // TODO: Instantiate _base with attribute and default value
+        // Retrieve default value from attribute
+        auto default_value = refl::get_ptr<ValueType>(attrib->default_value);
+        auto raw_data = make_shared<ValueType>(*default_value);
+
+        _ref = raw_data.get();
+
+        // Instantiate _base with attribute and default value
+        config_base::context_t context;
+        context.attribute = move(attrib);
+        context.raw_data = raw_data;
+
+        _base = make_shared<config_base>(move(context));
     }
 
    public:
     void commit(ValueType const& val) const
     {
         assert(_rg);
-        _rg->_internal_commit_value(_base, refl::object_const_view_t{val});
+        _rg->_internal_commit_value(_base, {val});
     }
 
     ValueType value() const noexcept
     {
         assert(_rg);
-        _rg->_internal_value_access_lock();
+        _rg->_internal_value_read_lock();
         ValueType value = *_ref;
-        _rg->_internal_value_access_unlock();
+        _rg->_internal_value_read_unlock();
 
         return value;
     }

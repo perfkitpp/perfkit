@@ -25,14 +25,68 @@
  ******************************************************************************/
 
 #pragma once
+#include <shared_mutex>
+#include <unordered_map>
+
 #include "configs-v2.hpp"
+#include "cpph/event.hxx"
 #include "cpph/refl/core.hxx"
+#include "cpph/thread/event_queue.hxx"
 
 namespace perfkit::v2 {
+struct config_entity_context {
+    size_t sort_order;
+};
+
 class config_registry::backend_t
 {
     friend class config_registry;
+
+   private:
     config_registry* _self;
+    string _name;
+
+    // Flag for global repository registering
+    std::once_flag _register_once_flag;
+
+    // Event queue for event joining
+    std::mutex _mtx_update;
+    event_queue _events{1024};
+
+    // Data access lock. Data modification should only be done under this mutex's protection.
+    std::shared_mutex _mtx_access;
+
+    // Actual modification fence
+    atomic_size_t _fence = 0;
+    size_t _sort_id_gen = 0;
+
+    // All active config entities.
+    std::unordered_map<uint64_t, config_entity_context> _configs;
+
+    // Set of queued updates
+    spinlock _mtx_refreshed;
+    sorted_vector<uint64_t, refl::shared_object_ptr, std::owner_less<>> _refreshed;
+
+    // Item insertion/deletions management
+    bool _flag_add_remove_notified = false;
+    vector<pair<config_base_wptr, bool /*1:add,0:remove*/>> _config_add_remove;
+
+    // For events,
+
+   public:
+    //!
+    static inline event<void(config_registry_ptr)> g_evt_registered;
+    event<void(config_registry*, array_view<config_base_ptr>)> evt_updated_entities;
+    event<void(config_registry*, array_view<config_base_ptr>)> evt_item_added;
+    event<void(config_registry*, array_view<config_base_ptr>)> evt_item_removed;
+
+    //!
+
+   private:
+    void _register_to_global_repo() {}
+
+   public:
+    explicit backend_t(config_registry* self, string name) : _self(self), _name(move(name)) {}
 
    public:
     void find_key(string_view display_key, string* out_full_key) {}
