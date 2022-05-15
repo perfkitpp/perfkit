@@ -88,17 +88,10 @@ int main(void)
 
     volatile bool running = true;
     term->add_command("quit", [&] { running = false; });
-    term->launch_stdin_fetch_thread();
-
     while (running) {
         conf_global::update();
-
-        auto cmd = term->fetch_command(1s);
-        if (not cmd || cmd->empty())
-            continue;
-
-        spdlog::info("command: [{}]", *cmd);
-        term->commands()->invoke_command(*cmd);
+        auto ncmd = term->invoke_queued_commands(1h, [&] { return running; });
+        spdlog::info("{} commands invoked", ncmd);
     }
 
     spdlog::info("Now shutting down ...");

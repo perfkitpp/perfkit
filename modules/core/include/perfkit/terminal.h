@@ -42,9 +42,6 @@ class if_terminal;
 using terminal_ptr = std::shared_ptr<if_terminal>;
 using std::chrono::milliseconds;
 
-/** An exception that is thrown when user requests program termination */
-struct termination : std::exception {};
-
 /**
  * Provides common user interface functionality for control purpose
  */
@@ -67,19 +64,6 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
     commands::registry* commands();
 
     /**
-     * Invoke command
-     */
-    virtual void invoke_command(std::string s);
-
-    /**
-     * Consume single command from user command input queue.
-     *
-     * @param timeout seconds to wait until receive command.
-     * @return valid optional string, if dequeueing was successful.
-     */
-    virtual std::optional<std::string> fetch_command(milliseconds timeout = {}) = 0;
-
-    /**
      * Enqueue command to internal queue.
      *
      * This should appear in fetch_command();
@@ -95,14 +79,29 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
      *
      * @return number of processed commands
      */
-    size_t invoke_queued_commands(milliseconds timeout = {});
+    size_t invoke_queued_commands(
+            milliseconds duration = {}, std::function<bool()> fn_continue = [] { return true; });
+
+   protected:
+    /**
+     * Invoke command
+     */
+    virtual void invoke_command(std::string s);
 
     /**
-     * Launch asynchronous stdin fetcher thread.
+     * Consume single command from user command input queue.
      *
-     * STDIN input will redirected to 'push_command()'
+     * @param timeout seconds to wait until receive command.
+     * @return valid optional string, if dequeueing was successful.
      */
-    void launch_stdin_fetch_thread();
+    virtual std::optional<std::string> fetch_command(milliseconds timeout) = 0;
+
+    /**
+     * Terminal automatically launches stdin fetch thread.
+     *
+     * Override this behavior if terminal-specific fetch logic is required.
+     */
+    virtual void launch_stdin_fetch_thread();
 
    private:
     using cmd_args_view = array_view<std::string_view>;

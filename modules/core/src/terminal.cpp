@@ -40,7 +40,6 @@
 #include "cpph/format.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/commands.hpp"
-#include "perfkit/detail/configs.hpp"
 #include "perfkit/detail/tracer.hpp"
 
 using namespace std::literals;
@@ -58,14 +57,16 @@ class _config_saveload_manager
     {
         auto path = args.empty() ? _latest : args.front();
         _latest = path;
-        return perfkit::configs::import_file(path);
+        // return perfkit::configs::import_file(path); TODO: IMPORT FILE!
+        return false;
     }
 
     bool save_to(args_view args = {})
     {
         auto path = args.empty() ? _latest : args.front();
         _latest = path;
-        return perfkit::configs::export_to(path);
+        // return perfkit::configs::export_to(path); TODO: EXPORT FILE!
+        return false;
     }
 
     static void retrieve_filenames(args_view args, string_set& cands)
@@ -360,127 +361,17 @@ void initialize_with_basic_commands(if_terminal* ref)
 
 void register_config_manip_command(if_terminal* ref, std::string_view cmd)
 {
-    auto _locked = ref->commands()->root()->acquire();
-    auto node_cmd = ref->commands()->root()->add_subcommand(std::string{cmd});
-
-    auto node_set = node_cmd->add_subcommand("set");
-    auto node_get = node_cmd->add_subcommand("get");
-
-    using node_type = commands::registry::node;
-    auto hook_enum_regs =
-            [](auto&& hook_factory) {
-                return [=](node_type* node_reg, auto&&) {
-                    glog()->debug("registry hook: {}", (void*)node_reg);
-
-                    auto _ = node_reg->acquire();
-                    node_reg->clear();
-
-                    for (const auto& registry : config_registry::bk_enumerate_registries()) {
-                        auto node = node_reg->add_subcommand(registry->name());
-                        node->reset_opreation_hook(hook_factory(registry));
-                    }
-                };
-            };
-
-    node_set->reset_opreation_hook(
-            hook_enum_regs([](std::weak_ptr<config_registry> wrg) {
-                return [wrg](node_type* node_cfg, auto&&) {
-                    glog()->debug("config hook: {}", (void*)node_cfg);
-
-                    auto rg = wrg.lock();
-                    if (not rg) { return; }
-
-                    for (const auto& [_, config] : rg->bk_all()) {
-                        node_cfg->add_subcommand(
-                                config->display_key(),
-                                [wconf = std::weak_ptr{config}](args_view args) {
-                                    if (args.empty()) {
-                                        glog()->error("command 'set' requires argument");
-                                        return;
-                                    }
-
-                                    auto conf = wconf.lock();
-                                    if (not conf) { return; }
-
-                                    auto value = args[0];
-                                    auto parsed = json::parse(value.begin(), value.end(), nullptr, false);
-
-                                    if (parsed.is_discarded()) {
-                                        glog()->error("failed to parse input value");
-                                        return;
-                                    }
-
-                                    conf->request_modify(std::move(parsed));
-                                });
-                    }
-                };
-            }));
-
-    node_get->reset_opreation_hook(
-            hook_enum_regs([ref](std::weak_ptr<config_registry> wrg) {
-                return [wrg, ref](node_type* node_cfg, auto&&) {
-                    if (auto rg = wrg.lock()) {
-                        // register config info command
-                        auto all = rg->bk_all();
-
-                        for (auto& [key, config] : all) {
-                            node_cfg->add_subcommand(
-                                    config->display_key(),
-                                    [ref, _conf = config] {
-                                        std::string buf{};
-                                        buf.reserve(1024);
-
-                                        buf.append("\n");
-                                        buf << "<name        > {}\n"_fmt % _conf->display_key();
-                                        buf << "<key         > {}\n"_fmt % _conf->full_key();
-                                        buf << "<description > {}\n"_fmt % _conf->description();
-                                        buf << "<value       > {}\n"_fmt % _conf->serialize().dump(2);
-
-                                        ref->write(buf);
-                                    });
-                        }
-                    } else {
-                        return;
-                    }
-
-                    node_cfg->reset_invoke_handler(
-                            [wrg, ref](args_view args) {
-                                // list all configurations belong to this category.
-                                using namespace ranges;
-                                auto rg = wrg.lock();
-                                if (not rg) { return false; }
-
-                                auto all = &rg->bk_all();
-
-                                // use first token as pattern
-                                std::string_view _category = "";
-                                if (not args.empty()) { _category = args[0]; }
-
-                                std::string buf;
-                                buf.reserve(1024);
-
-                                // header
-                                buf << "< {} >\n"_fmt % (_category);
-
-                                // during string begins with this category name ...
-                                for (const auto& [_, conf] : *all) {
-                                    if (conf->display_key().find(_category) != 0) { continue; }
-
-                                    // auto depth = conf->tokenized_display_key().size();
-                                    auto name = conf->display_key();  //.substr(_category.size());
-
-                                    buf << " {} = {}\n"_fmt % name % conf->serialize().dump();
-                                }
-
-                                buf += "\n";
-                                ref->write(buf);
-                                return true;
-                            });
-                };
-            }));
+    (void)0;  // deprecated!
 }
-
 }  // namespace perfkit::terminal
+
+struct perfkit::if_terminal::impl {
+    commands::registry commands;
+
+    std::thread worker_stdin;
+    std::atomic_bool is_shutting_down = false;
+    std::once_flag flag_first_fetch_command;
+};
 
 void perfkit::if_terminal::invoke_command(std::string s)
 {
@@ -493,29 +384,25 @@ void perfkit::if_terminal::_add_subcommand(
     commands()->root()->add_subcommand(std::move(name), std::move(handler));
 }
 
-size_t perfkit::if_terminal::invoke_queued_commands(std::chrono::milliseconds timeout)
+size_t perfkit::if_terminal::invoke_queued_commands(
+        std::chrono::milliseconds timeout, std::function<bool()> fn_continue)
 {
     auto now = [] { return std::chrono::steady_clock::now(); };
     auto until = now() + timeout;
 
+    call_once(_self->flag_first_fetch_command, &if_terminal::launch_stdin_fetch_thread, this);
+
     size_t n_proc = 0;
     do {
-        auto cmd = fetch_command(timeout);
+        auto cmd = fetch_command(std::chrono::duration_cast<std::chrono::milliseconds>(until - now()));
         if (not cmd || cmd->empty()) { continue; }
 
         invoke_command(std::move(*cmd));
         ++n_proc;
-    } while (now() < until);
+    } while (now() < until && fn_continue());
 
     return n_proc;
 }
-
-struct perfkit::if_terminal::impl {
-    commands::registry commands;
-
-    std::thread worker_stdin;
-    std::atomic_bool is_shutting_down = false;
-};
 
 perfkit::if_terminal::if_terminal() : _self(make_unique<impl>())
 {
