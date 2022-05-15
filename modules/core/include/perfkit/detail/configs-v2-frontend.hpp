@@ -230,6 +230,7 @@ class config_attribute_factory
 
    private:
     shared_ptr<config_attribute> _ref;
+    function<void(config_attribute_ptr)> _finalizer;
 
    public:
     //! Full key will automatically be parsed into display keys
@@ -250,6 +251,21 @@ class config_attribute_factory
                     return refl::shared_object_ptr{make_shared<ValTy>()};
                 };
         return *this;
+    }
+
+    //! Register finalizer
+    self_reference _internal_on_finalize(decltype(_finalizer) fn) noexcept
+    {
+        assert(not _finalizer);
+        _finalizer = move(fn);
+    }
+
+    //! Call finalizer on exit
+    ~config_attribute_factory() noexcept
+    {
+        if (_finalizer) {
+            _finalizer(_ref);
+        }
     }
 
    private:
@@ -454,7 +470,7 @@ class config_attribute_factory
     /** Confirm attribute instance creation */
     auto confirm() noexcept
     {
-        return move(_ref);
+        return _ref;
     }
 
     /** Remove needs for call confirm() explicitly. */

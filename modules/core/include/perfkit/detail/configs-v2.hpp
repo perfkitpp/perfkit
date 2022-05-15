@@ -311,7 +311,7 @@ class config
 
    public:
     config() noexcept = default;
-    config(config_attribute_ptr attrib)
+    explicit config(config_attribute_ptr attrib)
     {
         // TODO: Retrieve default value from attribute
         // TODO: Instantiate _base with attribute and default value
