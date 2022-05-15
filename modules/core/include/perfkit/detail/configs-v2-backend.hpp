@@ -30,12 +30,20 @@
 
 #include "configs-v2.hpp"
 #include "cpph/event.hxx"
+#include "cpph/memory/pool.hxx"
+#include "cpph/refl/archive/msgpack-reader.hxx"
 #include "cpph/refl/core.hxx"
+#include "cpph/streambuf/string.hxx"
 #include "cpph/thread/event_queue.hxx"
+
+namespace cpph {
+using std::list;
+}
 
 namespace perfkit::v2 {
 struct config_entity_context {
-    size_t sort_order;
+    size_t sort_order = 0;
+    pool_ptr<string> next_value;
 };
 
 class config_registry::backend_t
@@ -46,11 +54,14 @@ class config_registry::backend_t
     config_registry* _self;
     string _name;
 
+    // Unique id for this registry
+    static inline atomic<uint64_t> _idgen = 0;
+    config_registry_id_t _id = {++_idgen};
+
     // Flag for global repository registering
     std::once_flag _register_once_flag;
 
     // Event queue for event joining
-    std::mutex _mtx_update;
     event_queue _events{1024};
 
     // Data access lock. Data modification should only be done under this mutex's protection.
@@ -58,32 +69,38 @@ class config_registry::backend_t
 
     // Actual modification fence
     atomic_size_t _fence = 0;
-    size_t _sort_id_gen = 0;
+    atomic_size_t _sort_id_gen = 0;
+
+    // Serialization Management
+    pool<string> _pool_update_buffer;
 
     // All active config entities.
-    std::unordered_map<uint64_t, config_entity_context> _configs;
+    std::unordered_map<config_id_t, config_entity_context> _configs;
 
     // Set of queued updates
     spinlock _mtx_refreshed;
-    sorted_vector<uint64_t, refl::shared_object_ptr, std::owner_less<>> _refreshed;
+    vector<config_id_t> _refreshed;
 
     // Item insertion/deletions management
     bool _flag_add_remove_notified = false;
-    vector<pair<config_base_wptr, bool /*1:add,0:remove*/>> _config_add_remove;
+    sorted_vector<config_base_wptr, tuple<size_t, string>, std::owner_less<>> _config_added;
+    vector<config_base_wptr> _config_removed;
 
-    // For events,
+    // For events, Every event nodes can be reused.
+    list<config_base_ptr> _free_evt_nodes;
 
    public:
-    //!
     static inline event<void(config_registry_ptr)> g_evt_registered;
-    event<void(config_registry*, array_view<config_base_ptr>)> evt_updated_entities;
-    event<void(config_registry*, array_view<config_base_ptr>)> evt_item_added;
-    event<void(config_registry*, array_view<config_base_ptr>)> evt_item_removed;
+    static inline event<void(config_registry_ptr)> g_evt_unregistered;
 
-    //!
+    event<void(config_registry*, list<config_base_ptr> const&)> evt_updated_entities;
+    event<void(config_registry*, list<config_base_ptr> const&)> evt_update_failed_entities;
+    event<void(config_registry*, list<config_base_ptr> const&)> evt_item_added;
+    event<void(config_registry*, list<config_base_ptr> const&)> evt_item_removed;
 
    private:
     void _register_to_global_repo() {}
+    void _commit_serial(config_id_t, pool_ptr<string>);
 
    public:
     explicit backend_t(config_registry* self, string name) : _self(self), _name(move(name)) {}
@@ -91,6 +108,7 @@ class config_registry::backend_t
    public:
     void find_key(string_view display_key, string* out_full_key) {}
     void all_items(vector<config_base_ptr>*) const noexcept {}
+    void bk_commit(config_id_t, string* io_msgpack_content);
 
    public:
     static void enumerate_registries(vector<shared_ptr<config_registry>>* o_regs, bool filter_complete = false) noexcept {}

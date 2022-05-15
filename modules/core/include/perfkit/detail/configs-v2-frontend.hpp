@@ -242,7 +242,7 @@ class config_attribute_factory
     {
         static std::atomic_uint64_t _idgen = 0;
         _ref->full_key_chain = user_alias.empty() ? move(key) : user_alias;
-        _ref->unique_attribute_id = ++_idgen;
+        _ref->unique_attribute_id.value = ++_idgen;
     }
 
     //! Sets default value. Will automatically be called internal
@@ -250,10 +250,6 @@ class config_attribute_factory
     {
         auto shared_default = make_shared<ValTy const>(move(value));
         _ref->default_value.reset(shared_default);
-        _ref->clone_empty =
-                [] {
-                    return refl::shared_object_ptr{make_shared<ValTy>()};
-                };
         return *this;
     }
 

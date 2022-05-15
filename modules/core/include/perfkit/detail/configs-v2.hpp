@@ -44,6 +44,8 @@ using config_registry_ptr = shared_ptr<config_registry>;
 using config_attribute_ptr = shared_ptr<config_attribute const>;
 
 CPPH_UNIQUE_KEY_TYPE(config_id_t);
+CPPH_UNIQUE_KEY_TYPE(config_registry_id_t);
+CPPH_UNIQUE_KEY_TYPE(config_attribute_id_t);
 
 //
 using config_data = binary<string>;
@@ -72,7 +74,7 @@ enum class edit_mode : uint8_t {
 struct config_attribute {
     // Unique id for single process instance.
     // Remote session can utilize this for attribute information caching.
-    uint64_t unique_attribute_id;
+    config_attribute_id_t unique_attribute_id;
 
     // Keys
     string full_key_chain;  // May contain multiple tokens divided with |.
@@ -80,9 +82,6 @@ struct config_attribute {
 
     //
     refl::shared_object_const_ptr default_value;
-
-    // Creates default value's clone. Used for update.
-    function<auto(void)->refl::shared_object_ptr> clone_empty;
 
     // Optional properties ...
     refl::shared_object_const_ptr one_of;
@@ -163,7 +162,7 @@ class config_base : public std::enable_shared_from_this<config_base>
 
    private:
     std::atomic_uint64_t _idgen = 0;
-    const uint64_t _id = ++_idgen;
+    const config_id_t _id = {++_idgen};
     context_t _context;
 
     std::atomic_size_t _fence_modified = 0;            // Actual modification count
@@ -271,7 +270,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //! adding and removing individual items won't trigger remote session update request
     //!  due to performance reasons. You must explicitly notify after adding series of
     //!  configuration items.
-    void item_notify() {}
+    void item_notify();
 
     //! Retrieve serialized data from config
     void retrieve_serialized_data(config_base_ptr const&, config_data* out) {}
@@ -279,8 +278,11 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //! Number of actual modification count.
     size_t fence() const;
 
+    //! Id
+    config_registry_id_t id() const noexcept;
+
    public:
-    bool _internal_commit_value(config_base_wptr ref, refl::object_const_view_t) { return false; }
+    void _internal_commit_value_user(config_base_ptr ref, refl::object_const_view_t);
     void const* _internal_unique_address() { return this; }
 
     //! Called once after creation.
@@ -350,7 +352,7 @@ class config
     void commit(ValueType const& val) const
     {
         assert(_rg);
-        _rg->_internal_commit_value(_base, {val});
+        _rg->_internal_commit_value_user(_base, {val});
     }
 
     ValueType value() const noexcept

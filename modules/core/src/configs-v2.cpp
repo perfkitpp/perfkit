@@ -26,6 +26,7 @@
 
 #include "perfkit/detail/configs-v2.hpp"
 
+#include "cpph/refl/archive/msgpack-writer.hxx"
 #include "perfkit/configs-v2.h"
 #include "perfkit/detail/configs-v2-backend.hpp"
 
@@ -65,14 +66,33 @@ void config_registry::_internal_value_write_unlock() { _self->_mtx_access.unlock
 
 void config_registry::_internal_item_add(config_base_wptr arg, string prefix)
 {
-    _self->_events.post([arg = move(arg), prefix = move(prefix)] {
-
-    });
+    _self->_events.post(
+            [this,
+             arg = move(arg),
+             order = ++_self->_sort_id_gen,
+             prefix = move(prefix)]() mutable {
+                auto& [sort_order, dst_prefix] = _self->_config_added[arg];
+                sort_order = order;
+                dst_prefix = move(prefix);
+            });
 }
 
 void config_registry::_internal_item_remove(config_base_wptr arg)
 {
-    // TODO
+    _self->_events.post([this, arg = move(arg)]() mutable {
+        // Abort pending insertion
+        _self->_config_added.erase(arg);
+
+        // Keep erased list sorted.
+        auto iter = lower_bound(_self->_config_removed, arg, std::owner_less<>{});
+        if (iter == _self->_config_removed.end() || not ptr_equals(*iter, arg))
+            _self->_config_removed.insert(iter, arg);
+    });
+}
+
+void config_registry::item_notify()
+{
+    _self->_events.post([this] { _self->_flag_add_remove_notified = true; });
 }
 
 bool config_registry::update()
@@ -80,11 +100,38 @@ bool config_registry::update()
     // If it's first call after creation, register this to global repository.
     std::call_once(_self->_register_once_flag, &backend_t::_register_to_global_repo, _self.get());
 
-    //
+    // Event entities ...
+    list<config_base_ptr> insertions;
+    list<config_base_ptr> deletions;
+    list<config_base_ptr> updates;
+
+    auto pool = &_self->_free_evt_nodes;
+    auto checkout_push =
+            [pool](list<config_base_ptr>* to, auto&& ptr) {
+                auto iter = pool->empty() ? pool->emplace(pool->end()) : pool->begin();
+                *iter = forward<decltype(ptr)>(ptr);
+                to->splice(to->end(), *pool, iter);
+            };
 
     // Perform update inside protected scope
-    if (CPPH_TMPVAR = lock_guard{_self->_mtx_update}; true) {
+    if (CPPH_TMPVAR = lock_guard{_self->_mtx_access}; true) {
         _self->_events.flush();
+
+        // Check for insertion / deletions
+        if (exchange(_self->_flag_add_remove_notified, false)) {
+            // Check for deletions
+            for (auto& wp : _self->_config_removed) {
+                auto conf = wp.lock();
+                if (not conf) { continue; }  // Disposed between epoch ~ invoke gap
+
+                _self->_configs.erase(conf->_id);  // Erase from all list
+                checkout_push(&deletions, move(conf));
+            }
+
+            // Check for additions
+
+            // Collect garbage
+        }
 
         // Check for refreshed entities ...
     }
@@ -95,6 +142,47 @@ bool config_registry::update()
 size_t config_registry::fence() const
 {
     return acquire(_self->_fence);
+}
+
+config_registry_id_t config_registry::id() const noexcept
+{
+    return _self->_id;
+}
+
+void config_registry::_internal_commit_value_user(
+        config_base_ptr ref, refl::object_const_view_t view)
+{
+    auto memory = _self->_pool_update_buffer.checkout();
+
+    {
+        streambuf::stringbuf sbuf{memory.get()};
+        archive::msgpack::writer{&sbuf} << view;
+    }
+
+    _self->_commit_serial(ref->id(), move(memory));
+}
+
+void config_registry::backend_t::bk_commit(config_id_t id, string* content)
+{
+    auto memory = _pool_update_buffer.checkout();
+    swap(*memory, *content);
+
+    _commit_serial(id, move(memory));
+}
+
+void config_registry::backend_t::_commit_serial(config_id_t id, pool_ptr<string> memory)
+{
+    {
+        CPPH_TMPVAR = lock_guard{_mtx_access};
+        auto context = find_ptr(_configs, id);
+        if (not context) { return; }
+
+        context->second.next_value = move(memory);
+    }
+    {
+        CPPH_TMPVAR = lock_guard{_mtx_refreshed};
+        set_push(_refreshed, id);
+    }
 }
 
 }  // namespace perfkit::v2
