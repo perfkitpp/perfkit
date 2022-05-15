@@ -81,7 +81,7 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
      */
     template <typename Duration,
               typename PredContinue = bool (*)(void),
-              typename FnRecvCommand = void (*)(string_view)>
+              typename FnRecvCommand = void (*)(std::string_view)>
     size_t invoke_queued_commands(
             Duration&& duration = {},
             PredContinue&& fn_continue = [] { return true; },
