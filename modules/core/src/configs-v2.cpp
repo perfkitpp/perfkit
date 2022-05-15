@@ -67,7 +67,7 @@ config_registry::~config_registry() noexcept
 #endif
 
 //
-// PERFKIT_CFG MACRO DEFINITION
+// PERFKIT_CFG_CLASS MACRO DEFINITION
 // * Reference code for macro definition
 //
 //

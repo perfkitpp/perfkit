@@ -33,7 +33,7 @@
 #define INTL_PERFKIT_NS_0 ::perfkit::v2
 #define INTL_PERFKIT_NS_1 ::perfkit::v2::_configs
 
-#define PERFKIT_CFG(ClassName) class ClassName : public INTL_PERFKIT_NS_0::config_set<ClassName>
+#define PERFKIT_CFG_CLASS(ClassName) class ClassName : public INTL_PERFKIT_NS_0::config_set<ClassName>
 
 /**
  * Defines subset
@@ -64,7 +64,8 @@
         static auto once = INTL_PERFKIT_NS_1::register_conf_function(&_internal_self_t::VarName); \
     }                                                                                             \
                                                                                                   \
-    static inline auto const INTERNAL_CPPH_CONCAT(_internal_perfkit_attribute_, VarName)          \
+    static inline const INTL_PERFKIT_NS_0::config_attribute_ptr                                   \
+    INTERNAL_CPPH_CONCAT(_internal_perfkit_attribute_, VarName)                                   \
             = INTL_PERFKIT_NS_0::config_attribute_factory<decltype(VarName)::value_type>{         \
                     #VarName, INTL_PERFKIT_NS_1::name_from_va_arg(__VA_ARGS__)}                   \
                       ._internal_default_value(INTL_PERFKIT_NS_1::default_from_va_arg(__VA_ARGS__))
@@ -72,7 +73,7 @@
 /**
  *
  */
-#define PERFKIT_GCAT_ROOT(hierarchy)             \
+#define PERFKIT_GCAT_ROOT(hierarchy)                 \
     namespace hierarchy {                            \
     ::std::string _perfkit_INTERNAL_CATNAME();       \
     ::std::string _perfkit_INTERNAL_CATNAME_2();     \
@@ -85,7 +86,7 @@
 /**
  *
  */
-#define PERFKIT_GCAT(hierarchy)                 \
+#define PERFKIT_GCFG_CAT_ROOT(hierarchy)                     \
     namespace hierarchy {                           \
     ::std::string _perfkit_INTERNAL_CATNAME_2();    \
     INTL_PERFKIT_NS_0::config_registry& registry(); \
@@ -95,7 +96,7 @@
 /**
  * Default config item definition macro
  */
-#define PERFKIT_GCAT_ITEM(VarName, DefaultValue, ... /*AttributeDecorators*/)                      \
+#define PERFKIT_GCFG(VarName, DefaultValue, ... /*AttributeDecorators*/)                          \
     static INTL_PERFKIT_NS_0::config_attribute_ptr                                                     \
             INTERNAL_CPPH_CONCAT(_internal_perfkit_attribute_, VarName)();                             \
                                                                                                        \
@@ -123,7 +124,7 @@
 /**
  * Globally accessible repository. Place this somwhere of your program exactly once!
  */
-#define PERFKIT_GCAT_ROOT_body(Namespace)                                                \
+#define PERFKIT_GCFG_CAT_ROOT_def(Namespace)                                                    \
     namespace Namespace {                                                                    \
     ::std::string _perfkit_INTERNAL_CATNAME()                                                \
     {                                                                                        \
@@ -148,7 +149,7 @@
 /**
  * NEVER PLACE body after SUBCAT!
  */
-#define PERFKIT_GCAT_body(Namespace)                                                        \
+#define PERFKIT_GCFG_CAT_def(Namespace)                                                            \
     namespace Namespace {                                                                       \
     static inline auto constexpr _perfkit_INTERNAL_CATNAME_BEFORE = &_perfkit_INTERNAL_CATNAME; \
                                                                                                 \
@@ -171,6 +172,6 @@
 /**
  * Create globally accessible category
  */
-#define PERFKIT_CFG_G_SET(ClassName, VarName, ...) auto VarName = ClassName::_bk_create_va_arg(registry(), #VarName, ##__VA_ARGS__)
+#define PERFKIT_GCFG_SUBSET(ClassName, VarName, ...) auto VarName = ClassName::_bk_create_va_arg(registry(), #VarName, ##__VA_ARGS__)
 
 ;  // namespace perfkit::v2

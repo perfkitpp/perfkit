@@ -49,7 +49,7 @@ class config_set_base
         string content;
         weak_ptr<_internal_pfx_node> parent;
 
-        _internal_pfx_node(string content, weak_ptr<_internal_pfx_node> parent = {})
+        explicit _internal_pfx_node(string content, weak_ptr<_internal_pfx_node> parent = {})
                 : content(move(content)), parent(parent) {}
     };
 
@@ -114,6 +114,12 @@ class config_set : public config_set_base
 
         _internal_perform_initops(&s, *_internal_initops());
         return s;
+    }
+
+    //! Append this category to existing registry.
+    static ImplType create(config_set_base& existing, string prefix = "")
+    {
+        return create(_internal_get_RG(&existing), move(prefix));
     }
 
    public:
@@ -450,6 +456,12 @@ class config_attribute_factory
     {
         return move(_ref);
     }
+
+    /** Remove needs for call confirm() explicitly. */
+    operator config_attribute_ptr() noexcept
+    {
+        return confirm();
+    }
 };
 
 namespace _configs {
@@ -460,17 +472,17 @@ struct _cvt_ty_impl {
 };
 
 template <typename Ty_>
-struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char const*>>> {
-    using type = std::string;
+struct _cvt_ty_impl<Ty_, enable_if_t<is_same_v<decay_t<Ty_>, char const*>>> {
+    using type = string;
 };
 
 template <typename Ty_>
-struct _cvt_ty_impl<Ty_, std::enable_if_t<std::is_same_v<std::decay_t<Ty_>, char*>>> {
-    using type = std::string;
+struct _cvt_ty_impl<Ty_, enable_if_t<is_same_v<decay_t<Ty_>, char*>>> {
+    using type = string;
 };
 
 template <typename Ty_>
-using deduced_t = typename _cvt_ty_impl<std::decay_t<Ty_>>::type;
+using deduced_t = typename _cvt_ty_impl<decay_t<Ty_>>::type;
 
 template <typename RawVal>
 auto default_from_va_arg(RawVal&& v, char const* msg = nullptr) -> deduced_t<RawVal>

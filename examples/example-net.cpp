@@ -41,34 +41,34 @@ PERFKIT_CATEGORY(conf_global)
             .confirm();
 }
 
-PERFKIT_GCAT(MyGCAT::MySUBCAT) {}
+PERFKIT_GCFG_CAT_ROOT(MyGCAT::MySUBCAT) {}
 
 #define DefaultValue 3
 
-PERFKIT_GCAT_ROOT_body(MyGCAT)
+PERFKIT_GCFG_CAT_ROOT_def(MyGCAT)
 {
-    PERFKIT_GCAT_body(MySUBCAT)
+    PERFKIT_GCFG_CAT_def(MySUBCAT)
     {
-        PERFKIT_GCAT_body(MySUBCAT2)
+        PERFKIT_GCFG_CAT_def(MySUBCAT2)
         {
-            PERFKIT_GCAT_ITEM(MyItem, 3.143, .clamp(0.1, 151.4));
+            PERFKIT_GCFG(MyItem, 3.143, .clamp(0.1, 151.4));
         }
     }
 }
 
-PERFKIT_CFG(MyCfg)
+PERFKIT_CFG_CLASS(MyCfg)
 {
-    PERFKIT_CFG_ITEM(MyInt, 1, "Raw").confirm();
-    PERFKIT_CFG_ITEM(MyString, "string").confirm();
-    PERFKIT_CFG_ITEM(Vodif, std::vector<std::pair<int, double>>{}, "string").confirm();
+    PERFKIT_CFG_ITEM(MyInt, 1, "Raw");
+    PERFKIT_CFG_ITEM(MyString, "string");
+    PERFKIT_CFG_ITEM(Vodif, std::vector<std::pair<int, double>>{}, "string");
 };
 
-PERFKIT_CFG(OtherCfg)
+PERFKIT_CFG_CLASS(OtherCfg)
 {
     PERFKIT_CFG_SUBSET(MyCfg, Cfg1);
 };
 
-PERFKIT_CFG(OtherCfg2)
+PERFKIT_CFG_CLASS(OtherCfg2)
 {
     PERFKIT_CFG_SUBSET(OtherCfg, Cfg0);
 };
