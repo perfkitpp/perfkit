@@ -9,6 +9,7 @@
 
 // Turn off
 static std::atomic_bool g_server_is_alive = true;
+static std::weak_ptr<perfkit::if_terminal> g_weak_term;
 
 // Handle sigint
 static void sigint_handler(int signum)
@@ -21,6 +22,7 @@ static void sigint_handler(int signum)
         spdlog::warn("Next SIGINT will terminate this process.");
         signal(SIGINT, nullptr);
     } else {
+        if (auto term = g_weak_term.lock()) { term->push_command("quit"); }
         signal(SIGINT, &sigint_handler);
     }
 }
@@ -68,6 +70,7 @@ int main(int argc, char** argv)
     app->S02_PostLoadConfigs();
 
     auto term = app->CreatePerfkitTerminal();
+    g_weak_term = term;
     perfkit::terminal::register_conffile_io_commands(term.get());
 
     // Install signal handler
