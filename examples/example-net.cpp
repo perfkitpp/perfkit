@@ -33,34 +33,26 @@
 #include "test_class.hpp"
 
 using namespace std::literals;
+//
+//PERFKIT_CATEGORY(conf_global)
+//{
+//    PERFKIT_CONFIGURE(some_selectible, "hello")
+//            .one_of({"hello", "my name", "is john"})
+//            .confirm();
+//}
 
-PERFKIT_CATEGORY(conf_global)
+PERFKIT_GCFG_CAT(MyGCAT::MySUBCAT)
 {
-    PERFKIT_CONFIGURE(some_selectible, "hello")
-            .one_of({"hello", "my name", "is john"})
-            .confirm();
+    PERFKIT_GCFG(MyGc, 3.41);
 }
-
-PERFKIT_GCFG_CAT_ROOT(MyGCAT::MySUBCAT) {}
 
 #define DefaultValue 3
 
-PERFKIT_GCFG_CAT_ROOT_def(MyGCAT)
-{
-    PERFKIT_GCFG_CAT_def(MySUBCAT)
-    {
-        PERFKIT_GCFG_CAT_def(MySUBCAT2)
-        {
-            PERFKIT_GCFG(MyItem, 3.143, .clamp(0.1, 151.4));
-        }
-    }
-}
-
 PERFKIT_CFG_CLASS(MyCfg)
 {
-    PERFKIT_CFG_ITEM(MyInt, 1, "Raw");
-    PERFKIT_CFG_ITEM(MyString, "string");
-    PERFKIT_CFG_ITEM(Vodif, std::vector<std::pair<int, double>>{}, "string");
+    PERFKIT_CFG(MyInt, 1, "Raw");
+    PERFKIT_CFG(MyString, "string");
+    PERFKIT_CFG(Vodif, std::vector<std::pair<int, double>>{}, "string");
 };
 
 PERFKIT_CFG_CLASS(OtherCfg)
@@ -97,7 +89,7 @@ int main(void)
     term->launch_stdin_fetch_thread();
 
     while (running) {
-        conf_global::update();
+        // conf_global::update();
 
         auto cmd = term->fetch_command(1s);
         if (not cmd || cmd->empty())

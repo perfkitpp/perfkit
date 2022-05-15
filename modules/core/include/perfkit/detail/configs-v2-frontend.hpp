@@ -230,7 +230,7 @@ class config_attribute_factory
 
    private:
     shared_ptr<config_attribute> _ref;
-    function<void(config_attribute_ptr)> _finalizer;
+    std::function<void(config_attribute_ptr)> _finalizer;
 
    public:
     //! Full key will automatically be parsed into display keys
@@ -258,6 +258,8 @@ class config_attribute_factory
     {
         assert(not _finalizer);
         _finalizer = move(fn);
+
+        return *this;
     }
 
     //! Call finalizer on exit
@@ -464,6 +466,7 @@ class config_attribute_factory
     {
         assert(_ref->env_binding.empty());
         _ref->env_binding = move(s);
+        return *this;
     }
 
    public:
