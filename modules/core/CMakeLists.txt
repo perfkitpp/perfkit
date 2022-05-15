@@ -74,6 +74,7 @@ target_link_libraries(
         PUBLIC
         spdlog::spdlog
         perfkit::cpph
+        fmt::fmt
         nlohmann_json::nlohmann_json
 
         PRIVATE
