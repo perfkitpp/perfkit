@@ -65,6 +65,14 @@ enum class edit_mode : uint8_t {
 };
 
 /**
+ * Configs utility
+ */
+void configs_dump_all(string* json_dst);
+void configs_export_to(string_view path);
+bool configs_import_content(string_view json_content);
+bool configs_import_file(string_view path);
+
+/**
  * Key rules
  *
  * example: +dsa32|MyCategory|SubRoutine|+1451|214.fdaso
@@ -240,10 +248,10 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
     //! Manually unregister config registry.
     //! Useful when recreate registry immediately with same name
-    bool unregister() { return false; }
+    bool unregister();
 
     //! Check if this registry is unregistered from global repository.
-    bool is_registered() const { return false; }
+    bool is_registered() const;
 
     //! Flush queued changes.
     //! If it's first call to creation, it'll register itself to global repository.

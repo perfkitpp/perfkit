@@ -37,14 +37,13 @@
 #include "spdlog/sinks/stdout_sinks.h"
 #include "spdlog/spdlog.h"
 
-std::shared_ptr<spdlog::logger> perfkit::glog()
+std::shared_ptr<spdlog::logger> const& perfkit::glog()
 {
-    static std::weak_ptr<spdlog::logger> _inst{};
-    if (!_inst.lock()) {
-        auto ptr = spdlog::get("PERFKIT");
-        if (!ptr) { ptr = spdlog::stdout_color_mt("PERFKIT"); }
-        _inst = ptr;
-    }
+    static auto _inst = [] {
+        auto logger = spdlog::stdout_color_mt("PERFKIT");
+        logger->info("logger instantiated.");
+        return logger;
+    }();
 
-    return _inst.lock();
+    return _inst;
 }

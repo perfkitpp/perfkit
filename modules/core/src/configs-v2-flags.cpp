@@ -24,16 +24,15 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
-#pragma once
-
-#include "configs-v2.hpp"
+#include "perfkit/detail/configs-v2-flags.hpp"
 
 namespace perfkit::v2 {
-// TODO:
-//   parse_args default takes list of active config options or config registries
-//   if nothing is specified, parse_args will collect all globally registered
-//    config registry instances, and will create flag binding table, then perform
-//    args parsing.
-//
-void configs_parse_args(int& ref_argc, char**& ref_argv, bool consume = true, array_view<config_registry_ptr> regs = {});
+// TODO: Define archive::flag_reader, which parses newline-separated flag variables
+
+
+
+void configs_parse_args(int& ref_argc, char**& ref_argv, bool consume, array_view<config_registry_ptr> regs)
+{
+    // TODO:
+}
 }  // namespace perfkit::v2

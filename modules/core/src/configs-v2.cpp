@@ -26,11 +26,23 @@
 
 #include "perfkit/detail/configs-v2.hpp"
 
-#include <fmt/core.h>
+#include <set>
 
+#include <fmt/core.h>
+#include <range/v3/view/filter.hpp>
+#include <range/v3/view/transform.hpp>
+#include <spdlog/spdlog.h>
+
+#include "cpph/refl/archive/json.hpp"
 #include "cpph/refl/archive/msgpack-writer.hxx"
+#include "cpph/utility/singleton.hxx"
 #include "perfkit/configs-v2.h"
+#include "perfkit/detail/base.hpp"
 #include "perfkit/detail/configs-v2-backend.hpp"
+
+namespace vw = ranges::views;
+
+static auto CPPH_LOGGER() { return perfkit::glog().get(); }
 
 //*
 #define print fmt::print("[{}:{}] ({}): ", __FILE__, __LINE__, __func__), fmt::print
@@ -126,6 +138,11 @@ bool config_registry::_internal_commit_value_user(
         config_base_ptr ref, refl::shared_object_ptr view)
 {
     return _self->_commit(move(ref), move(view));
+}
+
+bool config_registry::is_registered() const
+{
+    return acquire(_self->_is_registered);
 }
 
 bool config_registry::backend_t::_commit(config_base_ptr ref, refl::shared_object_ptr candidate)
@@ -252,6 +269,106 @@ void config_registry::backend_t::_do_update()
     // Publish updates to subscribers
     if (has_structure_change) { evt_structure_changed.invoke(_owner); }
     if (not updates.empty()) { evt_updated_entities.invoke(_owner, updates); }
+}
+
+static auto& global_config_storage() noexcept
+{
+    return default_singleton<map<string, map<string, string>>>();
+}
+
+static auto _global_repo() noexcept
+{
+    static std::mutex _lock;
+    static std::map<config_registry_id_t, weak_ptr<config_registry>> _repo;
+
+    return make_pair(std::unique_lock{_lock}, &_repo);
+}
+
+void config_registry::backend_t::_register_to_global_repo()
+{
+    CPPH_DEBUG("Registering '{}' to global repository ...", _name);
+
+    // Load values from the global config rawdata storage
+    {
+            // TODO
+    }
+
+    // Register to global repository
+    {
+        auto [lock, repo] = _global_repo();
+        auto is_new = repo->try_emplace(_id, _owner->weak_from_this()).second;
+        assert(is_new && "Config registry can't be registered twice.");
+
+        release(_is_registered, true);
+    }
+
+    g_evt_registered.invoke(_owner->shared_from_this());
+}
+
+void config_registry::backend_t::all_items(vector<config_base_ptr>* out) const noexcept
+{
+    // Retrieve all alive elements
+    {
+        CPPH_TMPVAR{std::shared_lock{_mtx_access}};
+        out->reserve(out->size() + _configs.size());
+
+        copy(_configs | vw::transform([](auto&& p) { return p.second.reference.lock(); }) | vw::filter([](auto&& p) { return bool(p); }),
+             back_inserter(*out));
+    }
+}
+
+void config_registry::backend_t::enumerate_registries(vector<shared_ptr<config_registry>>* out) noexcept
+{
+    // Retrieve all alive elements
+    {
+        auto [lock, repo] = _global_repo();
+        out->reserve(out->size() + repo->size());
+
+        copy(*repo | vw::transform([](auto&& p) { return p.second.lock(); }) | vw::filter([](auto&& p) { return bool(p); }),
+             back_inserter(*out));
+    }
+}
+
+bool config_registry::unregister()
+{
+    if (not _self->_is_registered.exchange(false)) {
+        // Instance already unregistered. Do nothing.
+        return false;
+    }
+
+    CPPH_DEBUG("Unregistering '{}' from global registry ...");
+    {
+        auto [lock, repo] = _global_repo();
+        auto erase_result = repo->erase(id());
+        assert(erase_result == 1 && "Once registered, registry must be unregistered exactly once.");
+    }
+
+    // Propagate un-registration
+    backend_t::g_evt_unregistered.invoke(this);
+
+    return true;
+}
+
+void configs_dump_all(string* json_dst)
+{
+    // TODO
+}
+
+void configs_export_to(string_view path)
+{
+    // TODO
+}
+
+bool configs_import_content(string_view json_content)
+{
+    // TODO
+    return false;
+}
+
+bool configs_import_file(string_view path)
+{
+    // TODO
+    return false;
 }
 
 }  // namespace perfkit::v2

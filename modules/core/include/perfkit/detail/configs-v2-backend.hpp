@@ -74,7 +74,7 @@ class config_registry::backend_t
     event_queue _events{1024};
 
     // Data access lock. Data modification should only be done under this mutex's protection.
-    std::shared_mutex _mtx_access;
+    mutable std::shared_mutex _mtx_access;
 
     // Actual modification fence
     atomic_size_t _fence = 0;
@@ -95,14 +95,15 @@ class config_registry::backend_t
     list<config_base_ptr> _free_evt_nodes;
 
    public:
-    static inline event<void(config_registry_ptr)> g_evt_registered;
-    static inline event<void(config_registry_ptr)> g_evt_unregistered;
+    static inline event<config_registry_ptr> g_evt_registered;
+    static inline event<config_registry*> g_evt_unregistered;
 
     event<config_registry*, list<config_base_ptr> const&> evt_updated_entities;
     event<config_registry*> evt_structure_changed;
 
    private:
-    void _register_to_global_repo() {}
+    void _register_to_global_repo();
+
     void _do_update();
     bool _commit(config_base_ptr, refl::shared_object_ptr);
 
@@ -110,12 +111,11 @@ class config_registry::backend_t
     explicit backend_t(config_registry* self, string name) : _owner(self), _name(move(name)) {}
 
    public:
-    void find_key(string_view display_key, string* out_full_key) {}
-    void all_items(vector<config_base_ptr>*) const noexcept {}
+    void all_items(vector<config_base_ptr>*) const noexcept;
     bool bk_commit(config_base_ptr, archive::if_reader* content);
 
    public:
-    static void enumerate_registries(vector<shared_ptr<config_registry>>* o_regs, bool filter_complete = false) noexcept {}
+    static void enumerate_registries(vector<shared_ptr<config_registry>>* o_regs) noexcept;
     static auto find_registry(string_view name) noexcept -> shared_ptr<config_registry> { return {}; }
 };
 
