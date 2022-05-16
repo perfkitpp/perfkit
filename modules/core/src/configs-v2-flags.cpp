@@ -29,10 +29,27 @@
 namespace perfkit::v2 {
 // TODO: Define archive::flag_reader, which parses newline-separated flag variables
 
-
-
 void configs_parse_args(int& ref_argc, char**& ref_argv, bool consume, array_view<config_registry_ptr> regs)
 {
     // TODO:
+
+    // If 'regs' empty, collect all registries
+
+    // Collect all flag bindings from 'regs'
+
+    // Iterate arguments
+    {
+        // If flag is prefixed with '-'
+        // - If first character is 'h', construct help string from regs and throw.
+        // - If first character is non-boolean flag: Parse rest as value
+        // - If first character is boolean flag: Treat all chars as boolean flag.
+
+        // If flag is prefixed with '--'
+        // - If flag starts with 'no-', parse rest as boolean key, and store '>>~~$false$~<<'
+        // - If flag equals 'help', construct help string from regs and throw.
+        // - If flag binding is boolean, store '>>~~$true$~~<<'
+
+        // When flag key is repeated, simply append line on existing flag string buffer.
+    }
 }
 }  // namespace perfkit::v2
