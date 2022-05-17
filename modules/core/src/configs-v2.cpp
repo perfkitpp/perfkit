@@ -200,7 +200,7 @@ void config_registry::backend_t::_do_update()
 
     // Perform update inside protected scope
     {
-        CPPH_TMPVAR = lock_guard{_mtx_access};
+        CPPH_TMPVAR{lock_guard{_mtx_access}};
 
         _events.flush();
 
@@ -242,7 +242,8 @@ void config_registry::backend_t::_do_update()
                 if (iter == _configs.end()) { continue; }
 
                 // Check if config is expired
-                auto conf = iter->second.reference.lock();
+                auto* node = &iter->second;
+                auto conf = node->reference.lock();
                 if (not conf) {
                     // Configuration is expired ... collect garbage.
                     has_structure_change = true;
@@ -251,9 +252,12 @@ void config_registry::backend_t::_do_update()
                 }
 
                 // Perform actual update
-                assert(iter->second._staged && "Staged data must be prepared!");
-                conf->attribute()->fn_swap_value(conf->_info.raw_data, iter->second._staged);
-                iter->second._staged.reset();  // Clear staged data
+                assert(node->_staged && "Staged data must be prepared!");
+                conf->attribute()->fn_swap_value(conf->_info.raw_data, node->_staged);
+                node->_staged.reset();  // Clear staged data
+
+                // Increase modification fence
+                conf->_fence_modified.fetch_add(1);
 
                 // Append to 'updated' list.
                 checkout_push(&updates, move(conf));
@@ -325,7 +329,6 @@ bool config_registry::unregister()
 
     // Propagate un-registration
     backend_t::g_evt_unregistered.invoke(this);
-
     return true;
 }
 
@@ -341,7 +344,7 @@ void config_registry::unset_transient()
 
 bool config_registry::is_transient() const
 {
-    return false;
+    return acquire(_self->_is_transient);
 }
 }  // namespace perfkit::v2
 
@@ -385,12 +388,15 @@ void config_registry::backend_t::_register_to_global_repo()
 
 void configs_dump_all(global_config_storage_t* json_dst)
 {
-    // TODO
+    // TODO: Iterate registries, merge to existing global, copy to json_dst.
 }
 
 bool config_registry::import_from(config_registry_storage_t const& from)
 {
-    // TODO
+    // TODO: Overwrites existing global.
+
+    // TODO: Read, parse, commit.
+
     return false;
 }
 
@@ -412,6 +418,8 @@ void config_registry::export_to(config_registry_storage_t* to) const
 
     for (auto [p_key, cfg] : entities) {
         // TODO: cfg -> msgpack -> nlohmann::json
+
+        // TODO: If it has staged value, prefer it here.
     }
 }
 

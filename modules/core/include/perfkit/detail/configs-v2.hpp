@@ -203,20 +203,6 @@ class config_base : public std::enable_shared_from_this<config_base>
 };
 
 /*
- * TODO: PERFKIT_T_CATEGORY 는 여전히 self-contained.
- *  단 PERFKIT_CONFIG_TEMPLATE 클래스 추가,
- *
- * TODO: 요구사항
- *  - Config Registry에는 시점에 관계없이 자유롭게 config 인스턴스를 추가/제거 가능
- *  - Config registry는 각 config_base의 weak reference만 물고 있음
- *  - config_base는 죽을 때 registry에 notify ... 곧바로 클라이언트에 전파 (등록 시에도 마찬가지)
- *
- * TODO: 레거시 호환
- *  - PREFKIT_CONFIGURE 등 모든 config 매크로 호환되어야 함
- *  - config.h include 시 호환성 문제 없어야 함
- *
- *  USAGE:
- *    PERFKIT_T_CONFIGURE(MY_NAME, 3.314).confirm();
  *
  */
 class config_registry : public std::enable_shared_from_this<config_registry>
