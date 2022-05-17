@@ -170,7 +170,7 @@ bool config_registry::backend_t::_commit(config_base_ptr ref, refl::shared_objec
 
 bool config_registry::backend_t::bk_commit(config_base_ptr ref, archive::if_reader* content)
 {
-    auto object = ref->_context.attribute->fn_construct();
+    auto object = ref->_info.attribute->fn_construct();
 
     try {
         *content >> object.view();
@@ -252,7 +252,7 @@ void config_registry::backend_t::_do_update()
 
                 // Perform actual update
                 assert(iter->second._staged && "Staged data must be prepared!");
-                conf->attribute()->fn_swap_value(conf->_context.raw_data, iter->second._staged);
+                conf->attribute()->fn_swap_value(conf->_info.raw_data, iter->second._staged);
                 iter->second._staged.reset();  // Clear staged data
 
                 // Append to 'updated' list.
@@ -385,10 +385,12 @@ void config_registry::backend_t::_register_to_global_repo()
 
 void configs_dump_all(global_config_storage_t* json_dst)
 {
+    // TODO
 }
 
 bool config_registry::import_from(config_registry_storage_t const& from)
 {
+    // TODO
     return false;
 }
 

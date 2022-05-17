@@ -163,27 +163,30 @@ class config_base : public std::enable_shared_from_this<config_base>
     friend class config_registry;
 
    public:
-    struct context_t {
+    struct init_info_t {
         // Raw data pointer
         refl::shared_object_ptr raw_data;
 
         // Absolute
         config_attribute_ptr attribute;
+
+        //
     };
 
    private:
     static inline std::atomic_uint64_t _idgen = 0;
     const config_id_t _id = {++_idgen};
-    context_t _context;
 
-    std::atomic_size_t _fence_modified = 0;            // Actual modification count
-    std::atomic_size_t _fence_modify_requested = 0;    // Modification request count
-    std::atomic_size_t _fence_serialized = ~size_t{};  // Serialization is dirty when _fence_modify_requested != _fence_serialized
+    init_info_t _info;
+
+    // Managed by repository
+    string _cached_full_key;
+    std::atomic_size_t _fence_modified = 0;  // Actual modification count
 
    public:
-    explicit config_base(context_t&& info) noexcept : _context(move(info)) {}
+    explicit config_base(init_info_t&& info) noexcept : _info(move(info)) {}
 
-    auto const& attribute() const noexcept { return _context.attribute; }
+    auto const& attribute() const noexcept { return _info.attribute; }
     auto const& default_value() const { return attribute()->default_value; }
 
     //! Returns config id. Id is unique for process scope.
@@ -192,16 +195,11 @@ class config_base : public std::enable_shared_from_this<config_base>
     auto const& name() const { return attribute()->name; }
     auto const& description() const { return attribute()->description; }
 
-    size_t num_modified() const { return acquire(_fence_modified); }
-    size_t fence() const { return num_modified(); }
-    size_t num_serialized() const { return _fence_serialized; }
+    size_t fence() const { return acquire(_fence_modified); }
 
     bool can_export() const noexcept { return attribute()->can_export; }
     bool can_import() const noexcept { return attribute()->can_import; }
     bool is_hidden() const noexcept { return attribute()->hidden; }
-
-    void get_keys_by_token(vector<string_view>* out) {}
-    void get_full_key(string* out) {}  // TODO: Recursively refer _host, and construct full key.
 };
 
 /*
@@ -286,9 +284,6 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //!  configuration items.
     void item_notify();
 
-    //! Retrieve serialized data from config
-    void retrieve_serialized_data(config_base_ptr const&, config_data* out) {}
-
     //! Number of actual modification count.
     size_t fence() const;
 
@@ -355,11 +350,11 @@ class config
         _ref = raw_data.get();
 
         // Instantiate _base with attribute and default value
-        config_base::context_t context;
-        context.attribute = move(attrib);
-        context.raw_data = raw_data;
+        config_base::init_info_t init;
+        init.attribute = move(attrib);
+        init.raw_data = raw_data;
 
-        _base = make_shared<config_base>(move(context));
+        _base = make_shared<config_base>(move(init));
     }
 
    public:
@@ -401,7 +396,7 @@ class config
 
     bool check_update() const noexcept
     {
-        auto fence = _base->num_modified();
+        auto fence = _base->fence();
         return exchange(_update_check_fence, fence) != fence;
     }
 
