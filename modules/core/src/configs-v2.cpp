@@ -29,11 +29,13 @@
 #include <set>
 
 #include <fmt/core.h>
+#include <range/v3/range/conversion.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
 
 #include "cpph/refl/archive/json.hpp"
+#include "cpph/refl/archive/msgpack-reader.hxx"
 #include "cpph/refl/archive/msgpack-writer.hxx"
 #include "cpph/utility/singleton.hxx"
 #include "perfkit/configs-v2.h"
@@ -271,38 +273,12 @@ void config_registry::backend_t::_do_update()
     if (not updates.empty()) { evt_updated_entities.invoke(_owner, updates); }
 }
 
-static auto& global_config_storage() noexcept
-{
-    return default_singleton<map<string, map<string, string>>>();
-}
-
 static auto _global_repo() noexcept
 {
     static std::mutex _lock;
     static std::map<config_registry_id_t, weak_ptr<config_registry>> _repo;
 
     return make_pair(std::unique_lock{_lock}, &_repo);
-}
-
-void config_registry::backend_t::_register_to_global_repo()
-{
-    CPPH_DEBUG("Registering '{}' to global repository ...", _name);
-
-    // Load values from the global config rawdata storage
-    {
-            // TODO
-    }
-
-    // Register to global repository
-    {
-        auto [lock, repo] = _global_repo();
-        auto is_new = repo->try_emplace(_id, _owner->weak_from_this()).second;
-        assert(is_new && "Config registry can't be registered twice.");
-
-        release(_is_registered, true);
-    }
-
-    g_evt_registered.invoke(_owner->shared_from_this());
 }
 
 void config_registry::backend_t::all_items(vector<config_base_ptr>* out) const noexcept
@@ -312,19 +288,23 @@ void config_registry::backend_t::all_items(vector<config_base_ptr>* out) const n
         CPPH_TMPVAR{std::shared_lock{_mtx_access}};
         out->reserve(out->size() + _configs.size());
 
-        copy(_configs | vw::transform([](auto&& p) { return p.second.reference.lock(); }) | vw::filter([](auto&& p) { return bool(p); }),
+        copy(_configs
+                     | vw::transform([](auto&& p) { return p.second.reference.lock(); })
+                     | vw::filter([](auto&& p) { return bool(p); }),
              back_inserter(*out));
     }
 }
 
-void config_registry::backend_t::enumerate_registries(vector<shared_ptr<config_registry>>* out) noexcept
+void config_registry::backend_t::enumerate_registries(vector<config_registry_ptr>* out) noexcept
 {
     // Retrieve all alive elements
     {
         auto [lock, repo] = _global_repo();
         out->reserve(out->size() + repo->size());
 
-        copy(*repo | vw::transform([](auto&& p) { return p.second.lock(); }) | vw::filter([](auto&& p) { return bool(p); }),
+        copy(*repo
+                     | vw::transform([](auto&& p) { return p.second.lock(); })
+                     | vw::filter([](auto&& p) { return bool(p) && p->is_registered(); }),
              back_inserter(*out));
     }
 }
@@ -349,35 +329,98 @@ bool config_registry::unregister()
     return true;
 }
 
-void configs_dump_all(string* json_dst)
+void config_registry::set_transient()
 {
-    // TODO
+    release(_self->_is_transient, true);
 }
 
-void configs_export_to(string_view path)
+void config_registry::unset_transient()
 {
-    // TODO
+    release(_self->_is_transient, false);
 }
 
-bool configs_import_content(string_view json_content)
+bool config_registry::is_transient() const
 {
-    // TODO
+    return false;
+}
+}  // namespace perfkit::v2
+
+/*
+ *
+ * GLOBAL CONFIGURATIONS
+ *
+ */
+#include <nlohmann/json.hpp>
+
+namespace perfkit::v2 {
+static auto _g_config() noexcept
+{
+    static std::mutex _lock;
+    global_config_storage_t _storage;
+
+    return pair{std::unique_lock{_lock}, &_storage};
+}
+
+void config_registry::backend_t::_register_to_global_repo()
+{
+    CPPH_DEBUG("Registering '{}' to global repository ...", _name);
+
+    if (not acquire(_is_transient)) {
+        // TODO: Load values from the global config rawdata storage
+
+        // TODO: If registry or any element is missing from global storage, merge on it.
+    }
+
+    // Register to global repository
+    {
+        auto [lock, repo] = _global_repo();
+        auto is_new = repo->try_emplace(_id, _owner->weak_from_this()).second;
+        assert(is_new && "Config registry can't be registered twice.");
+
+        release(_is_registered, true);
+    }
+
+    g_evt_registered.invoke(_owner->shared_from_this());
+}
+
+void configs_dump_all(global_config_storage_t* json_dst)
+{
+}
+
+bool config_registry::import_from(config_registry_storage_t const& from)
+{
     return false;
 }
 
-bool configs_import_file(string_view path)
+void config_registry::export_to(config_registry_storage_t* to) const
 {
-    // TODO
-    return false;
+    auto& s = *_self;
+
+    // Export must be performed inside 'access protected' scope.
+    CPPH_TMPVAR{lock_guard{s._mtx_access}};
+
+    // Retrieve non-transient, non-expired config entities
+    auto entities = s._configs
+                  | vw::transform([](auto&& x) { return &x.second; })
+                  | vw::transform([](auto&& x) { return pair{&x->full_key, x->reference.lock()}; })
+                  | vw::filter([](auto&& x) { return bool(x.second) && x.second->attribute()->can_export; });
+
+    // Filled with msgpack raw binary
+    string buf_bridge;
+
+    for (auto [p_key, cfg] : entities) {
+        // TODO: cfg -> msgpack -> nlohmann::json
+    }
 }
 
 }  // namespace perfkit::v2
 
-//
-// PERFKIT_CFG_CLASS MACRO DEFINITION
-// * Reference code for macro definition
-//
-//
+/*
+ *
+ * PERFKIT_CFG_CLASS MACRO DEFINITION
+ * * Reference code for macro definition
+ *
+ */
 #if 0
 #    include <cpph/refl/object.hxx>
 

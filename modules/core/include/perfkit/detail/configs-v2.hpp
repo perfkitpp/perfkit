@@ -67,9 +67,11 @@ enum class edit_mode : uint8_t {
 /**
  * Configs utility
  */
-void configs_dump_all(string* json_dst);
+using config_registry_storage_t = std::map<std::string, nlohmann::json, std::less<>>;
+using global_config_storage_t = std::map<std::string, config_registry_storage_t, std::less<>>;
+void configs_dump_all(global_config_storage_t* json_dst);
 void configs_export_to(string_view path);
-bool configs_import_content(string_view json_content);
+bool configs_import_content(global_config_storage_t const& json_content);
 bool configs_import_file(string_view path);
 
 /**
@@ -222,12 +224,12 @@ class config_base : public std::enable_shared_from_this<config_base>
 class config_registry : public std::enable_shared_from_this<config_registry>
 {
    public:
+    class backend_t;
     using config_table = map<string_view, shared_ptr<config_base>>;
     using string_view_table = map<string_view, string_view>;
     using container = map<string, weak_ptr<config_registry>, std::less<>>;
 
    private:
-    class backend_t;
     struct ctor_constraint_t {};
 
    private:
@@ -241,10 +243,10 @@ class config_registry : public std::enable_shared_from_this<config_registry>
    public:
     //! Mark this registry as transient. It won't be exported.
     //! Call this before the first update() procedure call!
-    void set_transient() {}
+    void set_transient();
 
     //! Unmark this registry from transient state. Updates will be exported.
-    void unset_transient() {}
+    void unset_transient();
 
     //! Manually unregister config registry.
     //! Useful when recreate registry immediately with same name
@@ -253,9 +255,16 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //! Check if this registry is unregistered from global repository.
     bool is_registered() const;
 
+    //! Check if this registry is transient
+    bool is_transient() const;
+
     //! Flush queued changes.
     //! If it's first call to creation, it'll register itself to global repository.
     bool update();
+
+    //! Export/Import
+    void export_to(config_registry_storage_t* to) const;
+    bool import_from(config_registry_storage_t const& from);
 
     //! Check if there was any update, without actual update() call.
     //! Return value is valid for each registry() instances.
@@ -268,10 +277,6 @@ class config_registry : public std::enable_shared_from_this<config_registry>
             return false;
         }
     }
-
-    //! Export/Import changes to storage
-    void export_to(archive::if_writer*) {}
-    void import_from(archive::if_reader*) {}
 
     //! Name of this registery
     string const& name() const;

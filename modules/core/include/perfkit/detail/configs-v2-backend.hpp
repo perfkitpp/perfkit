@@ -115,7 +115,7 @@ class config_registry::backend_t
     bool bk_commit(config_base_ptr, archive::if_reader* content);
 
    public:
-    static void enumerate_registries(vector<shared_ptr<config_registry>>* o_regs) noexcept;
+    static void enumerate_registries(std::vector<config_registry_ptr>* o_regs) noexcept;
     static auto find_registry(string_view name) noexcept -> shared_ptr<config_registry> { return {}; }
 };
 
