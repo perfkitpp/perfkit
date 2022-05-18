@@ -29,6 +29,9 @@
 //
 
 #pragma once
+#include <memory>
+#include <string>
+
 #include "cpph/functional.hxx"
 #include "perfkit/detail/fwd.hpp"
 
