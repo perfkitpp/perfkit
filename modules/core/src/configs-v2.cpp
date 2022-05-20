@@ -134,9 +134,9 @@ config_registry_id_t config_registry::id() const noexcept
 }
 
 bool config_registry::_internal_commit_value_user(
-        config_base_ptr ref, refl::shared_object_ptr view)
+        config_base* ref, refl::shared_object_ptr view)
 {
-    return _self->_commit(move(ref), move(view));
+    return _self->_commit(ref, move(view));
 }
 
 bool config_registry::is_registered() const
@@ -144,7 +144,7 @@ bool config_registry::is_registered() const
     return acquire(_self->_is_registered);
 }
 
-bool config_registry::backend_t::_commit(config_base_ptr ref, refl::shared_object_ptr candidate)
+bool config_registry::backend_t::_commit(config_base* ref, refl::shared_object_ptr candidate)
 {
     auto& attrib = ref->attribute();
     if (
@@ -165,7 +165,7 @@ bool config_registry::backend_t::_commit(config_base_ptr ref, refl::shared_objec
     }
 }
 
-bool config_registry::backend_t::bk_commit(config_base_ptr ref, archive::if_reader* content)
+bool config_registry::backend_t::bk_commit(config_base* ref, archive::if_reader* content)
 {
     auto object = ref->_body.attribute->fn_construct();
 
@@ -225,6 +225,12 @@ void config_registry::backend_t::_do_update()
                     iter->second.sort_order = sort_order;
                     iter->second.full_key = move(prefix.append(conf->name()));
                 }
+            }
+
+            // Rebuild config id mappings
+            _key_id_table.clear();
+            for (auto& [key, ctx] : _configs) {
+                _key_id_table.try_emplace(ctx.full_key, key);
             }
 
             _config_added.clear();
@@ -384,13 +390,39 @@ void config_registry::backend_t::_register_to_global_repo()
 bool config_registry::import_from(config_registry_storage_t const& from, string* buf)
 {
     auto& s = *_self;
+    map<string, config_base_ptr> key_conf_table;
+
+    // Clone key to id table
+    {
+        CPPH_TMPVAR{std::shared_lock{s._mtx_access}};
+        for (auto& [key, id] : s._key_id_table)
+            if (auto elem = find_ptr(s._configs, id))
+                if (auto ref = elem->second.reference.lock())
+                    key_conf_table[key] = ref;
+    }
 
     string buf_body;
     if (buf == nullptr) { buf = &buf_body; }
 
-    // TODO: Read, parse, commit.
-    for (auto& [key, json] : from) {
+    // Prepare context
+    buf->clear();
+    streambuf::stringbuf sbuf{buf};
+    archive::msgpack::writer writer{&sbuf};
+    archive::msgpack::reader reader{&sbuf};
 
+    for (auto& [key, json] : from) {
+        auto p_conf = find_ptr(key_conf_table, key);
+        if (not p_conf) { continue; }  // Missing element
+
+        // Clear context
+        sbuf.clear(), writer.clear(), reader.clear();
+
+        // Serialize JSON data
+        writer << json;
+        writer.flush();
+
+        // Retrieve from dumped json content, and commit
+        s.bk_commit(p_conf->second.get(), &reader);
     }
 
     return false;
@@ -404,19 +436,20 @@ void config_registry::export_to(config_registry_storage_t* to, string* buf) cons
     if (buf == nullptr) { buf = &buf_body; }
 
     // Export must be performed inside 'access protected' scope.
-    CPPH_TMPVAR{lock_guard{s._mtx_access}};
+    CPPH_TMPVAR{std::shared_lock{s._mtx_access}};
 
     // Filled with msgpack raw binary
-    archive::msgpack::writer writer{nullptr};
-    archive::msgpack::reader reader{nullptr};
+    buf->clear();
+    streambuf::stringbuf sbuf{buf};
+    archive::msgpack::writer writer{&sbuf};
+    archive::msgpack::reader reader{&sbuf};
 
     for (auto& [key, ctx] : s._configs) {
         auto cfg = ctx.reference.lock();
         if (not cfg || not cfg->attribute()->can_export) { continue; }
 
-        buf->clear();
-        streambuf::stringbuf sbuf{buf};
-        writer.clear(), writer.rdbuf(&sbuf);
+        // Clear context
+        sbuf.clear(), writer.clear(), reader.clear();
 
         // cfg -> msgpack -> nlohmann::json
         // If it has staged value, prefer it here.
@@ -427,7 +460,7 @@ void config_registry::export_to(config_registry_storage_t* to, string* buf) cons
         }
 
         writer.flush();
-        reader.clear(), reader.rdbuf(&sbuf);
+        reader.rdbuf(&sbuf);
 
         reader >> (*to)[ctx.full_key];
     }
@@ -435,16 +468,32 @@ void config_registry::export_to(config_registry_storage_t* to, string* buf) cons
 
 void configs_dump_all(global_config_storage_t* json_dst)
 {
-    // TODO: Iterate registries, merge to existing global, copy to json_dst.
+    //  Iterate registries, merge to existing global, copy to json_dst.
+    vector<config_registry_ptr> repos;
+    config_registry::backend_t::enumerate_registries(&repos);
+
+    // Copy existing global configs to destination
+    {
+        auto [_, p_all] = _g_config();
+        string buffer_;
+
+        // Collect all alive registries' configs
+        for (auto& repo : repos) {
+            repo->export_to(&(*p_all)[repo->name()], &buffer_);
+        }
+
+        // todo: Update existing global configs with new entries
+    }
 }
 
 void configs_export_to(string_view path)
 {
-    // TODO: Overwrites existing global.
+    // TODO: 1. DO dump_all(), 2. write to path.
 }
 
-bool configs_import_content(const global_config_storage_t& json_content)
+bool configs_import_content(global_config_storage_t json_content)
 {
+    // TODO: Swap content with existing globals, and import all ...
     return false;
 }
 

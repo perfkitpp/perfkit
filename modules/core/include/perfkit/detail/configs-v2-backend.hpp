@@ -82,6 +82,7 @@ class config_registry::backend_t
 
     // All active config entities.
     std::unordered_map<config_id_t, config_entity_context> _configs;
+    map<string, config_id_t> _key_id_table;
 
     // Set of queued updates
     vector<config_id_t> _refreshed_items;
@@ -105,14 +106,14 @@ class config_registry::backend_t
     void _register_to_global_repo();
 
     void _do_update();
-    bool _commit(config_base_ptr, refl::shared_object_ptr);
+    bool _commit(config_base*, refl::shared_object_ptr);
 
    public:
     explicit backend_t(config_registry* self, string name) : _owner(self), _name(move(name)) {}
 
    public:
     void all_items(vector<config_base_ptr>*) const noexcept;
-    bool bk_commit(config_base_ptr, archive::if_reader* content);
+    bool bk_commit(config_base*, archive::if_reader* content);
 
    public:
     static void enumerate_registries(std::vector<config_registry_ptr>* o_regs) noexcept;

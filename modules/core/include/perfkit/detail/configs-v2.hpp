@@ -71,7 +71,7 @@ using config_registry_storage_t = std::map<std::string, nlohmann::json, std::les
 using global_config_storage_t = std::map<std::string, config_registry_storage_t, std::less<>>;
 void configs_dump_all(global_config_storage_t* json_dst);
 void configs_export_to(string_view path);
-bool configs_import_content(global_config_storage_t const& json_content);
+bool configs_import_content(global_config_storage_t json_content);
 bool configs_import_file(string_view path);
 
 /**
@@ -277,7 +277,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     config_registry_id_t id() const noexcept;
 
    public:
-    bool _internal_commit_value_user(config_base_ptr ref, refl::shared_object_ptr);
+    bool _internal_commit_value_user(config_base* ref, refl::shared_object_ptr);
     void const* _internal_unique_address() { return this; }
 
     //! Called once after creation.
@@ -347,7 +347,7 @@ class config
     void commit(ValueType val) const
     {
         assert(_rg);
-        _rg->_internal_commit_value_user(_base, make_shared<ValueType>(move(val)));
+        _rg->_internal_commit_value_user(_base.get(), make_shared<ValueType>(move(val)));
     }
 
     ValueType value() const noexcept
