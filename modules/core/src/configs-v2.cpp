@@ -29,9 +29,6 @@
 #include <set>
 
 #include <fmt/core.h>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
 
 #include "cpph/refl/archive/json.hpp"
@@ -170,7 +167,7 @@ bool config_registry::backend_t::_commit(config_base_ptr ref, refl::shared_objec
 
 bool config_registry::backend_t::bk_commit(config_base_ptr ref, archive::if_reader* content)
 {
-    auto object = ref->_info.attribute->fn_construct();
+    auto object = ref->_body.attribute->fn_construct();
 
     try {
         *content >> object.view();
@@ -253,7 +250,7 @@ void config_registry::backend_t::_do_update()
 
                 // Perform actual update
                 assert(node->_staged && "Staged data must be prepared!");
-                conf->attribute()->fn_swap_value(conf->_info.raw_data, node->_staged);
+                conf->attribute()->fn_swap_value(conf->_body.raw_data, node->_staged);
                 node->_staged.reset();  // Clear staged data
 
                 // Increase modification fence
@@ -292,10 +289,9 @@ void config_registry::backend_t::all_items(vector<config_base_ptr>* out) const n
         CPPH_TMPVAR{std::shared_lock{_mtx_access}};
         out->reserve(out->size() + _configs.size());
 
-        copy(_configs
-                     | vw::transform([](auto&& p) { return p.second.reference.lock(); })
-                     | vw::filter([](auto&& p) { return bool(p); }),
-             back_inserter(*out));
+        for (auto& [_, ctx] : _configs)
+            if (auto cfg = ctx.reference.lock())
+                out->emplace_back(move(cfg));
     }
 }
 
@@ -303,13 +299,12 @@ void config_registry::backend_t::enumerate_registries(vector<config_registry_ptr
 {
     // Retrieve all alive elements
     {
-        auto [lock, repo] = _global_repo();
-        out->reserve(out->size() + repo->size());
+        auto [lock, repos] = _global_repo();
+        out->reserve(out->size() + repos->size());
 
-        copy(*repo
-                     | vw::transform([](auto&& p) { return p.second.lock(); })
-                     | vw::filter([](auto&& p) { return bool(p) && p->is_registered(); }),
-             back_inserter(*out));
+        for (auto& [_, wrepo] : *repos)
+            if (auto repo = wrepo.lock(); repo && repo->is_registered())
+                out->emplace_back(move(repo));
     }
 }
 
@@ -353,7 +348,7 @@ bool config_registry::is_transient() const
  * GLOBAL CONFIGURATIONS
  *
  */
-#include <nlohmann/json.hpp>
+#include <cpph/refl/types/nlohmann_json.hxx>
 
 namespace perfkit::v2 {
 static auto _g_config() noexcept
@@ -386,43 +381,77 @@ void config_registry::backend_t::_register_to_global_repo()
     g_evt_registered.invoke(_owner->shared_from_this());
 }
 
+bool config_registry::import_from(config_registry_storage_t const& from, string* buf)
+{
+    auto& s = *_self;
+
+    string buf_body;
+    if (buf == nullptr) { buf = &buf_body; }
+
+    // TODO: Read, parse, commit.
+    for (auto& [key, json] : from) {
+
+    }
+
+    return false;
+}
+
+void config_registry::export_to(config_registry_storage_t* to, string* buf) const
+{
+    auto& s = *_self;
+
+    string buf_body;
+    if (buf == nullptr) { buf = &buf_body; }
+
+    // Export must be performed inside 'access protected' scope.
+    CPPH_TMPVAR{lock_guard{s._mtx_access}};
+
+    // Filled with msgpack raw binary
+    archive::msgpack::writer writer{nullptr};
+    archive::msgpack::reader reader{nullptr};
+
+    for (auto& [key, ctx] : s._configs) {
+        auto cfg = ctx.reference.lock();
+        if (not cfg || not cfg->attribute()->can_export) { continue; }
+
+        buf->clear();
+        streambuf::stringbuf sbuf{buf};
+        writer.clear(), writer.rdbuf(&sbuf);
+
+        // cfg -> msgpack -> nlohmann::json
+        // If it has staged value, prefer it here.
+        if (ctx._staged) {
+            writer << ctx._staged.view();
+        } else {
+            writer << cfg->_body.raw_data.view();
+        }
+
+        writer.flush();
+        reader.clear(), reader.rdbuf(&sbuf);
+
+        reader >> (*to)[ctx.full_key];
+    }
+}
+
 void configs_dump_all(global_config_storage_t* json_dst)
 {
     // TODO: Iterate registries, merge to existing global, copy to json_dst.
 }
 
-bool config_registry::import_from(config_registry_storage_t const& from)
+void configs_export_to(string_view path)
 {
     // TODO: Overwrites existing global.
+}
 
-    // TODO: Read, parse, commit.
-
+bool configs_import_content(const global_config_storage_t& json_content)
+{
     return false;
 }
 
-void config_registry::export_to(config_registry_storage_t* to) const
+bool configs_import_file(string_view path)
 {
-    auto& s = *_self;
-
-    // Export must be performed inside 'access protected' scope.
-    CPPH_TMPVAR{lock_guard{s._mtx_access}};
-
-    // Retrieve non-transient, non-expired config entities
-    auto entities = s._configs
-                  | vw::transform([](auto&& x) { return &x.second; })
-                  | vw::transform([](auto&& x) { return pair{&x->full_key, x->reference.lock()}; })
-                  | vw::filter([](auto&& x) { return bool(x.second) && x.second->attribute()->can_export; });
-
-    // Filled with msgpack raw binary
-    string buf_bridge;
-
-    for (auto [p_key, cfg] : entities) {
-        // TODO: cfg -> msgpack -> nlohmann::json
-
-        // TODO: If it has staged value, prefer it here.
-    }
+    return false;
 }
-
 }  // namespace perfkit::v2
 
 /*

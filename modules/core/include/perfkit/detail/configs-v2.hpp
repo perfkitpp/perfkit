@@ -177,16 +177,16 @@ class config_base : public std::enable_shared_from_this<config_base>
     static inline std::atomic_uint64_t _idgen = 0;
     const config_id_t _id = {++_idgen};
 
-    init_info_t _info;
+    init_info_t _body;
 
     // Managed by repository
     string _cached_full_key;
     std::atomic_size_t _fence_modified = 0;  // Actual modification count
 
    public:
-    explicit config_base(init_info_t&& info) noexcept : _info(move(info)) {}
+    explicit config_base(init_info_t&& info) noexcept : _body(move(info)) {}
 
-    auto const& attribute() const noexcept { return _info.attribute; }
+    auto const& attribute() const noexcept { return _body.attribute; }
     auto const& default_value() const { return attribute()->default_value; }
 
     //! Returns config id. Id is unique for process scope.
@@ -247,8 +247,8 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     bool update();
 
     //! Export/Import
-    void export_to(config_registry_storage_t* to) const;
-    bool import_from(config_registry_storage_t const& from);
+    void export_to(config_registry_storage_t* to, string* _ = nullptr) const;
+    bool import_from(config_registry_storage_t const& from, string* _ = nullptr);
 
     //! Check if there was any update, without actual update() call.
     //! Return value is valid for each registry() instances.
