@@ -321,7 +321,7 @@ bool config_registry::unregister()
         return false;
     }
 
-    CPPH_DEBUG("Unregistering '{}' from global registry ...");
+    CPPH_DEBUG("Unregistering '{}' from global registry ...", name());
     {
         auto [lock, repo] = _global_repo();
         auto erase_result = repo->erase(id());
@@ -361,7 +361,7 @@ namespace perfkit::v2 {
 static auto _g_config() noexcept
 {
     static std::mutex _lock;
-    global_config_storage_t _storage;
+    static global_config_storage_t _storage;
 
     return pair{std::unique_lock{_lock}, &_storage};
 }
@@ -471,7 +471,7 @@ void config_registry::export_to(config_registry_storage_t* to, string* buf) cons
     }
 }
 
-void configs_dump_all(global_config_storage_t* json_dst)
+void configs_export(global_config_storage_t* json_dst)
 {
     //  Iterate registries, merge to existing global, copy to json_dst.
     vector<config_registry_ptr> repos;
@@ -492,7 +492,7 @@ void configs_dump_all(global_config_storage_t* json_dst)
     }
 }
 
-void configs_import_content(global_config_storage_t json_content)
+void configs_import(global_config_storage_t json_content)
 {
     // Swap content with existing globals
     {
@@ -520,10 +520,10 @@ void configs_import_content(global_config_storage_t json_content)
 #include <fstream>
 
 namespace perfkit::v2 {
-bool configs_export_to(string_view path)
+bool configs_export(string_view path)
 {
     global_config_storage_t all;
-    configs_dump_all(&all);
+    configs_export(&all);
 
     std::ofstream fs{string{path}};
     if (not fs.is_open()) { return false; }
@@ -533,7 +533,7 @@ bool configs_export_to(string_view path)
     return true;
 }
 
-bool configs_import_file(string_view path)
+bool configs_import(string_view path)
 {
     global_config_storage_t all;
 
@@ -542,6 +542,7 @@ bool configs_import_file(string_view path)
 
     try {
         archive::json::reader{fs.rdbuf()} >> all;
+        configs_import(move(all));
     } catch (std::exception& e) {
         CPPH_ERROR("Parse error from config {}");
         return false;

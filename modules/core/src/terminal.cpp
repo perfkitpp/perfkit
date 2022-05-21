@@ -40,6 +40,7 @@
 #include "cpph/format.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/commands.hpp"
+#include "perfkit/detail/configs-v2.hpp"
 #include "perfkit/detail/tracer.hpp"
 
 using namespace std::literals;
@@ -57,16 +58,14 @@ class _config_saveload_manager
     {
         auto path = args.empty() ? _latest : args.front();
         _latest = path;
-        // return perfkit::configs::import_file(path); TODO: IMPORT FILE!
-        return false;
+        return v2::configs_import(path);
     }
 
     bool save_to(args_view args = {})
     {
         auto path = args.empty() ? _latest : args.front();
         _latest = path;
-        // return perfkit::configs::export_to(path); TODO: EXPORT FILE!
-        return false;
+        return v2::configs_export(path);
     }
 
     static void retrieve_filenames(args_view args, string_set& cands)
