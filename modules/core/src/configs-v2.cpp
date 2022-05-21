@@ -354,7 +354,8 @@ bool config_registry::is_transient() const
  * GLOBAL CONFIGURATIONS
  *
  */
-#include <cpph/refl/types/nlohmann_json.hxx>
+#include "cpph/refl/types/nlohmann_json.hxx"
+#include "cpph/refl/types/tuple.hxx"
 
 namespace perfkit::v2 {
 static auto _g_config() noexcept
@@ -370,9 +371,15 @@ void config_registry::backend_t::_register_to_global_repo()
     CPPH_DEBUG("Registering '{}' to global repository ...", _name);
 
     if (not acquire(_is_transient)) {
-        // TODO: Load values from the global config rawdata storage
+        auto [_, p_conf] = _g_config();
 
-        // TODO: If registry or any element is missing from global storage, merge on it.
+        if (auto pair = find_ptr(*p_conf, _name)) {
+            // Load values from the global config rawdata storage
+            _owner->import_from(pair->second);
+        } else {
+            // If registry or any element is missing from global storage, merge on it.
+            _owner->export_to(&(*p_conf)[_name]);
+        }
     }
 
     // Register to global repository
@@ -460,8 +467,6 @@ void config_registry::export_to(config_registry_storage_t* to, string* buf) cons
         }
 
         writer.flush();
-        reader.rdbuf(&sbuf);
-
         reader >> (*to)[ctx.full_key];
     }
 }
@@ -482,24 +487,67 @@ void configs_dump_all(global_config_storage_t* json_dst)
             repo->export_to(&(*p_all)[repo->name()], &buffer_);
         }
 
-        // todo: Update existing global configs with new entries
+        // Update existing global configs with new entries
+        *json_dst = *p_all;
     }
 }
 
-void configs_export_to(string_view path)
+void configs_import_content(global_config_storage_t json_content)
 {
-    // TODO: 1. DO dump_all(), 2. write to path.
-}
+    // Swap content with existing globals
+    {
+        auto [_, p_all] = _g_config();
+        *p_all = move(json_content);
 
-bool configs_import_content(global_config_storage_t json_content)
+        string buffer_;
+        vector<config_registry_ptr> repos;
+        config_registry::backend_t::enumerate_registries(&repos);
+
+        // Sort repositories by name.
+        sort(repos, [](auto&& a, auto&& b) { return a->name() < b->name(); });
+
+        // Import configs
+        for (auto& [key, content] : *p_all) {
+            auto iter = lower_bound(repos, key, [](auto&& a, auto&& b) { return a->name() < b; });
+            if (iter == repos.end() || (**iter).name() != key) { continue; }  // could not found.
+
+            (**iter).import_from(content, &buffer_);
+        }
+    }
+}
+}  // namespace perfkit::v2
+
+#include <fstream>
+
+namespace perfkit::v2 {
+bool configs_export_to(string_view path)
 {
-    // TODO: Swap content with existing globals, and import all ...
-    return false;
+    global_config_storage_t all;
+    configs_dump_all(&all);
+
+    std::ofstream fs{string{path}};
+    if (not fs.is_open()) { return false; }
+
+    archive::json::writer{fs.rdbuf()} << all;
+    CPPH_INFO("Config imported from '{}'", path);
+    return true;
 }
 
 bool configs_import_file(string_view path)
 {
-    return false;
+    global_config_storage_t all;
+
+    std::ifstream fs{string{path}};
+    if (not fs.is_open()) { return false; }
+
+    try {
+        archive::json::reader{fs.rdbuf()} >> all;
+    } catch (std::exception& e) {
+        CPPH_ERROR("Parse error from config {}");
+        return false;
+    }
+
+    return true;
 }
 }  // namespace perfkit::v2
 

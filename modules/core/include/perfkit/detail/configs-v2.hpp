@@ -70,8 +70,8 @@ enum class edit_mode : uint8_t {
 using config_registry_storage_t = std::map<std::string, nlohmann::json, std::less<>>;
 using global_config_storage_t = std::map<std::string, config_registry_storage_t, std::less<>>;
 void configs_dump_all(global_config_storage_t* json_dst);
-void configs_export_to(string_view path);
-bool configs_import_content(global_config_storage_t json_content);
+bool configs_export_to(string_view path);
+void configs_import_content(global_config_storage_t json_content);
 bool configs_import_file(string_view path);
 
 /**
