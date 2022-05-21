@@ -59,7 +59,12 @@ void parse_full_key(
 
 void verify_flag_string(string_view str)
 {
-    // TODO: if any character other than -_[a-z][A-Z][0-9], and --no- prefixed, and 'h' is not allowed
+    assert(not str.empty() && "Empty string not allowed!");
+    assert(isalnum(str[0]) && "First character must be alphanumeric!");
+    assert(str != "h" && str != "help" && "'HELP' flag is reserved!");
+    assert(str.find("no-") != 0 && "'no-' prefixed flag is reserved!");
+    assert(str.find("--") == string::npos && "Consecutive '--' is not allowed!");
+    assert(all_of(str, [](auto c) { return isalnum(c) || c == '-' || c == '_'; }));
 }
 }  // namespace _configs
 
@@ -297,30 +302,26 @@ static auto _global_repo() noexcept
     return make_pair(std::unique_lock{_lock}, &_repo);
 }
 
-void config_registry::backend_t::all_items(vector<config_base_ptr>* out) const noexcept
+void config_registry::backend_t::bk_all_items(vector<config_base_ptr>* out) const noexcept
 {
     // Retrieve all alive elements
-    {
-        CPPH_TMPVAR{std::shared_lock{_mtx_access}};
-        out->reserve(out->size() + _configs.size());
+    CPPH_TMPVAR{std::shared_lock{_mtx_access}};
+    out->reserve(out->size() + _configs.size());
 
-        for (auto& [_, ctx] : _configs)
-            if (auto cfg = ctx.reference.lock())
-                out->emplace_back(move(cfg));
-    }
+    for (auto& [_, ctx] : _configs)
+        if (auto cfg = ctx.reference.lock())
+            out->emplace_back(move(cfg));
 }
 
-void config_registry::backend_t::enumerate_registries(vector<config_registry_ptr>* out) noexcept
+void config_registry::backend_t::enumerate_registries(vector<config_registry_ptr>* out, bool include_unregistered) noexcept
 {
     // Retrieve all alive elements
-    {
-        auto [lock, repos] = _global_repo();
-        out->reserve(out->size() + repos->size());
+    auto [lock, repos] = _global_repo();
+    out->reserve(out->size() + repos->size());
 
-        for (auto& [_, wrepo] : *repos)
-            if (auto repo = wrepo.lock(); repo && repo->is_registered())
-                out->emplace_back(move(repo));
-    }
+    for (auto& [_, wrepo] : *repos)
+        if (auto repo = wrepo.lock(); repo && (include_unregistered || repo->is_registered()))
+            out->emplace_back(move(repo));
 }
 
 bool config_registry::unregister()

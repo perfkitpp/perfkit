@@ -113,11 +113,11 @@ class config_registry::backend_t
     explicit backend_t(config_registry* self, string name) : _owner(self), _name(move(name)) {}
 
    public:
-    void all_items(vector<config_base_ptr>*) const noexcept;
+    void bk_all_items(vector<config_base_ptr>*) const noexcept;
     bool bk_commit(config_base*, archive::if_reader* content);
 
    public:
-    static void enumerate_registries(std::vector<config_registry_ptr>* o_regs) noexcept;
+    static void enumerate_registries(std::vector<config_registry_ptr>* o_regs, bool include_unregistered = false) noexcept;
     static auto find_registry(string_view name) noexcept -> shared_ptr<config_registry> { return {}; }
 };
 

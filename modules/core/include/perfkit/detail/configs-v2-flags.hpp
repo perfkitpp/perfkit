@@ -29,11 +29,23 @@
 #include "configs-v2.hpp"
 
 namespace perfkit::v2 {
+struct config_parse_arg_option {
+    bool consume_flags = true;
+    bool collect_unregistered_registerise = true;
+    bool update_collected_registries = true;
+    bool allow_flag_duplication = true;
+    bool allow_unknown_flag = true;
+    bool is_first_arg_exec_name = true;
+};
+
 // TODO:
 //   parse_args default takes list of active config options or config registries
 //   if nothing is specified, parse_args will collect all globally registered
 //    config registry instances, and will create flag binding table, then perform
 //    args parsing.
 //
-void configs_parse_args(int& ref_argc, char**& ref_argv, bool consume = true, array_view<config_registry_ptr> regs = {});
+void configs_parse_args(
+        int& ref_argc, char const**& ref_argv,
+        config_parse_arg_option option = {},
+        array_view<config_registry_ptr> regs = {});
 }  // namespace perfkit::v2
