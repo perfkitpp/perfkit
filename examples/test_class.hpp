@@ -77,7 +77,7 @@ PERFKIT_T_CATEGORY(
 
         PERFKIT_T_CONFIGURE(t_boolean, false).confirm();
 
-        PERFKIT_T_CONFIGURE(t_json, nlohmann::json{}).confirm();
+        //        PERFKIT_T_CONFIGURE(t_json, nlohmann::json{}).confirm();
 
         PERFKIT_T_CONFIGURE(t_intarray, std::array<int, 3>{})
                 .min({4, 3, 1})

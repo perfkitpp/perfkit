@@ -158,6 +158,7 @@ bool config_registry::backend_t::_commit(config_base* ref, refl::shared_object_p
 
         swap(ctx->second._staged, candidate);
         set_push(_refreshed_items, ref->id());
+        release(_has_update, true);
 
         return true;
     } else {
@@ -180,11 +181,9 @@ bool config_registry::backend_t::bk_commit(config_base* ref, archive::if_reader*
 
 void config_registry::backend_t::_do_update()
 {
-    // If it's first call after creation, register this to global repository.
-    std::call_once(_register_once_flag, &backend_t::_register_to_global_repo, this);
-
     // Event entities ...
     bool has_structure_change = false;
+    bool has_update = false;
     list<config_base_ptr> updates;
 
     auto pool = &_free_evt_nodes;
@@ -195,47 +194,57 @@ void config_registry::backend_t::_do_update()
                 to->splice(to->end(), *pool, iter);
             };
 
-    // Perform update inside protected scope
-    {
+    if (not _events.empty()) {
         CPPH_TMPVAR{lock_guard{_mtx_access}};
 
+        // Flush pending events
         _events.flush();
+    }
 
-        // Check for insertion / deletions
-        if (exchange(_flag_add_remove_notified, false)) {
-            // Check for deletions
-            for (auto& wp : _config_removed) {
-                if (auto conf = wp.lock()) {
-                    _configs.erase(conf->_id);  // Erase from 'all' list
-                    has_structure_change = true;
-                }
+    // Perform register/unregister
+    if (exchange(_flag_add_remove_notified, false)) {
+        CPPH_TMPVAR{lock_guard{_mtx_access}};
+
+        // Check for deletions
+        for (auto& wp : _config_removed) {
+            if (auto conf = wp.lock()) {
+                _configs.erase(conf->_id);  // Erase from 'all' list
+                has_structure_change = true;
             }
-
-            // Check for additions
-            for (auto& [wp, tup] : _config_added) {
-                if (auto conf = wp.lock()) {
-                    auto& [sort_order, prefix] = tup;
-                    if (not conf) { continue; }
-
-                    auto [iter, is_new] = _configs.try_emplace(conf->id());
-                    assert(is_new || ptr_equals(iter->second.reference, conf) && "Reference must not change!");
-                    has_structure_change |= is_new;
-
-                    iter->second.reference = conf;
-                    iter->second.sort_order = sort_order;
-                    iter->second.full_key = move(prefix.append(conf->name()));
-                }
-            }
-
-            // Rebuild config id mappings
-            _key_id_table.clear();
-            for (auto& [key, ctx] : _configs) {
-                _key_id_table.try_emplace(ctx.full_key, key);
-            }
-
-            _config_added.clear();
-            _config_removed.clear();
         }
+
+        // Check for additions
+        for (auto& [wp, tup] : _config_added) {
+            if (auto conf = wp.lock()) {
+                auto& [sort_order, prefix] = tup;
+                if (not conf) { continue; }
+
+                auto [iter, is_new] = _configs.try_emplace(conf->id());
+                assert(is_new || ptr_equals(iter->second.reference, conf) && "Reference must not change!");
+                has_structure_change |= is_new;
+
+                iter->second.reference = conf;
+                iter->second.sort_order = sort_order;
+                iter->second.full_key = move(prefix.append(conf->name()));
+            }
+        }
+
+        // Rebuild config id mappings
+        _key_id_table.clear();
+        for (auto& [key, ctx] : _configs) {
+            _key_id_table.try_emplace(ctx.full_key, key);
+        }
+
+        _config_added.clear();
+        _config_removed.clear();
+    }
+
+    // If it's first call after creation, register this to global repository.
+    std::call_once(_register_once_flag, &backend_t::_register_to_global_repo, this);
+
+    // Perform update inside protected scope
+    if (_has_update.exchange(false)) {
+        CPPH_TMPVAR{lock_guard{_mtx_access}};
 
         // Check for updates
         if (not _refreshed_items.empty()) {
@@ -268,11 +277,11 @@ void config_registry::backend_t::_do_update()
 
             _refreshed_items.clear();
         }
+    }
 
-        // If there is any update, increase fence once.
-        if (has_structure_change || not updates.empty()) {
-            _fence.fetch_add(1, std::memory_order_relaxed);
-        }
+    // If there is any update, increase fence once.
+    if (has_structure_change || not updates.empty()) {
+        _fence.fetch_add(1, std::memory_order_relaxed);
     }
 
     // Publish updates to subscribers
@@ -528,8 +537,13 @@ bool configs_export(string_view path)
     std::ofstream fs{string{path}};
     if (not fs.is_open()) { return false; }
 
-    archive::json::writer{fs.rdbuf()} << all;
-    CPPH_INFO("Config imported from '{}'", path);
+    {
+        archive::json::writer writer{fs.rdbuf()};
+        writer.indent = 2;
+        writer << all;
+    }
+
+    CPPH_INFO("Config exported to '{}'", path);
     return true;
 }
 
@@ -542,12 +556,13 @@ bool configs_import(string_view path)
 
     try {
         archive::json::reader{fs.rdbuf()} >> all;
-        configs_import(move(all));
     } catch (std::exception& e) {
-        CPPH_ERROR("Parse error from config {}");
+        CPPH_ERROR("Parse error from config {}", path);
         return false;
     }
 
+    configs_import(move(all));
+    CPPH_INFO("Config successfully imported from '{}'", path);
     return true;
 }
 }  // namespace perfkit::v2

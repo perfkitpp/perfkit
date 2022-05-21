@@ -69,6 +69,7 @@ class config_registry::backend_t
     std::once_flag _register_once_flag;
     atomic_bool _is_registered = false;
     atomic_bool _is_transient = false;
+    atomic_bool _has_update = false;
 
     // Event queue for event joining
     event_queue _events{1024};
@@ -88,7 +89,7 @@ class config_registry::backend_t
     vector<config_id_t> _refreshed_items;
 
     // Item insertion/deletions management
-    bool _flag_add_remove_notified = false;
+    bool _flag_add_remove_notified = true;
     sorted_vector<config_base_wptr, tuple<size_t, string>, std::owner_less<>> _config_added;
     vector<config_base_wptr> _config_removed;
 
