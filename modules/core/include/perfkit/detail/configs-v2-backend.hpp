@@ -107,6 +107,7 @@ class config_registry::backend_t
     void _register_to_global_repo();
 
     void _do_update();
+    bool _handle_structure_update();
     bool _commit(config_base*, refl::shared_object_ptr);
 
    public:

@@ -48,21 +48,11 @@ class config_context
    private:
     CPPH_UNIQUE_KEY_TYPE(config_key_t);
 
-    struct config_registry_context_t {
-        std::unordered_set<config_key_t> associated_keys;
-    };
-
-    using registry_context_table_t = std::map<string, config_registry_context_t, std::less<>>;
-    using config_key_table = std::unordered_map<config_key_t, weak_ptr<v2::config_base>>;
-
    private:
     if_net_terminal_adapter* _host;
 
     asio::io_context* _event_proc{_host->event_proc()};
     rpc::session_group* _rpc{_host->rpc()};
-
-    registry_context_table_t _config_registries;
-    config_key_table _config_instances;
 
     weak_ptr<void> _monitor_anchor;
 
@@ -75,7 +65,7 @@ class config_context
     explicit config_context(if_net_terminal_adapter* host) : _host(host) {}
 
    public:
-    void start_monitoring(weak_ptr<void> anchor) {}
+    void start_monitoring(weak_ptr<void> anchor);
     void stop_monitoring() {}
 
    public:

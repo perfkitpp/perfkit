@@ -66,7 +66,8 @@ CPPH_REFL_DEFINE_OBJECT_c(
         notify::config_category_t, (),
         (name, 1),
         (subcategories, 2),
-        (entities, 3));
+        (entities, 3),
+        (hierarchy_hash, 4));
 
 CPPH_REFL_DEFINE_OBJECT_c(
         config_entity_update_t, (),

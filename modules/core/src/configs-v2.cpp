@@ -208,40 +208,7 @@ void config_registry::backend_t::_do_update()
 
     // Perform register/unregister
     if (exchange(_flag_add_remove_notified, false)) {
-        CPPH_TMPVAR{lock_guard{_mtx_access}};
-
-        // Check for deletions
-        for (auto& wp : _config_removed) {
-            if (auto conf = wp.lock()) {
-                _configs.erase(conf->_id);  // Erase from 'all' list
-                has_structure_change = true;
-            }
-        }
-
-        // Check for additions
-        for (auto& [wp, tup] : _config_added) {
-            if (auto conf = wp.lock()) {
-                auto& [sort_order, prefix] = tup;
-                if (not conf) { continue; }
-
-                auto [iter, is_new] = _configs.try_emplace(conf->id());
-                assert(is_new || ptr_equals(iter->second.reference, conf) && "Reference must not change!");
-                has_structure_change |= is_new;
-
-                iter->second.reference = conf;
-                iter->second.sort_order = sort_order;
-                iter->second.full_key = move(prefix.append(conf->name()));
-            }
-        }
-
-        // Rebuild config id mappings
-        _key_id_table.clear();
-        for (auto& [key, ctx] : _configs) {
-            _key_id_table.try_emplace(ctx.full_key, key);
-        }
-
-        _config_added.clear();
-        _config_removed.clear();
+        has_structure_change = _handle_structure_update();
     }
 
     // If it's first call after creation, register this to global repository.
@@ -383,10 +350,7 @@ void config_registry::backend_t::_register_to_global_repo()
     if (not acquire(_is_transient)) {
         auto [_, p_conf] = _g_config();
 
-        if (auto pair = find_ptr(*p_conf, _name)) {
-            // Load values from the global config rawdata storage
-            _owner->import_from(pair->second);
-        } else {
+        if (not find_ptr(*p_conf, _name)) {
             // If registry or any element is missing from global storage, merge on it.
             _owner->export_to(&(*p_conf)[_name]);
         }
@@ -402,6 +366,59 @@ void config_registry::backend_t::_register_to_global_repo()
     }
 
     g_evt_registered.invoke(_owner->shared_from_this());
+}
+
+bool config_registry::backend_t::_handle_structure_update()
+{
+    CPPH_TMPVAR{lock_guard{_mtx_access}};
+    bool has_structure_change = false;
+
+    // Check for deletions
+    for (auto& wp : _config_removed) {
+        if (auto conf = wp.lock()) {
+            _configs.erase(conf->_id);  // Erase from 'all' list
+            has_structure_change = true;
+        }
+    }
+
+    // Performs initial loading on adding new storage ...
+    optional<config_registry_storage_t> storage;
+
+    // Check for additions
+    for (auto& [wp, tup] : _config_added) {
+        if (auto conf = wp.lock()) {
+            auto& [sort_order, prefix] = tup;
+            if (not conf) { continue; }
+
+            auto [iter, is_new] = _configs.try_emplace(conf->id());
+            assert(is_new || ptr_equals(iter->second.reference, conf) && "Reference must not change!");
+            has_structure_change |= is_new;
+
+            auto& [key, ctx] = *iter;
+
+            ctx.reference = conf;
+            ctx.sort_order = sort_order;
+            ctx.full_key = move(prefix.append(conf->name()));
+
+            if (not storage) {
+                if (auto p_storage = find_ptr(*_g_config().second, _name))
+                    storage = p_storage->second;
+                else
+                    storage.emplace();
+            }
+
+        }
+    }
+
+    // Rebuild config id mappings
+    _key_id_table.clear();
+    for (auto& [key, ctx] : _configs) {
+        _key_id_table.try_emplace(ctx.full_key, key);
+    }
+
+    _config_added.clear();
+    _config_removed.clear();
+    return has_structure_change;
 }
 
 bool config_registry::import_from(config_registry_storage_t const& from, string* buf)

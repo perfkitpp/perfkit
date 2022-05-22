@@ -36,6 +36,7 @@
 #include "asio/post.hpp"
 #include "cpph/refl/object.hxx"
 #include "cpph/refl/rpc/rpc.hxx"
+#include "perfkit/detail/configs-v2-backend.hpp"
 #include "perfkit/logging.h"
 
 using namespace perfkit::net;
@@ -44,6 +45,13 @@ using std::move;
 
 namespace perfkit::net::detail {
 spdlog::logger* nglog();
+}
+
+void config_context::start_monitoring(weak_ptr<void> anchor)
+{
+    _monitor_anchor = move(anchor);
+
+    //
 }
 
 static auto CPPH_LOGGER()
