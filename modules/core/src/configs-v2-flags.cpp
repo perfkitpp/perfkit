@@ -70,9 +70,9 @@ class flag_reader : public archive::if_reader
     void end_array(archive::context_key key) override { _throw_no_support(); }
     void read_key_next() override { _throw_no_support(); }
     void end_object(archive::context_key key) override { _throw_no_support(); }
+    void end_binary() override { _throw_no_support(); }
     size_t begin_binary() override { _throw_no_support(); }
     size_t binary_read_some(mutable_buffer_view v) override { _throw_no_support(); }
-    void end_binary() override { _throw_no_support(); }
 
     archive::context_key begin_array() override
     {
@@ -100,6 +100,12 @@ class flag_reader : public archive::if_reader
 #define FLAG_ESCAPE   "$c`|*;2^n0"
 #define FLAG_ESCAPE_N (sizeof(FLAG_ESCAPE) - 1)
 
+using collected_flag_binding_t = map<string_view, pair<config_registry*, config_base_ptr>>;
+
+[[noreturn]] static void throw_help_string(collected_flag_binding_t const& bindings)
+{
+}
+
 void configs_parse_args(int& ref_argc, char const**& ref_argv, config_parse_arg_option option, array_view<config_registry_ptr> regs)
 {
     // If 'regs' empty, collect all registries
@@ -115,7 +121,7 @@ void configs_parse_args(int& ref_argc, char const**& ref_argv, config_parse_arg_
     }
 
     // Collect all flag bindings from 'regs'
-    map<string_view, pair<config_registry*, config_base_ptr>> flag_bindings;
+    collected_flag_binding_t flag_bindings;
     map<config_base*, pair<config_registry*, std::stringbuf>> flag_payloads;
 
     vector<config_base_ptr> all_items;
@@ -157,8 +163,18 @@ void configs_parse_args(int& ref_argc, char const**& ref_argv, config_parse_arg_
             string_view value;
 
             auto dividx = find_if_not(key, fn_is_w) - key.begin();
+            bool is_no_prefixed = false;
             value = key.substr(dividx);
             key = key.substr(0, dividx);
+
+            if (key == "help") {
+                // - If flag equals 'help', construct help string from regs and throw.
+                throw_help_string(flag_bindings);
+            } else if (key.find("no-") == 0) {
+                // - If flag starts with 'no-', parse rest as boolean key, and store '>>~~$false$~<<'
+                is_no_prefixed = true;
+                key = key.substr(3);  // Remove initial 'no-' prefix
+            }
 
             auto binding = find_ptr(flag_bindings, key);
             if (not binding) {
@@ -171,18 +187,20 @@ void configs_parse_args(int& ref_argc, char const**& ref_argv, config_parse_arg_
             // Retrieve type metadata
             auto& [reg, cfg] = binding->second;
             auto metadata = cfg->attribute()->default_value.view().meta;
-
-            if (key.find("no-") == 0) {
-                // - If flag starts with 'no-', parse rest as boolean key, and store '>>~~$false$~<<'
-                // TODO
-            } else if (key == "help") {
-                // - If flag equals 'help', construct help string from regs and throw.
-                // TODO
-            } else if (metadata->type() == archive::entity_type::boolean) {
+            if (metadata->type() == archive::entity_type::boolean) {
                 // - If flag binding is boolean, store '>>~~$true$~~<<'
                 auto& [rg, payload] = flag_payloads[cfg.get()];
-                rg = reg, payload.sputn(FLAG_ESCAPE "true", FLAG_ESCAPE_N + 4);
+
+                if (is_no_prefixed) {
+                    rg = reg, payload.sputn(FLAG_ESCAPE "false", FLAG_ESCAPE_N + 5);
+                } else {
+                    rg = reg, payload.sputn(FLAG_ESCAPE "true", FLAG_ESCAPE_N + 4);
+                }
             } else {
+                if (is_no_prefixed) {
+                    throw std::runtime_error{string{key} + ": 'no-' prefix is not allowed on non-boolean flag!"};
+                }
+
                 // - It's just value ...
                 //   If value is already found(was single argument), just use it.
                 //   Otherwise, step p_arg. In this case, next p_arg *must* not be flag!
