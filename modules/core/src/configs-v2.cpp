@@ -488,28 +488,27 @@ void configs_export(global_config_storage_t* json_dst)
     config_registry::backend_t::enumerate_registries(&repos);
 
     // Copy existing global configs to destination
+    string buffer_;
     {
-        auto [_, p_all] = _g_config();
-        string buffer_;
+        json_dst->clear();
 
         // Collect all alive registries' configs
         for (auto& repo : repos) {
-            repo->export_to(&(*p_all)[repo->name()], &buffer_);
+            repo->export_to(&(*json_dst)[repo->name()], &buffer_);
         }
+    }
 
-        // Update existing global configs with new entries
-        *json_dst = *p_all;
+    // Update existing global configs with new entries
+    {
+        auto [_, p_all] = _g_config();
+        *p_all = *json_dst;
     }
 }
 
 void configs_import(global_config_storage_t json_content)
 {
-    // Swap content with existing globals
+    // Import json content
     {
-        auto [_, p_all] = _g_config();
-        *p_all = move(json_content);
-
-        string buffer_;
         vector<config_registry_ptr> repos;
         config_registry::backend_t::enumerate_registries(&repos);
 
@@ -517,12 +516,19 @@ void configs_import(global_config_storage_t json_content)
         sort(repos, [](auto&& a, auto&& b) { return a->name() < b->name(); });
 
         // Import configs
-        for (auto& [key, content] : *p_all) {
+        string buffer_;
+        for (auto const& [key, content] : json_content) {
             auto iter = lower_bound(repos, key, [](auto&& a, auto&& b) { return a->name() < b; });
             if (iter == repos.end() || (**iter).name() != key) { continue; }  // could not found.
 
             (**iter).import_from(content, &buffer_);
         }
+    }
+
+    // Copy content with existing globals
+    {
+        auto [_, p_all] = _g_config();
+        *p_all = move(json_content);
     }
 }
 }  // namespace perfkit::v2
