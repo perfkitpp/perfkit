@@ -9,12 +9,10 @@ target_sources(
 
         PRIVATE
         src/commands.cpp
-        src/configs.cpp
         src/main.cpp
         src/perfkit.cpp
         src/tracer.cpp
         src/terminal.cpp
-        src/config-flags.cpp
         src/logging.cpp
         src/configs-v2.cpp
         src/configs-v2-flags.cpp

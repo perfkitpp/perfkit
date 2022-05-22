@@ -419,3 +419,19 @@ void parse_full_key(string const& full_key, string* o_display_key, vector<string
 void verify_flag_string(string_view str);
 }  // namespace _configs
 }  // namespace perfkit::v2
+
+namespace perfkit {
+using v2::config_base;
+using v2::config_base_ptr;
+using v2::config_base_wptr;
+using v2::config_registry;
+using v2::config_registry_ptr;
+using v2::config_registry_storage_t;
+using v2::global_config_storage_t;
+using v2::config_attribute;
+using v2::config_attribute_ptr;
+using v2::config_attribute_ptr;
+
+using v2::configs_import;
+using v2::configs_export;
+}

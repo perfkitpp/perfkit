@@ -53,7 +53,7 @@ class config_context
     };
 
     using registry_context_table_t = std::map<string, config_registry_context_t, std::less<>>;
-    using config_key_table = std::unordered_map<config_key_t, weak_ptr<detail::config_base>>;
+    using config_key_table = std::unordered_map<config_key_t, weak_ptr<v2::config_base>>;
 
    private:
     if_net_terminal_adapter* _host;
@@ -68,23 +68,18 @@ class config_context
 
     //
     asio::steady_timer _lazy_update_publish{*_event_proc};
-    std::vector<weak_ptr<detail::config_base>> _pending_updates;
+    std::vector<weak_ptr<v2::config_base>> _pending_updates;
     message::config_entity_update_t _buf_payload;
 
    public:
     explicit config_context(if_net_terminal_adapter* host) : _host(host) {}
 
    public:
-    void start_monitoring(weak_ptr<void> anchor);
-    void stop_monitoring();
+    void start_monitoring(weak_ptr<void> anchor) {}
+    void stop_monitoring() {}
 
    public:
-    void rpc_republish_all_registries();
-    void rpc_update_request(message::config_entity_update_t const& content);
-
-   private:
-    void _publish_new_registry(shared_ptr<config_registry>);
-    void _handle_registry_destruction(string const& name);
-    void _handle_update(config_registry*, vector<detail::config_base*> const&);
+    void rpc_republish_all_registries() {}
+    void rpc_update_request(message::config_entity_update_t const& content) {}
 };
 }  // namespace perfkit::net

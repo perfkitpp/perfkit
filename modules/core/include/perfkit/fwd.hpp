@@ -30,28 +30,25 @@
 #include "perfkit/detail/fwd.hpp"
 
 namespace perfkit {
-namespace detail {
+namespace v2 {
 class config_base;
-}
-
 class config_registry;
+
+template <typename Ty_>
+class config;
+}  // namespace v2
+
 class tracer;
 class tracer_proxy;
 
 using tracer_ptr = std::shared_ptr<tracer>;
 using logger_ptr = std::shared_ptr<spdlog::logger>;
 
-struct config_class;
-struct config_class_hook;
-
 namespace gui {
 class instance;
 }  // namespace gui
 
 class if_terminal;
-
-template <typename Ty_>
-class config;
 
 namespace commands {
 class registry;

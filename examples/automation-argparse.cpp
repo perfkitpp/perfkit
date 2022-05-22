@@ -73,7 +73,7 @@ TEST_SUITE("Argument Parser")
         auto argv = charpp.data();
 
         // TODO: Re-enable this!
-        perfkit::v2::configs_parse_args(argc, argv, true);
+        perfkit::v2::configs_parse_args(argc, (const char**&)argv);
         argparse0::registry().update();
 
         CHECK(argc == 3);
@@ -109,6 +109,6 @@ TEST_SUITE("Argument Parser")
         int argc = charpp.size();
         auto argv = charpp.data();
 
-        REQUIRE_THROWS(perfkit::v2::configs_parse_args(argc, argv, true));
+        REQUIRE_THROWS(perfkit::v2::configs_parse_args(argc, (const char**&)argv));
     }
 }
