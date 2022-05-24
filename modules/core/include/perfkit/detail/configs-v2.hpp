@@ -221,7 +221,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     mutable size_t _fence_cached = 0;
 
    public:
-    explicit config_registry(ctor_constraint_t, std::string name);
+    explicit config_registry(ctor_constraint_t, std::string name, bool is_global);
     ~config_registry() noexcept;
 
    public:
@@ -287,7 +287,12 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //! Create unregistered config registry.
     static auto _internal_create(std::string name) -> shared_ptr<config_registry>
     {
-        return make_shared<config_registry>(ctor_constraint_t{}, move(name));
+        return make_shared<config_registry>(ctor_constraint_t{}, move(name), false);
+    }
+
+    static auto _internal_create_global(std::string name) -> shared_ptr<config_registry>
+    {
+        return make_shared<config_registry>(ctor_constraint_t{}, move(name), true);
     }
 
     //! Backend data provider
@@ -421,6 +426,8 @@ void verify_flag_string(string_view str);
 }  // namespace perfkit::v2
 
 namespace perfkit {
+using v2::config_attribute;
+using v2::config_attribute_ptr;
 using v2::config_base;
 using v2::config_base_ptr;
 using v2::config_base_wptr;
@@ -428,10 +435,7 @@ using v2::config_registry;
 using v2::config_registry_ptr;
 using v2::config_registry_storage_t;
 using v2::global_config_storage_t;
-using v2::config_attribute;
-using v2::config_attribute_ptr;
-using v2::config_attribute_ptr;
 
-using v2::configs_import;
 using v2::configs_export;
-}
+using v2::configs_import;
+}  // namespace perfkit

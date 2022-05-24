@@ -70,6 +70,7 @@ class config_registry::backend_t
     atomic_bool _is_registered = false;
     atomic_bool _is_transient = false;
     atomic_bool _has_update = false;
+    bool _is_global = false;
 
     // Event queue for event joining
     event_queue _events{1024};
@@ -111,15 +112,14 @@ class config_registry::backend_t
     bool _commit(config_base*, refl::shared_object_ptr);
 
    public:
-    explicit backend_t(config_registry* self, string name) : _owner(self), _name(move(name)) {}
+    explicit backend_t(config_registry* self, string name, bool is_global)
+            : _owner(self), _name(move(name)), _is_global(is_global) {}
 
    public:
     void bk_all_items(vector<config_base_ptr>*) const noexcept;
     bool bk_commit(config_base*, archive::if_reader* content);
 
-   public:
-    static void enumerate_registries(std::vector<config_registry_ptr>* o_regs, bool include_unregistered = false) noexcept;
-    static auto find_registry(string_view name) noexcept -> shared_ptr<config_registry> { return {}; }
+    static void bk_enumerate_registries(std::vector<config_registry_ptr>* o_regs, bool include_unregistered = false) noexcept;
 };
 
 }  // namespace perfkit::v2

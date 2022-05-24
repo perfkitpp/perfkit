@@ -68,8 +68,8 @@ void verify_flag_string(string_view str)
 }
 }  // namespace _configs
 
-config_registry::config_registry(ctor_constraint_t, std::string name)
-        : _self(make_unique<backend_t>(this, move(name)))
+config_registry::config_registry(ctor_constraint_t, std::string name, bool is_global)
+        : _self(make_unique<backend_t>(this, move(name), is_global))
 {
 }
 
@@ -275,12 +275,19 @@ void config_registry::backend_t::bk_all_items(vector<config_base_ptr>* out) cons
     CPPH_TMPVAR{std::shared_lock{_mtx_access}};
     out->reserve(out->size() + _configs.size());
 
-    for (auto& [_, ctx] : _configs)
-        if (auto cfg = ctx.reference.lock())
+    // Retrieve them as sorted
+    auto all_ = (config_entity_context const*)alloca(_configs.size() * sizeof(void*));
+    array_view<config_entity_context const*> all{&all_, _configs.size()};
+    transform(_configs, all.begin(), [](auto& p) { return &p.second; });
+
+    sort(all, [](auto a, auto b) { return a->sort_order < b->sort_order; });
+
+    for (auto& ctx : all)
+        if (auto cfg = ctx->reference.lock())
             out->emplace_back(move(cfg));
 }
 
-void config_registry::backend_t::enumerate_registries(vector<config_registry_ptr>* out, bool include_unregistered) noexcept
+void config_registry::backend_t::bk_enumerate_registries(vector<config_registry_ptr>* out, bool include_unregistered) noexcept
 {
     // Retrieve all alive elements
     auto [lock, repos] = _global_repo();
@@ -293,6 +300,11 @@ void config_registry::backend_t::enumerate_registries(vector<config_registry_ptr
 
 bool config_registry::unregister()
 {
+    if (_self->_is_global) {
+        // Ignore unregister request for global repos
+        return false;
+    }
+
     if (not _self->_is_registered.exchange(false)) {
         // Instance already unregistered. Do nothing.
         return false;
@@ -370,54 +382,79 @@ void config_registry::backend_t::_register_to_global_repo()
 
 bool config_registry::backend_t::_handle_structure_update()
 {
-    CPPH_TMPVAR{lock_guard{_mtx_access}};
+    decltype(_config_added) config_added;
     bool has_structure_change = false;
+    {
+        CPPH_TMPVAR{lock_guard{_mtx_access}};
+        config_added = move(_config_added);
 
-    // Check for deletions
-    for (auto& wp : _config_removed) {
-        if (auto conf = wp.lock()) {
-            _configs.erase(conf->_id);  // Erase from 'all' list
-            has_structure_change = true;
+        // Check for deletions
+        for (auto& wp : _config_removed) {
+            if (auto conf = wp.lock()) {
+                _configs.erase(conf->_id);  // Erase from 'all' list
+                has_structure_change = true;
+            }
         }
+
+        // Check for additions
+        for (auto& [wp, tup] : config_added) {
+            if (auto conf = wp.lock()) {
+                auto& [sort_order, prefix] = tup;
+                if (not conf) { continue; }
+
+                auto [iter, is_new] = _configs.try_emplace(conf->id());
+                assert(is_new || ptr_equals(iter->second.reference, conf) && "Reference must not change!");
+                has_structure_change |= is_new;
+
+                auto& [key, ctx] = *iter;
+
+                ctx.reference = conf;
+                ctx.sort_order = sort_order;
+                ctx.full_key = prefix.append(conf->name());
+            }
+        }
+
+        // Rebuild config id mappings
+        _key_id_table.clear();
+        for (auto& [key, ctx] : _configs) {
+            _key_id_table.try_emplace(ctx.full_key, key);
+        }
+
+        _config_removed.clear();
     }
 
     // Performs initial loading on adding new storage ...
     optional<config_registry_storage_t> storage;
+    struct rw_context_t {
+        string str;
+        streambuf::stringbuf sbuf{&str};
+        archive::msgpack::writer wr{&sbuf};
+        archive::msgpack::reader rd{&sbuf};
+    };
+    optional<rw_context_t> rw;
 
-    // Check for additions
-    for (auto& [wp, tup] : _config_added) {
-        if (auto conf = wp.lock()) {
-            auto& [sort_order, prefix] = tup;
-            if (not conf) { continue; }
+    for (auto& [wp, tup] : config_added) {
+        auto conf = wp.lock();
+        if (not conf) { continue; }
 
-            auto [iter, is_new] = _configs.try_emplace(conf->id());
-            assert(is_new || ptr_equals(iter->second.reference, conf) && "Reference must not change!");
-            has_structure_change |= is_new;
+        if (not storage) {
+            if (auto p_storage = find_ptr(*_g_config().second, _name))
+                storage = p_storage->second;
+            else
+                break;  // There's no storage for this config registry ...
+        }
 
-            auto& [key, ctx] = *iter;
+        if (auto data = find_ptr(*storage, get<1>(tup))) {
+            if (not rw) { rw.emplace(); }
 
-            ctx.reference = conf;
-            ctx.sort_order = sort_order;
-            ctx.full_key = move(prefix.append(conf->name()));
+            rw->sbuf.clear();
+            rw->wr.clear(), rw->rd.clear();
+            (rw->wr << data->second).flush();
 
-            if (not storage) {
-                if (auto p_storage = find_ptr(*_g_config().second, _name))
-                    storage = p_storage->second;
-                else
-                    storage.emplace();
-            }
-
+            bk_commit(conf.get(), &rw->rd);
         }
     }
 
-    // Rebuild config id mappings
-    _key_id_table.clear();
-    for (auto& [key, ctx] : _configs) {
-        _key_id_table.try_emplace(ctx.full_key, key);
-    }
-
-    _config_added.clear();
-    _config_removed.clear();
     return has_structure_change;
 }
 
@@ -502,7 +539,7 @@ void configs_export(global_config_storage_t* json_dst)
 {
     //  Iterate registries, merge to existing global, copy to json_dst.
     vector<config_registry_ptr> repos;
-    config_registry::backend_t::enumerate_registries(&repos);
+    config_registry::backend_t::bk_enumerate_registries(&repos);
 
     // Copy existing global configs to destination
     string buffer_;
@@ -527,7 +564,7 @@ void configs_import(global_config_storage_t json_content)
     // Import json content
     {
         vector<config_registry_ptr> repos;
-        config_registry::backend_t::enumerate_registries(&repos);
+        config_registry::backend_t::bk_enumerate_registries(&repos);
 
         // Sort repositories by name.
         sort(repos, [](auto&& a, auto&& b) { return a->name() < b->name(); });

@@ -112,7 +112,7 @@ void configs_parse_args(int& ref_argc, char const**& ref_argv, config_parse_arg_
     vector<config_registry_ptr> opt_all_regs;
 
     if (regs.empty()) {
-        config_registry::backend_t::enumerate_registries(&opt_all_regs, option.collect_unregistered_registerise);
+        config_registry::backend_t::bk_enumerate_registries(&opt_all_regs, option.collect_unregistered_registerise);
         regs = opt_all_regs;
 
         // Performs initial update on registries, to make all pending flags to be registered.
