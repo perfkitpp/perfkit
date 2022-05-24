@@ -204,10 +204,13 @@ void config_registry::backend_t::_do_update()
 
         // Flush pending events
         _events.flush();
+
+        // Check if there's any structure change ...
+        has_structure_change = exchange(_flag_add_remove_notified, false);
     }
 
     // Perform register/unregister
-    if (exchange(_flag_add_remove_notified, false)) {
+    if (exchange(has_structure_change, false)) {
         has_structure_change = _handle_structure_update();
     }
 
