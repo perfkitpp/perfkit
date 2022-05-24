@@ -120,26 +120,27 @@
 /**
  * Globally accessible repository. Place this somwhere of your program exactly once!
  */
-#define PERFKIT_GCFG_CAT_ROOT_def(Namespace)                                                 \
-    namespace Namespace {                                                                    \
-    ::std::string _perfkit_INTERNAL_CATNAME()                                                \
-    {                                                                                        \
-        return "";                                                                           \
-    }                                                                                        \
-    ::std::string _perfkit_INTERNAL_CATNAME_2()                                              \
-    {                                                                                        \
-        return _perfkit_INTERNAL_CATNAME();                                                  \
-    }                                                                                        \
-    INTL_PERFKIT_NS_0::config_registry& _registry()                                          \
-    {                                                                                        \
-        static auto inst = INTL_PERFKIT_NS_0::config_registry::_internal_create(#Namespace); \
-        return *inst;                                                                        \
-    }                                                                                        \
-    INTL_PERFKIT_NS_0::config_registry& registry()                                           \
-    {                                                                                        \
-        return _registry();                                                                  \
-    }                                                                                        \
-    }                                                                                        \
+#define PERFKIT_GCFG_CAT_ROOT_def(Namespace)                          \
+    namespace Namespace {                                             \
+    ::std::string _perfkit_INTERNAL_CATNAME()                         \
+    {                                                                 \
+        return "";                                                    \
+    }                                                                 \
+    ::std::string _perfkit_INTERNAL_CATNAME_2()                       \
+    {                                                                 \
+        return _perfkit_INTERNAL_CATNAME();                           \
+    }                                                                 \
+    INTL_PERFKIT_NS_0::config_registry& _registry()                   \
+    {                                                                 \
+        static auto inst = INTL_PERFKIT_NS_0::                        \
+                config_registry::_internal_create_global(#Namespace); \
+        return *inst;                                                 \
+    }                                                                 \
+    INTL_PERFKIT_NS_0::config_registry& registry()                    \
+    {                                                                 \
+        return _registry();                                           \
+    }                                                                 \
+    }                                                                 \
     namespace Namespace
 
 /**
