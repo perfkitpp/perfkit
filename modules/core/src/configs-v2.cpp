@@ -88,16 +88,19 @@ void config_registry::_internal_value_read_unlock() { _self->_mtx_access.unlock_
 void config_registry::_internal_value_write_lock() { _self->_mtx_access.lock(); }
 void config_registry::_internal_value_write_unlock() { _self->_mtx_access.unlock(); }
 
-void config_registry::_internal_item_add(config_base_wptr arg, string prefix)
+void config_registry::_internal_item_add(config_base_ptr arg, string prefix)
 {
+    {
+        CPPH_TMPVAR = lock_guard{arg->_mtx_full_key};
+        arg->_cached_full_key = move(prefix) + arg->name();
+    }
+
     _self->_events.post(
             [this,
              arg = move(arg),
-             order = ++_self->_sort_id_gen,
-             prefix = move(prefix)]() mutable {
-                auto& [sort_order, dst_prefix] = _self->_config_added[arg];
+             order = ++_self->_sort_id_gen] {
+                auto& [sort_order] = _self->_config_added[arg];
                 sort_order = order;
-                dst_prefix = move(prefix);
             });
 }
 
@@ -402,7 +405,7 @@ bool config_registry::backend_t::_handle_structure_update()
         // Check for additions
         for (auto& [wp, tup] : config_added) {
             if (auto conf = wp.lock()) {
-                auto& [sort_order, prefix] = tup;
+                auto& [sort_order] = tup;
                 if (not conf) { continue; }
 
                 auto [iter, is_new] = _configs.try_emplace(conf->id());
@@ -413,7 +416,6 @@ bool config_registry::backend_t::_handle_structure_update()
 
                 ctx.reference = conf;
                 ctx.sort_order = sort_order;
-                ctx.full_key = prefix.append(conf->name());
             }
         }
 
@@ -447,7 +449,7 @@ bool config_registry::backend_t::_handle_structure_update()
                 break;  // There's no storage for this config registry ...
         }
 
-        if (auto data = find_ptr(*storage, get<1>(tup))) {
+        if (auto data = find_ptr(*storage, conf->full_key())) {
             if (not rw) { rw.emplace(); }
 
             rw->sbuf.clear();

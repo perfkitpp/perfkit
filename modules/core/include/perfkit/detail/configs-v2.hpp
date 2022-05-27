@@ -30,6 +30,7 @@
 #include "cpph/container/sorted_vector.hxx"
 #include "cpph/hasher.hxx"
 #include "cpph/refl/core.hxx"
+#include "cpph/spinlock.hxx"
 #include "cpph/threading.hxx"
 #include "fwd.hpp"
 #include "nlohmann/json_fwd.hpp"
@@ -171,8 +172,6 @@ class config_base : public std::enable_shared_from_this<config_base>
 
         // Absolute
         config_attribute_ptr attribute;
-
-        //
     };
 
    private:
@@ -182,7 +181,9 @@ class config_base : public std::enable_shared_from_this<config_base>
     init_info_t _body;
 
     // Managed by repository
+    mutable spinlock _mtx_full_key;
     string _cached_full_key;
+
     std::atomic_size_t _fence_modified = 0;  // Actual modification count
 
    public:
@@ -202,6 +203,8 @@ class config_base : public std::enable_shared_from_this<config_base>
     bool can_export() const noexcept { return attribute()->can_export; }
     bool can_import() const noexcept { return attribute()->can_import; }
     bool is_hidden() const noexcept { return attribute()->hidden; }
+
+    auto full_key() const noexcept { return lock_guard{_mtx_full_key}, _cached_full_key; }
 };
 
 /*
@@ -302,7 +305,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
     //! Add item/remove item.
     //! All added item will be serialized to global context on first update after insertion
-    void _internal_item_add(config_base_wptr arg, string prefix = "");
+    void _internal_item_add(config_base_ptr arg, string prefix = "");
     void _internal_item_remove(config_base_wptr arg);
 
    public:
