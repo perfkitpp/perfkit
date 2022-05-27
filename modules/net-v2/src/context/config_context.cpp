@@ -51,7 +51,23 @@ void config_context::start_monitoring(weak_ptr<void> anchor)
 {
     _monitor_anchor = move(anchor);
 
-    //
+    // TODO: Register all existing repositories
+}
+
+void config_context::stop_monitoring()
+{
+    _monitor_anchor.reset();
+
+    // TODO: Reset all cached contexts
+}
+
+void config_context::rpc_republish_all_registries()
+{
+
+}
+
+void config_context::rpc_update_request(const message::config_entity_update_t& content)
+{
 }
 
 static auto CPPH_LOGGER()

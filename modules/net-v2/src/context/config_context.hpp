@@ -56,20 +56,15 @@ class config_context
 
     weak_ptr<void> _monitor_anchor;
 
-    //
-    asio::steady_timer _lazy_update_publish{*_event_proc};
-    std::vector<weak_ptr<v2::config_base>> _pending_updates;
-    message::config_entity_update_t _buf_payload;
-
    public:
     explicit config_context(if_net_terminal_adapter* host) : _host(host) {}
 
    public:
     void start_monitoring(weak_ptr<void> anchor);
-    void stop_monitoring() {}
+    void stop_monitoring();
 
    public:
-    void rpc_republish_all_registries() {}
-    void rpc_update_request(message::config_entity_update_t const& content) {}
+    void rpc_republish_all_registries();
+    void rpc_update_request(message::config_entity_update_t const& content);
 };
 }  // namespace perfkit::net

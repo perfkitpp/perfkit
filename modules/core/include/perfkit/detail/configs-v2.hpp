@@ -32,6 +32,7 @@
 #include "cpph/refl/core.hxx"
 #include "cpph/threading.hxx"
 #include "nlohmann/json_fwd.hpp"
+#include "fwd.hpp"
 
 namespace perfkit::v2 {
 class config_registry;

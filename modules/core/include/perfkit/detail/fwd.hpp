@@ -24,13 +24,38 @@
 
 #pragma once
 
-namespace cpph {
-}
+#include <memory>
+
+#include <spdlog/fwd.h>
 
 namespace perfkit {
-using namespace cpph;
-};  // namespace perfkit
+namespace v2 {
+class config_base;
+class config_registry;
 
-namespace perfkit::util {
+template <typename Ty_>
+class config;
+}  // namespace v2
+
+using namespace v2;
+
+class tracer;
+class tracer_proxy;
+
+using tracer_ptr = std::shared_ptr<tracer>;
+using logger_ptr = std::shared_ptr<spdlog::logger>;
+
+namespace gui {
+class instance;
+}  // namespace gui
+
+class if_terminal;
+
+namespace commands {
+class registry;
+}
+
+namespace util {
 class command_registry;
 }
+}  // namespace perfkit

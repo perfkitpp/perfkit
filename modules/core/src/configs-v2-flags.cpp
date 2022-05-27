@@ -104,6 +104,7 @@ using collected_flag_binding_t = map<string_view, pair<config_registry*, config_
 
 [[noreturn]] static void throw_help_string(collected_flag_binding_t const& bindings)
 {
+    throw std::exception{};  // TODO
 }
 
 void configs_parse_args(int& ref_argc, char const**& ref_argv, config_parse_arg_option option, array_view<config_registry_ptr> regs)
