@@ -321,7 +321,7 @@ bool config_registry::unregister()
     }
 
     // Propagate un-registration
-    backend_t::g_evt_unregistered.invoke(this);
+    backend_t::g_evt_unregistered.invoke(weak_from_this());
     return true;
 }
 

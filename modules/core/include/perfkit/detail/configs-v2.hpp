@@ -31,8 +31,8 @@
 #include "cpph/hasher.hxx"
 #include "cpph/refl/core.hxx"
 #include "cpph/threading.hxx"
-#include "nlohmann/json_fwd.hpp"
 #include "fwd.hpp"
+#include "nlohmann/json_fwd.hpp"
 
 namespace perfkit::v2 {
 class config_registry;
@@ -42,6 +42,7 @@ struct config_attribute;
 using config_base_ptr = shared_ptr<config_base>;
 using config_base_wptr = weak_ptr<config_base>;
 using config_registry_ptr = shared_ptr<config_registry>;
+using config_registry_wptr = weak_ptr<config_registry>;
 using config_attribute_ptr = shared_ptr<config_attribute const>;
 
 CPPH_UNIQUE_KEY_TYPE(config_id_t);
@@ -425,18 +426,3 @@ void parse_full_key(string const& full_key, string* o_display_key, vector<string
 void verify_flag_string(string_view str);
 }  // namespace _configs
 }  // namespace perfkit::v2
-
-namespace perfkit {
-using v2::config_attribute;
-using v2::config_attribute_ptr;
-using v2::config_base;
-using v2::config_base_ptr;
-using v2::config_base_wptr;
-using v2::config_registry;
-using v2::config_registry_ptr;
-using v2::config_registry_storage_t;
-using v2::global_config_storage_t;
-
-using v2::configs_export;
-using v2::configs_import;
-}  // namespace perfkit

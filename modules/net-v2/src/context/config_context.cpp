@@ -30,10 +30,10 @@
 
 #include "config_context.hpp"
 
+#include <asio/io_context.hpp>
+#include <asio/post.hpp>
 #include <spdlog/spdlog.h>
 
-#include "asio/io_context.hpp"
-#include "asio/post.hpp"
 #include "cpph/refl/object.hxx"
 #include "cpph/refl/rpc/rpc.hxx"
 #include "perfkit/detail/configs-v2-backend.hpp"
@@ -51,23 +51,83 @@ void config_context::start_monitoring(weak_ptr<void> anchor)
 {
     _monitor_anchor = move(anchor);
 
-    // TODO: Register all existing repositories
+    // Register 'new repo' event
+    config_registry::backend_t::g_evt_registered.add_weak(
+            _monitor_anchor, [this](config_registry_ptr ptr) {
+                post(*_ioc, [this, ptr = move(ptr)] {
+                    auto [iter, is_new] = _nodes.try_emplace(weak_ptr{ptr});
+
+                    if (is_new) {
+                        // Guarantees single invocation
+                        _init_registry_node(iter, ptr.get());
+                    }
+
+                    _update_registry_structure(iter);
+                    _publish_registry_refresh(iter);
+                });
+            });
+
+    config_registry::backend_t::g_evt_unregistered.add_weak(
+            _monitor_anchor, [this](config_registry_wptr wp) {
+                post(*_ioc, [this, wp = move(wp)] {
+                    auto iter = _nodes.find(wp);
+                    if (iter == _nodes.end()) { return; }
+
+                    _publish_unregister(iter);
+                });
+            });
+
+    // Register all existing repositories
+    vector<v2::config_registry_ptr> registries;
+    config_registry::backend_t::bk_enumerate_registries(&registries, false);
+
+    for (auto& rg : registries) {
+        auto [iter, is_new] = _nodes.try_emplace(rg);
+
+        if (is_new) {
+            _init_registry_node(iter, rg.get());
+        }
+
+        _update_registry_structure(iter);
+    }
 }
 
 void config_context::stop_monitoring()
 {
     _monitor_anchor.reset();
 
-    // TODO: Reset all cached contexts
+    // Reset all cached contexts
+    _nodes.clear();
 }
 
 void config_context::rpc_republish_all_registries()
 {
-
+    post(*_ioc, [this] {
+        // Republish all contexts
+        for (auto iter = _nodes.begin(), end = _nodes.end(); iter != end; ++iter)
+            _publish_registry_refresh(iter);
+    });
 }
 
-void config_context::rpc_update_request(const message::config_entity_update_t& content)
+void config_context::rpc_update_request(message::config_entity_update_t& content)
 {
+}
+
+void config_context::_init_registry_node(
+        registry_table_type::iterator node, config_registry* ptr)
+{
+    ptr->backend()->evt_structure_changed.add_weak(
+            _monitor_anchor, [this, ptr](config_registry* rg) {
+                assert(rg == ptr);
+
+                post(*_ioc, [this, wrg = rg->weak_from_this()] {
+                    auto iter = _nodes.find(wrg);
+                    if (iter == _nodes.end()) { return; }
+
+                    _update_registry_structure(iter);
+                    _publish_registry_refresh(iter);
+                });
+            });
 }
 
 static auto CPPH_LOGGER()

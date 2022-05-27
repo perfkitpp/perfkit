@@ -99,7 +99,7 @@ class config_registry::backend_t
 
    public:
     static inline event<config_registry_ptr> g_evt_registered;
-    static inline event<config_registry*> g_evt_unregistered;
+    static inline event<weak_ptr<config_registry>> g_evt_unregistered;
 
     event<config_registry*, list<config_base_ptr> const&> evt_updated_entities;
     event<config_registry*> evt_structure_changed;
