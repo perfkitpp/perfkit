@@ -447,18 +447,31 @@ bool config_registry::backend_t::_handle_structure_update()
             if (auto p_storage = find_ptr(*_g_config().second, _name))
                 storage = p_storage->second;
             else
-                break;  // There's no storage for this config registry ...
+                storage.emplace();  // There's no storage for this config registry ...
         }
+
+        if (not rw) { rw.emplace(); }
+        rw->sbuf.clear();
+        rw->wr.clear(), rw->rd.clear();
 
         if (auto data = find_ptr(*storage, conf->full_key())) {
-            if (not rw) { rw.emplace(); }
-
-            rw->sbuf.clear();
-            rw->wr.clear(), rw->rd.clear();
+            // Load existing value ...
             (rw->wr << data->second).flush();
-
             bk_commit(conf.get(), &rw->rd);
+        } else {
+            // Init with default value ...
+            (rw->wr << conf->_body.raw_data.view()).flush();
+            try {
+                rw->rd >> (*storage)[conf->full_key()];
+            } catch (std::exception& e) {
+                CPPH_ERROR("Error dumping json object");
+            }
         }
+    }
+
+    if (storage) {
+        auto [lc, p_cfg] = _g_config();
+        (*p_cfg)[_name] = move(*storage);
     }
 
     return has_structure_change;
@@ -547,6 +560,8 @@ void configs_export(global_config_storage_t* json_dst, bool merge)
     vector<config_registry_ptr> repos;
     config_registry::backend_t::bk_enumerate_registries(&repos);
 
+    json_dst->clear();
+
     if (merge) {
         auto [_, p_all] = _g_config();
         *json_dst = *p_all;
@@ -555,8 +570,6 @@ void configs_export(global_config_storage_t* json_dst, bool merge)
     // Copy existing global configs to destination
     string buffer_;
     {
-        json_dst->clear();
-
         // Collect all alive registries' configs
         for (auto& repo : repos) {
             repo->export_to(&(*json_dst)[repo->name()], &buffer_);

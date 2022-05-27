@@ -205,6 +205,7 @@ class config_base : public std::enable_shared_from_this<config_base>
     bool is_hidden() const noexcept { return attribute()->hidden; }
 
     auto full_key() const noexcept { return lock_guard{_mtx_full_key}, _cached_full_key; }
+    void full_key(string* v) const noexcept { lock_guard{_mtx_full_key}, *v = _cached_full_key; }
 };
 
 /*
