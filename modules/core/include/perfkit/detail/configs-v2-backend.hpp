@@ -45,9 +45,8 @@ struct config_entity_context {
 
    public:
     config_base_wptr reference;
-
     size_t sort_order = 0;
-    string full_key = {};
+    string full_key_cached;
 
    private:
     refl::shared_object_ptr _staged;

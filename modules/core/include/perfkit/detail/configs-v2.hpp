@@ -74,8 +74,8 @@ using config_registry_storage_t = std::map<std::string, nlohmann::json, std::les
 using global_config_storage_t = std::map<std::string, config_registry_storage_t, std::less<>>;
 void configs_import(global_config_storage_t json_content);
 bool configs_import(string_view path);
-void configs_export(global_config_storage_t* json_dst);
-bool configs_export(string_view path);
+void configs_export(global_config_storage_t* json_dst, bool merge = true);
+bool configs_export(string_view path, bool merge = true);
 
 /**
  * Key rules

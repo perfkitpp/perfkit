@@ -416,13 +416,14 @@ bool config_registry::backend_t::_handle_structure_update()
 
                 ctx.reference = conf;
                 ctx.sort_order = sort_order;
+                ctx.full_key_cached = conf->full_key();
             }
         }
 
         // Rebuild config id mappings
         _key_id_table.clear();
         for (auto& [key, ctx] : _configs) {
-            _key_id_table.try_emplace(ctx.full_key, key);
+            _key_id_table.try_emplace(ctx.full_key_cached, key);
         }
 
         _config_removed.clear();
@@ -536,15 +537,20 @@ void config_registry::export_to(config_registry_storage_t* to, string* buf) cons
         }
 
         writer.flush();
-        reader >> (*to)[ctx.full_key];
+        reader >> (*to)[ctx.full_key_cached];
     }
 }
 
-void configs_export(global_config_storage_t* json_dst)
+void configs_export(global_config_storage_t* json_dst, bool merge)
 {
     //  Iterate registries, merge to existing global, copy to json_dst.
     vector<config_registry_ptr> repos;
     config_registry::backend_t::bk_enumerate_registries(&repos);
+
+    if (merge) {
+        auto [_, p_all] = _g_config();
+        *json_dst = *p_all;
+    }
 
     // Copy existing global configs to destination
     string buffer_;
@@ -595,10 +601,10 @@ void configs_import(global_config_storage_t json_content)
 #include <fstream>
 
 namespace perfkit::v2 {
-bool configs_export(string_view path)
+bool configs_export(string_view path, bool merge)
 {
     global_config_storage_t all;
-    configs_export(&all);
+    configs_export(&all, merge);
 
     std::ofstream fs{string{path}};
     if (not fs.is_open()) { return false; }
