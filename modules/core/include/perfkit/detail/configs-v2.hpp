@@ -179,6 +179,7 @@ class config_base : public std::enable_shared_from_this<config_base>
     const config_id_t _id = {++_idgen};
 
     init_info_t _body;
+    shared_ptr<config_registry> _rg;
 
     // Managed by repository
     mutable spinlock _mtx_full_key;
@@ -209,6 +210,8 @@ class config_base : public std::enable_shared_from_this<config_base>
     auto prefix() const noexcept { return lock_guard{_mtx_full_key}, string{_cached_prefix}; }
     auto prefix_length() const noexcept { return lock_guard{_mtx_full_key}, _cached_prefix.size(); }
     void full_key(string* v) const noexcept { lock_guard{_mtx_full_key}, *v = _cached_full_key; }
+
+    auto owner() const noexcept { return lock_guard{_mtx_full_key}, _rg; }
 };
 
 /*
@@ -333,7 +336,6 @@ class config
     using value_type = ValueType;
 
    private:
-    shared_ptr<config_registry> _rg;
     config_base_ptr _base;
 
     ValueType const* _ref = nullptr;
@@ -360,16 +362,19 @@ class config
    public:
     void commit(ValueType val) const
     {
-        assert(_rg);
-        _rg->_internal_commit_value_user(_base.get(), make_shared<ValueType>(move(val)));
+        auto owner = _base->owner();
+        assert(owner);
+        owner->_internal_commit_value_user(_base.get(), make_shared<ValueType>(move(val)));
     }
 
     ValueType value() const noexcept
     {
-        assert(_rg);
-        _rg->_internal_value_read_lock();
+        auto owner = _base->owner();
+        assert(owner);
+
+        owner->_internal_value_read_lock();
         ValueType value = *_ref;
-        _rg->_internal_value_read_unlock();
+        owner->_internal_value_read_unlock();
 
         return value;
     }
@@ -409,18 +414,13 @@ class config
     void activate(config_registry_ptr rg, string prefix = "")
     {
         force_deactivate();
-
-        _rg.reset();
-        _rg = move(rg);
-
-        _rg->_internal_item_add(_base, move(prefix));
+        rg->_internal_item_add(_base, move(prefix));
     }
 
     void force_deactivate()
     {
-        if (_rg) {
-            _rg->_internal_item_remove(_base);
-            _rg.reset();
+        if (_base->owner()) {
+            _base->owner()->_internal_item_remove(_base);
         }
     }
 

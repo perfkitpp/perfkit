@@ -88,6 +88,10 @@ void config_registry::_internal_item_add(config_base_ptr arg, string prefix)
 {
     {
         CPPH_TMPVAR = lock_guard{arg->_mtx_full_key};
+
+        assert(not arg->_rg);
+        arg->_rg = shared_from_this();
+
         auto prefix_len = prefix.size();
         arg->_cached_full_key = move(prefix) + arg->name();
         arg->_cached_prefix = string_view{arg->_cached_full_key}.substr(0, prefix_len);
@@ -104,6 +108,13 @@ void config_registry::_internal_item_add(config_base_ptr arg, string prefix)
 
 void config_registry::_internal_item_remove(config_base_wptr arg)
 {
+    if (auto rg = arg.lock()) {
+        CPPH_TMPVAR = lock_guard{rg->_mtx_full_key};
+
+        assert(ptr_equals(rg->_rg, weak_from_this()));
+        rg->_rg.reset();
+    }
+
     _self->_events.post([this, arg = move(arg)]() mutable {
         // Abort pending insertion
         _self->_config_added.erase(arg);
@@ -659,7 +670,7 @@ void parse_full_key(
 
     o_display_key->clear();
     o_hierarchy->clear();
-    
+
     o_display_key->reserve(full_key.size());
     for (std::cregex_iterator end{},
          iter{full_key.c_str(), full_key.c_str() + full_key.size(), rg_trim_whitespace};
