@@ -183,13 +183,13 @@ struct notify {
         CPPH_REFL_DECLARE_c;
 
         string name;
-        uint64_t hierarchy_hash;
+        uint64_t category_id;  // Unique ID of every config category
 
         list<config_category_t> subcategories;
         list<config_entity_t> entities;
     };
 
-    DEFINE_RPC(update_config_category, void(uint64_t instance_hash, string registry_key, config_category_t root));
+    DEFINE_RPC(update_config_category, void(uint64_t class_id, string registry_key, config_category_t root));
     DEFINE_RPC(deleted_config_category, void(string registry_key));
 
     /**

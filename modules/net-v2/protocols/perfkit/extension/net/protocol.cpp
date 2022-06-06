@@ -67,7 +67,7 @@ CPPH_REFL_DEFINE_OBJECT_c(
         (name, 1),
         (subcategories, 2),
         (entities, 3),
-        (hierarchy_hash, 4));
+        (category_id, 4));
 
 CPPH_REFL_DEFINE_OBJECT_c(
         config_entity_update_t, (),
