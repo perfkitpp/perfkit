@@ -82,7 +82,7 @@ class config_context
    private:
     void _init_registry_node(registry_table_type::iterator, config_registry* ptr);
     void _update_registry_structure(config_registry* rg, registry_table_type::iterator const&);
-    void _publish_registry_refresh(registry_table_type::iterator node) {}
+    void _publish_registry_refresh(registry_table_type::iterator const& node);
     void _publish_unregister(registry_table_type::iterator node) {}
 };
 }  // namespace perfkit::net

@@ -181,6 +181,7 @@ void config_context::_update_registry_structure(
                 dst->clear();
                 msbuf.reset(dst);
                 mwrite << view;
+                mwrite.flush();
             };
 
     for (auto& cfg : configs) {
@@ -237,4 +238,12 @@ void config_context::_update_registry_structure(
                rg->name(),
                swatch.elapsed().count() * 1e3,
                configs.size());
+}
+
+void config_context::_publish_registry_refresh(registry_table_type::iterator const& iter)
+{
+    auto rg = iter->first.lock();
+    assert(rg && "This method must be called when registry is certainly valid!");
+    message::notify::update_config_category(_rpc).notify(
+            rg->id().value, rg->name(), iter->second.cat_root, _host->fn_basic_access());
 }
