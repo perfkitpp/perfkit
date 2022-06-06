@@ -67,8 +67,11 @@ PERFKIT_CFG_CLASS(OtherCfg2)
     PERFKIT_CFG_SUBSET(OtherCfg, Cfg0);
 };
 
-int main(void)
+int main(int argc, char** argv)
 {
+    if (argc > 1)
+        perfkit::configs_import(argv[1]);
+
     auto f = OtherCfg2::create("hola!");
     f->update();
 
@@ -88,13 +91,18 @@ int main(void)
 
     volatile bool running = true;
     term->add_command("quit", [&] { running = false; });
+    conf_global::update();
     while (running) {
-        conf_global::update();
         auto ncmd = term->invoke_queued_commands(
-                1h, [&] { return running; }, [](auto cmd) { spdlog::info("cmd: {}", cmd); });
+                1h, [&] { return running; }, [](auto cmd) {
+                    conf_global::update();
+                    spdlog::info("cmd: {}", cmd); });
         spdlog::info("{} commands invoked", ncmd);
     }
 
     spdlog::info("Now shutting down ...");
+
+    if (argc > 1)
+        perfkit::configs_export(argv[1]);
     return 0;
 }

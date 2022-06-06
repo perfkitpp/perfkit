@@ -66,6 +66,7 @@ class config_context
     rpc::session_group* _rpc{_host->rpc()};
 
     registry_table_type _nodes;
+    std::unordered_map<uint64_t, weak_ptr<config_base>> _inv_mapping;
     weak_ptr<void> _monitor_anchor;
 
    public:
@@ -83,6 +84,8 @@ class config_context
     void _init_registry_node(registry_table_type::iterator, config_registry* ptr);
     void _update_registry_structure(config_registry* rg, registry_table_type::iterator const&);
     void _publish_registry_refresh(registry_table_type::iterator const& node);
-    void _publish_unregister(registry_table_type::iterator node) {}
+    void _publish_unregister(registry_table_type::iterator node);
+    void _publish_updates(shared_ptr<config_registry>, vector<shared_ptr<config_base>> const& update_list);
+    void _gc_mappings();
 };
 }  // namespace perfkit::net

@@ -84,6 +84,8 @@ void config_context::start_monitoring(weak_ptr<void> anchor)
                     if (iter == _nodes.end()) { return; }
 
                     _publish_unregister(iter);
+                    _nodes.erase(iter);
+                    _gc_mappings();
                 });
             });
 
@@ -121,6 +123,20 @@ void config_context::rpc_republish_all_registries()
 
 void config_context::rpc_update_request(message::config_entity_update_t& content)
 {
+    post(*_ioc, [this, content] {
+        auto elem = find_ptr(_inv_mapping, content.config_key);
+        if (not elem) { return; }
+
+        auto cfg = elem->second.lock();
+        if (not cfg) { return; }
+
+        auto owner = cfg->owner();
+        if (not owner) { return; }
+
+        streambuf::view sbuf{{(char*)content.content_next.data(), content.content_next.size()}};
+        archive::msgpack::reader reader{&sbuf};
+        owner->backend()->bk_commit(cfg.get(), &reader);
+    });
 }
 
 void config_context::_init_registry_node(
@@ -128,9 +144,7 @@ void config_context::_init_registry_node(
 {
     // Update all structure
     ptr->backend()->evt_structure_changed.add_weak(
-            _monitor_anchor, [this, ptr](config_registry* rg) {
-                assert(rg == ptr);
-
+            _monitor_anchor, [this](config_registry* rg) {
                 post(*_ioc, [this, wrg = rg->weak_from_this()] {
                     auto rg = wrg.lock();
                     if (rg == nullptr) { return; }
@@ -141,6 +155,19 @@ void config_context::_init_registry_node(
                     _update_registry_structure(rg.get(), iter);
                     _publish_registry_refresh(iter);
                 });
+            });
+
+    ptr->backend()->evt_updated_entities.add_weak(
+            _monitor_anchor, [this](config_registry* rg, list<config_base_ptr> const& l) {
+                vector<config_base_ptr> updates;
+                updates.reserve(l.size());
+                updates.assign(l.begin(), l.end());
+
+                post(*_ioc, bind_front_weak(_monitor_anchor,
+                                            &config_context::_publish_updates,
+                                            this,
+                                            rg->shared_from_this(),
+                                            move(updates)));
             });
 }
 
@@ -189,6 +216,7 @@ void config_context::_update_registry_structure(
             continue;
 
         cfg->full_key(&full_key);
+        _inv_mapping[cfg->id().value] = cfg;
 
         // (1)
         _configs::parse_full_key(full_key, &display_key, &hierarchy_);
@@ -246,4 +274,39 @@ void config_context::_publish_registry_refresh(registry_table_type::iterator con
     assert(rg && "This method must be called when registry is certainly valid!");
     message::notify::update_config_category(_rpc).notify(
             rg->id().value, rg->name(), iter->second.cat_root, _host->fn_basic_access());
+
+    vector<config_base_ptr> configs;
+    rg->backend()->bk_all_items(&configs);
+    _publish_updates(rg, configs);
+}
+
+void config_context::_publish_updates(shared_ptr<config_registry> rg, vector<shared_ptr<config_base>> const& updates)
+{
+    message::config_entity_update_t update_content;
+    streambuf::stringbuf sbuf{&update_content.content_next};
+    archive::msgpack::writer writer{&sbuf};
+
+    auto bk = rg->backend();
+    for (auto& cfg : updates) {
+        update_content.config_key = cfg->id().value;
+
+        sbuf.clear(), writer.clear();
+        bk->bk_access_value_shared(cfg.get(), [&](auto&& raw) {
+            writer << raw.view();
+        });
+        writer.flush();
+
+        message::notify::config_entity_update(_rpc).notify(
+                update_content, _host->fn_basic_access());
+    }
+}
+
+void config_context::_publish_unregister(registry_table_type::iterator node)
+{
+    message::notify::deleted_config_category(_rpc).notify(node->second.cat_root.name);
+}
+
+void config_context::_gc_mappings()
+{
+    erase_if_each(_inv_mapping, [](auto&& pair) { return pair.second.expired(); });
 }
