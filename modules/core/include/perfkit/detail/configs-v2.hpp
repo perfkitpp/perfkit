@@ -183,6 +183,7 @@ class config_base : public std::enable_shared_from_this<config_base>
     // Managed by repository
     mutable spinlock _mtx_full_key;
     string _cached_full_key;
+    string_view _cached_prefix;
 
     std::atomic_size_t _fence_modified = 0;  // Actual modification count
 
@@ -205,6 +206,8 @@ class config_base : public std::enable_shared_from_this<config_base>
     bool is_hidden() const noexcept { return attribute()->hidden; }
 
     auto full_key() const noexcept { return lock_guard{_mtx_full_key}, _cached_full_key; }
+    auto prefix() const noexcept { return lock_guard{_mtx_full_key}, string{_cached_prefix}; }
+    auto prefix_length() const noexcept { return lock_guard{_mtx_full_key}, _cached_prefix.size(); }
     void full_key(string* v) const noexcept { lock_guard{_mtx_full_key}, *v = _cached_full_key; }
 };
 

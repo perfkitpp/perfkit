@@ -92,7 +92,9 @@ void config_registry::_internal_item_add(config_base_ptr arg, string prefix)
 {
     {
         CPPH_TMPVAR = lock_guard{arg->_mtx_full_key};
+        auto prefix_len = prefix.size();
         arg->_cached_full_key = move(prefix) + arg->name();
+        arg->_cached_prefix = string_view{arg->_cached_full_key}.substr(0, prefix_len);
     }
 
     _self->_events.post(
