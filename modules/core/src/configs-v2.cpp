@@ -280,8 +280,8 @@ void config_registry::backend_t::bk_all_items(vector<config_base_ptr>* out) cons
     out->reserve(out->size() + _configs.size());
 
     // Retrieve them as sorted
-    auto all_ = (config_entity_context const*)alloca(_configs.size() * sizeof(void*));
-    array_view<config_entity_context const*> all{&all_, _configs.size()};
+    auto all_ = (config_entity_context const**)alloca(_configs.size() * sizeof(void*));
+    array_view<config_entity_context const*> all{all_, _configs.size()};
     transform(_configs, all.begin(), [](auto& p) { return &p.second; });
 
     sort(all, [](auto a, auto b) { return a->sort_order < b->sort_order; });
@@ -658,6 +658,8 @@ void parse_full_key(
     static std::regex rg_remove_order_marker{R"(\+[^|]+\|)"};
 
     o_display_key->clear();
+    o_hierarchy->clear();
+    
     o_display_key->reserve(full_key.size());
     for (std::cregex_iterator end{},
          iter{full_key.c_str(), full_key.c_str() + full_key.size(), rg_trim_whitespace};
