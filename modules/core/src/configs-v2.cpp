@@ -26,6 +26,7 @@
 
 #include "perfkit/detail/configs-v2.hpp"
 
+#include <regex>
 #include <set>
 
 #include <fmt/core.h>
@@ -609,7 +610,6 @@ void configs_import(global_config_storage_t json_content)
 }  // namespace perfkit::v2
 
 #include <fstream>
-#include <regex>
 
 namespace perfkit::v2 {
 bool configs_export(string_view path, bool merge)
