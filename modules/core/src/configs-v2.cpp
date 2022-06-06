@@ -51,11 +51,6 @@ static auto CPPH_LOGGER() { return perfkit::glog().get(); }
 
 namespace perfkit::v2 {
 namespace _configs {
-void parse_full_key(
-        const string& full_key, string* o_display_key, vector<string_view>* o_hierarchy)
-{
-    // TODO: Parse full_key to display key
-}
 
 void verify_flag_string(string_view str)
 {
@@ -614,6 +609,7 @@ void configs_import(global_config_storage_t json_content)
 }  // namespace perfkit::v2
 
 #include <fstream>
+#include <regex>
 
 namespace perfkit::v2 {
 bool configs_export(string_view path, bool merge)
@@ -652,6 +648,46 @@ bool configs_import(string_view path)
     CPPH_INFO("Config successfully imported from '{}'", path);
     return true;
 }
+
+namespace _configs {
+void parse_full_key(
+        const string& full_key, string* o_display_key, vector<string_view>* o_hierarchy)
+{
+    // TODO: Parse full_key to display key
+    static std::regex rg_trim_whitespace{R"((?:^|\|?)\s*(\S?[^|]*\S)\s*(?:\||$))"};
+    static std::regex rg_remove_order_marker{R"(\+[^|]+\|)"};
+
+    o_display_key->clear();
+    o_display_key->reserve(full_key.size());
+    for (std::cregex_iterator end{},
+         iter{full_key.c_str(), full_key.c_str() + full_key.size(), rg_trim_whitespace};
+         iter != end;
+         ++iter) {
+        if (not iter->ready()) { throw "Invalid Token"; }
+        auto token = string_view{full_key}.substr(iter->position(1), iter->length(1));
+        o_hierarchy->push_back(token);
+        o_display_key->append(token);
+        o_display_key->append("|");
+    }
+    o_display_key->pop_back();  // remove last | character
+
+    auto it = std::regex_replace(o_display_key->begin(),
+                                 o_display_key->begin(), o_display_key->end(),
+                                 rg_remove_order_marker, "");
+    o_display_key->resize(it - o_display_key->begin());
+
+    if (full_key.back() == '|') {
+        throw std::invalid_argument(
+                fmt::format("Invalid Key Name: {}", full_key));
+    }
+
+    if (o_display_key->empty()) {
+        throw std::invalid_argument(
+                fmt::format("Invalid Generated Display Key Name: {} from full key {}",
+                            *o_display_key, full_key));
+    }
+}
+}  // namespace _configs
 }  // namespace perfkit::v2
 
 /*
