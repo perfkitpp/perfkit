@@ -42,7 +42,7 @@ struct test_config_structure_nested {
     std::string path = "ola";
     std::list<test_config_structure_nested> list;
 
-    CPPH_REFL_DEFINE_OBJECT_inline_2(x, y, z, flag, path, list);
+    CPPH_REFL_DEFINE_OBJECT_inline_simple(x, y, z, flag, path, list);
 };
 
 struct test_config_structure {
@@ -54,7 +54,7 @@ struct test_config_structure {
 
     test_config_structure_nested nested = {test_config_structure_nested{}};
 
-    CPPH_REFL_DEFINE_OBJECT_inline_2(x, y, z, flag, path, nested);
+    CPPH_REFL_DEFINE_OBJECT_inline_simple(x, y, z, flag, path, nested);
 };
 
 PERFKIT_T_CATEGORY(
