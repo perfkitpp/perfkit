@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 
     try {
         spdlog::info("Parsing {} command line arguments", argc);
-        perfkit::configs::parse_args(&argc, &argv, true);
+        perfkit::configs_parse_args(argc, (const char**&)argv);
     } catch (std::exception& e) {
         spdlog::error("Error during flag parsing: \n{}", e.what());
         return 1;
@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     spdlog::info("Loading configs ...");
     std::string confpath = argc == 1 ? app->DefaultConfigPath() : argv[1];
     {
-        if (perfkit::configs::import_file(confpath)) {
+        if (perfkit::configs_import(confpath)) {
             spdlog::info("Successfully loaded intial config '{}'", confpath);
         } else if (confpath.empty()) {
             spdlog::critical("Config path is not specified!");
