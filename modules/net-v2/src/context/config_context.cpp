@@ -27,7 +27,6 @@
 //
 // Created by ki608 on 2022-03-19.
 //
-
 #include "config_context.hpp"
 
 #include <asio/io_context.hpp>
@@ -64,6 +63,8 @@ void config_context::start_monitoring(weak_ptr<void> anchor)
     // Register 'new repo' event
     config_registry::backend_t::g_evt_registered.add_weak(
             _monitor_anchor, [this](config_registry_ptr ptr) {
+                if (assert(ptr), not ptr) { return; }
+
                 post(*_ioc, [this, ptr = move(ptr)] {
                     auto [iter, is_new] = _nodes.try_emplace(weak_ptr{ptr});
 
@@ -94,6 +95,8 @@ void config_context::start_monitoring(weak_ptr<void> anchor)
     config_registry::backend_t::bk_enumerate_registries(&registries, false);
 
     for (auto& rg : registries) {
+        if (assert(rg), not rg) { continue; }
+
         auto [iter, is_new] = _nodes.try_emplace(rg);
 
         if (is_new) {
