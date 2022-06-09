@@ -29,36 +29,32 @@
 #pragma once
 #include <list>
 
-#include <cpph/helper/nlohmann_json_macros.hxx>
+#include <cpph/refl/types/nlohmann_json.hxx>
 #include <perfkit/configs.h>
 #include <perfkit/logging.h>
 #include <perfkit/traces.h>
 
 struct test_config_structure_nested {
-    int                                     x = 0;
-    int                                     y = 0;
-    double                                  z = 0;
-    bool                                    flag = false;
-    std::string                             path = "ola";
+    int x = 0;
+    int y = 0;
+    double z = 0;
+    bool flag = false;
+    std::string path = "ola";
     std::list<test_config_structure_nested> list;
 
-    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
-            test_config_structure_nested,
-            x, y, z, flag, path, list);
+    CPPH_REFL_DEFINE_OBJECT_inline_simple(x, y, z, flag, path, list);
 };
 
 struct test_config_structure {
-    int                          x = 0;
-    int                          y = 0;
-    double                       z = 0;
-    bool                         flag = false;
-    std::string                  path = "ola";
+    int x = 0;
+    int y = 0;
+    double z = 0;
+    bool flag = false;
+    std::string path = "ola";
 
     test_config_structure_nested nested = {test_config_structure_nested{}};
 
-    CPPHEADERS_DEFINE_NLOHMANN_JSON_ARCHIVER(
-            test_config_structure,
-            x, y, z, flag, path, nested);
+    CPPH_REFL_DEFINE_OBJECT_inline_simple(x, y, z, flag, path, nested);
 };
 
 PERFKIT_T_CATEGORY(
@@ -81,7 +77,7 @@ PERFKIT_T_CATEGORY(
 
         PERFKIT_T_CONFIGURE(t_boolean, false).confirm();
 
-        PERFKIT_T_CONFIGURE(t_json, nlohmann::json{}).confirm();
+        //        PERFKIT_T_CONFIGURE(t_json, nlohmann::json{}).confirm();
 
         PERFKIT_T_CONFIGURE(t_intarray, std::array<int, 3>{})
                 .min({4, 3, 1})
@@ -132,11 +128,11 @@ class test_class
     auto CPPH_LOGGER() const { return &*_logger; }
 
    private:
-    std::string         _id;
-    test_class_configs  _cfg{_id};
+    std::string _id;
+    test_class_configs _cfg = test_class_configs::create(_id);
     perfkit::tracer_ptr _tracer = perfkit::tracer::create(1024, _id);
-    std::thread         _worker;
+    std::thread _worker;
 
-    std::atomic_bool    _loop_active{true};
+    std::atomic_bool _loop_active{true};
     perfkit::logger_ptr _logger = perfkit::share_logger(_id);
 };

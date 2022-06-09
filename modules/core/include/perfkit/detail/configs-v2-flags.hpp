@@ -24,31 +24,28 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
-#include "perfkit/extension/net.hpp"
+#pragma once
 
-#include "net_terminal.hpp"
+#include "configs-v2.hpp"
 
-namespace perfkit::terminal::net {
-terminal_ptr create(const profile& cfg)
-{
-    perfkit::net::terminal_info init;
-    init.name = cfg.session_name;
-    init.description = cfg.session_description;
-    init.bind_port = cfg.bind_port;
-    init.bind_ip = cfg.bind_address;
-    init.enable_find_me = cfg.enable_find_me;
+namespace perfkit::v2 {
+struct config_parse_arg_option {
+    bool consume_flags = true;
+    bool collect_unregistered_registerise = true;
+    bool update_collected_registries = true;
+    bool allow_flag_duplication = true;
+    bool allow_unknown_flag = true;
+    bool is_first_arg_exec_name = true;
+};
 
-    auto term = std::make_shared<perfkit::net::terminal>(std::move(init));
-    term->_start_();
-
-    return term;
-}
-
-perfkit::terminal_ptr create(std::string config_name)
-{
-    profile pf = profile::create(std::move(config_name));
-    pf->update();
-    return create(pf);
-}
-
-}  // namespace perfkit::terminal::net
+// TODO:
+//   parse_args default takes list of active config options or config registries
+//   if nothing is specified, parse_args will collect all globally registered
+//    config registry instances, and will create flag binding table, then perform
+//    args parsing.
+//
+void configs_parse_args(
+        int& ref_argc, char const**& ref_argv,
+        config_parse_arg_option option = {},
+        array_view<config_registry_ptr> regs = {});
+}  // namespace perfkit::v2

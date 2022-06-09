@@ -27,16 +27,20 @@
 //
 // Created by ki608 on 2022-03-19.
 //
-
 #include "config_context.hpp"
 
+#include <asio/io_context.hpp>
+#include <asio/post.hpp>
 #include <spdlog/spdlog.h>
 
-#include "asio/io_context.hpp"
-#include "asio/post.hpp"
+#include "cpph/hasher.hxx"
+#include "cpph/memory/list_pool.hxx"
+#include "cpph/refl/archive/msgpack-reader.hxx"
+#include "cpph/refl/archive/msgpack-writer.hxx"
 #include "cpph/refl/object.hxx"
 #include "cpph/refl/rpc/rpc.hxx"
-#include "perfkit/configs.h"
+#include "cpph/timer.hxx"
+#include "perfkit/detail/configs-v2-backend.hpp"
 #include "perfkit/logging.h"
 
 using namespace perfkit::net;
@@ -52,206 +56,260 @@ static auto CPPH_LOGGER()
     return detail::nglog();
 }
 
-void config_context::_publish_new_registry(shared_ptr<config_registry> rg)
-{
-    CPPH_DEBUG("Publishing registry '{}'", rg->name());
-
-    auto& all = rg->bk_all();
-    auto key = rg->name();
-    auto root = message::notify::config_category_t{};
-    root.name = key;
-
-    // Always try destroy registries before
-    _handle_registry_destruction(rg->name());
-
-    auto registry_context = &_config_registries[rg->name()];
-    registry_context->associated_keys.reserve(rg->bk_all().size());
-
-    for (auto& [_, config] : all) {
-        if (config->is_hidden())
-            continue;  // dont' publish hidden ones
-
-        auto hierarchy = config->tokenized_display_key();
-        auto* level = &root;
-
-        for (auto category : make_iterable(hierarchy.begin(), hierarchy.end() - 1)) {
-            auto it = perfkit::find_if(level->subcategories,
-                                       [&](auto&& s) { return s.name == category; });
-
-            if (it == level->subcategories.end()) {
-                level->subcategories.emplace_back();
-                it = --level->subcategories.end();
-                it->name = category;
-            }
-
-            level = &*it;
-        }
-
-        auto fn_archive =
-                [](string* v, nlohmann::json const& js) {
-                    v->clear();
-
-                    if (js.empty())
-                        return;
-
-                    nlohmann::json::to_msgpack(js, nlohmann::detail::output_adapter<char>(*v));
-                };
-
-        auto* dst = &level->entities.emplace_back();
-        auto config_key = config_key_t::hash(&*config);
-        dst->name = config->tokenized_display_key().back();
-        dst->description = config->description();
-        dst->config_key = config_key.value;
-
-        fn_archive(&dst->initial_value, config->serialize());
-        fn_archive(&dst->opt_one_of, config->attribute().one_of);
-        fn_archive(&dst->opt_max, config->attribute().max);
-        fn_archive(&dst->opt_min, config->attribute().min);
-
-        _config_instances[config_key] = config;
-        registry_context->associated_keys.insert(config_key);
-    }
-
-    message::notify::new_config_category(_rpc).notify(rg->id(), key, root, _host->fn_basic_access());
-
-    rg->on_update.add_weak(
-            _monitor_anchor,
-            [this](config_registry* rg, array_view<perfkit::detail::config_base*> updates) {
-                auto wptr = rg->weak_from_this();
-
-                // apply updates .. as long as wptr alive, pointers can be accessed safely
-                auto buffer = std::vector(updates.begin(), updates.end());
-                auto function = bind_front_weak(wptr, &self_t::_handle_update, this, rg, std::move(buffer));
-                asio::post(*_event_proc, std::move(function));
-            });
-
-    rg->on_destroy.add_weak(
-            _monitor_anchor,
-            [this](config_registry* rg) {
-                message::notify::deleted_config_category(_rpc).notify(rg->name());
-
-                namespace views = ranges::views;
-                std::vector<int64_t> keys_all;
-
-                // retrive all keys from rg, and delete them from confmap
-                auto function = perfkit::bind_front(
-                        &self_t::_handle_registry_destruction, this, rg->name());
-                asio::post(*_event_proc, std::move(function));
-            });
-}
-
-void config_context::rpc_republish_all_registries()
-{
-    auto func =
-            [this] {
-                auto all_regs = config_registry::bk_enumerate_registries(true);
-                for (auto& rg : all_regs)
-                    _publish_new_registry(rg);
-            };
-
-    asio::post(*_event_proc, bind_front_weak(_monitor_anchor, std::move(func)));
-}
-
-void config_context::rpc_update_request(const message::config_entity_update_t& content)
-{
-    auto func =
-            [this, content = content] {
-                try {
-                    auto& str = content.content_next;
-                    auto json_content = nlohmann::json::from_msgpack(str);
-
-                    auto config_key = config_key_t{content.config_key};
-                    auto wptr = _config_instances.at(config_key);
-
-                    if (auto cfg = wptr.lock()) {
-                        cfg->request_modify(std::move(json_content));
-                    } else {
-                        CPPH_WARN("Trying to update expired config");
-                    }
-                } catch (nlohmann::json::parse_error& e) {
-                    CPPH_INFO("Msgpack parsing failed: {}", e.what());
-                } catch (std::out_of_range& e) {
-                    CPPH_INFO("Config key {} out of range", content.config_key);
-                }
-            };
-
-    asio::post(*_event_proc, bind_front_weak(_monitor_anchor, std::move(func)));
-}
-
 void config_context::start_monitoring(weak_ptr<void> anchor)
 {
     _monitor_anchor = move(anchor);
 
-    auto fn_handle_new_registry
-            = [this](weak_ptr<config_registry> wptr) {
-                  auto rg = wptr.lock();
-                  if (not rg) { return; }
+    // Register 'new repo' event
+    config_registry::backend_t::g_evt_registered.add_weak(
+            _monitor_anchor, [this](config_registry_ptr ptr) {
+                if (assert(ptr), not ptr) { return; }
 
-                  _publish_new_registry(rg);
-              };
+                post(*_ioc, [this, ptr = move(ptr)] {
+                    auto [iter, is_new] = _nodes.try_emplace(weak_ptr{ptr});
 
-    auto fn_post_func
-            = [this, fn_handle_new_registry](config_registry* rg) {
-                  asio::post(*_event_proc, bind_front_weak(_monitor_anchor, fn_handle_new_registry, rg->weak_from_this()));
-              };
+                    if (is_new) {
+                        // Guarantees single invocation
+                        _init_registry_node(iter, ptr.get());
+                    }
 
-    configs::on_new_config_registry()
-            .add_weak(_monitor_anchor, std::move(fn_post_func));
+                    _update_registry_structure(ptr.get(), iter);
+                    _publish_registry_refresh(iter);
+                });
+            });
+
+    config_registry::backend_t::g_evt_unregistered.add_weak(
+            _monitor_anchor, [this](config_registry_wptr wp) {
+                post(*_ioc, [this, wp = move(wp)] {
+                    auto iter = _nodes.find(wp);
+                    if (iter == _nodes.end()) { return; }
+
+                    _publish_unregister(iter);
+                    _nodes.erase(iter);
+                    _gc_mappings();
+                });
+            });
+
+    // Register all existing repositories
+    vector<v2::config_registry_ptr> registries;
+    config_registry::backend_t::bk_enumerate_registries(&registries, false);
+
+    for (auto& rg : registries) {
+        if (assert(rg), not rg) { continue; }
+
+        auto [iter, is_new] = _nodes.try_emplace(rg);
+
+        if (is_new) {
+            _init_registry_node(iter, rg.get());
+        }
+
+        _update_registry_structure(rg.get(), iter);
+    }
 }
 
 void config_context::stop_monitoring()
 {
     _monitor_anchor.reset();
+
+    // Reset all cached contexts
+    _nodes.clear();
 }
 
-void config_context::_handle_registry_destruction(const string& name)
+void config_context::rpc_republish_all_registries()
 {
-    auto iter = _config_registries.find(name);
-    if (iter == _config_registries.end()) { return; }
-
-    CPPH_DEBUG("Registry '{}' is being destructed", name);
-
-    for (auto& key : iter->second.associated_keys) {
-        _config_instances.erase(key);
-    }
-
-    _config_registries.erase(iter);
+    post(*_ioc, [this] {
+        // Republish all contexts
+        for (auto iter = _nodes.begin(), end = _nodes.end(); iter != end; ++iter)
+            _publish_registry_refresh(iter);
+    });
 }
 
-void config_context::_handle_update(
-        config_registry* rg,
-        vector<perfkit::detail::config_base*> const& changes)
+void config_context::rpc_update_request(message::config_entity_update_t& content)
 {
-    bool const is_waiting = not _pending_updates.empty();
+    post(*_ioc, [this, content] {
+        auto elem = find_ptr(_inv_mapping, content.config_key);
+        if (not elem) { return; }
 
-    for (auto ptr : changes) {
-        auto weak = ptr->weak_from_this();
-        auto iter = find_if(_pending_updates, [&](auto&& e) { return ptr_equals(e, weak); });
-        if (iter == _pending_updates.end()) { _pending_updates.push_back(std::move(weak)); }
-    }
+        auto cfg = elem->second.lock();
+        if (not cfg) { return; }
 
-    using std::chrono::steady_clock;
-    using namespace std::literals;
-    if (is_waiting) { return; }
+        auto owner = cfg->owner();
+        if (not owner) { return; }
 
-    _lazy_update_publish.expires_after(10ms);
-    _lazy_update_publish.async_wait(
-            [this](auto&& ec) {
-                if (ec) { return; }
-                auto& payload = _buf_payload;
-                for (auto& weak : _pending_updates) {
-                    auto cfg = weak.lock();
-                    if (not cfg) { continue; }
+        streambuf::view sbuf{{(char*)content.content_next.data(), content.content_next.size()}};
+        archive::msgpack::reader reader{&sbuf};
+        owner->backend()->bk_commit(cfg.get(), &reader);
+    });
+}
 
-                    payload.config_key = config_key_t::hash(&*cfg).value;
-                    payload.content_next.clear();
-                    cfg->serialize([buf = &payload.content_next](nlohmann::json const& content) {
-                        nlohmann::json::to_msgpack(content, nlohmann::detail::output_adapter<char>(*buf));
-                    });
+void config_context::_init_registry_node(
+        registry_table_type::iterator node, config_registry* ptr)
+{
+    // Update all structure
+    ptr->backend()->evt_structure_changed.add_weak(
+            _monitor_anchor, [this](config_registry* rg) {
+                post(*_ioc, [this, wrg = rg->weak_from_this()] {
+                    auto rg = wrg.lock();
+                    if (rg == nullptr) { return; }
 
-                    message::notify::config_entity_update(_rpc).notify(payload, _host->fn_basic_access());
-                }
+                    auto iter = _nodes.find(wrg);
+                    if (iter == _nodes.end()) { return; }
 
-                _pending_updates.clear();
+                    _update_registry_structure(rg.get(), iter);
+                    _publish_registry_refresh(iter);
+                });
             });
+
+    ptr->backend()->evt_updated_entities.add_weak(
+            _monitor_anchor, [this](config_registry* rg, list<config_base_ptr> const& l) {
+                vector<config_base_ptr> updates;
+                updates.reserve(l.size());
+                updates.assign(l.begin(), l.end());
+
+                post(*_ioc, bind_front_weak(_monitor_anchor,
+                                            &config_context::_publish_updates,
+                                            this,
+                                            rg->shared_from_this(),
+                                            move(updates)));
+            });
+}
+
+void config_context::_update_registry_structure(
+        config_registry* rg,
+        const registry_table_type::iterator& table_iterator)
+{
+    stopwatch swatch;
+
+    vector<config_base_ptr> configs;
+    rg->backend()->bk_all_items(&configs);
+
+    list_pool<message::notify::config_category_t> reuse_subc;
+    list_pool<message::config_entity_t> reuse_entity;
+
+    auto* p_root = &table_iterator->second.cat_root;
+    p_root->name = rg->name();
+    p_root->category_id = hasher::fnv1a_64(rg->id().value);
+
+    reuse_subc.checkin(&p_root->subcategories);
+    reuse_entity.checkin(&p_root->entities);
+
+    /// Iterate all configs, then
+    // 1. Create category name hierarchy from full key
+    // 2. Search hierarchy insertion position from category tree.
+    // 3. Insert entity on appropriate position
+    // note: Sort order will be automatically applied by above routine.
+
+    // Caches
+    string full_key;
+    string display_key;
+    vector<string_view> hierarchy_;
+    streambuf::stringbuf msbuf;
+    archive::msgpack::writer mwrite{&msbuf};
+
+    auto serialize =
+            [&](string* dst, refl::object_const_view_t view) {
+                dst->clear();
+                msbuf.reset(dst);
+                mwrite << view;
+                mwrite.flush();
+            };
+
+    for (auto& cfg : configs) {
+        if (cfg->attribute()->hidden)
+            continue;
+
+        cfg->full_key(&full_key);
+        _inv_mapping[cfg->id().value] = cfg;
+
+        // (1)
+        _configs::parse_full_key(full_key, &display_key, &hierarchy_);
+
+        array_view hierarchy = hierarchy_;
+        auto parent_node = p_root;
+
+        // (2)
+        while (hierarchy.size() != 1) {
+            auto subc_name = hierarchy.front();
+            auto psubc = &parent_node->subcategories;
+
+            // Try find subcategory name from current parent node's subcategories
+            auto iter = find_if(*psubc, [&](auto&& n) { return n.name == subc_name; });
+            if (iter == psubc->end()) {
+                // If category did not exist, init it.
+                iter = reuse_subc.checkout(psubc, psubc->end());
+                iter->name = subc_name;
+                iter->category_id = hasher::fnv1a_64(subc_name, parent_node->category_id);
+                reuse_subc.checkin(&iter->subcategories);
+                reuse_entity.checkin(&iter->entities);
+            }
+
+            parent_node = &*iter;
+            hierarchy = hierarchy.subspan(1);  // Consume front-most hierarchy name
+        }
+
+        // (3)
+        auto* entity = &reuse_entity.checkout_back(&parent_node->entities);
+        entity->name = cfg->name();
+        entity->description = cfg->description();
+        entity->config_key = cfg->id().value;
+
+        // Serialize attributes
+        auto& attrib = cfg->attribute();
+        serialize(&entity->initial_value, attrib->default_value.view());
+
+        if (attrib->min)
+            serialize(&entity->opt_min, attrib->min.view());
+        if (attrib->max)
+            serialize(&entity->opt_min, attrib->min.view());
+        if (attrib->one_of)
+            serialize(&entity->opt_one_of, attrib->one_of.view());
+    }
+
+    CPPH_DEBUG("Updated registry {} ... {:.2f} ms for categorizing {} elements",
+               rg->name(),
+               swatch.elapsed().count() * 1e3,
+               configs.size());
+}
+
+void config_context::_publish_registry_refresh(registry_table_type::iterator const& iter)
+{
+    auto rg = iter->first.lock();
+    assert(rg && "This method must be called when registry is certainly valid!");
+    message::notify::update_config_category(_rpc).notify(
+            rg->id().value, rg->name(), iter->second.cat_root, _host->fn_basic_access());
+
+    vector<config_base_ptr> configs;
+    rg->backend()->bk_all_items(&configs);
+    _publish_updates(rg, configs);
+}
+
+void config_context::_publish_updates(shared_ptr<config_registry> rg, vector<shared_ptr<config_base>> const& updates)
+{
+    message::config_entity_update_t update_content;
+    streambuf::stringbuf sbuf{&update_content.content_next};
+    archive::msgpack::writer writer{&sbuf};
+
+    auto bk = rg->backend();
+    for (auto& cfg : updates) {
+        update_content.config_key = cfg->id().value;
+
+        sbuf.clear(), writer.clear();
+        bk->bk_access_value_shared(cfg.get(), [&](auto&& raw) {
+            writer << raw.view();
+        });
+        writer.flush();
+
+        message::notify::config_entity_update(_rpc).notify(
+                update_content, _host->fn_basic_access());
+    }
+}
+
+void config_context::_publish_unregister(registry_table_type::iterator node)
+{
+    message::notify::deleted_config_category(_rpc).notify(node->second.cat_root.name);
+}
+
+void config_context::_gc_mappings()
+{
+    erase_if_each(_inv_mapping, [](auto&& pair) { return pair.second.expired(); });
 }

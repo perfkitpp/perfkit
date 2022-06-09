@@ -22,6 +22,9 @@
 //
 // project home: https://github.com/perfkitpp
 
+#include <cpph/refl/object.hxx>
+#include <cpph/refl/types/tuple.hxx>
+#include <perfkit/configs-v2.h>
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/extension/net.hpp>
 #include <perfkit/terminal.h>
@@ -38,8 +41,40 @@ PERFKIT_CATEGORY(conf_global)
             .confirm();
 }
 
-int main(void)
+PERFKIT_GCFG_CAT(MyGCAT::MySUBCAT)
 {
+    PERFKIT_GCFG(MyGc, 3.41);
+}
+
+PERFKIT_GCFG_CAT_ROOT_def(MyGCAT::MySUBCAT) {}
+
+#define DefaultValue 3
+
+PERFKIT_CFG_CLASS(MyCfg)
+{
+    PERFKIT_CFG(MyInt, 1, "Raw");
+    PERFKIT_CFG(MyString, "string");
+    PERFKIT_CFG(Vodif, std::vector<std::pair<int, double>>{}, "string");
+};
+
+PERFKIT_CFG_CLASS(OtherCfg)
+{
+    PERFKIT_CFG_SUBSET(MyCfg, Cfg1);
+};
+
+PERFKIT_CFG_CLASS(OtherCfg2)
+{
+    PERFKIT_CFG_SUBSET(OtherCfg, Cfg0);
+};
+
+int main(int argc, char** argv)
+{
+    if (argc > 1)
+        perfkit::configs_import(argv[1]);
+
+    auto f = OtherCfg2::create("hola!");
+    f->update();
+
     spdlog::set_level(spdlog::level::debug);
 
     test_class test1{"test1"};
@@ -56,16 +91,18 @@ int main(void)
 
     volatile bool running = true;
     term->add_command("quit", [&] { running = false; });
-    term->launch_stdin_fetch_thread();
-
+    conf_global::update();
     while (running) {
-        conf_global::update();
-
-        auto cmd = term->fetch_command(1s);
-        if (not cmd || cmd->empty())
-            continue;
-
-        spdlog::info("command: [{}]", *cmd);
-        term->commands()->invoke_command(*cmd);
+        auto ncmd = term->invoke_queued_commands(
+                1h, [&] { return running; }, [](auto cmd) {
+                    conf_global::update();
+                    spdlog::info("cmd: {}", cmd); });
+        spdlog::info("{} commands invoked", ncmd);
     }
+
+    spdlog::info("Now shutting down ...");
+
+    if (argc > 1)
+        perfkit::configs_export(argv[1]);
+    return 0;
 }

@@ -2,6 +2,7 @@
 #include <string>
 #include <thread>
 
+#include <Windows.h>
 #include <conio.h>
 
 using namespace std::literals;
@@ -18,14 +19,20 @@ bool poll_stdin(int ms_to_wait, std::string* out_content)
         if (_kbhit()) {
             auto ch = _getch();
 
-            if (ch == '\r') {
+            if (ch == 8) {
+                if (not buffer.empty())
+                    buffer.pop_back();
+            } else if (ch == '\r') {
                 ch = '\n';
             } else {
                 buffer += (char)ch;
             }
 
-            putc(ch, stdout);
+            putchar('\r');
+            fputs(buffer.c_str(), stdout);
+            fputs("\u001b[0K", stdout);
             if (ch == '\n') {
+                putchar('\n');
                 return true;
             } else {
                 continue;

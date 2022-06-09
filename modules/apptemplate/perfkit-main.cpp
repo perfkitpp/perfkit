@@ -4,11 +4,12 @@
 #include "cpph/timer.hxx"
 #include "perfkit-appbase.hpp"
 #include "perfkit/configs.h"
-#include "perfkit/extension/net.hpp"
+#include "perfkit/terminal.h"
 #include "spdlog/spdlog.h"
 
 // Turn off
 static std::atomic_bool g_server_is_alive = true;
+static std::weak_ptr<perfkit::if_terminal> g_weak_term;
 
 // Handle sigint
 static void sigint_handler(int signum)
@@ -21,6 +22,7 @@ static void sigint_handler(int signum)
         spdlog::warn("Next SIGINT will terminate this process.");
         signal(SIGINT, nullptr);
     } else {
+        if (auto term = g_weak_term.lock()) { term->push_command("quit"); }
         signal(SIGINT, &sigint_handler);
     }
 }
@@ -37,7 +39,7 @@ int main(int argc, char** argv)
 
     try {
         spdlog::info("Parsing {} command line arguments", argc);
-        perfkit::configs::parse_args(&argc, &argv, true);
+        perfkit::configs_parse_args(argc, (const char**&)argv);
     } catch (std::exception& e) {
         spdlog::error("Error during flag parsing: \n{}", e.what());
         return 1;
@@ -49,7 +51,7 @@ int main(int argc, char** argv)
     spdlog::info("Loading configs ...");
     std::string confpath = argc == 1 ? app->DefaultConfigPath() : argv[1];
     {
-        if (perfkit::configs::import_file(confpath)) {
+        if (perfkit::configs_import(confpath)) {
             spdlog::info("Successfully loaded intial config '{}'", confpath);
         } else if (confpath.empty()) {
             spdlog::critical("Config path is not specified!");
@@ -67,9 +69,9 @@ int main(int argc, char** argv)
     spdlog::info("APP INIT 1 - PostLoadConfigs");
     app->S02_PostLoadConfigs();
 
-    auto term = perfkit::terminal::net::create();
+    auto term = app->CreatePerfkitTerminal();
+    g_weak_term = term;
     perfkit::terminal::register_conffile_io_commands(term.get());
-    term->launch_stdin_fetch_thread();
 
     // Install signal handler
     signal(SIGINT, &sigint_handler);
@@ -92,11 +94,10 @@ int main(int argc, char** argv)
 
     while (g_server_is_alive) {
         app->Tick_Application(sw.elapsed().count()), sw.reset();
-        auto cmd = term->fetch_command(200ms);
-        if (not cmd) { continue; }
-
-        spdlog::info("CMD: {}", *cmd);
-        term->invoke_command(move(*cmd));
+        term->invoke_queued_commands(
+                app->DesiredTickInterval(),
+                [] { return g_server_is_alive.load(); },
+                [](auto cmd) { spdlog::info("CMD: {}", cmd); });
     }
 
     spdlog::info("Disposing application");

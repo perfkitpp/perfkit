@@ -5,7 +5,7 @@ project(perfkit)
 # Configurations -------------------------------------------------------------------------------------------------------
 option(perfkit_BUILD_FTXUI_EXTENSION "" OFF)
 option(perfkit_BUILD_NET "" ON)
-option(perfkit_BUILD_CLI "" ON)
+option(perfkit_BUILD_CLI "" OFF)
 option(perfkit_BUILD_GRAPHICS "" ON)
 option(perfkit_USE_BUNDLED_ASIO "" ON)
 option(perfkit_BUILD_EXAMPLES "" OFF)

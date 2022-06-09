@@ -18,7 +18,6 @@ endif ()
 
 if (perfkit_BUILD_NET)
     message("[${PROJECT_NAME}]: Configuring NET extension ...")
-    add_subdirectory(net)
     add_subdirectory(net-v2)
 endif ()
 
@@ -43,5 +42,8 @@ if (perfkit_BUILD_CLI)
             ../third/linenoise-1.0
     )
 endif ()
+
+# TARGET [apptemplate] -------------------------------------------------------------------------------------------------
+add_subdirectory(apptemplate)
 
 # Properties -----------------------------------------------------------------------------------------------------------

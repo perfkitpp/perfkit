@@ -30,6 +30,6 @@
 #include <spdlog/fwd.h>
 
 namespace perfkit {
-std::shared_ptr<spdlog::logger> glog();
+std::shared_ptr<spdlog::logger> const& glog();
 
 }  // namespace perfkit

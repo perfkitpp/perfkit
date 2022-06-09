@@ -69,16 +69,17 @@ TEST_SUITE("Argument Parser")
     TEST_CASE("Single Flags")
     {
         auto charpp = to_charpp(argset0);
-        int  argc = charpp.size();
+        int argc = charpp.size();
         auto argv = charpp.data();
 
-        perfkit::configs::parse_args(&argc, &argv, true);
+        // TODO: Re-enable this!
+        perfkit::v2::configs_parse_args(argc, (const char**&)argv);
         argparse0::registry().update();
 
         CHECK(argc == 3);
-        CHECK(argv[0] == "pos1"sv);
-        CHECK(argv[1] == "pos2"sv);
-        CHECK(argv[2] == "pos3"sv);
+        CHECK(argv[0] == "pos1"s);
+        CHECK(argv[1] == "pos2"s);
+        CHECK(argv[2] == "pos3"s);
 
         CHECK(*argparse0::opt0 == true);
         CHECK(*argparse0::opt1 == true);
@@ -105,10 +106,9 @@ TEST_SUITE("Argument Parser")
         };
 
         auto charpp = to_charpp(argset);
-        int  argc = charpp.size();
+        int argc = charpp.size();
         auto argv = charpp.data();
 
-        REQUIRE_THROWS_AS(perfkit::configs::parse_args(&argc, &argv, true),
-                          perfkit::configs::parse_error&);
+        REQUIRE_THROWS(perfkit::v2::configs_parse_args(argc, (const char**&)argv));
     }
 }

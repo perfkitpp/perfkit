@@ -31,6 +31,7 @@
 #include <cassert>
 #include <regex>
 
+#include <fmt/ranges.h>
 #include <range/v3/action/push_back.hpp>
 #include <range/v3/algorithm.hpp>
 #include <range/v3/range.hpp>
@@ -294,7 +295,7 @@ bool perfkit::commands::registry::node::invoke(
     unique_lock _{*_subcmd_lock};
     if (_hook_pre_op) { _hook_pre_op(this, full_tokens); }
 
-    if (full_tokens.size() > 0) {
+    if (not full_tokens.empty()) {
         if (auto subcmd = _find_subcommand(full_tokens[0])) {
             return subcmd->invoke(full_tokens.subspan(1));
         }
@@ -304,7 +305,7 @@ bool perfkit::commands::registry::node::invoke(
         return _invoke(full_tokens);
     }
 
-    glog()->debug("command not found. all arguments:");
+    glog()->debug("command not found. all arguments: {}", full_tokens);
     return false;
 }
 
@@ -412,7 +413,7 @@ bool perfkit::commands::registry::remove_invoke_hook(intptr_t id)
     using namespace ranges;
     auto names = _invoke_hooks | views::keys;
 
-    auto it = find(names, id);
+    auto it = ranges::find(names, id);
     if (it == names.end()) { return false; }
 
     auto index = it - names.begin();

@@ -23,37 +23,4 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include <memory>
-
-#include <spdlog/fwd.h>
-
-#include "perfkit/detail/fwd.hpp"
-
-namespace perfkit {
-namespace detail {
-class config_base;
-}
-
-class config_registry;
-class tracer;
-class tracer_proxy;
-
-using tracer_ptr = std::shared_ptr<tracer>;
-using logger_ptr = std::shared_ptr<spdlog::logger>;
-
-struct config_class;
-struct config_class_hook;
-
-namespace gui {
-class instance;
-}  // namespace gui
-
-class if_terminal;
-
-template <typename Ty_>
-class config;
-
-namespace commands {
-class registry;
-}
-}  // namespace perfkit
+#include "detail/fwd.hpp"

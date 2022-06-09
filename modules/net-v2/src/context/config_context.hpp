@@ -43,33 +43,31 @@
 namespace perfkit::net {
 class config_context
 {
-    using self_t = config_context;
+    struct config_node_type {
+        weak_ptr<config_base> config;
+    };
+
+    struct registry_node_type {
+        message::notify::config_category_t cat_root;
+    };
+
+   private:
+    using self_type = config_context;
+    using registry_table_type = map<weak_ptr<config_registry>, registry_node_type, std::owner_less<>>;
+    using config_table_type = std::unordered_map<uint64_t, config_node_type>;
 
    private:
     CPPH_UNIQUE_KEY_TYPE(config_key_t);
 
-    struct config_registry_context_t {
-        std::unordered_set<config_key_t> associated_keys;
-    };
-
-    using registry_context_table_t = std::map<string, config_registry_context_t, std::less<>>;
-    using config_key_table = std::unordered_map<config_key_t, weak_ptr<detail::config_base>>;
-
    private:
     if_net_terminal_adapter* _host;
 
-    asio::io_context* _event_proc{_host->event_proc()};
+    asio::io_context* _ioc{_host->event_proc()};
     rpc::session_group* _rpc{_host->rpc()};
 
-    registry_context_table_t _config_registries;
-    config_key_table _config_instances;
-
+    registry_table_type _nodes;
+    std::unordered_map<uint64_t, weak_ptr<config_base>> _inv_mapping;
     weak_ptr<void> _monitor_anchor;
-
-    //
-    asio::steady_timer _lazy_update_publish{*_event_proc};
-    std::vector<weak_ptr<detail::config_base>> _pending_updates;
-    message::config_entity_update_t _buf_payload;
 
    public:
     explicit config_context(if_net_terminal_adapter* host) : _host(host) {}
@@ -80,11 +78,14 @@ class config_context
 
    public:
     void rpc_republish_all_registries();
-    void rpc_update_request(message::config_entity_update_t const& content);
+    void rpc_update_request(message::config_entity_update_t& content);
 
    private:
-    void _publish_new_registry(shared_ptr<config_registry>);
-    void _handle_registry_destruction(string const& name);
-    void _handle_update(config_registry*, vector<detail::config_base*> const&);
+    void _init_registry_node(registry_table_type::iterator, config_registry* ptr);
+    void _update_registry_structure(config_registry* rg, registry_table_type::iterator const&);
+    void _publish_registry_refresh(registry_table_type::iterator const& node);
+    void _publish_unregister(registry_table_type::iterator node);
+    void _publish_updates(shared_ptr<config_registry>, vector<shared_ptr<config_base>> const& update_list);
+    void _gc_mappings();
 };
 }  // namespace perfkit::net

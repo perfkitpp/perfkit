@@ -9,13 +9,13 @@ target_sources(
 
         PRIVATE
         src/commands.cpp
-        src/configs.cpp
         src/main.cpp
         src/perfkit.cpp
         src/tracer.cpp
         src/terminal.cpp
-        src/config-flags.cpp
         src/logging.cpp
+        src/configs-v2.cpp
+        src/configs-v2-flags.cpp
 )
 
 target_precompile_headers(
@@ -73,6 +73,7 @@ target_link_libraries(
         PUBLIC
         spdlog::spdlog
         perfkit::cpph
+        fmt::fmt
         nlohmann_json::nlohmann_json
 
         PRIVATE
