@@ -80,11 +80,6 @@ string const& config_registry::name() const
     return _self->_name;
 }
 
-void config_registry::_internal_value_read_lock() { _self->_mtx_access.lock_shared(); }
-void config_registry::_internal_value_read_unlock() { _self->_mtx_access.unlock_shared(); }
-void config_registry::_internal_value_write_lock() { _self->_mtx_access.lock(); }
-void config_registry::_internal_value_write_unlock() { _self->_mtx_access.unlock(); }
-
 void config_registry::_internal_item_add(config_base_ptr arg, string prefix)
 {
     {
@@ -253,7 +248,12 @@ void config_registry::backend_t::_do_update()
 
                 // Perform actual update
                 assert(node->_staged && "Staged data must be prepared!");
-                conf->attribute()->fn_swap_value(conf->_body.raw_data, node->_staged);
+
+                {
+                    CPPH_TMPVAR(lock_guard{conf->_mtx_raw_access});
+                    conf->attribute()->fn_swap_value(conf->_body.raw_data, node->_staged);
+                }
+
                 node->_staged.reset();  // Clear staged data
 
                 // Increase modification fence

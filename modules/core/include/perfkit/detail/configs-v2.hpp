@@ -165,6 +165,7 @@ class config_base : public std::enable_shared_from_this<config_base>
     static inline std::atomic_uint64_t _idgen = 0;
     const config_id_t _id = {++_idgen};
 
+    mutable spinlock _mtx_raw_access;
     init_info_t _body;
     shared_ptr<config_registry> _rg;
 
@@ -199,6 +200,10 @@ class config_base : public std::enable_shared_from_this<config_base>
     void full_key(string* v) const noexcept { lock_guard{_mtx_full_key}, *v = _cached_full_key; }
 
     auto owner() const noexcept { return lock_guard{_mtx_full_key}, _rg; }
+
+   public:
+    void _internal_read_lock() { _mtx_raw_access.lock(); }
+    void _internal_read_unlock() { _mtx_raw_access.unlock(); }
 };
 
 /*
@@ -308,13 +313,6 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     //! All added item will be serialized to global context on first update after insertion
     void _internal_item_add(config_base_ptr arg, string prefix = "");
     void _internal_item_remove(config_base_wptr arg);
-
-   public:
-    //! Protects value from update
-    void _internal_value_read_lock();
-    void _internal_value_read_unlock();
-    void _internal_value_write_lock();
-    void _internal_value_write_unlock();
 };
 
 /**
@@ -363,12 +361,9 @@ class config
 
     ValueType value() const noexcept
     {
-        auto owner = _base->owner();
-        assert(owner);
-
-        owner->_internal_value_read_lock();
+        _base->_internal_read_lock();
         ValueType value = *_ref;
-        owner->_internal_value_read_unlock();
+        _base->_internal_read_unlock();
 
         return value;
     }
