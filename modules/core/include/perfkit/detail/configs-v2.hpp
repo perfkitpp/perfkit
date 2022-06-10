@@ -165,7 +165,7 @@ class config_base : public std::enable_shared_from_this<config_base>
     static inline std::atomic_uint64_t _idgen = 0;
     const config_id_t _id = {++_idgen};
 
-    mutable spinlock _mtx_raw_access;
+    mutable shared_spinlock _mtx_raw_access;
     init_info_t _body;
     shared_ptr<config_registry> _rg;
 
@@ -202,8 +202,8 @@ class config_base : public std::enable_shared_from_this<config_base>
     auto owner() const noexcept { return lock_guard{_mtx_full_key}, _rg; }
 
    public:
-    void _internal_read_lock() { _mtx_raw_access.lock(); }
-    void _internal_read_unlock() { _mtx_raw_access.unlock(); }
+    void _internal_read_lock() { _mtx_raw_access.lock_shared(); }
+    void _internal_read_unlock() { _mtx_raw_access.unlock_shared(); }
 };
 
 /*
@@ -335,7 +335,7 @@ class config
 
    public:
     config() noexcept = default;
-    explicit config(config_attribute_ptr attrib)
+    explicit config(config_attribute_ptr attrib) noexcept
     {
         // Retrieve default value from attribute
         auto default_value = refl::get_ptr<ValueType>(attrib->default_value);
