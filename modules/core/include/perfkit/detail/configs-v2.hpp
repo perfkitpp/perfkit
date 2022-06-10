@@ -27,6 +27,7 @@
 #pragma once
 #include <utility>
 
+#include "configs-edit_mode.hxx"
 #include "cpph/container/sorted_vector.hxx"
 #include "cpph/hasher.hxx"
 #include "cpph/refl/core.hxx"
@@ -52,20 +53,6 @@ CPPH_UNIQUE_KEY_TYPE(config_attribute_id_t);
 
 //
 using config_data = binary<string>;
-
-enum class edit_mode : uint8_t {
-    none,
-
-    path = 10,
-    path_file = 11,
-    path_file_multi = 12,
-    path_dir = 13,
-
-    script = 20,  // usually long text
-
-    color_b = 31,  // maximum 4 ch, 0~255 color range per channel
-    color_f = 32,  // maximum 4 ch, usually 0.~1. range. Channel can exceed 1.
-};
 
 /**
  * Configs utility

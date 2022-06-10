@@ -29,7 +29,7 @@
 #pragma once
 #include <list>
 
-#include <cpph/refl/types/nlohmann_json.hxx>
+#include <cpph/refl/types/nlohmann_json_fwd.hpp>
 #include <perfkit/configs.h>
 #include <perfkit/logging.h>
 #include <perfkit/traces.h>
@@ -104,7 +104,6 @@ PERFKIT_T_CATEGORY(
                 .min({0, 0, 0., false, "ola olala!"})
                 .max({251, 311, 0., false, "vl vl!!"})
                 .confirm();
-
 );
 
 class test_class

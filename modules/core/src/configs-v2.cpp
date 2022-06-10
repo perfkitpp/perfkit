@@ -30,6 +30,7 @@
 #include <set>
 
 #include <fmt/core.h>
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 #include "cpph/refl/archive/json.hpp"
@@ -326,6 +327,7 @@ bool config_registry::unregister()
     }
 
     CPPH_DEBUG("Unregistering '{}' from global registry ...", name());
+    assert(not _self->_is_transient);
     {
         auto [lock, repo] = _global_repo();
         auto erase_result = repo->erase(id());
@@ -358,7 +360,7 @@ bool config_registry::is_transient() const
  * GLOBAL CONFIGURATIONS
  *
  */
-#include "cpph/refl/types/nlohmann_json.hxx"
+#include "cpph/refl/types/nlohmann_json_fwd.hpp"
 #include "cpph/refl/types/tuple.hxx"
 
 namespace perfkit::v2 {
@@ -374,22 +376,29 @@ void config_registry::backend_t::_register_to_global_repo()
 {
     CPPH_DEBUG("Registering '{}' to global repository ...", _name);
 
-    if (not acquire(_is_transient)) {
-        auto [_, p_conf] = _g_config();
+    if (acquire(_is_transient))
+        return;
 
-        if (not find_ptr(*p_conf, _name)) {
-            // If registry or any element is missing from global storage, merge on it.
-            _owner->export_to(&(*p_conf)[_name]);
-        }
-    }
+    // If registry or any element is missing from global storage, merge on it.
+    if (auto [_, p_conf] = _g_config(); not find_ptr(*p_conf, _name))
+        _owner->export_to(&(*p_conf)[_name]);
 
     // Register to global repository
-    {
+    for (;;) {
         auto [lock, repo] = _global_repo();
         auto is_new = repo->try_emplace(_id, _owner->weak_from_this()).second;
-        assert(is_new && "Config registry can't be registered twice.");
+
+        if (not is_new) {
+            CPPH_WARN(
+                    "Waiting for registry '{}' unregistered from global registry.\n"
+                    "This might cause deadlock if you don't unregister another\n"
+                    " repository that has same name.");
+            std::this_thread::sleep_for(1s);
+            continue;
+        }
 
         release(_is_registered, true);
+        break;
     }
 
     g_evt_registered.invoke(_owner->shared_from_this());
