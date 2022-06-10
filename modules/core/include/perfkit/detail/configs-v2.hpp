@@ -262,6 +262,13 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     void export_to(config_registry_storage_t* to, string* _ = nullptr) const;
     bool import_from(config_registry_storage_t const& from, string* _ = nullptr);
 
+    //! Touch this registry.
+    //! Next check_update() will return
+    void touch() const
+    {
+        _fence_cached = 0;
+    }
+
     //! Check if there was any update, without actual update() call.
     //! Return value is valid for each registry() instances.
     bool check_update() const
