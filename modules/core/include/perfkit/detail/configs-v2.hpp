@@ -106,7 +106,7 @@ struct config_attribute {
     // For remote session ...
     bool hidden = false;
     v2::edit_mode edit_mode;
-    string description;
+    string_view description;
 };
 
 /**

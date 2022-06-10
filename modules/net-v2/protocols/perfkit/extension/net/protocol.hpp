@@ -33,6 +33,7 @@
 #include <list>
 #include <variant>
 
+#include "cpph/container/buffer.hxx"
 #include "cpph/refl/core.hxx"
 #include "cpph/refl/rpc/signature.hxx"
 #include "perfkit/detail/configs-edit_mode.hxx"
@@ -73,7 +74,7 @@ struct config_entity_t {
 
     v2::edit_mode edit_mode = {};
 
-    string description;
+    flex_buffer description;
     msgpack_archive_t initial_value;
 
     msgpack_archive_t opt_min;

@@ -304,9 +304,10 @@ class config_attribute_factory
 
    public:
     /** Description to this property */
-    self_reference description(string content) noexcept
+    template <size_t N>
+    self_reference description(char const (&content)[N]) noexcept
     {
-        _ref->description = move(content);
+        _ref->description = content;
         return *this;
     }
 
