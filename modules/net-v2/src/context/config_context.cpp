@@ -31,9 +31,12 @@
 
 #include <asio/io_context.hpp>
 #include <asio/post.hpp>
+#include <fmt/chrono.h>
+#include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
 #include "cpph/hasher.hxx"
+#include "cpph/helper/quick_bench.hxx"
 #include "cpph/memory/list_pool.hxx"
 #include "cpph/refl/archive/msgpack-reader.hxx"
 #include "cpph/refl/archive/msgpack-writer.hxx"
@@ -214,6 +217,9 @@ void config_context::_update_registry_structure(
                 mwrite.flush();
             };
 
+    // Optimize lookup overhead using lut
+    _tmp_lut.clear();
+
     for (auto& cfg : configs) {
         if (cfg->attribute()->hidden)
             continue;
@@ -225,26 +231,38 @@ void config_context::_update_registry_structure(
         _configs::parse_full_key(full_key, &display_key, &hierarchy_);
 
         array_view hierarchy = hierarchy_;
+        hierarchy = hierarchy.subspan(0, hierarchy.size() - 1);
+        auto category_id = hasher::fnv1a_64(hierarchy, p_root->category_id);
         auto parent_node = p_root;
 
         // (2)
-        while (hierarchy.size() != 1) {
-            auto subc_name = hierarchy.front();
-            auto psubc = &parent_node->subcategories;
+        if (hierarchy.empty()) {
+            ;
+        } else if (auto vp_category = find_ptr(_tmp_lut, category_id)) {
+            parent_node = static_cast<decltype(parent_node)>(vp_category->second);
+        } else {
+            for (; not hierarchy.empty();) {
+                auto subc_name = hierarchy.front();
+                auto psubc = &parent_node->subcategories;
 
-            // Try find subcategory name from current parent node's subcategories
-            auto iter = find_if(*psubc, [&](auto&& n) { return n.name == subc_name; });
-            if (iter == psubc->end()) {
-                // If category did not exist, init it.
-                iter = reuse_subc.checkout(psubc, psubc->end());
-                iter->name = subc_name;
-                iter->category_id = hasher::fnv1a_64(subc_name, parent_node->category_id);
-                reuse_subc.checkin(&iter->subcategories);
-                reuse_entity.checkin(&iter->entities);
+                // Try find subcategory name from current parent node's subcategories
+                auto iter = find_if(*psubc, [&](auto&& n) { return n.name == subc_name; });
+
+                if (iter == psubc->end()) {
+                    // If category did not exist, init it.
+                    iter = reuse_subc.checkout(psubc, psubc->end());
+                    iter->name = subc_name;
+                    iter->category_id = hasher::fnv1a_64(subc_name, parent_node->category_id);
+                    reuse_subc.checkin(&iter->subcategories);
+                    reuse_entity.checkin(&iter->entities);
+
+                    auto is_new = _tmp_lut.try_emplace(iter->category_id, &*iter).second;
+                    assert(is_new && "LUT must be unique!"), (void)is_new;
+                }
+
+                parent_node = &*iter;
+                hierarchy = hierarchy.subspan(1);  // Consume front-most hierarchy name
             }
-
-            parent_node = &*iter;
-            hierarchy = hierarchy.subspan(1);  // Consume front-most hierarchy name
         }
 
         // (3)
@@ -255,6 +273,7 @@ void config_context::_update_registry_structure(
 
         // Serialize attributes
         auto& attrib = cfg->attribute();
+        entity->edit_mode = attrib->edit_mode;
         serialize(&entity->initial_value, attrib->default_value.view());
 
         if (attrib->min)

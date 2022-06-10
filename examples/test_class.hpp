@@ -98,13 +98,21 @@ PERFKIT_T_CATEGORY(
                         .max({251, 311, 0., false, "vl vl!!"})
                         .confirm();
 
-        );
+                PERFKIT_CFG(average, 3);
+                PERFKIT_CFG(mydark, 3);
+                PERFKIT_CFG(vofafa, 3);
+                PERFKIT_CFG(myhoers, 3);
+
+                PERFKIT_T_SUBCATEGORY(
+                        subsubconfigs,
+
+                        PERFKIT_CFG(fofofo, 1);
+                        PERFKIT_CFG(aldf, 3);););
 
         PERFKIT_T_CONFIGURE(custom_struct, test_config_structure{})
                 .min({0, 0, 0., false, "ola olala!"})
                 .max({251, 311, 0., false, "vl vl!!"})
-                .confirm();
-);
+                .confirm(););
 
 class test_class
 {

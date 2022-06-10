@@ -673,41 +673,59 @@ namespace _configs {
 void parse_full_key(
         const string& full_key, string* o_display_key, vector<string_view>* o_hierarchy)
 {
-    // TODO: Parse full_key to display key
-    static std::regex rg_trim_whitespace{R"((?:^|\|?)\s*(\S?[^|]*\S)\s*(?:\||$))"};
-    static std::regex rg_remove_order_marker{R"(\+[^|]+\|)"};
-
-    o_display_key->clear();
+    *o_display_key = full_key;
     o_hierarchy->clear();
 
-    o_display_key->reserve(full_key.size());
-    for (std::cregex_iterator end{},
-         iter{full_key.c_str(), full_key.c_str() + full_key.size(), rg_trim_whitespace};
-         iter != end;
-         ++iter) {
-        if (not iter->ready()) { throw "Invalid Token"; }
-        auto token = string_view{full_key}.substr(iter->position(1), iter->length(1));
-        o_hierarchy->push_back(token);
-        o_display_key->append(token);
-        o_display_key->append("|");
-    }
-    o_display_key->pop_back();  // remove last | character
+    string_view active_view = full_key;
+    for (;;) {
+        auto pos = active_view.find_first_of('|');
+        if (pos == string_view::npos) {
+            o_hierarchy->push_back(active_view);
+            break;
+        }
+        assert(pos != 0);
 
-    auto it = std::regex_replace(o_display_key->begin(),
-                                 o_display_key->begin(), o_display_key->end(),
-                                 rg_remove_order_marker, "");
-    o_display_key->resize(it - o_display_key->begin());
+        auto tok = active_view.substr(0, pos);
+        active_view = active_view.substr(pos + 1);
 
-    if (full_key.back() == '|') {
-        throw std::invalid_argument(
-                fmt::format("Invalid Key Name: {}", full_key));
+        o_hierarchy->push_back(tok);
     }
 
-    if (o_display_key->empty()) {
-        throw std::invalid_argument(
-                fmt::format("Invalid Generated Display Key Name: {} from full key {}",
-                            *o_display_key, full_key));
-    }
+    //    // TODO: Parse full_key to display key
+    //    static std::regex rg_trim_whitespace{R"((?:^|\|?)\s*(\S?[^|]*\S)\s*(?:\||$))"};
+    //    static std::regex rg_remove_order_marker{R"(\+[^|]+\|)"};
+    //
+    //    o_display_key->clear();
+    //    o_hierarchy->clear();
+    //
+    //    o_display_key->reserve(full_key.size());
+    //    for (std::cregex_iterator end{},
+    //         iter{full_key.c_str(), full_key.c_str() + full_key.size(), rg_trim_whitespace};
+    //         iter != end;
+    //         ++iter) {
+    //        if (not iter->ready()) { throw "Invalid Token"; }
+    //        auto token = string_view{full_key}.substr(iter->position(1), iter->length(1));
+    //        o_hierarchy->push_back(token);
+    //        o_display_key->append(token);
+    //        o_display_key->append("|");
+    //    }
+    //    o_display_key->pop_back();  // remove last | character
+    //
+    //    auto it = std::regex_replace(o_display_key->begin(),
+    //                                 o_display_key->begin(), o_display_key->end(),
+    //                                 rg_remove_order_marker, "");
+    //    o_display_key->resize(it - o_display_key->begin());
+    //
+    //    if (full_key.back() == '|') {
+    //        throw std::invalid_argument(
+    //                fmt::format("Invalid Key Name: {}", full_key));
+    //    }
+    //
+    //    if (o_display_key->empty()) {
+    //        throw std::invalid_argument(
+    //                fmt::format("Invalid Generated Display Key Name: {} from full key {}",
+    //                            *o_display_key, full_key));
+    //    }
 }
 }  // namespace _configs
 }  // namespace perfkit::v2

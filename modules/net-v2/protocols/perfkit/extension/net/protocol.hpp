@@ -35,6 +35,7 @@
 
 #include "cpph/refl/core.hxx"
 #include "cpph/refl/rpc/signature.hxx"
+#include "perfkit/detail/configs-edit_mode.hxx"
 #include "perfkit/fwd.hpp"
 
 namespace perfkit::net::message {
@@ -69,6 +70,8 @@ struct config_entity_t {
 
     string name;
     uint64_t config_key;
+
+    v2::edit_mode edit_mode = {};
 
     string description;
     msgpack_archive_t initial_value;

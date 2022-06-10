@@ -69,6 +69,8 @@ class config_context
     std::unordered_map<uint64_t, weak_ptr<config_base>> _inv_mapping;
     weak_ptr<void> _monitor_anchor;
 
+    std::unordered_map<uint64_t, void*> _tmp_lut;
+
    public:
     explicit config_context(if_net_terminal_adapter* host) : _host(host) {}
 
