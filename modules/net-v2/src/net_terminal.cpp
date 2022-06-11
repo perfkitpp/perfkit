@@ -32,14 +32,14 @@
 
 #include <spdlog/spdlog.h>
 
-#include "cpph/functional.hxx"
 #include "cpph/refl/object.hxx"
 #include "cpph/refl/rpc/connection/asio.hxx"
 #include "cpph/refl/rpc/protocol/msgpack-rpc.hxx"
 #include "cpph/refl/rpc/rpc.hxx"
 #include "cpph/refl/rpc/service.hxx"
 #include "cpph/refl/rpc/session_builder.hxx"
-#include "cpph/template_utils.hxx"
+#include "cpph/utility/functional.hxx"
+#include "cpph/utility/template_utils.hxx"
 #include "perfkit/configs.h"
 #include "utils.hpp"
 

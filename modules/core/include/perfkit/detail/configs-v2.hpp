@@ -29,10 +29,10 @@
 
 #include "configs-edit_mode.hxx"
 #include "cpph/container/sorted_vector.hxx"
-#include "cpph/hasher.hxx"
 #include "cpph/refl/core.hxx"
 #include "cpph/spinlock.hxx"
 #include "cpph/threading.hxx"
+#include "cpph/utility/hasher.hxx"
 #include "fwd.hpp"
 #include "nlohmann/json_fwd.hpp"
 

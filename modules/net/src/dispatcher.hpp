@@ -30,7 +30,7 @@
 #include <functional>
 #include <memory>
 
-#include <cpph/event.hxx>
+#include <cpph/utility/event.hxx>
 #include <nlohmann/json.hpp>
 #include <perfkit/extension/net.hpp>
 

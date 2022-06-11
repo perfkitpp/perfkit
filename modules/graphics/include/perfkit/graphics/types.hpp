@@ -22,9 +22,9 @@
 //
 // project home: https://github.com/perfkitpp
 #pragma once
-#include "cpph/functional.hxx"
 #include "cpph/math/matrix.hxx"
 #include "cpph/math/rectangle.hxx"
+#include "cpph/utility/functional.hxx"
 #include "fwd.hpp"
 #include "handle.hpp"
 

@@ -30,7 +30,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "cpph/timer.hxx"
+#include "cpph/utility/timer.hxx"
 
 PERFKIT_CATEGORY(test_global_category)
 {

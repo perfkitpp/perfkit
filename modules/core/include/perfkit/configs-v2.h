@@ -25,7 +25,7 @@
  ******************************************************************************/
 
 #pragma once
-#include "cpph/macros.hxx"
+#include "cpph/helper/macros.hxx"
 #include "detail/configs-v2-flags.hpp"
 #include "detail/configs-v2-frontend.hpp"
 #include "detail/configs-v2.hpp"

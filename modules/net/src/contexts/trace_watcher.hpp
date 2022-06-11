@@ -30,7 +30,7 @@
 #include "cpph/memory/pool.hxx"
 #include "cpph/thread/locked.hxx"
 #include "cpph/thread/worker.hxx"
-#include "cpph/timer.hxx"
+#include "cpph/utility/timer.hxx"
 #include "if_watcher.hpp"
 #include "perfkit/traces.h"
 

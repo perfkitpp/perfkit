@@ -29,11 +29,11 @@
 #include <unordered_map>
 
 #include "configs-v2.hpp"
-#include "cpph/event.hxx"
 #include "cpph/memory/pool.hxx"
 #include "cpph/refl/core.hxx"
 #include "cpph/streambuf/string.hxx"
 #include "cpph/thread/event_queue.hxx"
+#include "cpph/utility/event.hxx"
 
 namespace cpph {
 using std::list;

@@ -35,7 +35,7 @@
 
 #include "../utils.hpp"
 #include "cpph/algorithm/std.hxx"
-#include "cpph/template_utils.hxx"
+#include "cpph/utility/template_utils.hxx"
 #include "perfkit/detail/base.hpp"
 //
 #include <asio/io_context.hpp>

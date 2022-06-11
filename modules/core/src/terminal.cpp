@@ -37,7 +37,7 @@
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
-#include "cpph/format.hxx"
+#include "cpph/utility/format.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/commands.hpp"
 #include "perfkit/detail/configs-v2.hpp"

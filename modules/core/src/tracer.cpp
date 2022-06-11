@@ -35,10 +35,10 @@
 #include <spdlog/spdlog.h>
 
 #include "cpph/algorithm/base64.hxx"
-#include "cpph/hasher.hxx"
-#include "cpph/macros.hxx"
-#include "cpph/template_utils.hxx"
+#include "cpph/helper/macros.hxx"
+#include "cpph/utility/hasher.hxx"
 #include "cpph/utility/singleton.hxx"
+#include "cpph/utility/template_utils.hxx"
 #include "perfkit/detail/base.hpp"
 
 #define CPPH_LOGGER() perfkit::glog()

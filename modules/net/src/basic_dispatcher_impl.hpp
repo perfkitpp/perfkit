@@ -37,13 +37,12 @@
 #include <asio/write.hpp>
 #include <cpph/algorithm/base64.hxx>
 #include <cpph/algorithm/std.hxx>
-
-#include <cpph/dynamic_array.hxx>
-#include <cpph/event.hxx>
-#include <cpph/hasher.hxx>
+#include <cpph/container/dynamic_array.hxx>
 #include <cpph/helper/nlohmann_json_macros.hxx>
 #include <cpph/memory/pool.hxx>
-#include <cpph/timer.hxx>
+#include <cpph/utility/event.hxx>
+#include <cpph/utility/hasher.hxx>
+#include <cpph/utility/timer.hxx>
 #include <nlohmann/json.hpp>
 #include <perfkit/extension/net.hpp>
 #include <perfkit/logging.h>

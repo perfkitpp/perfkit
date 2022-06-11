@@ -35,14 +35,14 @@
 #include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
-#include "cpph/hasher.hxx"
 #include "cpph/helper/quick_bench.hxx"
 #include "cpph/memory/list_pool.hxx"
 #include "cpph/refl/archive/msgpack-reader.hxx"
 #include "cpph/refl/archive/msgpack-writer.hxx"
 #include "cpph/refl/object.hxx"
 #include "cpph/refl/rpc/rpc.hxx"
-#include "cpph/timer.hxx"
+#include "cpph/utility/hasher.hxx"
+#include "cpph/utility/timer.hxx"
 #include "perfkit/detail/configs-v2-backend.hpp"
 #include "perfkit/logging.h"
 

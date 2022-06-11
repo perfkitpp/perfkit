@@ -32,7 +32,7 @@
 #include <memory>
 #include <string>
 
-#include "cpph/functional.hxx"
+#include "cpph/utility/functional.hxx"
 #include "perfkit/detail/fwd.hpp"
 
 namespace cpph::rpc {

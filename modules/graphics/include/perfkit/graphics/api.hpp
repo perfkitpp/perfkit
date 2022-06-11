@@ -23,7 +23,7 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "cpph/functional.hxx"
+#include "cpph/utility/functional.hxx"
 #include "fwd.hpp"
 #include "handle.hpp"
 #include "types.hpp"

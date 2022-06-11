@@ -1,7 +1,7 @@
 #include <csetjmp>
 #include <csignal>
 
-#include "cpph/timer.hxx"
+#include "cpph/utility/timer.hxx"
 #include "perfkit-appbase.hpp"
 #include "perfkit/configs.h"
 #include "perfkit/terminal.h"

@@ -32,9 +32,9 @@
 
 #include "../utils.hpp"
 #include "cpph/algorithm/std.hxx"
-#include "cpph/macros.hxx"
-#include "cpph/template_utils.hxx"
+#include "cpph/helper/macros.hxx"
 #include "cpph/thread/utility.hxx"
+#include "cpph/utility/template_utils.hxx"
 #include "perfkit/extension/net-internals/messages.hpp"
 
 #define CPPH_LOGGER() perfkit::terminal::net::detail::nglog()

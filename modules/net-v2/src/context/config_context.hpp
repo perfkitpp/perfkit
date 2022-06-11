@@ -33,8 +33,8 @@
 #include <unordered_set>
 
 #include <asio/steady_timer.hpp>
-#include <cpph/hasher.hxx>
-#include <cpph/macros.hxx>
+#include <cpph/helper/macros.hxx>
+#include <cpph/utility/hasher.hxx>
 #include <perfkit/extension/net/protocol.hpp>
 #include <perfkit/fwd.hpp>
 

@@ -30,13 +30,12 @@
 
 #include <spdlog/spdlog.h>
 
-
-#include "cpph/counter.hxx"
-#include "cpph/futils.hxx"
-#include "cpph/macros.hxx"
-#include "cpph/timer.hxx"
+#include "cpph/helper/macros.hxx"
+#include "cpph/utility/counter.hxx"
+#include "cpph/utility/futils.hxx"
 #include "cpph/utility/ownership.hxx"
-#include "cpph/zip.hxx"
+#include "cpph/utility/timer.hxx"
+#include "cpph/utility/zip.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/logging.hpp"
 

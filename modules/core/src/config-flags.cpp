@@ -35,8 +35,8 @@
 #include <range/v3/view/map.hpp>
 #include <spdlog/spdlog.h>
 
-#include "cpph/format.hxx"
-#include "cpph/macros.hxx"
+#include "cpph/helper/macros.hxx"
+#include "cpph/utility/format.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/configs.hpp"
 

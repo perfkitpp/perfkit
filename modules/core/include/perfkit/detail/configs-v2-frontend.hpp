@@ -26,7 +26,7 @@
 
 #pragma once
 #include "configs-v2.hpp"
-#include "cpph/macros.hxx"
+#include "cpph/helper/macros.hxx"
 
 namespace perfkit {
 using namespace cpph;

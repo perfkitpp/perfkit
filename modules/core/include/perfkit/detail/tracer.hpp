@@ -37,10 +37,10 @@
 #include <variant>
 #include <vector>
 
-#include "cpph/utility/array_view.hxx"
-#include "cpph/event.hxx"
-#include "cpph/hasher.hxx"
 #include "cpph/spinlock.hxx"
+#include "cpph/utility/array_view.hxx"
+#include "cpph/utility/event.hxx"
+#include "cpph/utility/hasher.hxx"
 #include "perfkit/fwd.hpp"
 
 namespace fmt {

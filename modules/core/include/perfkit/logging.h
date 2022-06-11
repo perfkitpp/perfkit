@@ -23,5 +23,5 @@
 // project home: https://github.com/perfkitpp
 
 #pragma once
-#include "cpph/macros.hxx"
+#include "cpph/helper/macros.hxx"
 #include "detail/logging.hpp"
