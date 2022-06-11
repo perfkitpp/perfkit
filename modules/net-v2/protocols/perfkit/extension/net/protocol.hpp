@@ -112,12 +112,12 @@ using trace_payload_t = std::variant<nullptr_t, steady_clock::duration, int64_t,
 struct trace_info_t {
     CPPH_REFL_DECLARE_c;
 
-    int index;  // Unique occurrence order. As nodes never expires, this value can simply be used as index.
-
-    int parent_index;  // Birth index of parent node. Required to build hierarchy. -1 if root.
-    string name;
+    int index;                 // Unique occurrence order. As nodes are never expired, this value can simply be used as index.
+    int parent_index;          // Birth index of parent node. Required to build hierarchy. -1 if root.
     uint64_t hash;             // Unique hash
     uint64_t owner_tracer_id;  // Owning tracer's id
+
+    string name;
 };
 
 struct trace_update_t {
