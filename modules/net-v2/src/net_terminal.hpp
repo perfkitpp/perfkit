@@ -40,7 +40,7 @@
 
 #include "context/config_context.hpp"
 #include "context/trace_context.hpp"
-#include "cpph/circular_queue.hxx"
+#include "cpph/container/circular_queue.hxx"
 #include "cpph/hasher.hxx"
 #include "cpph/refl/rpc/rpc.hxx"
 #include "cpph/refl/rpc/service.hxx"

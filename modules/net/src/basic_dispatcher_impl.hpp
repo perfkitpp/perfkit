@@ -37,7 +37,7 @@
 #include <asio/write.hpp>
 #include <cpph/algorithm/base64.hxx>
 #include <cpph/algorithm/std.hxx>
-#include <cpph/assert.hxx>
+
 #include <cpph/dynamic_array.hxx>
 #include <cpph/event.hxx>
 #include <cpph/hasher.hxx>
@@ -172,7 +172,7 @@ class basic_dispatcher_impl
         auto lc{std::lock_guard{_mtx_modify}};
         auto [it, is_new] = _recv_routes.try_emplace(std::move(route), std::move(handler));
 
-        assert_(is_new && "duplicated route is logic error ! ! !");
+        assert(is_new && "duplicated route is logic error ! ! !");
     }
 
     void send(
@@ -256,7 +256,7 @@ class basic_dispatcher_impl
         CPPH_INFO("new connection notified: {}", id.value);
 
         auto [it, is_new] = _connections.try_emplace(id);
-        assert_(is_new);  // id must be unique!
+        assert(is_new);  // id must be unique!
         auto* context = &it->second;
         context->socket = std::move(socket);
         context->recv_latest = steady_clock::now();

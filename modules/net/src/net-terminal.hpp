@@ -26,7 +26,7 @@
 #include <future>
 #include <iostream>
 
-#include <cpph/assert.hxx>
+
 #include <cpph/thread/notify_queue.hxx>
 #include <perfkit/detail/base.hpp>
 #include <perfkit/detail/commands.hpp>

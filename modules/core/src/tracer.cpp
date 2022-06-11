@@ -35,7 +35,6 @@
 #include <spdlog/spdlog.h>
 
 #include "cpph/algorithm/base64.hxx"
-#include "cpph/assert.hxx"
 #include "cpph/hasher.hxx"
 #include "cpph/macros.hxx"
 #include "cpph/template_utils.hxx"
@@ -325,7 +324,7 @@ void tracer::_try_pop(_trace::_entity_ty const* body)
     while (--i != ~size_t{} && _stack[i] != body)
         ;
 
-    assert_(i != ~size_t{});
+    assert(i != ~size_t{});
     _stack.erase(_stack.begin() + i);
 }
 

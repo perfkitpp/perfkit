@@ -30,7 +30,7 @@
 #include <future>
 #include <list>
 
-#include "cpph/circular_queue.hxx"
+#include "cpph/container/circular_queue.hxx"
 #include "perfkit/detail/commands.hpp"
 #include "perfkit/terminal.h"
 

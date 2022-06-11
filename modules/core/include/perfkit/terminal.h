@@ -30,7 +30,7 @@
 
 #include <spdlog/fwd.h>
 
-#include "cpph/array_view.hxx"
+#include "cpph/utility/array_view.hxx"
 #include "perfkit/detail/fwd.hpp"
 
 namespace perfkit {

@@ -32,7 +32,7 @@
 
 #include <asio/dispatch.hpp>
 #include <asio/post.hpp>
-#include <cpph/assert.hxx>
+
 
 #include "basic_dispatcher_impl.hpp"
 #include "server_mode_dispatcher.hpp"

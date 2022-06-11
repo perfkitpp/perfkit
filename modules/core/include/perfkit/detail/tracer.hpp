@@ -37,7 +37,7 @@
 #include <variant>
 #include <vector>
 
-#include "cpph/array_view.hxx"
+#include "cpph/utility/array_view.hxx"
 #include "cpph/event.hxx"
 #include "cpph/hasher.hxx"
 #include "cpph/spinlock.hxx"

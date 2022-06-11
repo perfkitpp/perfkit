@@ -30,7 +30,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "cpph/assert.hxx"
+
 #include "cpph/counter.hxx"
 #include "cpph/futils.hxx"
 #include "cpph/macros.hxx"
@@ -492,7 +492,7 @@ static std::shared_ptr<redirect_context_t> inserter_sink;
 
 void perfkit::net::detail::input_redirect(std::function<void(char const*, size_t)> inserter)
 {
-    assert_(not inserter_sink);
+    assert(not inserter_sink);
 
     CPPH_INFO("Redirecting all registered loggers");
 

@@ -29,8 +29,8 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
 
-#include "cpph/array_view.hxx"
-#include "cpph/circular_queue.hxx"
+#include "cpph/utility/array_view.hxx"
+#include "cpph/container/circular_queue.hxx"
 #include "perfkit/detail/fwd.hpp"
 #include "perfkit/terminal.h"
 
