@@ -24,7 +24,7 @@
 
 #include "perfkit/detail/logging.hpp"
 
-#include <cpph/spinlock.hxx>
+#include <cpph/thread/spinlock.hxx>
 #include <spdlog/spdlog.h>
 
 namespace perfkit {
