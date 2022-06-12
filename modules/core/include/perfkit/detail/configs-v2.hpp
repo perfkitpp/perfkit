@@ -29,6 +29,7 @@
 
 #include "configs-edit_mode.hxx"
 #include "cpph/container/sorted_vector.hxx"
+#include "cpph/memory/pool.hxx"
 #include "cpph/refl/core.hxx"
 #include "cpph/thread/spinlock.hxx"
 #include "cpph/thread/threading.hxx"
@@ -316,7 +317,6 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     void _internal_item_remove(config_base_wptr arg);
 };
 
-
 /**
  * 실제 사용자가 상호작용할 option 클래스
  *
@@ -358,7 +358,12 @@ class config
     {
         auto owner = _base->owner();
         assert(owner);
-        owner->_internal_commit_value_user(_base.get(), make_shared<ValueType>(move(val)));
+
+        static pool<ValueType, spinlock> _pool;
+        auto ptr = _pool.checkout().share();
+        *ptr = move(val);
+
+        owner->_internal_commit_value_user(_base.get(), move(ptr));
     }
 
     ValueType value() const noexcept
