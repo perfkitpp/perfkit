@@ -54,6 +54,7 @@ class config_set_base
     };
 
    protected:
+    // note: this provides way to provide constructor parameters without explicit base class ctor call
     static thread_local inline shared_ptr<config_registry> _internal_RG_next;
     static thread_local inline shared_ptr<_internal_pfx_node> _internal_prefix_next;
 
@@ -106,12 +107,10 @@ class config_set : public config_set_base
     //! Append this category to existing registry.
     static ImplType create(config_registry_ptr existing, string prefix = "")
     {
+        if (not prefix.empty())
+            config_set_base::_internal_prefix_next = make_shared<_internal_pfx_node>(move(prefix));
         config_set_base::_internal_RG_next = move(existing);
         ImplType s;
-
-        if (not prefix.empty()) {
-            s._internal_prefix = make_shared<_internal_pfx_node>(move(prefix));
-        }
 
         _internal_perform_initops(&s, *_internal_initops());
         s._internal_RG->item_notify();
