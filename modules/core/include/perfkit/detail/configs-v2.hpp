@@ -178,6 +178,7 @@ class config_base : public std::enable_shared_from_this<config_base>
 
    public:
     explicit config_base(init_info_t&& info) noexcept : _body(move(info)) {}
+    ~config_base() noexcept;
 
     auto const& attribute() const noexcept { return _body.attribute; }
     auto const& default_value() const { return attribute()->default_value; }
@@ -314,6 +315,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     void _internal_item_add(config_base_ptr arg, string prefix = "");
     void _internal_item_remove(config_base_wptr arg);
 };
+
 
 /**
  * 실제 사용자가 상호작용할 option 클래스

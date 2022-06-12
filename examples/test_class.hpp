@@ -57,6 +57,24 @@ struct test_config_structure {
     CPPH_REFL_DEFINE_OBJECT_inline_simple(x, y, z, flag, path, nested);
 };
 
+PERFKIT_CFG_CLASS(test_subclass)
+{
+    PERFKIT_CFG(my_var_1, 0);
+    PERFKIT_CFG(my_var_2, 0);
+    PERFKIT_CFG(my_var_3, 0);
+    PERFKIT_CFG(my_var_4, 0);
+
+    PERFKIT_CFG_CLASS(test_subclass_2)
+    {
+        PERFKIT_CFG(subvar_1, 1.);
+        PERFKIT_CFG(subvar_2, 2.);
+        PERFKIT_CFG(subvar_3, 3.);
+        PERFKIT_CFG(subvar_4, 4.);
+    };
+
+    PERFKIT_CFG_SUBSET(test_subclass_2, my_subclass_1);
+};
+
 PERFKIT_T_CATEGORY(
         test_class_configs,
 
@@ -142,4 +160,6 @@ class test_class
 
     std::atomic_bool _loop_active{true};
     perfkit::logger_ptr _logger = perfkit::share_logger(_id);
+
+    std::list<test_subclass> _subclasses;
 };

@@ -69,6 +69,7 @@ class config_registry::backend_t
     atomic_bool _is_registered = false;
     atomic_bool _is_transient = false;
     atomic_bool _has_update = false;
+    atomic_bool _has_expired_ref = false;
     bool _is_global = false;
 
     // Event queue for event joining
@@ -113,6 +114,9 @@ class config_registry::backend_t
    public:
     explicit backend_t(config_registry* self, string name, bool is_global)
             : _owner(self), _name(move(name)), _is_global(is_global) {}
+
+   public:
+    void _internal_notify_config_disposal() { release(_has_expired_ref, true); }
 
    public:
     void bk_all_items(vector<config_base_ptr>*) const noexcept;

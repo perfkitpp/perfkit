@@ -219,6 +219,11 @@ class tracer_proxy
         return is_valid() && _ref->is_subscribed.load(std::memory_order_consume);
     }
 
+    bool check_subs() noexcept
+    {
+        return is_valid() && (acquire(_ref->is_subscribed) ? _ref->is_subscribed.exchange(false, std::memory_order_acquire) : false);
+    }
+
     bool is_valid() const noexcept { return _owner && _ref; }
 
    public:

@@ -52,6 +52,13 @@ static auto CPPH_LOGGER() { return perfkit::glog().get(); }
 //*/
 
 namespace perfkit::v2 {
+config_base::~config_base() noexcept
+{
+    if (_rg) {
+        _rg->backend()->_internal_notify_config_disposal();
+    }
+}
+
 namespace _configs {
 
 void verify_flag_string(string_view str)
@@ -196,7 +203,6 @@ void config_registry::backend_t::_do_update()
 {
     // Event entities ...
     bool has_structure_change = false;
-    bool has_update = false;
     list<config_base_ptr> updates;
 
     auto pool = &_free_evt_nodes;
@@ -226,7 +232,7 @@ void config_registry::backend_t::_do_update()
     std::call_once(_register_once_flag, &backend_t::_register_to_global_repo, this);
 
     // Perform update inside protected scope
-    if (_has_update.exchange(false)) {
+    if (bool has_update; try_exchange(_has_update, false, &has_update) && has_update) {
         CPPH_TMPVAR{lock_guard{_mtx_access}};
 
         // Check for updates
@@ -241,8 +247,7 @@ void config_registry::backend_t::_do_update()
                 auto conf = node->reference.lock();
                 if (not conf) {
                     // Configuration is expired ... collect garbage.
-                    has_structure_change = true;
-                    _configs.erase(iter);
+                    release(_has_expired_ref, true);
                     continue;
                 }
 
@@ -265,6 +270,14 @@ void config_registry::backend_t::_do_update()
 
             _refreshed_items.clear();
         }
+    }
+
+    if (bool has_disposal; try_exchange(_has_expired_ref, false, &has_disposal)) {
+        auto n_expired = erase_if_each(
+                _configs, [](auto&& pair) { return pair.second.reference.expired(); });
+
+        has_structure_change |= (n_expired != 0);
+        CPPH_DEBUG("Config Repo '{}': {} configs disposed", _name, n_expired);
     }
 
     // If there is any update, increase fence once.

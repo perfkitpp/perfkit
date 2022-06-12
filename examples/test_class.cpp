@@ -64,6 +64,7 @@ namespace tc = test_global_category;
 
 void test_class::start()
 {
+    using fmt::format;
     _loop_active.store(true);
     _worker = std::thread{
             [this]() {
@@ -73,7 +74,7 @@ void test_class::start()
 
                 while (_loop_active.load()) {
                     if (_cfg.t_boolean) {
-                        CPPH_INFO("LOOPLOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512LOOP!are412512!are412512");
+                        CPPH_INFO("LOOP!");
                     }
 
                     if (std::exchange(reload_tracer_next_frame, false)) {
@@ -119,6 +120,26 @@ void test_class::start()
                     tr1["integer"] = _cfg.t_int.ref();
                     tr1["double"] = _cfg.t_double.value();
                     tr1["str"] = _cfg.t_string.value();
+
+                    if (trc.timer("create instant registry").check_subs()) {
+                        static int counter = 0;
+                        test_subclass::create(format("temporary+{}", ++counter));
+                    }
+
+                    if (trc.timer("add new subclass and dispose instantly").check_subs()) {
+                        static int counter = 0;
+                        test_subclass::create(_cfg, format("tempory instant disposed {}", ++counter));
+                    }
+
+                    if (trc.timer("add consistent subclass").check_subs()) {
+                        static int counter = 0;
+                        auto subc = test_subclass::create(_cfg, format("instant subclass {}", ++counter));
+                        _subclasses.push_back(std::move(subc));
+                    }
+
+                    if (trc.timer("clear subclasses").check_subs()) {
+                        _subclasses.clear();
+                    }
 
                     if (_cfg.t_boolean.ref()) {
                         auto tr2 = trc.timer("tree-2");
