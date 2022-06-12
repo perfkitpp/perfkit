@@ -88,6 +88,7 @@ class config_registry::backend_t
 
     // Set of queued updates
     vector<config_id_t> _refreshed_items;
+    vector<config_id_t> _inplace_updates;
 
     // Item insertion/deletions management
     bool _flag_add_remove_notified = true;
@@ -117,6 +118,7 @@ class config_registry::backend_t
 
    public:
     void _internal_notify_config_disposal() { release(_has_expired_ref, true); }
+    bool _internal_commit_inplace(config_base*, refl::object_view_t);
 
    public:
     void bk_all_items(vector<config_base_ptr>*) const noexcept;

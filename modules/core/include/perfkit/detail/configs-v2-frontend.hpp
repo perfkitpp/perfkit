@@ -55,13 +55,21 @@ class config_set_base
 
    protected:
     // note: this provides way to provide constructor parameters without explicit base class ctor call
-    static thread_local inline struct {
+    struct _internal_next_ctor_param_t {
         shared_ptr<config_registry> config_registry;
         shared_ptr<_internal_pfx_node> prefix;
-    } _internal_next_ctor_param;
+    };
 
-    shared_ptr<config_registry> _internal_RG = exchange(_internal_next_ctor_param.config_registry, nullptr);
-    shared_ptr<_internal_pfx_node> _internal_prefix = exchange(_internal_next_ctor_param.prefix, nullptr);
+    static thread_local inline _internal_next_ctor_param_t _internal_next_ctor_param = {};
+    shared_ptr<config_registry> _internal_RG;
+    shared_ptr<_internal_pfx_node> _internal_prefix;
+
+   public:
+    config_set_base() noexcept
+            : _internal_RG(exchange(_internal_next_ctor_param.config_registry, nullptr)),
+              _internal_prefix(exchange(_internal_next_ctor_param.prefix, nullptr))
+    {
+    }
 
    public:
     static void _internal_perform_initops(config_set_base* base_addr, array_view<_internal_initops_t const> initops)
@@ -100,7 +108,7 @@ class config_set : public config_set_base
     {
         auto& cparam = config_set_base::_internal_next_ctor_param;
         cparam.config_registry = config_registry::_internal_create(move(key));
-        cparam.prefix = {};
+
         ImplType s{std::forward<Params>(params)...};
 
         _internal_perform_initops(&s, *_internal_initops());
@@ -116,6 +124,7 @@ class config_set : public config_set_base
         auto& cparam = config_set_base::_internal_next_ctor_param;
         cparam.config_registry = move(existing);
         cparam.prefix = prefix.empty() ? nullptr : make_shared<_internal_pfx_node>(move(prefix));
+
         ImplType s{std::forward<Params>(params)...};
 
         _internal_perform_initops(&s, *_internal_initops());

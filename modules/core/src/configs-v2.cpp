@@ -159,19 +159,44 @@ bool config_registry::_internal_commit_value_user(
     return _self->_commit(ref, move(view));
 }
 
+static bool attribute_validate(config_attribute const& attr, refl::object_view_t view)
+{
+    return (not attr.fn_minmax_validate || attr.fn_minmax_validate(view))
+        && (not attr.fn_validate || attr.fn_validate(view));
+}
+
+bool config_registry::_internal_commit_inplace_user(config_base* ref, refl::object_view_t view)
+{
+    return backend()->_internal_commit_inplace(ref, view);
+}
+
 bool config_registry::is_registered() const
 {
     return acquire(_self->_is_registered);
 }
 
+bool config_registry::backend_t::_internal_commit_inplace(config_base* ref, refl::object_view_t view)
+{
+    if (attribute_validate(*ref->attribute(), view)) {
+        CPPH_TMPVAR{lock_guard{_mtx_access}};
+        auto ctx = find_ptr(_configs, ref->id());
+        if (not ctx) { return false; }  // Possibly removed during validation
+
+        {
+            CPPH_TMPVAR{lock_guard{ref->_mtx_raw_access}};
+            ref->attribute()->fn_swap_value(ref->_body.raw_data.view(), view);
+        }
+
+        set_push(_inplace_updates, ref->id());
+        release(_has_update, true);
+    }
+
+    return false;
+}
+
 bool config_registry::backend_t::_commit(config_base* ref, refl::shared_object_ptr candidate)
 {
-    auto& attrib = ref->attribute();
-    if (
-            (not attrib->fn_minmax_validate || attrib->fn_minmax_validate(candidate.view()))  //
-            &&                                                                                //
-            (not attrib->fn_validate || attrib->fn_validate(candidate.view()))                //
-    ) {
+    if (attribute_validate(*ref->attribute(), candidate.view())) {
         CPPH_TMPVAR{lock_guard{_mtx_access}};
         auto ctx = find_ptr(_configs, ref->id());
         if (not ctx) { return false; }  // Possibly removed during validation
@@ -256,7 +281,7 @@ void config_registry::backend_t::_do_update()
 
                 {
                     CPPH_TMPVAR(lock_guard{conf->_mtx_raw_access});
-                    conf->attribute()->fn_swap_value(conf->_body.raw_data, node->_staged);
+                    conf->attribute()->fn_swap_value(conf->_body.raw_data.view(), node->_staged.view());
                 }
 
                 node->_staged.reset();  // Clear staged data
@@ -269,6 +294,28 @@ void config_registry::backend_t::_do_update()
             }
 
             _refreshed_items.clear();
+        }
+
+        if (not _inplace_updates.empty()) {
+            for (auto id : _inplace_updates) {
+                // Check if config is erased
+                auto iter = _configs.find(id);
+                if (iter == _configs.end()) { continue; }
+
+                // Check if config is expired
+                auto* node = &iter->second;
+                auto conf = node->reference.lock();
+                if (not conf) {
+                    // Configuration is expired ... collect garbage.
+                    release(_has_expired_ref, true);
+                    continue;
+                }
+
+                // Append to 'updated' list.
+                checkout_push(&updates, move(conf));
+            }
+
+            _inplace_updates.clear();
         }
     }
 

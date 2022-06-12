@@ -85,7 +85,7 @@ struct config_attribute {
 
     // Creates empty object for various usage
     refl::shared_object_ptr (*fn_construct)(void);
-    void (*fn_swap_value)(refl::shared_object_ptr, refl::shared_object_ptr);
+    void (*fn_swap_value)(refl::object_view_t, refl::object_view_t);
 
     // Optional properties ...
     refl::shared_object_const_ptr one_of;
@@ -291,6 +291,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
    public:
     bool _internal_commit_value_user(config_base* ref, refl::shared_object_ptr);
+    bool _internal_commit_inplace_user(config_base* ref, refl::object_view_t view);
     void const* _internal_unique_address() { return this; }
 
     //! Called once after creation.
@@ -354,7 +355,7 @@ class config
     }
 
    public:
-    void commit(ValueType val) const
+    bool commit(ValueType val) const
     {
         auto owner = _base->owner();
         assert(owner);
@@ -363,7 +364,15 @@ class config
         auto ptr = _pool.checkout().share();
         *ptr = move(val);
 
-        owner->_internal_commit_value_user(_base.get(), move(ptr));
+        return owner->_internal_commit_value_user(_base.get(), move(ptr));
+    }
+
+    bool commit_inplace(ValueType val) const
+    {
+        auto owner = _base->owner();
+        assert(owner);
+
+        return owner->_internal_commit_inplace_user(_base.get(), refl::object_view_t{val});
     }
 
     ValueType value() const noexcept
