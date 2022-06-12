@@ -55,11 +55,13 @@ class config_set_base
 
    protected:
     // note: this provides way to provide constructor parameters without explicit base class ctor call
-    static thread_local inline shared_ptr<config_registry> _internal_RG_next;
-    static thread_local inline shared_ptr<_internal_pfx_node> _internal_prefix_next;
+    static thread_local inline struct {
+        shared_ptr<config_registry> config_registry;
+        shared_ptr<_internal_pfx_node> prefix;
+    } _internal_next_ctor_param;
 
-    shared_ptr<config_registry> _internal_RG = exchange(_internal_RG_next, nullptr);
-    shared_ptr<_internal_pfx_node> _internal_prefix = exchange(_internal_prefix_next, nullptr);
+    shared_ptr<config_registry> _internal_RG = exchange(_internal_next_ctor_param.config_registry, nullptr);
+    shared_ptr<_internal_pfx_node> _internal_prefix = exchange(_internal_next_ctor_param.prefix, nullptr);
 
    public:
     static void _internal_perform_initops(config_set_base* base_addr, array_view<_internal_initops_t const> initops)
@@ -93,10 +95,13 @@ class config_set : public config_set_base
    public:
     //! May throw logic_error on registry creation fails.
     //! Create new config registry
-    static ImplType create(string key)
+    template <typename... Params>
+    static ImplType create(string key, Params&&... params)
     {
-        config_set_base::_internal_RG_next = config_registry::_internal_create(move(key));
-        ImplType s;
+        auto& cparam = config_set_base::_internal_next_ctor_param;
+        cparam.config_registry = config_registry::_internal_create(move(key));
+        cparam.prefix = {};
+        ImplType s{std::forward<Params>(params)...};
 
         _internal_perform_initops(&s, *_internal_initops());
         s._internal_RG->_internal_init_registry();
@@ -105,12 +110,13 @@ class config_set : public config_set_base
     }
 
     //! Append this category to existing registry.
-    static ImplType create(config_registry_ptr existing, string prefix = "")
+    template <typename... Params>
+    static ImplType create(config_registry_ptr existing, string prefix = "", Params&&... params)
     {
-        if (not prefix.empty())
-            config_set_base::_internal_prefix_next = make_shared<_internal_pfx_node>(move(prefix));
-        config_set_base::_internal_RG_next = move(existing);
-        ImplType s;
+        auto& cparam = config_set_base::_internal_next_ctor_param;
+        cparam.config_registry = move(existing);
+        cparam.prefix = prefix.empty() ? nullptr : make_shared<_internal_pfx_node>(move(prefix));
+        ImplType s{std::forward<Params>(params)...};
 
         _internal_perform_initops(&s, *_internal_initops());
         s._internal_RG->item_notify();
@@ -143,8 +149,9 @@ class config_set : public config_set_base
     {
         auto base_prefix = config_set_base::_internal_get_prefix(base);
 
-        config_set_base::_internal_RG_next = _internal_get_RG(base);
-        config_set_base::_internal_prefix_next = make_shared<_internal_pfx_node>(
+        auto& cparam = config_set_base::_internal_next_ctor_param;
+        cparam.config_registry = _internal_get_RG(base);
+        cparam.prefix = make_shared<_internal_pfx_node>(
                 user_provided ? user_provided : memvar, base_prefix);
         ImplType s;
 
