@@ -125,8 +125,9 @@ class config_registry::backend_t
     template <class AccessFn>
     void bk_access_value_shared(config_base* cfg, AccessFn&& fn)
     {
-        std::shared_lock lc_{_mtx_access};
+        cfg->_internal_read_lock();
         fn(cfg->_body.raw_data);
+        cfg->_internal_read_unlock();
     }
 
     static void bk_enumerate_registries(std::vector<config_registry_ptr>* o_regs, bool include_unregistered = false) noexcept;
