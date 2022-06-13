@@ -56,7 +56,7 @@ class config_set_base
    protected:
     // note: this provides way to provide constructor parameters without explicit base class ctor call
     struct _internal_next_ctor_param_t {
-        shared_ptr<config_registry> config_registry;
+        shared_ptr<v2::config_registry> config_registry;
         shared_ptr<_internal_pfx_node> prefix;
     };
 

@@ -280,7 +280,7 @@ void config_registry::backend_t::_do_update()
                 assert(node->_staged && "Staged data must be prepared!");
 
                 {
-                    CPPH_TMPVAR(lock_guard{conf->_mtx_raw_access});
+                    CPPH_TMPVAR{lock_guard{conf->_mtx_raw_access}};
                     conf->attribute()->fn_swap_value(conf->_body.raw_data.view(), node->_staged.view());
                 }
 
