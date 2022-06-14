@@ -85,7 +85,10 @@ int main(int argc, char** argv)
     test2.start();
     test3.start();
 
-    auto term = perfkit::terminal::net::create("__terminal");
+    auto profile = perfkit::terminal::net::profile::create("__NET_TERM");
+    profile.bind_port.commit_now(15572);
+
+    auto term = perfkit::terminal::net::create(profile);
     perfkit::terminal::initialize_with_basic_commands(&*term);
     perfkit::terminal::register_conffile_io_commands(&*term);
 

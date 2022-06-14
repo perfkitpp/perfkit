@@ -367,7 +367,7 @@ class config
         return owner->_internal_commit_value_user(_base.get(), move(ptr));
     }
 
-    bool commit_inplace(ValueType val) const
+    bool commit_now(ValueType val) const
     {
         auto owner = _base->owner();
         assert(owner);

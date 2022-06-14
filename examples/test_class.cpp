@@ -98,7 +98,7 @@ void test_class::start()
 
                     _cfg->update();
                     _cfg.t_increment.commit(*_cfg.t_increment + 1);
-                    _cfg.t_increment_inplace.commit_inplace(*_cfg.t_increment_inplace + 2);
+                    _cfg.t_increment_inplace.commit_now(*_cfg.t_increment_inplace + 2);
 
                     if (auto to = 1ms * tc::class_control::interval_ms; to != sleep.interval())
                         sleep.reset(to);

@@ -133,9 +133,10 @@ class config_set : public config_set_base
     }
 
     //! Append this category to existing registry.
-    static ImplType create(config_set_base& existing, string prefix = "")
+    template <typename... Params>
+    static ImplType create(config_set_base& existing, string prefix = "", Params&&... params)
     {
-        return create(_internal_get_RG(&existing), move(prefix));
+        return create(_internal_get_RG(&existing), move(prefix), std::forward<Params>(params)...);
     }
 
    public:

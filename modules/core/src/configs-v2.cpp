@@ -178,17 +178,19 @@ bool config_registry::is_registered() const
 bool config_registry::backend_t::_internal_commit_inplace(config_base* ref, refl::object_view_t view)
 {
     if (attribute_validate(*ref->attribute(), view)) {
-        CPPH_TMPVAR{lock_guard{_mtx_access}};
-        auto ctx = find_ptr(_configs, ref->id());
-        if (not ctx) { return false; }  // Possibly removed during validation
-
         {
             CPPH_TMPVAR{lock_guard{ref->_mtx_raw_access}};
             ref->attribute()->fn_swap_value(ref->_body.raw_data.view(), view);
         }
 
+        CPPH_TMPVAR{lock_guard{_mtx_access}};
+        auto ctx = find_ptr(_configs, ref->id());
+        if (not ctx) { return false; }  // Possibly removed during validation
+
         set_push(_inplace_updates, ref->id());
         release(_has_update, true);
+
+        return true;
     }
 
     return false;
@@ -228,6 +230,7 @@ void config_registry::backend_t::_do_update()
 {
     // Event entities ...
     bool has_structure_change = false;
+    bool has_committed_update = false;
     list<config_base_ptr> updates;
 
     auto pool = &_free_evt_nodes;
@@ -291,6 +294,7 @@ void config_registry::backend_t::_do_update()
 
                 // Append to 'updated' list.
                 checkout_push(&updates, move(conf));
+                has_committed_update = true;
             }
 
             _refreshed_items.clear();
@@ -328,7 +332,7 @@ void config_registry::backend_t::_do_update()
     }
 
     // If there is any update, increase fence once.
-    if (has_structure_change || not updates.empty()) {
+    if (has_structure_change || has_committed_update) {
         _fence.fetch_add(1, std::memory_order_relaxed);
     }
 
