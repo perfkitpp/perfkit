@@ -13,7 +13,8 @@ endif ()
 
 if (perfkit_BUILD_NET OR perfkit_BUILD_GRAPHICS)
     message("[${PROJECT_NAME}]: Configuring graphics extension ... ")
-    add_subdirectory(graphics)
+    add_subdirectory(libremotegl-client)
+    add_subdirectory(libremotegl-protocol)
 endif ()
 
 if (perfkit_BUILD_NET)
