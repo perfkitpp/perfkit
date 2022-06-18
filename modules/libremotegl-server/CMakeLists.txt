@@ -7,7 +7,7 @@ target_sources(
 
         PRIVATE
         src/remotegl.cpp
-        src/context_impl.cpp
+        src/context.cpp
 )
 
 target_include_directories(

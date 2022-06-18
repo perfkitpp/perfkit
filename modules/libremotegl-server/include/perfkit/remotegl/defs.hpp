@@ -5,11 +5,11 @@ class draw_queue;
 
 enum class texture_type {
     b8,   // mono
-    b24,  // bgr
-    b32,  // bgra
+    b24,  // bgr, xyz
+    b32,  // bgra, xyzw
 
     f32,  // mono
-    f96,  // bgr
-    f128  // bgra
+    f96,  // bgr, xyz
+    f128  // bgra, xyzw
 };
 }  // namespace perfkit::rgl
