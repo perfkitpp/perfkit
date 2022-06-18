@@ -1,12 +1,13 @@
-project(libremotegl-client)
+project(libremotegl-server)
 add_library(${PROJECT_NAME} STATIC)
-add_library(perfkit::remotegl::client ALIAS ${PROJECT_NAME})
+add_library(perfkit::remotegl::server ALIAS ${PROJECT_NAME})
 
 target_sources(
         ${PROJECT_NAME}
 
         PRIVATE
         src/remotegl.cpp
+        src/context_impl.cpp
 )
 
 target_include_directories(
