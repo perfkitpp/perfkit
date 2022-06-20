@@ -23,7 +23,7 @@ using resource_data_ptr = unique_ptr<void, void (*)(void*)>;
 struct resource_node {
     resource_sync_context sync = {};
     basic_handle handle = {};
-    resource_data_ptr data;
+    resource_data_ptr data{nullptr, nullptr};
 };
 
 class context_impl : public context
