@@ -40,9 +40,12 @@
 std::shared_ptr<spdlog::logger> const& perfkit::glog()
 {
     static auto _inst = [] {
-        auto logger = spdlog::stdout_color_mt("PERFKIT");
-        logger->info("logger instantiated.");
-        return logger;
+        try {
+            spdlog::register_logger(spdlog::default_logger()->clone("PERFKIT"));
+        } catch (...) {
+            ;  // Seems any logger with same name already exists. Just let 'get()' find it.
+        }
+        return spdlog::get("PERFKIT");
     }();
 
     return _inst;
