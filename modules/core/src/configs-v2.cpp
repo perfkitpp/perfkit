@@ -584,7 +584,7 @@ bool config_registry::import_from(config_registry_storage_t const& from, string*
 
     for (auto& [key, json] : from) {
         auto p_conf = find_ptr(key_conf_table, key);
-        if (not p_conf) { continue; }  // Missing element
+        if (not p_conf || not p_conf->second->can_import()) { continue; }  // Missing element
 
         // Clear context
         sbuf.clear(), writer.clear(), reader.clear();
@@ -618,7 +618,7 @@ void config_registry::export_to(config_registry_storage_t* to, string* buf) cons
 
     for (auto& [key, ctx] : s._configs) {
         auto cfg = ctx.reference.lock();
-        if (not cfg || not cfg->attribute()->can_export) { continue; }
+        if (not cfg || not cfg->can_export()) { continue; }
 
         // Clear context
         sbuf.clear(), writer.clear(), reader.clear();
