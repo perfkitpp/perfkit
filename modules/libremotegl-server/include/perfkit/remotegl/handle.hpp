@@ -1,11 +1,14 @@
 #pragma once
 #include "cpph/utility/hasher.hxx"
+#include "perfkit/remotegl/protocol/common.hpp"
 
 namespace perfkit {
 using namespace cpph;
 }
 
 namespace perfkit::rgl {
+class context;
+
 using texture_handle = basic_key<class RemoteGL_TextureLabel>;
 using render_target_handle = basic_key<class RemoteGL_RenderTargetLabel>;
 using window_handle = basic_key<class RemoteGL_WindowHandleLabel>;

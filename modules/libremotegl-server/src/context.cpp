@@ -3,181 +3,97 @@
 #include "cpph/thread/thread_pool.hxx"
 #include "cpph/utility/functional.hxx"
 #include "perfkit/remotegl/draw_queue.hpp"
+#include "resource.hpp"
+#include "resource/texture.hpp"
 
 namespace perfkit::rgl {
 using std::vector;
 
-/**
- * Synchronization status of individual resources
- */
-struct resource_sync_context {
-    size_t fence_client_sent = 0;
-    size_t fence_client_ready = 0;
-    size_t fence = 0;
-
-    bool is_actively_subscribed = false;
-};
-
-using resource_data_ptr = unique_ptr<void, void (*)(void*)>;
-
 struct resource_node {
-    resource_sync_context sync = {};
+    size_t empty_next = ~size_t{};
+
     basic_handle handle = {};
-    resource_data_ptr data{nullptr, nullptr};
+    ptr<basic_synced_resource> resource;
 };
 
-class context_impl : public context
-{
-    vector<resource_node> _nodes;
-    event_queue_worker _worker{thread::lazy, 8000};
-    ptr<context_event_handler> _backend;
-    uint64_t _idgen = 0;
-
-   public:
-    render_target_handle create_render_target(vec2i size, string_view alias) override
-    {
-        return {};
-    }
-
-    draw_queue* begin_drawing(render_target_handle handle) override
-    {
-        return nullptr;
-    }
-
-    void end_drawing(draw_queue* queue) override
-    {
-    }
-
-    bool dispose(render_target_handle handle) override
-    {
-        return false;
-    }
-
-    texture_handle create_texture(const texture_metadata& metadata, string_view alias) override
-    {
-        return perfkit::rgl::texture_handle();
-    }
-
-    bool upload(texture_handle htex, array_view<const void> data) override
-    {
-        return false;
-    }
-
-    bool dispose(texture_handle handle) override
-    {
-        return false;
-    }
-
-   public:
-    ~context_impl() override
-    {
-        context_impl::backend_register(nullptr);
-    }
-
-   public:
-    void backend_register(ptr<context_event_handler> ptr) override
-    {
-        _worker.clear();
-        _worker.shutdown();
-
-        // Only worker thread accesses data members ...
-        // In this context, as worker thread stopped, can safely access to _nodes.
-        for (auto& node : _nodes) {
-            node.sync.is_actively_subscribed = false;
-            node.sync.fence_client_ready = 0;
-            node.sync.fence_client_sent = 0;
-        }
-
-        if ((_backend = move(ptr)) != nullptr) {
-            _worker.launch();
-            _worker.clear();
-            _worker.post([this] { _backend->start_event_handler(); });
-        }
-    }
-
-    void backend_subscribe(uint64_t raw_handle) override
-    {
-        assert(_backend != nullptr);
-    }
-
-    void backend_unsubscribe(uint64_t raw_handle) override
-    {
-        assert(_backend != nullptr);
-    }
-
-    void backend_ready(uint64_t raw_handle, size_t fence_ready) override
-    {
-        assert(_backend != nullptr);
-    }
-
+struct context::impl {
    private:
-    basic_handle _create_empty_handle(resource_type t, resource_data_ptr data)
+    size_t _empty_node = ~size_t{};
+    size_t _idgen = 0;
+    vector<resource_node> _nodes;
+
+   public:
+    basic_handle new_node(resource_type t) noexcept
     {
-        basic_handle r = {};
-        resource_node* node = {};
+        basic_handle h = {};
+        h.id(++_idgen);
+        h.type(t);
 
-        r.id(++_idgen);
-        r.type(t);
+        if (_empty_node != ~size_t{}) {
+            h.index(_empty_node);
+            auto* p_node = &_nodes.at(_empty_node);
+            assert(p_node->resource == nullptr);
+            p_node->handle = h;
+            p_node->empty_next = ~size_t{};
 
-        for (auto& n : _nodes) {
-            if (n.data == nullptr) {
-                r.index(uint64_t(&n - _nodes.data()));
-                break;
-            }
+            _empty_node = p_node->empty_next;  // Point to next empty resource blk
+        } else {
+            assert(_nodes.size() < basic_handle::max_index());
+            h.index(_nodes.size());
+            _nodes.emplace_back().handle = h;
         }
 
-        if (_nodes.size() > 65535) {
-            throw std::runtime_error{"All slot used!"};
-        }
-
-        if (node == nullptr) {
-            r.index(_nodes.size());
-            node = &_nodes.emplace_back();
-        }
-
-        node->sync = {};
-        node->handle = r;
-        node->data = move(data);
-        return r;
+        return h;
     }
 
-    resource_node* _slot(uint64_t h)
+    void dispose_node(basic_handle h) noexcept
     {
-        auto& handle = reinterpret_cast<basic_handle&>(h);
-        auto& node = _nodes.at(handle.index());
+        auto p_node = get_node(h);
+        assert(p_node->handle.value == h.value);
 
-        if (node.handle.id() == handle.id()) {
-            return &node;
-        } else {
-            return nullptr;
-        }
+        p_node->resource.reset();
+        p_node->handle = {};
+
+        // Mark this node as 'idle'
+        p_node->empty_next = _empty_node;
+        _empty_node = h.index();
     }
 
-    bool _dispose(uint64_t h)
+    resource_node* get_node(basic_handle h) noexcept
     {
-        auto& handle = reinterpret_cast<basic_handle&>(h);
-        auto& node = _nodes.at(handle.index());
+        auto* p_node = &_nodes[h.index()];
+        assert(p_node->handle.value == h.value);
 
-        if (node.handle.id() == handle.id()) {
-            node.handle = {};
-            node.data.reset();
-            return true;
-        } else {
-            return false;
-        }
+        return p_node;
     }
 };
-}  // namespace perfkit::rgl
 
-namespace perfkit::rgl {
+context::context() : self(make_unique<impl>())
+{
+}
+
+context::~context()
+{
+}
+
 context* context::get()
 {
-    static auto _inst = context::create_new();
-    return _inst.get();
+    return nullptr;
 }
 
-auto context::create_new() -> ptr<context>
+texture_handle context::create_texture(const texture_metadata& meta, string_view alias)
 {
-    return make_unique<context_impl>();
+    return perfkit::rgl::texture_handle();
 }
+
+bool context::upload(texture_handle htex, array_view<const void> data)
+{
+    return false;
+}
+
+bool context::dispose(texture_handle)
+{
+    return false;
+}
+
 }  // namespace perfkit::rgl

@@ -8,6 +8,8 @@ target_sources(
         PRIVATE
         src/remotegl.cpp
         src/context.cpp
+
+        src/resource/texture.cpp
 )
 
 target_include_directories(

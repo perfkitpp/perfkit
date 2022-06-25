@@ -205,12 +205,10 @@ struct notify {
     DEFINE_RPC(trace_node_update, void(uint64_t tracer_id, vector<trace_update_t>));
 
     /**
-     * Graphic class changes
+     * Graphics control is lost
      */
-
-    /**
-     *
-     */
+    DEFINE_RPC(graphics_control_lost, void());
+    DEFINE_RPC(graphics_init, void());
 };
 
 struct service {
@@ -298,6 +296,15 @@ struct service {
      * Update config
      */
     DEFINE_RPC(update_config_entity, void(config_entity_update_t));
+
+    /**
+     * Take graphics access authority.
+     *
+     * Only the primary owner of graphics features can
+     */
+    DEFINE_RPC(grahpics_take_control, void());
+    DEFINE_RPC(grahpics_release_control, void());
+    DEFINE_RPC(graphics_send_data, void(flex_buffer));  // Bidirectional
 };
 
 #undef DEFINE_RPC

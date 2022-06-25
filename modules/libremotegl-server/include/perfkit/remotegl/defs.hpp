@@ -12,4 +12,5 @@ enum class texture_type {
     f96,  // bgr, xyz
     f128  // bgra, xyzw
 };
+
 }  // namespace perfkit::rgl

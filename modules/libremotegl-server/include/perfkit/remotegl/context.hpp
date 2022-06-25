@@ -5,6 +5,7 @@
 #include "cpph/container/buffer.hxx"
 #include "cpph/math/rectangle.hxx"
 #include "cpph/memory/pool.hxx"
+#include "cpph/utility/functional.hxx"
 #include "cpph/utility/template_utils.hxx"
 #include "defs.hpp"
 #include "handle.hpp"
@@ -14,6 +15,7 @@ namespace perfkit::rgl {
 using namespace cpph;
 using namespace cpph::math;
 using std::string_view;
+class context;
 
 /**
  * Describes texture information
@@ -32,14 +34,21 @@ struct texture_metadata {
 /**
  * Defines context backend event handler
  */
-class context_event_handler
+class backend_context_event_handler
 {
    public:
-    virtual ~context_event_handler() = default;
-    virtual void start_event_handler() {}
-    virtual void upload_texture(uint64_t handle, texture_metadata, flex_buffer const&) {}
-    virtual void commit_draw_commands(flex_buffer const&) {}
-    // virtual void upload_mesh() {} // TODO
+    virtual ~backend_context_event_handler() = default;
+
+    //! Received client message must be forwarded.
+    virtual void register_client_message_handler(function<void(const_buffer_view)>&&) {}
+
+    //! Called when actual communication begins.
+    virtual void start_communication() {}
+
+    //! Called when communication must be disposed.
+    virtual void close_communication() {}
+
+    //! Called on every server side message.
 };
 
 /**
@@ -48,16 +57,16 @@ class context_event_handler
  */
 class context
 {
+    struct impl;
+    ptr<impl> self;
+
    public:
-    virtual ~context() = default;
+    context();
+    ~context();
+    context(context&&) noexcept = default;
 
     /**
-     * Create new empty rgl context.
-     */
-    static auto create_new() -> ptr<context>;
-
-    /**
-     * Get singleton interface of rgl context.
+     * Get singleton instance of rgl context.
      *
      * If non was exist, this creates empty one. Many terminal instances may use this
      *  global instance to provide remote gl service
@@ -70,7 +79,7 @@ class context
      *
      * @param [in] alias [optional] Client may distinguish render targets through alias. Can be empty
      */
-    virtual render_target_handle create_render_target(vec2i size, string_view alias) = 0;
+    render_target_handle create_render_target(vec2i size, string_view alias);
 
     /**
      * Create empty draw command queue on given render target.
@@ -79,26 +88,30 @@ class context
      *
      * @warning Methods of draw_queue is not reentrant!
      */
-    virtual draw_queue* begin_drawing(render_target_handle) = 0;
+    draw_queue* begin_drawing(render_target_handle);
 
     /**
      * Commit draw queue content and swap buffer.
      */
-    virtual void end_drawing(draw_queue*) = 0;
+    void commit_drawing(draw_queue*);
 
     /**
      * Dispose render target
      */
-    virtual bool dispose(render_target_handle) = 0;
+    bool dispose(render_target_handle);
 
     /**
-     * Create empty window. Size and position may change during run.
+     * Create empty window.
      *
-     * Only initial window size and position can be specified here.
+     * Initial window size and position can be specified here.
      */
 
     /**
-     * Get event list of given window
+     * Get event list from given window
+     */
+
+    /**
+     * Request window move/resize/close/hide/maximize...etc
      */
 
     /**
@@ -106,19 +119,19 @@ class context
      *
      * @param size Size of image
      */
-    virtual texture_handle create_texture(texture_metadata const&, string_view alias) = 0;
+    texture_handle create_texture(texture_metadata const&, string_view alias);
 
     /**
      * Upload texture to client device.
      *
      * Actual upload operation will be performed when the texture is actually referenced.
      */
-    virtual bool upload(texture_handle htex, array_view<void const> data) = 0;
+    bool upload(texture_handle htex, array_view<void const> data);
 
     /**
      * Dispose texture. Any use after disposal will make invalid rendering result of client
      */
-    virtual bool dispose(texture_handle) = 0;
+    bool dispose(texture_handle);
 
     /**
      * Upload 3D mesh data to client device.
@@ -129,9 +142,7 @@ class context
      */
 
    public:
-    virtual void backend_register(ptr<context_event_handler> ptr) = 0;
-    virtual void backend_subscribe(uint64_t raw_handle) = 0;
-    virtual void backend_unsubscribe(uint64_t raw_handle) = 0;
-    virtual void backend_ready(uint64_t raw_handle, size_t fence_ready) = 0;
+    void _bk_register(shared_ptr<backend_context_event_handler> ptr);
+    void _bk_client_message(const_buffer_view data);
 };
 }  // namespace perfkit::rgl

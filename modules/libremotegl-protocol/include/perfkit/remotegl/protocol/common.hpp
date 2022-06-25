@@ -1,6 +1,20 @@
 #pragma once
 
 namespace perfkit::rgl {
+enum class server_event {
+    none,
+
+    texture_metadata_update = 1001,
+    texture_payload = 1002,
+};
+
+enum class client_event {
+    none,
+
+    subscribe_resource = 1001,
+    unsubscribe_resource = 1002,
+};
+
 enum class resource_type {
     none,
     texture,
@@ -35,6 +49,8 @@ struct basic_handle {
 
     auto type() const noexcept { return (resource_type)this->get<61, 3>(); }
     void type(resource_type v) noexcept { this->set<61, 3>(uint64_t(v)); }
+
+    static constexpr size_t max_index() noexcept { return 1 << 16; }
 };
 
 }  // namespace perfkit::rgl
