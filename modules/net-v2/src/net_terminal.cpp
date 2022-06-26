@@ -282,6 +282,9 @@ void perfkit::net::terminal::_on_session_list_change()
     if (has_no_change)
         return;
 
+    // Update client activity status
+    release(_has_active_client, should_start_monitoring);
+
     if (should_start_monitoring) {
         CPPH_INFO("First session created ... Starting monitoring.");
 

@@ -177,6 +177,7 @@ class terminal : public if_terminal
     shared_ptr<void> _session_active_state_anchor;
     size_t _session_prev_bytes[2] = {};
     stopwatch _session_state_delta_timer = {};
+    atomic_bool _has_active_client = {};
 
     // Misc
     message::service::session_info_t _session_info;
@@ -221,6 +222,7 @@ class terminal : public if_terminal
     optional<string> fetch_command(milliseconds timeout) override;
     void push_command(string_view command) override;
     void write(string_view str) override;
+    bool has_active_client() const override { return acquire(_has_active_client); }
 };
 
 }  // namespace perfkit::net
