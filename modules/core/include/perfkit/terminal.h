@@ -34,6 +34,8 @@
 #include "perfkit/detail/fwd.hpp"
 
 namespace perfkit {
+using namespace cpph;
+
 namespace commands {
 class registry;
 }
@@ -56,6 +58,9 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
     virtual ~if_terminal();
 
    public:
+    static std::shared_ptr<if_terminal> get() noexcept;
+
+   public:
     /**
      * Reference to registered command registry.
      *
@@ -74,6 +79,11 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
      * Output string to terminal
      */
     virtual void write(std::string_view str) = 0;
+
+    /**
+     * Check if there's any active client
+     */
+    virtual bool has_active_client() const { return true; }
 
     /**
      *

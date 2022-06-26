@@ -37,6 +37,7 @@
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
+#include "cpph/thread/locked.hxx"
 #include "cpph/utility/format.hxx"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/commands.hpp"
@@ -383,8 +384,33 @@ void perfkit::if_terminal::_add_subcommand(
     commands()->root()->add_subcommand(std::move(name), std::move(handler));
 }
 
+namespace perfkit {
+static std::atomic<if_terminal*> term_ptr = {};
+
+auto active_terminal() noexcept -> shared_ptr<if_terminal>
+{
+    if (auto ptr = acquire(term_ptr)) {
+        return ptr->shared_from_this();
+    } else {
+        return nullptr;
+    }
+}
+
+bool is_actively_monitored() noexcept
+{
+    if (auto ptr = acquire(term_ptr)) {
+        return ptr->has_active_client();
+    } else {
+        return false;
+    }
+}
+}  // namespace perfkit
+
 perfkit::if_terminal::if_terminal() : _self(make_unique<impl>())
 {
+    if (term_ptr.exchange(this) != nullptr) {
+        throw std::logic_error{"Terminal must be create for only once!"};
+    }
 }
 
 perfkit::commands::registry* perfkit::if_terminal::commands()
@@ -417,6 +443,10 @@ void perfkit::if_terminal::launch_stdin_fetch_thread()
 
 perfkit::if_terminal::~if_terminal()
 {
+    if (term_ptr.exchange(nullptr) != this) {
+        assert(false && "In this context, term_ptr must be self reference!");
+    }
+
     _self->is_shutting_down = true;
     if (_self->worker_stdin.joinable()) { _self->worker_stdin.join(); }
 }
