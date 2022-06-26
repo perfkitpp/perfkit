@@ -122,11 +122,10 @@ class context : public if_graphics_backend
      */
 
    public:
-    void on_client_message(const_buffer_view view) override {}
+    void on_client_message(void const*, const_buffer_view view) override;
     void on_client_disconnection() override;
 
    public:
-    void _bk_register(shared_ptr<backend_context_event_handler> client = nullptr);
-    void _bk_client_message(const_buffer_view data);
+    void _bk_register(shared_ptr<backend_client> client = nullptr);
 };
 }  // namespace perfkit::rgl

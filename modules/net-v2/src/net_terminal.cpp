@@ -38,9 +38,11 @@
 #include "cpph/refl/rpc/rpc.hxx"
 #include "cpph/refl/rpc/service.hxx"
 #include "cpph/refl/rpc/session_builder.hxx"
+#include "cpph/refl/types/binary.hxx"
 #include "cpph/utility/functional.hxx"
 #include "cpph/utility/template_utils.hxx"
 #include "perfkit/configs.h"
+#include "perfkit/remotegl/context.hpp"
 #include "utils.hpp"
 
 using namespace std::literals;
@@ -235,6 +237,35 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
                        _verify_basic_access(prof);
                        _ctx_config.rpc_republish_all_registries();
                        _ctx_trace.rpc_republish_all_tracers();
+                   })
+            .route(service::graphics_take_control,
+                   [this](rpc::session_profile_view prof, auto) {
+                       _verify_admin_access(prof);
+
+                       auto sess = prof->w_self.lock();
+                       assert(sess != nullptr);
+
+                       auto client = make_shared<net::grahpics_client>();
+                       client->_wsess = prof->w_self;
+                       _graphics = client;
+
+                       rgl::context::get()->_bk_register(move(client));
+
+                       notify::graphics_control_lost(&_rpc).notify();
+                       notify::graphics_init(sess).notify();
+                   })
+            .route(service::graphics_release_control,
+                   [this] {
+                       rgl::context::get()->_bk_register();
+                       notify::graphics_control_lost(&_rpc).notify();
+
+                       _graphics.reset();
+                   })
+            .route(service::graphics_send_data,
+                   [this](cpph::rpc::session_profile_view prof, auto, cpph::flex_buffer& payload) {
+                       if (_graphics && ptr_equals(prof->w_self, _graphics->_wsess)) {
+                           _graphics->message_to_server({(char const*)payload.data(), payload.size()});
+                       }
                    });
 
     _ctx_trace.build_service(builder);
@@ -424,4 +455,11 @@ void perfkit::net::terminal::session_event_procedure_t::post_handler_callback(pe
 void perfkit::net::terminal::session_event_procedure_t::post_internal_message(perfkit::function<void()>&& fn)
 {
     asio::post(_owner->_thread_pool, std::move(fn));
+}
+
+void perfkit::net::grahpics_client::on_message_to_client(cpph::const_buffer_view view)
+{
+    if (auto sess = _wsess.lock()) {
+        message::service::graphics_send_data(sess).notify({view.data(), view.size()});
+    }
 }

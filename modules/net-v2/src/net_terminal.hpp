@@ -52,6 +52,7 @@
 #include "perfkit/detail/commands.hpp"
 #include "perfkit/extension/net/protocol.hpp"
 #include "perfkit/logging.h"
+#include "perfkit/remotegl/backend.hpp"
 #include "perfkit/terminal.h"
 
 namespace perfkit::net {
@@ -97,6 +98,15 @@ class terminal_monitor : public rpc::if_session_monitor
 
 struct terminal_session_descriptor {
     bool has_admin_access = false;
+};
+
+class grahpics_client : public rgl::backend_client
+{
+   public:
+    weak_ptr<rpc::session> _wsess;
+
+   public:
+    void on_message_to_client(const_buffer_view view) override;
 };
 
 class terminal : public if_terminal
@@ -186,6 +196,9 @@ class terminal : public if_terminal
     // Contexts
     config_context _ctx_config{&_adapter};
     trace_context _ctx_trace{&_adapter};
+
+    // Graphics
+    shared_ptr<grahpics_client> _graphics;
 
    public:
     explicit terminal(terminal_info info) noexcept;

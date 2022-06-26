@@ -302,8 +302,8 @@ struct service {
      *
      * Only the primary owner of graphics features can
      */
-    DEFINE_RPC(grahpics_take_control, void());
-    DEFINE_RPC(grahpics_release_control, void());
+    DEFINE_RPC(graphics_take_control, void());
+    DEFINE_RPC(graphics_release_control, void());
     DEFINE_RPC(graphics_send_data, void(flex_buffer));  // Bidirectional
 };
 

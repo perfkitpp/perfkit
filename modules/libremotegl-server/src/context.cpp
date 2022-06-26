@@ -26,7 +26,8 @@ struct context::impl {
     cpph::event_queue_worker _worker{1 << 20};
 
     // Client
-    shared_ptr<backend_context_event_handler> _client;
+    shared_ptr<backend_client> _client;
+    atomic<void const*> _address = nullptr;
 
    public:
     basic_handle new_node(resource_type t) noexcept
@@ -102,26 +103,35 @@ bool context::dispose(texture_handle)
     return false;
 }
 
-void context::_bk_register(shared_ptr<backend_context_event_handler> client)
+void context::_bk_register(shared_ptr<backend_client> client)
 {
-    self->_worker.dispatch([this, client = move(client)] {
+    release(self->_address, client.get());
+
+    self->_worker.dispatch([this, client = move(client)]() mutable {
         // Notify disconnection to active client
         if (auto pclient = exchange(self->_client, {})) {
             pclient->on_close_communication();
+            pclient->_bk_register(nullptr);
         }
 
         // If client parameter is passed, load it and restart worker.
         if (client) {
+            client->_bk_register(this);
             self->_client = move(client);
-            self->_worker.launch();
-            self->_worker.post([this] { self->_client->on_start_communication(); });
+            self->_client->on_start_communication();
         }
     });
 }
 
 void context::on_client_disconnection()
 {
-    
+}
+
+void context::on_client_message(const void* addr, const_buffer_view view)
+{
+    //! Prevent late event invocation
+    if (acquire(self->_address) != addr)
+        return;
 }
 
 }  // namespace perfkit::rgl
