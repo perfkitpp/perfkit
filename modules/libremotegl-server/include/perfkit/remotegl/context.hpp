@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 
+#include "backend.hpp"
 #include "cpph/container/buffer.hxx"
 #include "cpph/math/rectangle.hxx"
 #include "cpph/memory/pool.hxx"
@@ -30,32 +31,11 @@ struct texture_metadata {
             const vec2i& size, texture_type texel_type, bool is_lossy = false, bool is_video = false) noexcept
             : size(size), texel_type(texel_type), is_lossy(is_lossy), is_video(is_video) {}
 };
-
-/**
- * Defines context backend event handler
- */
-class backend_context_event_handler
-{
-   public:
-    virtual ~backend_context_event_handler() = default;
-
-    //! Received client message must be forwarded.
-    virtual void register_client_message_handler(function<void(const_buffer_view)>&&) {}
-
-    //! Called when actual communication begins.
-    virtual void start_communication() {}
-
-    //! Called when communication must be disposed.
-    virtual void close_communication() {}
-
-    //! Called on every server side message.
-};
-
 /**
  * - Creating render target/ Committing draw command queue of render target
  * - Uploading resources (texture/mesh/etc ...)
  */
-class context
+class context : public if_graphics_backend
 {
     struct impl;
     ptr<impl> self;
@@ -142,7 +122,11 @@ class context
      */
 
    public:
-    void _bk_register(shared_ptr<backend_context_event_handler> ptr);
+    void on_client_message(const_buffer_view view) override {}
+    void on_client_disconnection() override;
+
+   public:
+    void _bk_register(shared_ptr<backend_context_event_handler> client = nullptr);
     void _bk_client_message(const_buffer_view data);
 };
 }  // namespace perfkit::rgl

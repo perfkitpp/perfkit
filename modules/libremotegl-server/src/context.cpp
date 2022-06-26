@@ -17,10 +17,16 @@ struct resource_node {
 };
 
 struct context::impl {
-   private:
+    // Node management
     size_t _empty_node = ~size_t{};
     size_t _idgen = 0;
     vector<resource_node> _nodes;
+
+    // Event management
+    cpph::event_queue_worker _worker{1 << 20};
+
+    // Client
+    shared_ptr<backend_context_event_handler> _client;
 
    public:
     basic_handle new_node(resource_type t) noexcept
@@ -73,17 +79,17 @@ context::context() : self(make_unique<impl>())
 }
 
 context::~context()
-{
-}
+        = default;
 
 context* context::get()
 {
-    return nullptr;
+    static context _instance;
+    return &_instance;
 }
 
 texture_handle context::create_texture(const texture_metadata& meta, string_view alias)
 {
-    return perfkit::rgl::texture_handle();
+    return {};
 }
 
 bool context::upload(texture_handle htex, array_view<const void> data)
@@ -94,6 +100,28 @@ bool context::upload(texture_handle htex, array_view<const void> data)
 bool context::dispose(texture_handle)
 {
     return false;
+}
+
+void context::_bk_register(shared_ptr<backend_context_event_handler> client)
+{
+    self->_worker.dispatch([this, client = move(client)] {
+        // Notify disconnection to active client
+        if (auto pclient = exchange(self->_client, {})) {
+            pclient->on_close_communication();
+        }
+
+        // If client parameter is passed, load it and restart worker.
+        if (client) {
+            self->_client = move(client);
+            self->_worker.launch();
+            self->_worker.post([this] { self->_client->on_start_communication(); });
+        }
+    });
+}
+
+void context::on_client_disconnection()
+{
+    
 }
 
 }  // namespace perfkit::rgl

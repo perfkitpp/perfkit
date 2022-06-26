@@ -1,11 +1,24 @@
 #pragma once
 
 namespace perfkit::rgl {
-enum class server_event {
+enum class command {
     none,
 
-    texture_metadata_update = 1001,
-    texture_payload = 1002,
+    texture = 1,
+    render_target = 2,
+    window = 3,
+};
+
+enum class texture_command {
+    none
+};
+
+enum class render_target_command {
+    none
+};
+
+enum class window_command {
+    none
 };
 
 enum class client_event {
