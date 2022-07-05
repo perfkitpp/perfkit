@@ -175,7 +175,7 @@ class terminal : public if_terminal
 
     // TTY
     spinlock _tty_lock;
-    circular_queue<char> _tty_buf{2 << 20};
+    circular_queue<char> _tty_buf{384 << 10};
     int64_t _tty_fence = 0;
     locked<message::tty_output_t> _tty_obuf;
 
