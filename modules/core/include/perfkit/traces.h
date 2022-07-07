@@ -53,6 +53,12 @@
 #define PERFKIT_TRACE_BLOCK(Name) \
     if (PERFKIT_TRACE_SCOPE(Name); true)
 
+#define PERFKIT_TRACE_SCOPE_ANON(Name) \
+    [[maybe_unused]] PERFKIT_RVAR = INTERNAL_PERFKIT_ACTIVE_TRACER->timer(Name)
+
+#define PERFKIT_TRACE_BLOCK_ANON(Name) \
+    if (PERFKIT_TRACE_SCOPE_ANON(Name); true)
+
 #define PERFKIT_TRACE_EXPR(ValueExpr) \
     INTERNAL_PERFKIT_ACTIVE_TRACER->branch(#ValueExpr, (ValueExpr))
 
