@@ -28,7 +28,12 @@
 
 #include <spdlog/fwd.h>
 
+namespace cpph {
+}
+
 namespace perfkit {
+using namespace cpph;
+
 namespace v2 {
 class config_base;
 class config_registry;

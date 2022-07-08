@@ -18,13 +18,6 @@ target_sources(
         src/configs-v2-flags.cpp
 )
 
-target_precompile_headers(
-        ${PROJECT_NAME}
-
-        PUBLIC
-        fix.hpp
-)
-
 if (WIN32)
     target_sources(
             ${PROJECT_NAME}
