@@ -41,8 +41,6 @@
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/configs-v2-backend.hpp"
 
-namespace vw = ranges::views;
-
 static auto CPPH_LOGGER() { return perfkit::glog().get(); }
 
 //*
