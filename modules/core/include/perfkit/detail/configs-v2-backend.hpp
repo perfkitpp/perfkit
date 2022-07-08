@@ -92,7 +92,7 @@ class config_registry::backend_t
 
     // Item insertion/deletions management
     bool _flag_add_remove_notified = true;
-    sorted_vector<config_base_wptr, tuple<size_t>, std::owner_less<>> _config_added;
+    flat_map<config_base_wptr, tuple<size_t>, std::owner_less<>> _config_added;
     vector<config_base_wptr> _config_removed;
 
     // For events, Every event nodes can be reused.

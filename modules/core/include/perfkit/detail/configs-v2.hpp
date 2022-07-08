@@ -28,7 +28,7 @@
 #include <utility>
 
 #include "configs-edit_mode.hxx"
-#include "cpph/container/sorted_vector.hxx"
+#include "cpph/container/flat_map.hxx"
 #include "cpph/memory/pool.hxx"
 #include "cpph/refl/core.hxx"
 #include "cpph/thread/spinlock.hxx"
@@ -118,7 +118,7 @@ struct config_attribute {
 template <typename Mutex = null_mutex>
 class config_update_monitor
 {
-    sorted_vector<void const*, size_t> _table;
+    flat_map<void const*, size_t> _table;
     Mutex _mtx;
 
    public:

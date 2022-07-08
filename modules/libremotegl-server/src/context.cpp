@@ -55,23 +55,32 @@ struct context::impl {
 
     void dispose_node(basic_handle h) noexcept
     {
-        auto p_node = get_node(h);
-        assert(p_node->handle.value == h.value);
+        if (auto p_node = get_node(h)) {
+            assert(p_node->handle.value == h.value);
 
-        p_node->resource.reset();
-        p_node->handle = {};
+            p_node->resource.reset();
+            p_node->handle = {};
 
-        // Mark this node as 'idle'
-        p_node->empty_next = _empty_node;
-        _empty_node = h.index();
+            // Mark this node as 'idle'
+            p_node->empty_next = _empty_node;
+            _empty_node = h.index();
+        }
     }
 
     resource_node* get_node(basic_handle h) noexcept
     {
         auto* p_node = &_nodes[h.index()];
-        assert(p_node->handle.value == h.value);
+        if (p_node->handle.id() != h.id())
+            return nullptr;
+        else
+            return p_node;
+    }
 
-        return p_node;
+    resource_node& at(basic_handle h) noexcept
+    {
+        auto* p_node = &_nodes[h.index()];
+        assert(p_node->handle.value == h.value);
+        return *p_node;
     }
 };
 
@@ -90,6 +99,8 @@ context* context::get()
 
 texture_handle context::create_texture(const texture_metadata& meta, string_view alias)
 {
+
+
     return {};
 }
 
