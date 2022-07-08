@@ -33,7 +33,7 @@
 #include <asio/io_context.hpp>
 #include <asio/post.hpp>
 
-void perfkit::net::if_net_terminal_adapter::post_to_event_procedure(perfkit::function<void()>&& invocable)
+void perfkit::net::if_net_terminal_adapter::post_to_event_procedure(perfkit::ufunction<void()>&& invocable)
 {
     asio::post(*event_proc(), std::move(invocable));
 }

@@ -137,9 +137,9 @@ class terminal : public if_terminal
         explicit session_event_procedure_t(terminal* owner) : _owner(owner) {}
 
        public:
-        void post_rpc_completion(function<void()>&& fn) override;
-        void post_handler_callback(function<void()>&& fn) override;
-        void post_internal_message(function<void()>&& fn) override;
+        void post_rpc_completion(ufunction<void()>&& fn) override;
+        void post_handler_callback(ufunction<void()>&& fn) override;
+        void post_internal_message(ufunction<void()>&& fn) override;
     };
 
    private:

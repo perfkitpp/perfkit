@@ -93,8 +93,8 @@ struct config_attribute {
     refl::shared_object_const_ptr max;
 
     // Validation functions
-    function<bool(refl::object_view_t)> fn_validate;
-    function<bool(refl::object_view_t)> fn_minmax_validate;
+    ufunction<bool(refl::object_view_t)> fn_validate;
+    ufunction<bool(refl::object_view_t)> fn_minmax_validate;
 
     //
     bool can_import = true;

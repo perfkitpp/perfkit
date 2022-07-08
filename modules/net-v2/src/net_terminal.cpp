@@ -442,17 +442,17 @@ void perfkit::net::terminal_monitor::on_session_expired(session_profile_view pro
     }
 }
 
-void perfkit::net::terminal::session_event_procedure_t::post_rpc_completion(perfkit::function<void()>&& fn)
+void perfkit::net::terminal::session_event_procedure_t::post_rpc_completion(perfkit::ufunction<void()>&& fn)
 {
     assert(false && "This may not be called as terminal never use RPC feature!");
 }
 
-void perfkit::net::terminal::session_event_procedure_t::post_handler_callback(perfkit::function<void()>&& fn)
+void perfkit::net::terminal::session_event_procedure_t::post_handler_callback(perfkit::ufunction<void()>&& fn)
 {
     asio::post(_owner->_event_proc, std::move(fn));
 }
 
-void perfkit::net::terminal::session_event_procedure_t::post_internal_message(perfkit::function<void()>&& fn)
+void perfkit::net::terminal::session_event_procedure_t::post_internal_message(perfkit::ufunction<void()>&& fn)
 {
     asio::post(_owner->_thread_pool, std::move(fn));
 }

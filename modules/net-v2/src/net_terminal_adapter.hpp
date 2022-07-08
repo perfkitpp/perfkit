@@ -62,7 +62,7 @@ class if_net_terminal_adapter
     virtual bool has_basic_access(rpc::session_profile const*) const = 0;
     virtual bool has_admin_access(rpc::session_profile const*) const = 0;
 
-    void post_to_event_procedure(function<void()>&& invocable);
+    void post_to_event_procedure(ufunction<void()>&& invocable);
 
     template <typename Callable, typename... Args>
     void post_weak(weak_ptr<void> weak, Callable&& callable, Args&&... args)
