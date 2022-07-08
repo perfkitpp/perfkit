@@ -40,7 +40,7 @@
 #include "cpph/refl/rpc/session_builder.hxx"
 #include "cpph/refl/types/binary.hxx"
 #include "cpph/utility/functional.hxx"
-#include "cpph/utility/template_utils.hxx"
+#include "cpph/utility/generic.hxx"
 #include "perfkit/configs.h"
 #include "perfkit/remotegl/context.hpp"
 #include "utils.hpp"

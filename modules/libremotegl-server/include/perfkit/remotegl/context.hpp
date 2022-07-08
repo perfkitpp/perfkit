@@ -7,7 +7,7 @@
 #include "cpph/math/rectangle.hxx"
 #include "cpph/memory/pool.hxx"
 #include "cpph/utility/functional.hxx"
-#include "cpph/utility/template_utils.hxx"
+#include "cpph/utility/generic.hxx"
 #include "defs.hpp"
 #include "handle.hpp"
 #include "perfkit/remotegl/protocol/common.hpp"

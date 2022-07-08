@@ -1,7 +1,7 @@
 #pragma once
 #include <string_view>
 
-#include "cpph/utility/template_utils.hxx"
+#include "cpph/utility/generic.hxx"
 
 namespace std::filesystem {
 class path;

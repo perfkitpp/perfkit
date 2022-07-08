@@ -36,9 +36,9 @@
 
 #include "cpph/algorithm/base64.hxx"
 #include "cpph/helper/macros.hxx"
+#include "cpph/utility/generic.hxx"
 #include "cpph/utility/hasher.hxx"
 #include "cpph/utility/singleton.hxx"
-#include "cpph/utility/template_utils.hxx"
 #include "perfkit/detail/base.hpp"
 
 #define CPPH_LOGGER() perfkit::glog()
