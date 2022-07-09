@@ -10,6 +10,7 @@
 #include "cpph/algorithm/base64.hxx"
 #include "cpph/refl/archive/json.hpp"
 #include "cpph/refl/object.hxx"
+#include "cpph/refl/types/binary.hxx"
 #include "cpph/refl/types/tuple.hxx"
 #include "cpph/refl/types/unordered.hxx"
 #include "cpph/thread/event_wait.hxx"
@@ -23,8 +24,14 @@ namespace perfkit {
 namespace detail {
 
 struct loca_text_entity {
-    CPPH_REFL_DEFINE_OBJECT_inline_simple(label, content);
+    string label;
+    string content;
+};
 
+struct loca_archived_text_entity {
+    CPPH_REFL_DEFINE_OBJECT_inline_simple(hash, label, content);
+
+    chunk<uint64_t> hash;
     string label;
     string content;
 };
@@ -89,7 +96,7 @@ string const& loca_lookup(loca_static_context* ctx) noexcept
 localization_result load_localization_lut(string_view key, archive::if_reader* strm)
 {
     // Load struct
-    detail::loca_full_lut_t table;
+    vector<detail::loca_archived_text_entity> table;
     try {
         *strm >> table;
     } catch (archive::error::reader_exception&) {
@@ -99,15 +106,14 @@ localization_result load_localization_lut(string_view key, archive::if_reader* s
     // Build LUT
     auto lut = make_unique<detail::loca_mutable_lut_t>();
     lut->reserve(table.size());
-    for (auto& [hash, pair] : table) {
-        lut->try_emplace(hash, pair.content);
+    for (auto& [hash, label, content] : table) {
+        lut->try_emplace(hash.value, content);
     }
 
     // Check if table with same-key is already loaded ... As language tables are not unloaded,
     //  not any language table with same key is permitted to be loaded multiple times.
     {
         auto globals = detail::acquire_loaded_tables();
-
         if (auto existing_table = find_ptr(*globals, key)) {
             release(detail::loca_active_lut_table, existing_table->second);
             return localization_result::already_loaded;
@@ -119,7 +125,15 @@ localization_result load_localization_lut(string_view key, archive::if_reader* s
     // Send text to global builder
     {
         auto builder = detail::acquire_global_builder();
-        builder->merge(move(table));
+        builder->reserve(table.size());
+
+        for (auto& [hash, label, content] : table) {
+            auto [iter, is_new] = builder->try_emplace(hash.value);
+            if (is_new) {
+                iter->second.content = move(content);
+                iter->second.label = move(label);
+            }
+        }
     }
 
     // Replace global LUT
@@ -130,8 +144,17 @@ localization_result load_localization_lut(string_view key, archive::if_reader* s
 localization_result dump_localization_lut(archive::if_writer* strm)
 {
     auto table = *detail::acquire_global_builder();
-    *strm << table;
+    vector<detail::loca_archived_text_entity> array;
+    array.reserve(table.size());
 
+    for (auto& [hash, entity] : table) {
+        auto elem = &array.emplace_back();
+        elem->hash.value = hash;
+        elem->label = entity.label;
+        elem->content = entity.content;
+    }
+
+    *strm << array;
     return localization_result::okay;
 }
 
