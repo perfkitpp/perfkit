@@ -35,30 +35,19 @@ loca_static_context* loca_create_static_context(uint64_t hash, char const* ref_t
 string const& loca_lookup(loca_static_context*) noexcept;
 }  // namespace perfkit::detail
 
-#define PERFKIT_KEYTEXT(Label, RefText)                                                       \
-    ([]() -> std::string const& {                                                             \
-        static constexpr auto hash = cpph::hasher::fnv1a_64(#Label);                          \
-        static auto ctx = perfkit::detail::loca_create_static_context(hash, RefText, #Label); \
-        return perfkit::detail::loca_lookup(ctx);                                             \
-    }())
-
-#define PERFKIT_KEYWORD(Label)                                                               \
+#define INTERNALPERFKIT_LOCTEXT_FULL(HashStr, RefText, Label)                                \
     ([]() -> std::string const& {                                                            \
-        static constexpr auto hash = cpph::hasher::fnv1a_64(#Label);                         \
-        static auto ctx = perfkit::detail::loca_create_static_context(hash, #Label, #Label); \
+        static constexpr auto hash = cpph::hasher::fnv1a_64(HashStr);                        \
+        static auto ctx = perfkit::detail::loca_create_static_context(hash, RefText, Label); \
         return perfkit::detail::loca_lookup(ctx);                                            \
     }())
 
-#define PERFKIT_LOCTEXT(RefText)                                                               \
-    ([]() -> std::string const& {                                                              \
-        static constexpr auto hash = cpph::hasher::fnv1a_64(RefText);                          \
-        static auto ctx = perfkit::detail::loca_create_static_context(hash, RefText, nullptr); \
-        return perfkit::detail::loca_lookup(ctx);                                              \
-    }())
+#define PERFKIT_KEYTEXT(Label, RefText) INTERNALPERFKIT_LOCTEXT_FULL(#Label, RefText, #Label)
+#define PERFKIT_KEYWORD(Label)          INTERNALPERFKIT_LOCTEXT_FULL(#Label, #Label, #Label)
+#define PERFKIT_LOCTEXT(RefText)        INTERNALPERFKIT_LOCTEXT_FULL(RefText, RefText, nullptr)
+#define PERFKIT_LOCWORD(RefText)        INTERNALPERFKIT_LOCTEXT_FULL(RefText, RefText, RefText)
 
-#define PERFKIT_LOCWORD(RefText)                                                               \
-    ([]() -> std::string const& {                                                              \
-        static constexpr auto hash = cpph::hasher::fnv1a_64(RefText);                          \
-        static auto ctx = perfkit::detail::loca_create_static_context(hash, RefText, RefText); \
-        return perfkit::detail::loca_lookup(ctx);                                              \
-    }())
+#define PERFKIT_C_KEYTEXT(Label, RefText) INTERNALPERFKIT_LOCTEXT_FULL(#Label, RefText, #Label).c_str()
+#define PERFKIT_C_KEYWORD(Label)          INTERNALPERFKIT_LOCTEXT_FULL(#Label, #Label, #Label).c_str()
+#define PERFKIT_C_LOCTEXT(RefText)        INTERNALPERFKIT_LOCTEXT_FULL(RefText, RefText, nullptr).c_str()
+#define PERFKIT_C_LOCWORD(RefText)        INTERNALPERFKIT_LOCTEXT_FULL(RefText, RefText, RefText).c_str()
