@@ -1,5 +1,6 @@
 # Module ---------------------------------------------------------------------------------------------------------------
 add_subdirectory(core)
+add_subdirectory(localization)
 
 # TUI Extension
 if (perfkit_BUILD_FTXUI_EXTENSION)
