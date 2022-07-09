@@ -4,6 +4,7 @@
 #include "cpph/utility/timer.hxx"
 #include "perfkit-appbase.hpp"
 #include "perfkit/configs.h"
+#include "perfkit/logging.h"
 #include "perfkit/terminal.h"
 #include "spdlog/spdlog.h"
 
@@ -70,6 +71,9 @@ int main(int argc, char** argv)
         }
     }
 
+    spdlog::info("Creating Logging Management Service ...");
+    auto logmon = perfkit::create_log_monitor();
+
     spdlog::info("APP INIT 1 - PostLoadConfigs");
     app->S02_PostLoadConfigs();
 
@@ -95,6 +99,7 @@ int main(int argc, char** argv)
 
     // Command receive loop
     stopwatch sw;
+    stopwatch sw_logsvc;
 
     while (g_server_is_alive) {
         app->Tick_Application(sw.elapsed().count()), sw.reset();
@@ -102,6 +107,10 @@ int main(int argc, char** argv)
                 app->DesiredTickInterval(),
                 [] { return g_server_is_alive.load(); },
                 [](auto cmd) { spdlog::info("CMD: {}", cmd); });
+
+        if (sw_logsvc.tick() > app->LogServiceTickInterval()) {
+            sw_logsvc.reset(), tick_log_monitor(*logmon);
+        }
     }
 
     spdlog::info("Disposing application");

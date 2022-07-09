@@ -115,7 +115,7 @@ class log_level_control : public enable_shared_from_this<log_level_control>
 
     void tick()
     {
-        _cfg->update();
+        if (not _cfg->update()) { return; }
 
         if (_cfg.active_loggers.check_update()) {
             list<string> added;

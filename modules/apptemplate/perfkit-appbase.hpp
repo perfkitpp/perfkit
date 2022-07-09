@@ -28,6 +28,7 @@ class AppBase
     //! Invokes right after S02_PostLoadConfigs
     virtual auto CreatePerfkitTerminal() -> perfkit::terminal_ptr = 0;
     virtual auto DesiredTickInterval() const -> milliseconds { return milliseconds{200}; }
+    virtual auto LogServiceTickInterval() const -> milliseconds { return milliseconds{300}; }
 };
 }  // namespace perfkit
 
