@@ -3,10 +3,12 @@
 #include <cpph/std/algorithm>
 #include <cpph/std/map>
 #include <cpph/std/unordered_map>
+#include <filesystem>
 #include <fstream>
 #include <shared_mutex>
 
 #include "cpph/algorithm/base64.hxx"
+#include "cpph/refl/archive/json.hpp"
 #include "cpph/refl/object.hxx"
 #include "cpph/refl/types/tuple.hxx"
 #include "cpph/refl/types/unordered.hxx"
@@ -36,11 +38,6 @@ static auto acquire_global_builder() { return default_singleton<locked<loca_full
 static auto acquire_loaded_tables() { return default_singleton<locked<map<string, loca_lut_t*, std::less<>>>>().lock(); }
 
 static atomic<loca_lut_t*> loca_active_lut_table = nullptr;
-
-struct loca_static_context {
-    uint64_t hash;
-    string_view ref_text;
-};
 
 static string const* lookup(uint64_t hash)
 {
@@ -79,7 +76,7 @@ ptr<loca_static_context> loca_create_static_context(uint64_t hash, const char* r
     return ctx;
 }
 
-string_view loca_lookup(loca_static_context* ctx) noexcept
+string const& loca_lookup(loca_static_context* ctx) noexcept
 {
     if (auto text = lookup(ctx->hash))
         return *text;
@@ -89,21 +86,21 @@ string_view loca_lookup(loca_static_context* ctx) noexcept
 
 }  // namespace detail
 
-localization_load_result load_localization_lut(string_view key, archive::if_reader* strm)
+localization_result load_localization_lut(string_view key, archive::if_reader* strm)
 {
     // Load struct
     detail::loca_full_lut_t table;
     try {
         *strm >> table;
     } catch (archive::error::reader_exception&) {
-        return localization_load_result::invalid_content;
+        return localization_result::invalid_content;
     }
 
     // Build LUT
     auto lut = make_unique<detail::loca_mutable_lut_t>();
     lut->reserve(table.size());
     for (auto& [hash, pair] : table) {
-        lut->try_emplace(hash, move(pair.content));
+        lut->try_emplace(hash, pair.content);
     }
 
     // Check if table with same-key is already loaded ... As language tables are not unloaded,
@@ -113,7 +110,7 @@ localization_load_result load_localization_lut(string_view key, archive::if_read
 
         if (auto existing_table = find_ptr(*globals, key)) {
             release(detail::loca_active_lut_table, existing_table->second);
-            return localization_load_result::already_loaded;
+            return localization_result::already_loaded;
         } else {
             globals->try_emplace(string{key}, lut.get());
         }
@@ -127,12 +124,38 @@ localization_load_result load_localization_lut(string_view key, archive::if_read
 
     // Replace global LUT
     release(detail::loca_active_lut_table, lut.release());
-    return localization_load_result::okay;
+    return localization_result::okay;
 }
 
-void dump_localization_lut(archive::if_writer* strm)
+localization_result dump_localization_lut(archive::if_writer* strm)
 {
     auto table = *detail::acquire_global_builder();
     *strm << table;
+
+    return localization_result::okay;
+}
+
+localization_result load_localization_lut(string_view key, string const& path)
+{
+    std::ifstream fs{path};
+    if (not fs.is_open()) { return localization_result::invalid_file_path; }
+
+    archive::json::reader rd{fs.rdbuf()};
+    return load_localization_lut(key, &rd);
+}
+
+localization_result dump_localization_lut(string_view path)
+{
+    std::filesystem::path dst = path;
+    std::error_code ec;
+    std::filesystem::create_directories(dst.parent_path(), ec);
+    if (ec) { return localization_result::invalid_file_path; }
+
+    std::ofstream fs{dst};
+    if (not fs.is_open()) { return localization_result::invalid_file_path; }
+
+    archive::json::writer wr{fs.rdbuf()};
+    wr.indent = 2;
+    return dump_localization_lut(&wr);
 }
 }  // namespace perfkit
