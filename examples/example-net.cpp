@@ -27,6 +27,7 @@
 #include <perfkit/configs-v2.h>
 #include <perfkit/detail/commands.hpp>
 #include <perfkit/extension/net.hpp>
+#include <perfkit/logging.h>
 #include <perfkit/terminal.h>
 #include <spdlog/spdlog.h>
 
@@ -85,8 +86,9 @@ int main(int argc, char** argv)
     test2.start();
     test3.start();
 
+    auto logging = perfkit::create_log_monitor();
     auto profile = perfkit::terminal::net::profile::create("__NET_TERM");
-    profile.bind_port.commit_now(15572);
+    profile.bind_port.set(15572);
 
     auto term = perfkit::terminal::net::create(profile);
     perfkit::terminal::initialize_with_basic_commands(&*term);
@@ -96,11 +98,14 @@ int main(int argc, char** argv)
     term->add_command("quit", [&] { running = false; });
     conf_global::update();
     while (running) {
-        auto ncmd = term->invoke_queued_commands(
-                1h, [&] { return running; }, [](auto cmd) {
+        term->invoke_queued_commands(
+                500ms,
+                [&] { return running; },
+                [&](auto cmd) {
                     conf_global::update();
-                    spdlog::info("cmd: {}", cmd); });
-        spdlog::info("{} commands invoked", ncmd);
+                    spdlog::info("cmd: {}", cmd);
+                });
+        tick_log_monitor(*logging);
     }
 
     spdlog::info("Now shutting down ...");

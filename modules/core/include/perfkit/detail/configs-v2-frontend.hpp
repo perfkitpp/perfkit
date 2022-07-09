@@ -71,6 +71,11 @@ class config_set_base
     {
     }
 
+    bool valid() const noexcept
+    {
+        return _internal_RG != nullptr;
+    }
+
    public:
     static void _internal_perform_initops(config_set_base* base_addr, array_view<_internal_initops_t const> initops)
     {

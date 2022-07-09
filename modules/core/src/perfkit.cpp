@@ -31,22 +31,12 @@
 #include <fstream>
 #include <sstream>
 
-#include <perfkit/detail/base.hpp>
-
-#include "spdlog/sinks/stdout_color_sinks.h"
-#include "spdlog/sinks/stdout_sinks.h"
+#include "perfkit/detail/base.hpp"
+#include "perfkit/logging.h"
 #include "spdlog/spdlog.h"
 
 std::shared_ptr<spdlog::logger> const& perfkit::glog()
 {
-    static auto _inst = [] {
-        try {
-            spdlog::register_logger(spdlog::default_logger()->clone("PERFKIT"));
-        } catch (...) {
-            ;  // Seems any logger with same name already exists. Just let 'get()' find it.
-        }
-        return spdlog::get("PERFKIT");
-    }();
-
-    return _inst;
+    static auto _ = share_logger("__PERFKIT");
+    return _;
 }

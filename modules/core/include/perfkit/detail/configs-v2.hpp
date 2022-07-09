@@ -224,7 +224,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
    private:
     shared_ptr<backend_t> _self;
-    mutable size_t _fence_cached = 0;
+    size_t _fence_cached = 0;
 
    public:
     explicit config_registry(ctor_constraint_t, std::string name, bool is_global);
@@ -258,14 +258,14 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
     //! Touch this registry.
     //! Next check_update() will return
-    void touch() const
+    void touch()
     {
         _fence_cached = 0;
     }
 
     //! Check if there was any update, without actual update() call.
     //! Return value is valid for each registry() instances.
-    bool check_update() const
+    bool check_update()
     {
         if (auto f = fence(); f != _fence_cached) {
             _fence_cached = f;
@@ -273,6 +273,12 @@ class config_registry : public std::enable_shared_from_this<config_registry>
         } else {
             return false;
         }
+    }
+
+    //! Check if there was any update, without invalidating cache
+    bool peek_update() const
+    {
+        return fence() != _fence_cached;
     }
 
     //! Name of this registery
@@ -334,7 +340,7 @@ class config
     config_base_ptr _base;
 
     ValueType const* _ref = nullptr;
-    mutable size_t _update_check_fence = 0;
+    size_t _update_check_fence = 0;
 
    public:
     config() noexcept = default;
@@ -367,7 +373,12 @@ class config
         return owner->_internal_commit_value_user(_base.get(), move(ptr));
     }
 
-    bool commit_now(ValueType val) const
+    [[deprecated]] bool commit_now(ValueType val) const
+    {
+        return apply(move(val));
+    }
+
+    bool set(ValueType val) const
     {
         auto owner = _base->owner();
         assert(owner);
@@ -404,10 +415,15 @@ class config
         return value();
     }
 
-    bool check_update() const noexcept
+    bool check_update() noexcept
     {
         auto fence = _base->fence();
         return exchange(_update_check_fence, fence) != fence;
+    }
+
+    bool peek_update() const noexcept
+    {
+        return _update_check_fence != _base->fence();
     }
 
    public:
