@@ -27,11 +27,9 @@
 #include <cpph/thread/spinlock.hxx>
 #include <spdlog/spdlog.h>
 
-namespace perfkit {
 using namespace cpph;
-}
 
-perfkit::logger_ptr perfkit::share_logger(std::string const& name)
+perfkit::logger_ptr perfkit::share_logger(string const& name)
 {
     static perfkit::spinlock mtx;
     std::lock_guard _{mtx};
