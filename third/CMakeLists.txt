@@ -69,5 +69,9 @@ endif ()
 add_subdirectory(taywee-args)
 
 ### CONFIGURE cppheaders
-add_subdirectory(cppheaders)
+if (NOT TARGET kang-sw::cppheaders)
+    message("-- [${PROJECT_NAME}]: Configuring cppheaders ...")
+    add_subdirectory(cppheaders)
+endif ()
+
 add_library(perfkit::cpph ALIAS cppheaders)

@@ -384,28 +384,6 @@ void perfkit::if_terminal::_add_subcommand(
     commands()->root()->add_subcommand(std::move(name), std::move(handler));
 }
 
-namespace perfkit {
-static std::atomic<if_terminal*> term_ptr = {};
-
-auto active_terminal() noexcept -> shared_ptr<if_terminal>
-{
-    if (auto ptr = acquire(term_ptr)) {
-        return ptr->shared_from_this();
-    } else {
-        return nullptr;
-    }
-}
-
-bool is_actively_monitored() noexcept
-{
-    if (auto ptr = acquire(term_ptr)) {
-        return ptr->has_active_client();
-    } else {
-        return false;
-    }
-}
-}  // namespace perfkit
-
 perfkit::if_terminal::if_terminal() : _self(make_unique<impl>())
 {
     if (term_ptr.exchange(this) != nullptr) {
