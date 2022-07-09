@@ -36,6 +36,8 @@ PERFKITINTERNAL_RGL_SERVERCMD(tex_update_jpeg)
     flex_buffer data;
 };
 
+//
+// Called texture raw data transfer
 PERFKITINTERNAL_RGL_SERVERCMD(tex_update_raw)
 {
     CPPH_REFL_DEFINE_TUPLE_inline((), actual_width, actual_height, data);

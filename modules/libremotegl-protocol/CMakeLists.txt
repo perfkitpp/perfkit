@@ -15,3 +15,11 @@ target_link_libraries(
         INTERFACE
         perfkit::cpph
 )
+
+target_sources(
+        ${PROJECT_NAME}
+
+        INTERFACE
+        src/bodies.cpp
+)
+

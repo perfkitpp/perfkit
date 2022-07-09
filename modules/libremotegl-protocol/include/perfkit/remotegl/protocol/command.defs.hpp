@@ -1,5 +1,4 @@
 #pragma once
-#include "cpph/helper/macros.hxx"
 #include "cpph/refl/core.hxx"
 
 #define PERFKITINTERNAL_RGL_SERVERCMD(Command) \
@@ -9,6 +8,10 @@
 #define PERFKITINTERNAL_RGL_CLIENTCMD(Command) \
     template <>                                \
     struct client_command<clientcmd::Command> : command_base_class<client_command<clientcmd::Command>>
+
+namespace perfkit {
+using namespace cpph;
+}
 
 namespace perfkit::rgl {
 enum class servercmd {
@@ -74,8 +77,11 @@ enum class clientcmd {
     none,
 
     _generic = 0x0001,
+
     subscribe_resource = 0x0011,
     cancel_subscription = 0x0012,
+
+    ready = 0x0100,
 
     _wnd = 0x3000,
 };
