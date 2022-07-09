@@ -37,19 +37,28 @@ int main(int argc, char** argv)
     spdlog::info("Creating application instance ...");
     auto app = INTERNAL_perfkit_create_app();
 
-    try {
-        spdlog::info("Parsing {} command line arguments", argc);
-        perfkit::configs_parse_args(argc, (const char**&)argv);
-    } catch (std::exception& e) {
-        spdlog::error("Error during flag parsing: \n{}", e.what());
-        return 1;
+    // Exclude reserved second argument from arguments list
+    std::string confpath;
+    if (argc > 1) {
+        confpath = argv[1];
+        memmove(argv + 1, argv + 2, argc - 2);
+        argc -= 1;
+
+        spdlog::info("Configuration path specified: {}", confpath);
+    } else {
+        confpath = app->DefaultConfigPath();
+        spdlog::info("Default configuration path will be used.");
+    }
+
+    if (auto rflag = app->S00_ParseCommandLineArgs(argc, argv)) {
+        // Non-zero returned during argument parsing.
+        return rflag;
     }
 
     spdlog::info("APP INIT 0 - PreLoadConfigs");
     app->S01_PreLoadConfigs();
 
     spdlog::info("Loading configs ...");
-    std::string confpath = argc == 1 ? app->DefaultConfigPath() : argv[1];
     {
         if (perfkit::configs_import(confpath)) {
             spdlog::info("Successfully loaded intial config '{}'", confpath);
@@ -59,11 +68,6 @@ int main(int argc, char** argv)
         } else {
             spdlog::warn("Failed to load config '{}'", confpath);
         }
-    }
-
-    if (argc > 2) {
-        spdlog::info("APP INIT 0 - Processing {} positional commandline args ...", argc - 2);
-        app->S00_Opt_InitWithCmdLineArgs({(char const**)argv, size_t(argc - 2)});
     }
 
     spdlog::info("APP INIT 1 - PostLoadConfigs");
@@ -110,4 +114,16 @@ int main(int argc, char** argv)
     term.reset();
 
     return 0;
+}
+
+int perfkit::AppBase::S00_ParseCommandLineArgs(int argc, char** argv)
+{
+    try {
+        spdlog::info("Parsing {} command line arguments", argc);
+        perfkit::configs_parse_args(argc, (const char**&)argv);
+        return 0;
+    } catch (std::exception& e) {
+        spdlog::error("Error during flag parsing: \n{}", e.what());
+        return 1;
+    }
 }

@@ -15,7 +15,7 @@ class AppBase
 
    public:
     virtual std::string DefaultConfigPath() const noexcept { return ""; }
-    virtual void S00_Opt_InitWithCmdLineArgs(cpph::array_view<char const*> args) {}
+    virtual int S00_ParseCommandLineArgs(int argc, char** argv);
     virtual void S01_PreLoadConfigs() {}
     virtual void S02_PostLoadConfigs() {}
     virtual void S03_LaunchApplication() {}

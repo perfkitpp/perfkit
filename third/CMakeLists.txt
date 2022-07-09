@@ -65,6 +65,9 @@ if (NOT TARGET spdlog::spdlog)
     add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
 
+### CONFIGURE args
+add_subdirectory(taywee-args)
+
 ### CONFIGURE cppheaders
 add_subdirectory(cppheaders)
 add_library(perfkit::cpph ALIAS cppheaders)

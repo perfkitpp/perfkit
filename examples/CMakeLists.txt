@@ -1,13 +1,15 @@
 set(TARGET_CONTEXT_NAME)
 
 # ======================================================================================================================
+project(perfkit-automated-test)
+
 add_executable(
-        perfkit-automated-test
+        ${PROJECT_NAME}
         automation-argparse.cpp
 )
 
 target_link_libraries(
-        perfkit-automated-test
+        ${PROJECT_NAME}
 
         PRIVATE
         perfkit::core
@@ -16,16 +18,36 @@ target_link_libraries(
 )
 
 # ======================================================================================================================
+project(example-net)
+
 add_executable(
-        example-net
+        ${PROJECT_NAME}
 
         example-net.cpp
         test_class.cpp
 )
 
 target_link_libraries(
-        example-net
+        ${PROJECT_NAME}
 
         PRIVATE
         perfkit::net-v2::core
 )
+
+# ======================================================================================================================
+project(apptemplate)
+
+add_executable(
+        ${PROJECT_NAME}
+
+        apptemplate.cpp
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}
+
+        PRIVATE
+        perfkit::net-v2::core
+        perfkit::apptemplate
+)
+
