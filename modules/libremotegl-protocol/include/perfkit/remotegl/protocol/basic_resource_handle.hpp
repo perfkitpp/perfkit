@@ -1,33 +1,7 @@
 #pragma once
+#include "cpph/refl/core.hxx"
 
 namespace perfkit::rgl {
-enum class command {
-    none,
-
-    texture = 1,
-    render_target = 2,
-    window = 3,
-};
-
-enum class texture_command {
-    none
-};
-
-enum class render_target_command {
-    none
-};
-
-enum class window_command {
-    none
-};
-
-enum class client_event {
-    none,
-
-    subscribe_resource = 1001,
-    unsubscribe_resource = 1002,
-};
-
 enum class resource_type {
     none,
     texture,
@@ -36,7 +10,8 @@ enum class resource_type {
     material
 };
 
-struct basic_handle {
+struct basic_resource_handle {
+    CPPH_REFL_DECLARE_c;
     uint64_t value;
 
    private:

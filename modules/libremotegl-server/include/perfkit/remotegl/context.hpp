@@ -10,7 +10,9 @@
 #include "cpph/utility/generic.hxx"
 #include "defs.hpp"
 #include "handle.hpp"
-#include "perfkit/remotegl/protocol/common.hpp"
+#include "perfkit/remotegl/protocol/basic_resource_handle.hpp"
+#include "perfkit/remotegl/protocol/command.defs.hpp"
+#include "perfkit/remotegl/texture.defs.hpp"
 
 namespace perfkit::rgl {
 using namespace cpph;
@@ -23,12 +25,12 @@ class context;
  */
 struct texture_metadata {
     vec2i size;
-    texture_type texel_type;
+    rgl::texel_type texel_type;
     bool is_lossy = false;  // Can be lossy?
     bool is_video = false;  // Is uploaded texture relevant to previous ?
 
     texture_metadata(
-            const vec2i& size, texture_type texel_type, bool is_lossy = false, bool is_video = false) noexcept
+            const vec2i& size, rgl::texel_type texel_type, bool is_lossy = false, bool is_video = false) noexcept
             : size(size), texel_type(texel_type), is_lossy(is_lossy), is_video(is_video) {}
 };
 /**

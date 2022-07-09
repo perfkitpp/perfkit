@@ -3,6 +3,7 @@
 #include "cpph/thread/thread_pool.hxx"
 #include "cpph/utility/functional.hxx"
 #include "perfkit/remotegl/draw_queue.hpp"
+#include "perfkit/remotegl/protocol/command.tex.hpp"
 #include "resource.hpp"
 #include "resource/texture.hpp"
 
@@ -12,7 +13,7 @@ using std::vector;
 struct resource_node {
     size_t empty_next = ~size_t{};
 
-    basic_handle handle = {};
+    basic_resource_handle handle = {};
     ptr<basic_synced_resource> resource;
 };
 
@@ -30,9 +31,9 @@ struct context::impl {
     atomic<void const*> _address = nullptr;
 
    public:
-    basic_handle new_node(resource_type t) noexcept
+    basic_resource_handle new_node(resource_type t) noexcept
     {
-        basic_handle h = {};
+        basic_resource_handle h = {};
         h.id(++_idgen);
         h.type(t);
 
@@ -45,7 +46,7 @@ struct context::impl {
 
             _empty_node = p_node->empty_next;  // Point to next empty resource blk
         } else {
-            assert(_nodes.size() < basic_handle::max_index());
+            assert(_nodes.size() < basic_resource_handle::max_index());
             h.index(_nodes.size());
             _nodes.emplace_back().handle = h;
         }
@@ -53,7 +54,7 @@ struct context::impl {
         return h;
     }
 
-    void dispose_node(basic_handle h) noexcept
+    void dispose_node(basic_resource_handle h) noexcept
     {
         if (auto p_node = get_node(h)) {
             assert(p_node->handle.value == h.value);
@@ -67,7 +68,7 @@ struct context::impl {
         }
     }
 
-    resource_node* get_node(basic_handle h) noexcept
+    resource_node* get_node(basic_resource_handle h) noexcept
     {
         auto* p_node = &_nodes[h.index()];
         if (p_node->handle.id() != h.id())
@@ -76,7 +77,7 @@ struct context::impl {
             return p_node;
     }
 
-    resource_node& at(basic_handle h) noexcept
+    resource_node& at(basic_resource_handle h) noexcept
     {
         auto* p_node = &_nodes[h.index()];
         assert(p_node->handle.value == h.value);
@@ -99,8 +100,6 @@ context* context::get()
 
 texture_handle context::create_texture(const texture_metadata& meta, string_view alias)
 {
-
-
     return {};
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "cpph/utility/hasher.hxx"
-#include "perfkit/remotegl/protocol/common.hpp"
+#include "perfkit/remotegl/protocol/basic_resource_handle.hpp"
 
 namespace perfkit {
 using namespace cpph;
