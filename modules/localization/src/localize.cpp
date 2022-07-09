@@ -133,11 +133,10 @@ localization_result load_localization_lut(string_view key, archive::if_reader* s
     //  not any language table with same key is permitted to be loaded multiple times.
     {
         auto globals = detail::acquire_loaded_tables();
-        if (auto existing_table = find_ptr(*globals, key)) {
-            release(detail::loca_active_lut_table, existing_table->second);
+        if (find_ptr(*globals, key)) {
             return localization_result::already_loaded;
         } else {
-            globals->try_emplace(string{key}, lut.get());
+            globals->try_emplace(string{key}, lut.release());
         }
     }
 
@@ -155,8 +154,6 @@ localization_result load_localization_lut(string_view key, archive::if_reader* s
         }
     }
 
-    // Replace global LUT
-    release(detail::loca_active_lut_table, lut.release());
     return localization_result::okay;
 }
 
@@ -175,6 +172,17 @@ localization_result dump_localization_lut(archive::if_writer* strm)
 
     *strm << array;
     return localization_result::okay;
+}
+
+localization_result select_locale(string_view key)
+{
+    auto globals = detail::acquire_loaded_tables();
+    if (auto existing_table = find_ptr(*globals, key)) {
+        release(detail::loca_active_lut_table, existing_table->second);
+        return localization_result::okay;
+    } else {
+        return localization_result::key_not_loaded;
+    }
 }
 
 localization_result load_localization_lut(string_view key, string const& path)
