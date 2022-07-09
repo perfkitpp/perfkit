@@ -27,12 +27,9 @@ localization_result dump_localization_lut(string_view path);
 }  // namespace perfkit
 
 namespace perfkit::detail {
-struct loca_static_context {
-    uint64_t hash;
-    string ref_text;
-};
+struct loca_static_context;
 
-ptr<loca_static_context> loca_create_static_context(uint64_t hash, char const* ref_text, char const* label) noexcept;
+loca_static_context* loca_create_static_context(uint64_t hash, char const* ref_text, char const* label) noexcept;
 string const& loca_lookup(loca_static_context*) noexcept;
 }  // namespace perfkit::detail
 
@@ -40,26 +37,26 @@ string const& loca_lookup(loca_static_context*) noexcept;
     ([]() -> std::string const& {                                                             \
         static constexpr auto hash = cpph::hasher::fnv1a_64(#Label);                          \
         static auto ctx = perfkit::detail::loca_create_static_context(hash, RefText, #Label); \
-        return perfkit::detail::loca_lookup(ctx.get());                                       \
+        return perfkit::detail::loca_lookup(ctx);                                       \
     }())
 
 #define PERFKIT_KEYWORD(Label)                                                               \
     ([]() -> std::string const& {                                                            \
         static constexpr auto hash = cpph::hasher::fnv1a_64(#Label);                         \
         static auto ctx = perfkit::detail::loca_create_static_context(hash, #Label, #Label); \
-        return perfkit::detail::loca_lookup(ctx.get());                                      \
+        return perfkit::detail::loca_lookup(ctx);                                      \
     }())
 
 #define PERFKIT_LOCTEXT(RefText)                                                               \
     ([]() -> std::string const& {                                                              \
         static constexpr auto hash = cpph::hasher::fnv1a_64(RefText);                          \
         static auto ctx = perfkit::detail::loca_create_static_context(hash, RefText, nullptr); \
-        return perfkit::detail::loca_lookup(ctx.get());                                        \
+        return perfkit::detail::loca_lookup(ctx);                                        \
     }())
 
 #define PERFKIT_LOCWORD(RefText)                                                               \
     ([]() -> std::string const& {                                                              \
         static constexpr auto hash = cpph::hasher::fnv1a_64(RefText);                          \
         static auto ctx = perfkit::detail::loca_create_static_context(hash, RefText, RefText); \
-        return perfkit::detail::loca_lookup(ctx.get());                                        \
+        return perfkit::detail::loca_lookup(ctx);                                        \
     }())

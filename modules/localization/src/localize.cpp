@@ -72,9 +72,16 @@ static void send_string_to_builder(uint64_t hash, string_view refstr, string_vie
     }
 }
 
-ptr<loca_static_context> loca_create_static_context(uint64_t hash, const char* ref_text, const char* label) noexcept
+struct loca_static_context {
+    uint64_t const hash;
+    string const ref_text;
+    atomic<loca_lut_t*> active_lut;
+    atomic<string const*> cached_lookup;
+};
+
+loca_static_context* loca_create_static_context(uint64_t hash, const char* ref_text, const char* label) noexcept
 {
-    ptr<loca_static_context> ctx{new loca_static_context{hash, ref_text}};
+    auto ctx{new loca_static_context{hash, ref_text, nullptr, nullptr}};
 
     if (not lookup(hash)) {
         send_string_to_builder(hash, ref_text, label ? label : string_view{});
@@ -85,10 +92,22 @@ ptr<loca_static_context> loca_create_static_context(uint64_t hash, const char* r
 
 string const& loca_lookup(loca_static_context* ctx) noexcept
 {
-    if (auto text = lookup(ctx->hash))
-        return *text;
-    else
+    auto lut = relaxed(loca_active_lut_table);
+
+    if (relaxed(loca_active_lut_table) != relaxed(ctx->active_lut)) {
+        relaxed(ctx->active_lut, lut);
+
+        loca_lut_t::const_pointer p_str = nullptr;
+        if (lut && (p_str = find_ptr(*lut, ctx->hash))) {
+            relaxed(ctx->cached_lookup, &p_str->second);
+        }
+    }
+
+    if (auto lookup = relaxed(ctx->cached_lookup)) {
+        return *lookup;
+    } else {
         return ctx->ref_text;
+    }
 }
 
 }  // namespace detail
