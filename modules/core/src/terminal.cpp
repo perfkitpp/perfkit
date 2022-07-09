@@ -386,9 +386,6 @@ void perfkit::if_terminal::_add_subcommand(
 
 perfkit::if_terminal::if_terminal() : _self(make_unique<impl>())
 {
-    if (term_ptr.exchange(this) != nullptr) {
-        throw std::logic_error{"Terminal must be create for only once!"};
-    }
 }
 
 perfkit::commands::registry* perfkit::if_terminal::commands()
@@ -421,10 +418,6 @@ void perfkit::if_terminal::launch_stdin_fetch_thread()
 
 perfkit::if_terminal::~if_terminal()
 {
-    if (term_ptr.exchange(nullptr) != this) {
-        assert(false && "In this context, term_ptr must be self reference!");
-    }
-
     _self->is_shutting_down = true;
     if (_self->worker_stdin.joinable()) { _self->worker_stdin.join(); }
 }

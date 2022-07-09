@@ -11,7 +11,9 @@ enum class resource_type {
 };
 
 struct basic_resource_handle {
-    CPPH_REFL_DECLARE_c;
+    friend CPPH_REFL_DECLARE(basic_resource_handle);
+
+   public:
     uint64_t value;
 
    private:

@@ -239,8 +239,11 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
                        _ctx_trace.rpc_republish_all_tracers();
                    })
             .route(service::graphics_take_control,
-                   [this](rpc::session_profile_view prof, auto) {
+                   [this](rpc::session_profile_view prof, bool* rv, bool is_trial) {
                        _verify_admin_access(prof);
+                       *rv = false;
+
+                       if (is_trial && _graphics) { return; }
 
                        auto sess = prof->w_self.lock();
                        assert(sess != nullptr);
@@ -253,6 +256,8 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
 
                        notify::graphics_control_lost(&_rpc).notify();
                        notify::graphics_init(sess).notify();
+
+                       *rv = true;
                    })
             .route(service::graphics_release_control,
                    [this] {
