@@ -266,14 +266,18 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
                        notify::graphics_control_lost(&_rpc).notify();
                        notify::graphics_init(sess).notify();
 
+                       CPPH_INFO("{}) acquired graphics access", prof->peer_name);
                        *rv = true;
                    })
             .route(service::graphics_release_control,
-                   [this] {
+                   [this](auto profile, auto) {
+                       _verify_admin_access(profile);
+
                        rgl::context::get()->_bk_register();
                        notify::graphics_control_lost(&_rpc).notify();
 
                        _graphics.reset();
+                       CPPH_INFO("{}) requested graphics release", profile->peer_name);
                    })
             .route(service::graphics_send_data,
                    [this](cpph::rpc::session_profile_view prof, auto, cpph::flex_buffer& payload) {

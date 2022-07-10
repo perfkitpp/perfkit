@@ -144,7 +144,7 @@ class terminal : public if_terminal
     thread::worker _worker;
 
     // Basics
-    logger_ptr _logging = share_logger("PERFKIT:NET");
+    logger_ptr _logging = share_logger("__PERFKIT:NET");
 
     // RPC connection context
     shared_ptr<terminal_monitor> _rpc_monitor;

@@ -77,7 +77,7 @@ PERFKIT_CFG_CLASS(log_config_base)
 
 PERFKIT_CFG_CLASS(log_config_entity)
 {
-    PERFKIT_CFG(level, "info").one_of({"trace", "debug", "info", "warning", "error", "critical", "off"});
+    PERFKIT_CFG(level, "none").one_of({"trace", "debug", "info", "warning", "error", "critical", "off", "none"});
 };
 
 class log_level_control : public enable_shared_from_this<log_level_control>
@@ -126,23 +126,40 @@ class log_level_control : public enable_shared_from_this<log_level_control>
                 assert(not entity.valid());
 
                 auto entity_str = key;
-                if (key.empty()) { entity_str += "__ALL"; }
+                if (key.empty()) { entity_str += "__default"; }
 
                 entity = log_config_entity::create(_cfg, move(entity_str));
+                entity->touch();
             }
 
             if (not added.empty()) {
                 _cfg->update();  // Let added nodes to load configs ..
             }
 
+            for (auto& key : added) {
+                auto& e = _entities[key];
+                e.level.commit(*e.level);
+            }
+
             CPPH_INFO("{} loggers loaded", added.size());
         }
 
         for (auto& [key, entity] : _entities | vw::filter([](auto&& r) { return r.second.level.check_update(); })) {
-            if (auto logger = spdlog::get(key)) {
+            logger_ptr logger;
+            if (key.empty()) {
+                logger = spdlog::default_logger();
+            } else {
+                logger = spdlog::get(key);
+            }
+
+            if (not logger)
+                continue;
+
+            if (*entity.level == "none") {
+                auto levelstr = spdlog::level::to_string_view(logger->level());
+                entity.level.set(string{levelstr.begin(), levelstr.end()});
+            } else {
                 logger->set_level(spdlog::level::from_str(*entity.level));
-            } else if (key.empty()) {
-                spdlog::default_logger_raw()->set_level(spdlog::level::from_str(*entity.level));
             }
         }
     }
