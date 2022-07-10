@@ -78,4 +78,4 @@ project(perfkit.third.cpph)
 add_library(${PROJECT_NAME} INTERFACE)
 add_library(perfkit::cpph ALIAS ${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} INTERFACE cppheaders cppheaders.json)
+target_link_libraries(${PROJECT_NAME} INTERFACE cppheaders cppheaders.refl-extension)
