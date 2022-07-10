@@ -47,16 +47,23 @@
 
 using namespace std::literals;
 
-perfkit::net::terminal::terminal(perfkit::net::terminal_info info) noexcept
+static auto session_desc(cpph::rpc::session_profile_view profile)
+{
+    return static_cast<perfkit::net::terminal_session_context*>(profile->user_data.get());
+}
+
+perfkit::net::terminal::terminal(perfkit::terminal::net::profile info) noexcept
         : _info(std::move(info)),
           _rpc_service(_build_service())
 {
+    _info->unregister();  // Make it not to be exposed ...
+
     using namespace std::chrono;
     _session_info.epoch = duration_cast<milliseconds>(
                                   steady_clock::now().time_since_epoch())
                                   .count();
-    _session_info.name = _info.name;
-    _session_info.description = _info.description;
+    _session_info.name = *_info.session_name;
+    _session_info.description = *_info.session_description;
     _session_info.num_cores = std::thread::hardware_concurrency();
 
     // key string generation
@@ -77,7 +84,7 @@ void perfkit::net::terminal::_start_()
 
     detail::input_redirect(bind_front(&terminal::_on_char_buf, this));
 
-    CPPH_INFO("Starting session [{}] ...", _info.name);
+    CPPH_INFO("Starting session [{}] ...", *_info.session_name);
     _worker.repeat(bind_front(&terminal::_tick_worker, this));
 
     // Post event for opening acceptor
@@ -92,14 +99,14 @@ void perfkit::net::terminal::_open_acceptor()
     if (_acceptor.is_open()) { _acceptor.close(); }
 
     using namespace asio::ip;
-    tcp::endpoint ep{make_address(_info.bind_ip), _info.bind_port};
-    CPPH_INFO("accept>> Binding acceptor to {}:{} ...", _info.bind_ip, _info.bind_port);
+    tcp::endpoint ep{make_address(*_info.bind_address), *_info.bind_port};
+    CPPH_INFO("accept>> Binding acceptor to {}:{} ...", *_info.bind_address, _info.bind_port);
 
     _acceptor.open(ep.protocol());
     _acceptor.set_option(asio::socket_base::reuse_address{true});
     _acceptor.bind(ep);
     ep = _acceptor.local_endpoint();
-    CPPH_INFO("accept>> Binding successful. Starting listening on {}:{} ...", _info.bind_ip, ep.port());
+    CPPH_INFO("accept>> Binding successful. Starting listening on {}:{} ...", *_info.bind_address, ep.port());
     _acceptor.listen();
 
     // Open find_me socket
@@ -120,7 +127,7 @@ void perfkit::net::terminal::_open_acceptor()
     {
         // Cache find_me payload
         message::find_me_t find_me;
-        find_me.alias = _info.name;
+        find_me.alias = *_info.session_name;
         find_me.port = _acceptor.local_endpoint().port();
 
         streambuf::stringbuf buf{&_findme_payload};
@@ -211,7 +218,7 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
             .route(service::suggest, bind_front(&self_t::_rpc_handle_suggest, this))
             .route(service::invoke_command, bind_front(&self_t::_rpc_handle_command, this))
             .route(service::login, bind_front(&self_t::_rpc_handle_login, this))
-            .route(service::heartbeat, [] {})  // do nothing
+            .route(service::heartbeat, [](auto profile, auto) { session_desc(profile)->heartbeat_latest.reset(); })  // do nothing
             .route(service::fetch_tty,
                    [this](tty_output_t* out, int64_t fence) {
                        // Returns requested range of bytes
@@ -340,11 +347,6 @@ void perfkit::net::terminal::_on_session_list_change()
 
         _session_active_state_anchor = nullptr;
     }
-}
-
-static auto session_desc(cpph::rpc::session_profile_view profile)
-{
-    return static_cast<perfkit::net::terminal_session_context*>(profile->user_data.get());
 }
 
 bool perfkit::net::terminal::_has_admin_access(session_profile_view profile)

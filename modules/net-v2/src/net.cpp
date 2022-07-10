@@ -31,14 +31,8 @@
 namespace perfkit::terminal::net {
 terminal_ptr create(const profile& cfg)
 {
-    perfkit::net::terminal_info init;
-    init.name = cfg.session_name;
-    init.description = cfg.session_description;
-    init.bind_port = cfg.bind_port;
-    init.bind_ip = cfg.bind_address;
-    init.enable_find_me = cfg.enable_find_me;
-
-    auto term = std::make_shared<perfkit::net::terminal>(std::move(init));
+    cfg->update();
+    auto term = std::make_shared<perfkit::net::terminal>(cfg);
     term->_start_();
 
     return term;

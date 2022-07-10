@@ -49,7 +49,7 @@ PERFKIT_CFG_CLASS(profile)
     PERFKIT_T_CONFIGURE(bind_address, "0.0.0.0")
             .env("PERFKIT_NET_IPADDR");
 
-    PERFKIT_T_CONFIGURE(bind_port, 0)
+    PERFKIT_T_CONFIGURE(bind_port, uint16_t(0))
             .env("PERFKIT_NET_PORT");
 
     PERFKIT_T_CONFIGURE(enable_find_me, true);

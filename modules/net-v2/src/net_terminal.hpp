@@ -50,6 +50,7 @@
 #include "cpph/utility/timer.hxx"
 #include "net_terminal_adapter.hpp"
 #include "perfkit/detail/commands.hpp"
+#include "perfkit/extension/net.hpp"
 #include "perfkit/extension/net/protocol.hpp"
 #include "perfkit/logging.h"
 #include "perfkit/remotegl/backend.hpp"
@@ -65,17 +66,6 @@ using std::string_view;
 using std::vector;
 using std::weak_ptr;
 using std::chrono::steady_clock;
-
-struct terminal_info {
-    string name;
-    string description;
-
-    string bind_ip;
-    uint16_t bind_port;
-
-    // TODO: Authentication
-    bool enable_find_me;
-};
 
 class terminal;
 
@@ -98,6 +88,7 @@ class terminal_monitor : public rpc::if_session_monitor
 
 struct terminal_session_context {
     message::auth_level_t access_level = message::auth_level_t::unauthorized;
+    stopwatch heartbeat_latest;
 };
 
 class grahpics_client : public rgl::backend_client
@@ -144,7 +135,7 @@ class terminal : public if_terminal
 
    private:
     adapter_t _adapter{this};
-    terminal_info _info;
+    perfkit::terminal::net::profile _info;
 
     // Thread pool
     asio::io_context _event_proc;
@@ -197,7 +188,7 @@ class terminal : public if_terminal
     shared_ptr<grahpics_client> _graphics;
 
    public:
-    explicit terminal(terminal_info info) noexcept;
+    explicit terminal(perfkit::terminal::net::profile info) noexcept;
     void _start_();
     ~terminal() override;
 
