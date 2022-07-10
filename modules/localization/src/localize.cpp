@@ -181,7 +181,7 @@ localization_result select_locale(string_view key)
         release(detail::loca_active_lut_table, existing_table->second);
         return localization_result::okay;
     } else {
-        return localization_result::key_not_loaded;
+        return localization_result::locale_not_loaded;
     }
 }
 

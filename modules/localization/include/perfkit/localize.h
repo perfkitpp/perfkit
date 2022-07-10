@@ -17,7 +17,7 @@ enum class localization_result {
     invalid_file_path,
     invalid_content,
     already_loaded,
-    key_not_loaded,
+    locale_not_loaded,
 };
 
 localization_result load_localization_lut(string_view key, archive::if_reader*);
