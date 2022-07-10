@@ -146,6 +146,7 @@ void perfkit::net::terminal::_open_acceptor()
                         .protocol(make_unique<rpc::protocol::msgpack>())
                         .connection(make_unique<rpc::asio_stream<tcp>>(std::move(socket)))
                         .event_procedure(_sess_evt_proc)
+                        .user_data(make_shared<terminal_session_context>())
                         .service(_rpc_service)
                         .monitor(_rpc_monitor)
                         .build_to(session);
@@ -243,6 +244,7 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
                        _verify_admin_access(prof);
                        *rv = false;
 
+                       if (_graphics && _graphics->_wsess.expired()) { _graphics.reset(); }
                        if (is_trial && _graphics) { return; }
 
                        auto sess = prof->w_self.lock();
@@ -268,6 +270,7 @@ auto perfkit::net::terminal::_build_service() -> rpc::service
                    })
             .route(service::graphics_send_data,
                    [this](cpph::rpc::session_profile_view prof, auto, cpph::flex_buffer& payload) {
+                       if (_graphics && _graphics->_wsess.expired()) { _graphics.reset(); }
                        if (_graphics && ptr_equals(prof->w_self, _graphics->_wsess)) {
                            _graphics->message_to_server({(char const*)payload.data(), payload.size()});
                        }
@@ -339,12 +342,19 @@ void perfkit::net::terminal::_on_session_list_change()
     }
 }
 
-bool perfkit::net::terminal::_has_admin_access(session_profile_view profile) const
+static auto session_desc(cpph::rpc::session_profile_view profile)
 {
-    if (auto ptr = find_ptr(*_verified_sessions.lock(), profile))
-        return ptr->second.has_admin_access;
-    else
-        return false;
+    return static_cast<perfkit::net::terminal_session_context*>(profile->user_data.get());
+}
+
+bool perfkit::net::terminal::_has_admin_access(session_profile_view profile)
+{
+    return session_desc(profile)->access_level >= message::auth_level_t::admin_access;
+}
+
+bool perfkit::net::terminal::_has_basic_access(perfkit::net::session_profile_view profile)
+{
+    return session_desc(profile)->access_level >= message::auth_level_t::basic_access;
 }
 
 void perfkit::net::terminal::_rpc_handle_login(
@@ -353,10 +363,7 @@ void perfkit::net::terminal::_rpc_handle_login(
     // TODO: Implement ID/PW authentication logic!
     {
         CPPH_INFO("session {} requested login ... always given admin right!!", profile->peer_name);
-
-        _verified_sessions.access([&](decltype(_verified_sessions)::value_type& ref) {
-            ref[profile].has_admin_access = true;
-        });
+        session_desc(profile)->access_level = message::auth_level_t::admin_access;
 
         *b = message::auth_level_t::admin_access;
     }
@@ -438,7 +445,7 @@ void perfkit::net::terminal_monitor::on_session_created(session_profile_view pro
 void perfkit::net::terminal_monitor::on_session_expired(session_profile_view profile) noexcept
 {
     if (auto lc = _owner.lock()) {
-        if (lc->_verified_sessions.lock()->erase(profile))
+        if (session_desc(profile)->access_level >= message::auth_level_t::basic_access)
             CPPH_INFO("Authorized session [{}]>> Disconnecting ... ", profile->peer_name);
         else
             CPPH_INFO("Unauthorized session [{}]>> Disconnecting ... ", profile->peer_name);

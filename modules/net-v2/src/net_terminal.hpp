@@ -96,8 +96,8 @@ class terminal_monitor : public rpc::if_session_monitor
     auto CPPH_LOGGER() const { return &*_logger; }
 };
 
-struct terminal_session_descriptor {
-    bool has_admin_access = false;
+struct terminal_session_context {
+    message::auth_level_t access_level = message::auth_level_t::unauthorized;
 };
 
 class grahpics_client : public rgl::backend_client
@@ -179,10 +179,6 @@ class terminal : public if_terminal
     int64_t _tty_fence = 0;
     locked<message::tty_output_t> _tty_obuf;
 
-    // Sessions
-    using session_table_t = std::unordered_map<session_profile_view, terminal_session_descriptor>;
-    locked<session_table_t> _verified_sessions;
-
     // States
     shared_ptr<void> _session_active_state_anchor;
     size_t _session_prev_bytes[2] = {};
@@ -220,11 +216,11 @@ class terminal : public if_terminal
     void _rpc_handle_suggest(session_profile_view profile, message::service::suggest_result_t*, string const& content, int cursor) {}
     void _rpc_handle_command(session_profile_view profile, void*, string const& content);
 
-    bool _has_basic_access(session_profile_view profile) const { return contains(*_verified_sessions.lock(), profile); }
-    bool _has_admin_access(session_profile_view profile) const;
+    static bool _has_basic_access(session_profile_view profile);
+    static bool _has_admin_access(session_profile_view profile);
 
-    auto _fn_basic_access() const { return bind_front(&self_t::_has_basic_access, this); }
-    auto _fn_admin_access() const { return bind_front(&self_t::_has_admin_access, this); }
+    auto _fn_basic_access() const { return &_has_basic_access; }
+    auto _fn_admin_access() const { return &_has_admin_access; }
 
     void _verify_admin_access(session_profile_view profile) const;
     void _verify_basic_access(session_profile_view profile) const;
