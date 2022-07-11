@@ -340,7 +340,7 @@ class config
     config_base_ptr _base;
 
     ValueType const* _ref = nullptr;
-    size_t _update_check_fence = 0;
+    mutable size_t _update_check_fence = 0;
 
    public:
     config() noexcept = default;
@@ -415,7 +415,7 @@ class config
         return value();
     }
 
-    bool check_update() noexcept
+    bool check_update() const noexcept
     {
         auto fence = _base->fence();
         return exchange(_update_check_fence, fence) != fence;
