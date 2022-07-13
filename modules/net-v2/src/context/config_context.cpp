@@ -268,7 +268,7 @@ void config_context::_update_registry_structure(
         // (3)
         auto* entity = &reuse_entity.checkout_back(&parent_node->entities);
         entity->name = cfg->name();
-        entity->description = cfg->description();
+        entity->description = const_buffer_view{cfg->description()};
         entity->config_key = cfg->id().value;
 
         // Serialize attributes
