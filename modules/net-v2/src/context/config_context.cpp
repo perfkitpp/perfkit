@@ -279,7 +279,7 @@ void config_context::_update_registry_structure(
         if (attrib->min)
             serialize(&entity->opt_min, attrib->min.view());
         if (attrib->max)
-            serialize(&entity->opt_min, attrib->min.view());
+            serialize(&entity->opt_max, attrib->max.view());
         if (attrib->one_of)
             serialize(&entity->opt_one_of, attrib->one_of.view());
     }

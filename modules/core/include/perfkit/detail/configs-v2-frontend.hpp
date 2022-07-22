@@ -244,7 +244,9 @@ nullptr_t register_subset_function(Subset ConfigSet::*mptr) noexcept
     return nullptr;
 }
 
-CPPH_SFINAE_EXPR(is_comparable, T, std::less<>(declval<T>(), declval<T>()));
+// CPPH_SFINAE_EXPR(is_comparable, T, std::less<>(declval<T>(), declval<T>()));
+template <typename T>
+constexpr bool is_comparable_v = is_invocable_r_v<bool, std::less<>, T, T>;
 }  // namespace _configs
 
 template <typename ValTy>
@@ -302,23 +304,14 @@ class config_attribute_factory
             _ref->fn_minmax_validate
                     = [ref = _ref.get()](refl::object_view_t pdata) {
                           auto& data = refl::get<ValTy>(pdata);
-                          bool untouched = true;
 
-                          if (ref->min) {
-                              auto& min = refl::get<ValTy>(ref->min);
-                              if (data < min) {
-                                  untouched = false, data = min;
-                              }
-                          }
+                          if (ref->min)
+                              data = std::max(data, refl::get<ValTy>(ref->min));
 
-                          if (ref->max) {
-                              auto& max = refl::get<ValTy>(ref->max);
-                              if (max < data) {
-                                  untouched = false, data = max;
-                              }
-                          }
+                          if (ref->max)
+                              data = std::min(data, refl::get<ValTy>(ref->max));
 
-                          return untouched;
+                          return true;
                       };
         }
     }
@@ -502,7 +495,7 @@ class config_attribute_factory
     /** Confirm attribute instance creation */
     auto confirm() noexcept
     {
-        assert(not _ref->one_of || not _ref->fn_minmax_validate);
+        assert(not(_ref->one_of && _ref->fn_minmax_validate));
 
         return _ref;
     }

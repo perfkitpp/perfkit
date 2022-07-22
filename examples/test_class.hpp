@@ -89,6 +89,14 @@ PERFKIT_T_CATEGORY(
                 .max(141)
                 .confirm();
 
+        PERFKIT_T_CONFIGURE(t_int_with_min, 10)
+                .min(1)
+                .confirm();
+
+        PERFKIT_T_CONFIGURE(t_int_with_max, 10)
+                .max(1516)
+                .confirm();
+
         PERFKIT_T_CONFIGURE(t_double, 10.)
                 .min(4)
                 .max(181)
