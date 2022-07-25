@@ -2,6 +2,7 @@
 #include <cpph/std/string>
 
 #include "basic_resource_handle.hpp"
+#include "command.defs.hpp"
 #include "cpph/helper/macros.hxx"
 
 namespace perfkit::rgl {
@@ -25,4 +26,4 @@ PERFKITINTERNAL_RGL_SERVERCMD(resource_unregistered)
     basic_resource_handle closed_handle = {};
 };
 
-}
+}  // namespace perfkit::rgl
