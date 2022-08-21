@@ -35,6 +35,24 @@ target_link_libraries(
 )
 
 # ======================================================================================================================
+project(example-web)
+
+add_executable(
+        ${PROJECT_NAME}
+
+        example-web.cpp
+        test_class.cpp
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}
+
+        PRIVATE
+        perfkit::web
+        perfkit::apptemplate
+)
+
+# ======================================================================================================================
 project(apptemplate)
 
 add_executable(

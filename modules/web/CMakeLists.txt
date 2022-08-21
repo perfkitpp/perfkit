@@ -1,0 +1,23 @@
+project(perfkit-web)
+add_library(${PROJECT_NAME} static)
+add_library(perfkit::web ALIAS ${PROJECT_NAME})
+
+target_sources(
+        ${PROJECT_NAME} PRIVATE
+
+        src/web.cpp
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}
+
+        PUBLIC perfkit::core
+        PRIVATE perfkit::asio
+        PRIVATE Crow::Crow
+)
+
+target_include_directories(
+        ${PROJECT_NAME}
+
+        PUBLIC include
+)

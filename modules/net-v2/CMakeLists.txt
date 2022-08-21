@@ -58,7 +58,6 @@ target_link_libraries(
         perfkit::asio
         perfkit::picosha2
         range-v3::range-v3
-        perfkit::remotegl::server
 )
 
 target_include_directories(
