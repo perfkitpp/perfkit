@@ -24,25 +24,41 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
+//
+// Created by ki608 on 2022-08-21.
+//
+
+#pragma once
+#include <cpph/thread/notify_queue.hxx>
+#include <crow.h>
+
+#include "perfkit/terminal.h"
 #include "perfkit/web.h"
 
-#include <cpph/refl/object.hxx>
-
-#include "perfkit/configs-v2.h"
-
-namespace perfkit::web {
-PERFKIT_CFG_CLASS(profile)
+namespace perfkit::web::impl {
+class terminal : public if_terminal
 {
-    PERFKIT_CFG(body, open_info{});
+    open_info info_;
+
+    crow::App<> app_;
+    std::future<void> fut_app_async_;
+
+    notify_queue<string> commands_;
+    string loader_path_buf_;
+
+   public:
+    explicit terminal(open_info) noexcept;
+    void I_launch() { fut_app_async_ = app_.run_async(); }
+
+   public:
+    void push_command(std::string_view command) override { commands_.push(string{command}); }
+    void write(std::string_view str) override;
+
+   protected:
+    std::optional<std::string> fetch_command(milliseconds timeout) override { return commands_.try_pop(timeout); }
+
+   private:
+    auto _web_load_mustache(string_view path) -> shared_ptr<crow::mustache::template_t>;
+    auto _web_load_file(string_view path) -> shared_ptr<string>;
 };
-
-CPPH_REFL_DEFINE_OBJECT_c(open_info, (), (bind_ip), (bind_port), (alias), (description), (secret_path), (static_dir));
-}  // namespace perfkit::web
-
-auto perfkit::web::open(std::string_view key) -> std::shared_ptr<perfkit::if_terminal>
-{
-    auto pf = profile::create(string{key});
-    pf->update();
-
-    return open(*pf.body);
-}
+}  // namespace perfkit::web::impl

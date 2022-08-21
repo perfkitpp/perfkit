@@ -72,6 +72,7 @@ logger_ptr share_logger(string const& name)
 
 PERFKIT_CFG_CLASS(log_config_base)
 {
+    PERFKIT_CFG(reload_all, false).transient();
     PERFKIT_CFG(active_loggers, set<string>{}).hide();
 };
 
@@ -104,18 +105,18 @@ class log_level_control : public enable_shared_from_this<log_level_control>
                     _cfg.active_loggers.commit(move(v));
                 });
 
-        set<string> all_loggers = *_cfg.active_loggers;
-
-        spdlog::details::registry::instance().apply_all([&](logger_ptr const& ptr) {
-            all_loggers.insert(ptr->name());
-        });
-
-        _cfg.active_loggers.commit(move(all_loggers));
+        reload_all();
     }
 
     void tick()
     {
         if (not _cfg->update()) { return; }
+
+        if (*_cfg.reload_all) {
+            _cfg.reload_all.set(false);
+            this->reload_all();
+            _cfg->update();
+        }
 
         if (_cfg.active_loggers.check_update()) {
             list<string> added;
@@ -163,6 +164,17 @@ class log_level_control : public enable_shared_from_this<log_level_control>
             }
         }
     }
+
+    void reload_all()
+    {
+        set<string> all_loggers = *_cfg.active_loggers;
+
+        spdlog::details::registry::instance().apply_all([&](logger_ptr const& ptr) {
+            all_loggers.insert(ptr->name());
+        });
+
+        _cfg.active_loggers.commit(move(all_loggers));
+    }
 };
 
 auto create_log_monitor(string name) -> shared_ptr<log_level_control>
@@ -174,6 +186,11 @@ auto create_log_monitor(string name) -> shared_ptr<log_level_control>
 void tick_log_monitor(log_level_control& l)
 {
     l.tick();
+}
+
+void reload_log_monitor(log_level_control& l)
+{
+    l.reload_all();
 }
 
 }  // namespace perfkit

@@ -25,13 +25,25 @@
  ******************************************************************************/
 
 #include "perfkit-appbase.hpp"
+#include "perfkit/web.h"
 
 class ExampleWebApp : public perfkit::AppBase
 {
    public:
+    void S04_ConfigureTerminalCommands(perfkit::if_terminal* terminal) override
+    {
+        AppBase::S04_ConfigureTerminalCommands(terminal);
+    }
+
+   public:
     auto CreatePerfkitTerminal() -> perfkit::terminal_ptr override
     {
-        return perfkit::terminal_ptr();
+        return perfkit::web::open();
+    }
+
+    std::string DefaultConfigPath() const noexcept override
+    {
+        return "../../.example-web.json";
     }
 };
 

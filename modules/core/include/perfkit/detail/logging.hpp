@@ -42,6 +42,7 @@ logger_ptr share_logger(string const& name);
 class log_level_control;
 auto create_log_monitor(string name = "__LOGGING") -> shared_ptr<log_level_control>;
 void tick_log_monitor(log_level_control&);
+void reload_log_monitor(log_level_control&);
 
 // TODO: logic for enumerate loggers, save/load logging status, etc ...
 }  // namespace perfkit

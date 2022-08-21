@@ -6,6 +6,7 @@ target_sources(
         ${PROJECT_NAME} PRIVATE
 
         src/web.cpp
+        src/web_terminal.cpp
 )
 
 target_link_libraries(

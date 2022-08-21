@@ -39,14 +39,15 @@ namespace perfkit::web {
 struct open_info {
     CPPH_REFL_DECLARE_c;
 
-    int bind_port = 0;
+    uint16_t bind_port = 0;
     string bind_ip = "0.0.0.0";
     string alias = "default";
     string description = "";
     string secret_path = "~/.ssh/id_rsa";
 
+    string static_dir = "perfkit.static";
 };
 
-auto open(open_info const&) -> shared_ptr<if_terminal>;
-auto open(string_view) -> shared_ptr<if_terminal>;
+auto open(open_info) -> shared_ptr<if_terminal>;
+auto open(string_view str = "__PERFKIT_WEB__") -> shared_ptr<if_terminal>;
 }  // namespace perfkit::web
