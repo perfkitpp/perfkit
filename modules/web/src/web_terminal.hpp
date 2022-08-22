@@ -29,6 +29,7 @@
 //
 
 #pragma once
+#define CROW_DISABLE_STATIC_DIR
 #include <cpph/thread/notify_queue.hxx>
 #include <crow.h>
 
@@ -41,14 +42,15 @@ class terminal : public if_terminal
     open_info info_;
 
     crow::App<> app_;
-    std::future<void> fut_app_async_;
+    std::thread app_worker_;
 
     notify_queue<string> commands_;
     string loader_path_buf_;
 
    public:
     explicit terminal(open_info) noexcept;
-    void I_launch() { fut_app_async_ = app_.run_async(); }
+    ~terminal();
+    void I_launch();
 
    public:
     void push_command(std::string_view command) override { commands_.push(string{command}); }

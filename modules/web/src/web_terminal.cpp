@@ -30,41 +30,50 @@
 
 #include "web_terminal.hpp"
 
+#include <cpph/std/filesystem>
 #include <fstream>
 #include <sstream>
 #include <utility>
 
+#include <fmt/core.h>
+
 #include "crow/http_response.h"
 #include "crow/mustache.h"
+#include "fmt/core.h"
 
 namespace perfkit::web::impl {
 terminal::terminal(open_info info) noexcept : info_(std::move(info))
 {
     loader_path_buf_ = info_.static_dir;
 
-    auto fn_index_html = [this] {
-        if (auto p_index = _web_load_mustache("/index.html")) {
-            crow::mustache::context ctx;
-            ctx["TITLE"] = info_.alias;
+    auto make_file_load_response =
+            [this](auto base, auto&&... args) {
+                char uri[512];
+                fmt::format_to_n(uri, sizeof uri - 1, base, args...).out[0] = 0;
 
-            return p_index->render(ctx).dump();
-        } else {
-            return string{"404"};
-        }
-    };
+                crow::response e;
+                fs::path path = info_.static_dir;
+                path /= uri;
 
+                e.set_static_file_info_unsafe(path.string());
+                return e;
+            };
+
+    // Route basic static file publish
     CROW_ROUTE(app_, "/")
-    (fn_index_html);
-    CROW_ROUTE(app_, "/<path>")
-    ([this](string_view path) {
-        crow::response e;
-        if (auto p_content = _web_load_file("/"s.append(path))) {
-            e.body = *p_content;
-            e.code = crow::OK;
-        }
+    ([=] { return make_file_load_response("index.html"); });
 
-        return e;
-    });
+    CROW_ROUTE(app_, "/<string>")
+    ([=](string_view path) { return make_file_load_response(path); });
+
+    CROW_ROUTE(app_, "/static/<path>")
+    ([=](string_view path) { return make_file_load_response("static/{}", path); });
+
+    // Route configuration APIs / Websockets
+
+    // Route trace APIs
+
+    // Route TTY websockets
 
     app_.port(info_.bind_port);
     app_.concurrency(1);
@@ -100,6 +109,17 @@ auto terminal::_web_load_file(string_view path) -> shared_ptr<string>
     }
 
     return nullptr;
+}
+
+void terminal::I_launch()
+{
+    app_worker_ = std::thread{[this] { app_.run(); }};
+}
+
+terminal::~terminal()
+{
+    app_.stop();
+    app_worker_.join();
 }
 
 }  // namespace perfkit::web::impl
