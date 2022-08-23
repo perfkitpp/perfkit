@@ -70,6 +70,8 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
     ([=](string_view path) { return make_file_load_response("static/{}", path); });
 
     // Route configuration APIs / Websockets
+    CROW_ROUTE(app_, "/api/test")
+    ([] { return "HELL, WORLD!"; });
 
     // Route trace APIs
 

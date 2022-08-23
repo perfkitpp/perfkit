@@ -45,7 +45,7 @@ struct open_info {
     string description = "";
     string secret_path = "~/.ssh/id_rsa";
 
-    string static_dir = "perfkit.static";
+    string static_dir = "perfkit.web.public";
 };
 
 auto open(open_info) -> shared_ptr<if_terminal>;
