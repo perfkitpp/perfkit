@@ -50,13 +50,13 @@ using namespace perfkit::net;
 using std::forward;
 using std::move;
 
-namespace perfkit::net::detail {
+namespace perfkit::backend {
 spdlog::logger* nglog();
 }
 
 static auto CPPH_LOGGER()
 {
-    return detail::nglog();
+    return perfkit::backend::nglog();
 }
 
 void config_context::start_monitoring(weak_ptr<void> anchor)

@@ -57,6 +57,7 @@ target_link_libraries(
         perfkit::net-v2::protocol
         perfkit::asio
         perfkit::picosha2
+        perfkit::internal::backend-utils
         range-v3::range-v3
 )
 

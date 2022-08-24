@@ -1,15 +1,20 @@
-import React, {useState} from 'react';
+import React, {createContext, useEffect, useState} from 'react';
 import logo from './logo.svg';
 import './App.css';
+import Terminal from "./comp/Terminal";
+
+export const authContext = createContext(null as string | null);
 
 function App() {
   const [text, setText] = useState("-- empty --");
 
-  fetch('/api/test')
-    .then(async (resp) => {
-      console.log("Fetched!")
-      setText(await resp.text());
-    });
+  useEffect(() => {
+    fetch('/api/test')
+      .then(async (resp) => {
+        console.log("Fetched!")
+        setText(await resp.text());
+      });
+  }, []);
 
   return (
     <div className="App">
@@ -26,6 +31,7 @@ function App() {
         >
           Learn React
         </a>
+        <Terminal socketUrl={"/ws/tty"}></Terminal>
         {text}
       </header>
     </div>

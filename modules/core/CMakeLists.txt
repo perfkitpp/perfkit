@@ -1,4 +1,4 @@
-project(core)
+project(perfkit-core)
 
 add_library(${PROJECT_NAME} STATIC)
 add_library(perfkit::core ALIAS ${PROJECT_NAME})
