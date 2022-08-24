@@ -45,7 +45,7 @@
 
 spdlog::logger* perfkit::backend::nglog()
 {
-    static auto logger = perfkit::share_logger("__PERFKIT:NET");
+    static auto logger = perfkit::share_logger("__PERFKIT:BACKEND");
     return &*logger;
 }
 

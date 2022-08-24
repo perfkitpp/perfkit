@@ -26,10 +26,18 @@
 
 #include "perfkit-appbase.hpp"
 #include "perfkit/web.h"
+#include "spdlog/common.h"
+#include "spdlog/spdlog.h"
 
 class ExampleWebApp : public perfkit::AppBase
 {
    public:
+    int S00_ParseCommandLineArgs(int argc, char** argv) override
+    {
+        spdlog::set_level(spdlog::level::trace);
+        return AppBase::S00_ParseCommandLineArgs(argc, argv);
+    }
+
     void S04_ConfigureTerminalCommands(perfkit::if_terminal* terminal) override
     {
         AppBase::S04_ConfigureTerminalCommands(terminal);

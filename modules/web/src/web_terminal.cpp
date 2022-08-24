@@ -36,14 +36,24 @@
 #include <utility>
 
 #include <fmt/core.h>
+#include <spdlog/spdlog.h>
 
 #include "crow/http_response.h"
 #include "crow/mustache.h"
+#include "crow/websocket.h"
 #include "fmt/core.h"
+#include "perfkit/detail/backend-utils.hpp"
+
+static auto CPPH_LOGGER()
+{
+    return perfkit::backend::nglog();
+}
 
 namespace perfkit::web::impl {
 terminal::terminal(open_info info) noexcept : info_(std::move(info))
 {
+    CPPH_debug("");
+
     loader_path_buf_ = info_.static_dir;
 
     auto make_file_load_response =
@@ -59,6 +69,8 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
                 return e;
             };
 
+    // TODO: App Authentication Middleware
+
     // Route basic static file publish
     CROW_ROUTE(app_, "/")
     ([=] { return make_file_load_response("index.html"); });
@@ -73,49 +85,29 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
     CROW_ROUTE(app_, "/api/test")
     ([] { return "HELL, WORLD!"; });
 
+    // CROW_WEBSOCKET_ROUTE(app_, "/ws/config");
+    // CROW_ROUTE(app_, "/api/config/commit");
+
     // Route trace APIs
 
+    // CROW_WEBSOCKET_ROUTE(app_, "/ws/trace");
+    // CROW_ROUTE(app_, "/api/trace/control");
+    // CROW_ROUTE(app_, "/api/trace/select");
+
     // Route TTY websockets
+    CROW_WEBSOCKET_ROUTE(app_, "/ws/tty")
+            .onaccept(bind_front(&terminal::accept_ws_, this))
+            .onopen(bind_front(&terminal::tty_open_ws_, this))
+            .onmessage(bind_front(&terminal::tty_handle_msg_, this))
+            .onclose(bind_front(&terminal::close_ws_, this));
+
+    // CROW_ROUTE(app_, "/api/tty/command");
+    // CROW_ROUTE(app_, "/api/tty/suggest");
 
     app_.port(info_.bind_port);
     app_.concurrency(1);
-}
 
-void terminal::write(std::string_view str)
-{
-}
-
-auto terminal::_web_load_mustache(string_view path) -> shared_ptr<crow::mustache::template_t>
-{
-    // TODO: Cache mode ... prevent recompiling
-
-    if (auto str = _web_load_file(path)) {
-        return make_shared<crow::mustache::template_t>(crow::mustache::compile(*str));
-    }
-
-    return nullptr;
-}
-
-auto terminal::_web_load_file(string_view path) -> shared_ptr<string>
-{
-    loader_path_buf_.resize(info_.static_dir.size());
-    loader_path_buf_.append(path);
-
-    // TODO: Cache mode ... prevent reloading
-
-    if (std::ifstream ifs{loader_path_buf_, std::ios::binary}; ifs.is_open()) {
-        std::stringstream ss;
-        ss << ifs.rdbuf();
-
-        return make_shared<string>(ss.str());
-    }
-
-    return nullptr;
-}
-
-void terminal::I_launch()
-{
-    app_worker_ = std::thread{[this] { app_.run(); }};
+    // Redirect input
 }
 
 terminal::~terminal()
@@ -124,6 +116,31 @@ terminal::~terminal()
     app_worker_.join();
 }
 
+void terminal::write(std::string_view str)
+{
+}
+
+void terminal::I_launch()
+{
+    app_worker_ = std::thread{[this] { app_.run(); }};
+}
+
+void terminal::tty_open_ws_(crow::websocket::connection& conn)
+{
+    CPPH_debug("* Client '{}' opened TTY socket", conn.get_remote_ip());
+    conn.send_text("HELL WOLRD!");
+}
+
+void terminal::close_ws_(crow::websocket::connection& conn, const string& why)
+{
+    CPPH_debug("* Client '{}' closing socket for: {}", conn.get_remote_ip(), why);
+}
+
+bool terminal::accept_ws_(crow::request const& req, void**)
+{
+    CPPH_debug("* Client '{}' requested for websocket connection", req.remote_ip_address);
+    return true;
+}
 }  // namespace perfkit::web::impl
 
 auto perfkit::web::open(perfkit::web::open_info info)

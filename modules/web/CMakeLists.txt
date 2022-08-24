@@ -13,8 +13,10 @@ target_link_libraries(
         ${PROJECT_NAME}
 
         PUBLIC perfkit::core
+
         PRIVATE perfkit::asio
         PRIVATE Crow::Crow
+        PRIVATE perfkit::internal::backend-utils
 )
 
 target_include_directories(

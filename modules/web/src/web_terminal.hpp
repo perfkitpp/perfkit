@@ -29,7 +29,11 @@
 //
 
 #pragma once
+#include "crow/websocket.h"
 #define CROW_DISABLE_STATIC_DIR
+
+#include <cpph/container/circular_queue.hxx>
+#include <cpph/memory/ring_allocator.hxx>
 #include <cpph/thread/notify_queue.hxx>
 #include <crow.h>
 
@@ -37,6 +41,10 @@
 #include "perfkit/web.h"
 
 namespace perfkit::web::impl {
+struct basic_socket_context {
+    virtual ~basic_socket_context() = default;
+};
+
 class terminal : public if_terminal
 {
     open_info info_;
@@ -60,7 +68,12 @@ class terminal : public if_terminal
     std::optional<std::string> fetch_command(milliseconds timeout) override { return commands_.try_pop(timeout); }
 
    private:
-    auto _web_load_mustache(string_view path) -> shared_ptr<crow::mustache::template_t>;
-    auto _web_load_file(string_view path) -> shared_ptr<string>;
+    void tty_open_ws_(crow::websocket::connection&);
+    void tty_handle_msg_(crow::websocket::connection& conn, string const& data, bool is_bin) {}
+    void config_open_ws_(crow::websocket::connection&) {}
+    void trace_open_ws_(crow::websocket::connection&) {}
+
+    bool accept_ws_(crow::request const&, void**);
+    void close_ws_(crow::websocket::connection&, string const& why);
 };
 }  // namespace perfkit::web::impl
