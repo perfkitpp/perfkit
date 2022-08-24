@@ -1,5 +1,5 @@
 project(perfkit-web)
-add_library(${PROJECT_NAME} static)
+add_library(${PROJECT_NAME} STATIC)
 add_library(perfkit::web ALIAS ${PROJECT_NAME})
 
 target_sources(
