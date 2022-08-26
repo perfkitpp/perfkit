@@ -1,5 +1,6 @@
 # Module ---------------------------------------------------------------------------------------------------------------
 add_subdirectory(core)
+add_subdirectory(backend-utils)
 
 # TUI Extension
 if (perfkit_BUILD_FTXUI_EXTENSION)
@@ -11,15 +12,14 @@ if (perfkit_BUILD_FTXUI_EXTENSION)
     add_subdirectory(ftxui)
 endif ()
 
-if (perfkit_BUILD_NET OR perfkit_BUILD_GRAPHICS)
-    message("[${PROJECT_NAME}]: Configuring graphics extension ... ")
-    add_subdirectory(libremotegl-server)
-    add_subdirectory(libremotegl-protocol)
-endif ()
-
 if (perfkit_BUILD_NET)
     message("[${PROJECT_NAME}]: Configuring NET extension ...")
     add_subdirectory(net-v2)
+endif ()
+
+if (perfkit_BUILD_WEB)
+    message("[${PROJECT_NAME}]: Configuring WEB extension ...")
+    add_subdirectory(web)
 endif ()
 
 if (perfkit_BUILD_CLI)

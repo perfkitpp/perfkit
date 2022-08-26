@@ -1,4 +1,4 @@
-project(net-v2-apptemplate)
+project(perfkit-apptemplate)
 add_library(${PROJECT_NAME} INTERFACE)
 add_library(perfkit::apptemplate ALIAS ${PROJECT_NAME})
 

@@ -221,7 +221,7 @@ bool config_registry::backend_t::bk_commit(config_base* ref, archive::if_reader*
         return false;
     }
 
-    return _commit(move(ref), move(object));
+    return _commit(ref, move(object));
 }
 
 void config_registry::backend_t::_do_update()

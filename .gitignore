@@ -4,5 +4,6 @@
 _Resharper*
 
 /out/
+node_modules/
 
 

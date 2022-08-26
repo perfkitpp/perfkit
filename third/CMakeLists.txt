@@ -33,7 +33,7 @@ if (NOT TARGET nlohmann_json::nlohmann_json)
 endif ()
 
 ### CONFIGURE ASIO
-if (perfkit_USE_BUNDLED_ASIO OR perfkit_BUILD_NET_CLIENT)
+if (perfkit_USE_BUNDLED_ASIO OR perfkit_BUILD_NET_CLIENT OR perfkit_BUILD_WEB)
     find_path(ASIO_INCLUDE_DIR asio/asio.hpp)
     if ("${ASIO_INCLUDE_DIR}" STREQUAL "ASIO_INCLUDE_DIR-NOTFOUND")
         message("[${PROJECT_NAME}] asio not found, fetching ...")
@@ -46,6 +46,7 @@ if (perfkit_USE_BUNDLED_ASIO OR perfkit_BUILD_NET_CLIENT)
         target_compile_features(asio INTERFACE cxx_std_17)
 
         add_library(perfkit::asio ALIAS asio)
+        set(ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include)
     endif ()
 endif ()
 
@@ -79,3 +80,11 @@ add_library(${PROJECT_NAME} INTERFACE)
 add_library(perfkit::cpph ALIAS ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} INTERFACE cppheaders cppheaders.refl-extension)
+
+### CONFIGURE crow
+if (perfkit_BUILD_WEB AND NOT TARGET Crow::Crow)
+    message("[${PROJECT_NAME}] Crow::Crow not found, fetching ...")
+    FetchContent_Declare(crow URL https://github.com/CrowCpp/Crow/archive/fde74c4d2e66c76dbe288dfdf080ea1a09d28abd.zip)
+    FetchContent_Populate(crow)
+    add_subdirectory(${crow_SOURCE_DIR} ${crow_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif ()
