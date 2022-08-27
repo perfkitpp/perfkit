@@ -1,5 +1,4 @@
 import {useContext, useEffect, useRef, useState} from "react";
-import {authContext} from "../App";
 import 'react-bootstrap/Button';
 import 'bootstrap/dist/js/bootstrap.min'
 import './Terminal.scss'
@@ -7,22 +6,23 @@ import {Button} from "react-bootstrap";
 
 
 export default function Terminal(props: { socketUrl: string }) {
-  const [ttySock, setTtySock] = useState(null as any as WebSocket);
+  const ttySockRef = useRef(null as any as WebSocket);
+  const [refreshSock, setRefreshSock] = useState(true);
   const [scrollLock, setScrollLock] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const divRef = useRef(null as any as HTMLDivElement);
-  const auth = useContext(authContext);
 
   function appendText(payload: string, className: null | string = null) {
     let elem = divRef.current;
 
     if (className == null) {
-      if (!(elem.lastElementChild instanceof HTMLSpanElement)) {
+      if (elem.lastElementChild == null || !(elem.lastElementChild instanceof HTMLSpanElement)) {
         elem.innerHTML += `<span></span>`
       }
 
       (elem.lastElementChild as HTMLSpanElement).innerText += payload;
     } else {
-      if ((elem.lastElementChild instanceof HTMLSpanElement)) {
+      if (elem.lastElementChild != null && (elem.lastElementChild instanceof HTMLSpanElement)) {
         elem.innerHTML += `<br/>`
       }
       payload = payload.replace('\n', '<br/>');
@@ -42,47 +42,51 @@ export default function Terminal(props: { socketUrl: string }) {
   }
 
   async function onSubmitCommand(event: React.FormEvent<HTMLFormElement>) {
-    ttySock.send((event.target as any).command_content.value);
+    ttySockRef.current?.send((event.target as any).command_content.value);
     appendText(`(cmd) ${(event.target as any).command_content.value}`, 'text-secondary');
     (event.target as any).command_content.value = "";
   }
 
   useEffect(() => {
-    if(!(ttySock == null || ttySock.CLOSED)) { return;}
+    if (!refreshSock) {
+      return;
+    }
+    if (ttySockRef.current != null) {
+      return;
+    }
+    setRefreshSock(false);
 
     let sock = new WebSocket(props.socketUrl);
-    setTtySock(sock);
+    ttySockRef.current = sock;
 
-    let str = ""
-    for (let i = 0; i < 1000; ++i) {
-      str += `[${i}] hello, world!\n`;
-    }
-    appendText(str);
+    appendText('-- Start connecting to socket ...', 'bg-success bg-opacity-25')
 
     sock.onopen = () => {
       appendText('-- Socket Connected!', 'bg-success bg-opacity-25')
+      setIsConnected(true);
     };
     sock.onerror = ev => {
-      appendText(`! Socket error: ${JSON.stringify(ev)}`);
+      appendText(`! Socket error: ${JSON.stringify(ev)}`, `bg-danger bg-opacity-50`);
     };
     sock.onmessage = ev => {
       appendText(ev.data);
     }
     sock.onclose = ev => {
-      appendText(`-- WebSocket disconnected.`, `bg-warning bg-opacity-50`);
+      setIsConnected(false);
+      appendText(`-- Socket disocnnected.`, `bg-info bg-opacity-50`)
+      appendText(`-- Will try reconnect in 5 seconds ...`, `bg-info bg-opacity-50`);
+      setTimeout(() => {
+        ttySockRef.current = null as any as WebSocket;
+        setRefreshSock(true)
+      }, 5000);
     }
-
-    return () => {
-      appendText('Closing socket ...', 'bg-warning bg-opacity-25')
-      sock.close();
-    };
-  }, [props.socketUrl]);
+  }, [props.socketUrl, refreshSock]);
 
   return <div className='terminal-output-box'>
     <div className='ri-terminal-line fw-bold w-100 pb-2 text-center' style={{fontSize: '1.2em'}}> Terminal</div>
     <p className='border border-secondary border-2 rounded-3 p-1 overflow-auto mb-1'
        ref={divRef}
-       style={{maxHeight: '40vh', minHeight: '10vh', background: ttySock?.OPEN ? 'white' : 'dimgray'}}></p>
+       style={{maxHeight: '40vh', minHeight: '10vh'}}></p>
     <div className='d-flex m-2'>
       <input className='' type={"checkbox"} name={'scroll_lock'}
              onClick={ev => setScrollLock((ev.target as any).checked)}/>
@@ -96,7 +100,8 @@ export default function Terminal(props: { socketUrl: string }) {
     <form className='d-flex pt-1 mb-1' action='javascript:'
           onSubmit={ev => onSubmitCommand(ev)}>
       <span className='input-group-text me-1'>@</span>
-      <input type='text' className='form-text w-100 mt-0' name='command_content' placeholder={'-- command'}/>
+      <input type='text' className='form-text w-100 mt-0' name='command_content' placeholder={'-- command'}
+             style={{background: isConnected ? 'white' : '#c90000'}}/>
       <Button type='submit' className='ms-2 px-4' variant={'outline-primary'}>Send</Button>
     </form>
   </div>;

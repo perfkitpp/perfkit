@@ -3,11 +3,8 @@ import './App.scss';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'remixicon/fonts/remixicon.css'
 import Terminal from "./comp/Terminal";
-import {Button} from 'react-bootstrap'
+import {Button, Container, Row, Col} from "react-bootstrap";
 
-import {Container, Row, Col} from "react-bootstrap";
-
-export const authContext = createContext(null as string | null);
 export const socketUrlPrefix = process.env.NODE_ENV === "development" ? "ws://localhost:10021" : "ws://" + window.location.host
 
 interface ToggleRibbonProps {
