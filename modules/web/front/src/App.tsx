@@ -71,51 +71,53 @@ function App() {
 
   return (
     <div className='App'>
-      <Row>
-        <Col>
-          <ToggleRibbon enableState={enableTerminal}
-                        setEnableState={setEnableTerminal}
-                        iconClass={'ri-terminal-window-fill'}
-                        labelText={'Terminal'}
-                        toolTip={'Show/Hide terminal'}/>
-        </Col>
-        <Col>
-          <ToggleRibbon enableState={enableSystemInfo}
-                        setEnableState={setEnableSystemInfo}
-                        iconClass={'ri-checkbox-multiple-blank-fill'}
-                        labelText={'System'}
-                        toolTip={'Show/Hide system stat panel'}/>
-        </Col>
-        <Col>
-          <ToggleRibbon enableState={enableGraphics}
-                        setEnableState={setEnableGraphics}
-                        iconClass={'ri-artboard-line'}
-                        labelText={'Graphics'}
-                        toolTip={'Show/Hide grahpics panel'}/>
-        </Col>
-        <Col>
-          <ToggleRibbon enableState={enableConfigs}
-                        setEnableState={setEnableConfigs}
-                        iconClass={'ri-list-settings-fill'}
-                        labelText={'Configs'}
-                        toolTip={'Show/Hide terminal'}/>
-        </Col>
-        <Col>
-          <ToggleRibbon enableState={enableTraces}
-                        setEnableState={setEnableTraces}
-                        iconClass={'ri-dashboard-2-line'}
-                        labelText={'Traces'}
-                        toolTip={'Show/Hide trace panel'}/>
-        </Col>
-        <Col>
-          <ToggleRibbon enableState={enablePlottings}
-                        setEnableState={setEnablePlottings}
-                        iconClass={'ri-line-chart-line'}
-                        labelText={'Plots'}
-                        toolTip={'Show/Hide plots panel'}/>
-        </Col>
-      </Row>
-      <Container fluid className='mt-3 overflow-scroll' style={{maxHeight: 'calc(100vh - 180px)'}}>
+      <div className='border-bottom border-2 border-primary bg-primary bg-opacity-10 py-2 px-3'>
+        <Row className=''>
+          <Col>
+            <ToggleRibbon enableState={enableTerminal}
+                          setEnableState={setEnableTerminal}
+                          iconClass={'ri-terminal-window-fill'}
+                          labelText={'Terminal'}
+                          toolTip={'Show/Hide terminal'}/>
+          </Col>
+          <Col>
+            <ToggleRibbon enableState={enableSystemInfo}
+                          setEnableState={setEnableSystemInfo}
+                          iconClass={'ri-checkbox-multiple-blank-fill'}
+                          labelText={'System'}
+                          toolTip={'Show/Hide system stat panel'}/>
+          </Col>
+          <Col>
+            <ToggleRibbon enableState={enableGraphics}
+                          setEnableState={setEnableGraphics}
+                          iconClass={'ri-artboard-line'}
+                          labelText={'Graphics'}
+                          toolTip={'Show/Hide grahpics panel'}/>
+          </Col>
+          <Col>
+            <ToggleRibbon enableState={enableConfigs}
+                          setEnableState={setEnableConfigs}
+                          iconClass={'ri-list-settings-fill'}
+                          labelText={'Configs'}
+                          toolTip={'Show/Hide terminal'}/>
+          </Col>
+          <Col>
+            <ToggleRibbon enableState={enableTraces}
+                          setEnableState={setEnableTraces}
+                          iconClass={'ri-dashboard-2-line'}
+                          labelText={'Traces'}
+                          toolTip={'Show/Hide trace panel'}/>
+          </Col>
+          <Col>
+            <ToggleRibbon enableState={enablePlottings}
+                          setEnableState={setEnablePlottings}
+                          iconClass={'ri-line-chart-line'}
+                          labelText={'Plots'}
+                          toolTip={'Show/Hide plots panel'}/>
+          </Col>
+        </Row>
+      </div>
+      <Container fluid className='mt-3 overflow-scroll' style={{maxHeight: 'calc(100vh - 100px)'}}>
         <Row className='my-1'>
           <Col xxl
                style={{
@@ -124,30 +126,45 @@ function App() {
             <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>
           </Col>
           <Col xxl className='border border-primary'
-               style={{display: enableGraphics ? 'block' : 'none'}}>
+               style={{
+                 display: enableGraphics ? 'block' : 'none',
+                 minHeight: '30vh'
+               }}>
             Graphics window will be placed here.
           </Col>
         </Row>
         <Row className='my-1'>
           <Col lg
                className='border border-primary'
-               style={{display: enableConfigs ? 'block' : 'none'}}>
+               style={{
+                 display: enableConfigs ? 'block' : 'none',
+                 minHeight: '20vh'
+               }}>
             Configs window will be placed here.
           </Col>
           <Col md
                className='border border-primary'
-               style={{display: enableTraces ? 'block' : 'none'}}>
+               style={{
+                 display: enableTraces ? 'block' : 'none',
+                 minHeight: '20vh'
+               }}>
             Traces window will be placed here.
           </Col>
           <Col className='border border-2 border-primary'
                md
-               style={{display: enableSystemInfo ? 'block' : 'none'}}>
+               style={{
+                 display: enableSystemInfo ? 'block' : 'none',
+                 minHeight: '20vh'
+               }}>
             System Information will be placed here.
           </Col>
         </Row>
         <Row className='my-1'>
           <Col xxl className='border border-primary'
-               style={{display: enablePlottings ? 'block' : 'none'}}>
+               style={{
+                 display: enablePlottings ? 'block' : 'none',
+                 minHeight: '20vh'
+               }}>
             Plots window will be placed here.
           </Col>
         </Row>

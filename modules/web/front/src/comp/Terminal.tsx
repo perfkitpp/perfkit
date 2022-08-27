@@ -28,7 +28,7 @@ export default function Terminal(props: { socketUrl: string }) {
       payload = payload.replace('\n', '<br/>');
       let docstr = `<div class="">`;
       docstr +=
-        `<div class="${className}" title="${new Date().toLocaleString()}">` +
+        `<div class="${className} p-1" title="${new Date().toLocaleString()}">` +
         `<span class="me-2 bg-secondary bg-opacity-100 px-2 py-1 text-white rounded-1">${new Date().toLocaleString()}</span>` +
         `${payload}` +
         `</div>`;
@@ -41,7 +41,15 @@ export default function Terminal(props: { socketUrl: string }) {
     }
   }
 
+  async function onSubmitCommand(event: React.FormEvent<HTMLFormElement>) {
+    ttySock.send((event.target as any).command_content.value);
+    appendText(`(cmd) ${(event.target as any).command_content.value}`, 'text-secondary');
+    (event.target as any).command_content.value = "";
+  }
+
   useEffect(() => {
+    if(!(ttySock == null || ttySock.CLOSED)) { return;}
+
     let sock = new WebSocket(props.socketUrl);
     setTtySock(sock);
 
@@ -52,7 +60,7 @@ export default function Terminal(props: { socketUrl: string }) {
     appendText(str);
 
     sock.onopen = () => {
-      appendText('Socket Connected!', 'bg-success bg-opacity-25 p-1')
+      appendText('-- Socket Connected!', 'bg-success bg-opacity-25')
     };
     sock.onerror = ev => {
       appendText(`! Socket error: ${JSON.stringify(ev)}`);
@@ -60,20 +68,24 @@ export default function Terminal(props: { socketUrl: string }) {
     sock.onmessage = ev => {
       appendText(ev.data);
     }
+    sock.onclose = ev => {
+      appendText(`-- WebSocket disconnected.`, `bg-warning bg-opacity-50`);
+    }
 
     return () => {
-      appendText('Closing socket ...', 'bg-warning bg-opacity-25 p-1')
+      appendText('Closing socket ...', 'bg-warning bg-opacity-25')
       sock.close();
     };
   }, [props.socketUrl]);
 
   return <div className='terminal-output-box'>
-    <div className='ri-terminal-line fw-bold w-100 p-1 text-center'> Terminal</div>
-    <p className='border border-secondary border-2 rounded-3 bg-light p-1 overflow-auto mb-1'
+    <div className='ri-terminal-line fw-bold w-100 pb-2 text-center' style={{fontSize: '1.2em'}}> Terminal</div>
+    <p className='border border-secondary border-2 rounded-3 p-1 overflow-auto mb-1'
        ref={divRef}
-       style={{maxHeight: '40vh', minHeight: '10vh'}}></p>
+       style={{maxHeight: '40vh', minHeight: '10vh', background: ttySock?.OPEN ? 'white' : 'dimgray'}}></p>
     <div className='d-flex m-2'>
-      <input className='' type={"checkbox"} name={'scroll_lock'}/>
+      <input className='' type={"checkbox"} name={'scroll_lock'}
+             onClick={ev => setScrollLock((ev.target as any).checked)}/>
       <label className='pt-1 ms-2' htmlFor='scroll_lock'>Scroll Lock</label>
 
       <div className='btn btn-outline-danger px-2 py-0 ms-2'
@@ -82,7 +94,7 @@ export default function Terminal(props: { socketUrl: string }) {
       </div>
     </div>
     <form className='d-flex pt-1 mb-1' action='javascript:'
-          onSubmit={() => alert('Data Submit')}>
+          onSubmit={ev => onSubmitCommand(ev)}>
       <span className='input-group-text me-1'>@</span>
       <input type='text' className='form-text w-100 mt-0' name='command_content' placeholder={'-- command'}/>
       <Button type='submit' className='ms-2 px-4' variant={'outline-primary'}>Send</Button>

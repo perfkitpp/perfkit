@@ -34,9 +34,12 @@
 
 #include <cpph/container/circular_queue.hxx>
 #include <cpph/memory/ring_allocator.hxx>
+#include <cpph/thread/locked.hxx>
 #include <cpph/thread/notify_queue.hxx>
+#include <cpph/thread/thread_pool.hxx>
 #include <crow.h>
 
+#include "interface.hpp"
 #include "perfkit/terminal.h"
 #include "perfkit/web.h"
 
@@ -55,6 +58,13 @@ class terminal : public if_terminal
     notify_queue<string> commands_;
     string loader_path_buf_;
 
+    event_queue_worker ioc_{64 << 10};
+    vector<detail::websocket_weak_ptr> tty_sockets_;
+    circular_queue<char> tty_content_{256 << 10};
+
+   private:
+    class ws_tty_session;
+
    public:
     explicit terminal(open_info) noexcept;
     ~terminal();
@@ -67,13 +77,19 @@ class terminal : public if_terminal
    protected:
     std::optional<std::string> fetch_command(milliseconds timeout) override { return commands_.try_pop(timeout); }
 
-   private:
-    void tty_open_ws_(crow::websocket::connection&);
-    void tty_handle_msg_(crow::websocket::connection& conn, string const& data, bool is_bin) {}
-    void config_open_ws_(crow::websocket::connection&) {}
-    void trace_open_ws_(crow::websocket::connection&) {}
+   private:  // APIs
+    void api_tty_commit_(crow::request const&, crow::response&);
 
-    bool accept_ws_(crow::request const&, void**);
-    void close_ws_(crow::websocket::connection&, string const& why);
+   private:  // WebSocket Handling
+    void ws_on_open_(crow::websocket::connection& c);
+    void ws_on_msg_(crow::websocket::connection& c, string const& data, bool is_bin) { ((detail::websocket_ptr*)c.userdata())->get()->on_message(data, is_bin); }
+    void ws_on_error_(crow::websocket::connection& c, string const& what);
+    void ws_on_close_(crow::websocket::connection& c, string const& why);
+
+    bool ws_tty_accept_(crow::request const&, void**);
+    bool ws_config_accept_(crow::request const&, void**) { return false; }
+    bool ws_trace_accept_(crow::request const&, void**) { return false; }
+    bool ws_window_accept_(crow::request const&, void**) { return false; }
+
 };
 }  // namespace perfkit::web::impl

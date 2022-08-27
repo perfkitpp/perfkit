@@ -7,6 +7,7 @@ target_sources(
 
         src/web.cpp
         src/web_terminal.cpp
+        src/interface.cpp
 )
 
 target_link_libraries(

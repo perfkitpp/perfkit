@@ -35,13 +35,14 @@
 #include <sstream>
 #include <utility>
 
+#include <cpph/utility/timer.hxx>
+#include <crow/http_response.h>
+#include <crow/mustache.h>
+#include <crow/websocket.h>
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
-#include "crow/http_response.h"
-#include "crow/mustache.h"
-#include "crow/websocket.h"
-#include "fmt/core.h"
+#include "interface.hpp"
 #include "perfkit/detail/backend-utils.hpp"
 
 static auto CPPH_LOGGER()
@@ -50,8 +51,20 @@ static auto CPPH_LOGGER()
 }
 
 namespace perfkit::web::impl {
+class terminal::ws_tty_session : public detail::if_websocket_session
+{
+   public:
+    terminal* owner_ = nullptr;
+
+    void on_message(const string& message, bool is_binary) noexcept override
+    {
+        owner_->push_command(message);
+    }
+};
+
 terminal::terminal(open_info info) noexcept : info_(std::move(info))
 {
+    using HTTP = crow::HTTPMethod;
     CPPH_debug("");
 
     loader_path_buf_ = info_.static_dir;
@@ -85,7 +98,6 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
     CROW_ROUTE(app_, "/api/test")
     ([] { return "HELL, WORLD!"; });
 
-    // CROW_WEBSOCKET_ROUTE(app_, "/ws/config");
     // CROW_ROUTE(app_, "/api/config/commit");
 
     // Route trace APIs
@@ -94,20 +106,43 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
     // CROW_ROUTE(app_, "/api/trace/control");
     // CROW_ROUTE(app_, "/api/trace/select");
 
-    // Route TTY websockets
-    CROW_WEBSOCKET_ROUTE(app_, "/ws/tty")
-            .onaccept(bind_front(&terminal::accept_ws_, this))
-            .onopen(bind_front(&terminal::tty_open_ws_, this))
-            .onmessage(bind_front(&terminal::tty_handle_msg_, this))
-            .onclose(bind_front(&terminal::close_ws_, this));
+    // TTY APIs
+    CROW_ROUTE(app_, "/api/tty/commit").methods(HTTP::Post)(bind_front(&terminal::api_tty_commit_, this));
 
-    // CROW_ROUTE(app_, "/api/tty/command");
-    // CROW_ROUTE(app_, "/api/tty/suggest");
+    // Route websockets
+    CROW_WEBSOCKET_ROUTE(app_, "/ws/tty")
+            .onaccept(bind_front(&terminal::ws_tty_accept_, this))
+            .onopen(bind_front(&terminal::ws_on_open_, this))
+            .onmessage(bind_front(&terminal::ws_on_msg_, this))
+            .onerror(bind_front(&terminal::ws_on_error_, this))
+            .onclose(bind_front(&terminal::ws_on_close_, this));
+
+    CROW_WEBSOCKET_ROUTE(app_, "/ws/config")
+            .onaccept(bind_front(&terminal::ws_config_accept_, this))
+            .onopen(bind_front(&terminal::ws_on_open_, this))
+            .onmessage(bind_front(&terminal::ws_on_msg_, this))
+            .onerror(bind_front(&terminal::ws_on_error_, this))
+            .onclose(bind_front(&terminal::ws_on_close_, this));
+
+    CROW_WEBSOCKET_ROUTE(app_, "/ws/trace")
+            .onaccept(bind_front(&terminal::ws_trace_accept_, this))
+            .onopen(bind_front(&terminal::ws_on_open_, this))
+            .onmessage(bind_front(&terminal::ws_on_msg_, this))
+            .onerror(bind_front(&terminal::ws_on_error_, this))
+            .onclose(bind_front(&terminal::ws_on_close_, this));
+
+    CROW_WEBSOCKET_ROUTE(app_, "/ws/window")
+            .onaccept(bind_front(&terminal::ws_window_accept_, this))
+            .onopen(bind_front(&terminal::ws_on_open_, this))
+            .onmessage(bind_front(&terminal::ws_on_msg_, this))
+            .onerror(bind_front(&terminal::ws_on_error_, this))
+            .onclose(bind_front(&terminal::ws_on_close_, this));
 
     app_.port(info_.bind_port);
     app_.concurrency(1);
 
     // Redirect input
+    CPPH_INFO("* Redirecting terminal output ...");
 }
 
 terminal::~terminal()
@@ -118,6 +153,8 @@ terminal::~terminal()
 
 void terminal::write(std::string_view str)
 {
+    auto payload = ioc_.queue().allocate_temporary_payload(str.size());
+    copy(str, payload.get());
 }
 
 void terminal::I_launch()
@@ -125,22 +162,57 @@ void terminal::I_launch()
     app_worker_ = std::thread{[this] { app_.run(); }};
 }
 
-void terminal::tty_open_ws_(crow::websocket::connection& conn)
+void terminal::api_tty_commit_(const crow::request& req, crow::response& rep)
 {
-    CPPH_debug("* Client '{}' opened TTY socket", conn.get_remote_ip());
-    conn.send_text("HELL WOLRD WEBSOCKET!\n");
+    crow::multipart::message msg{req};
+    this->push_command(msg.get_part_by_name("command").body);
+
+    rep.end();
 }
 
-void terminal::close_ws_(crow::websocket::connection& conn, const string& why)
+void terminal::ws_on_close_(crow::websocket::connection& c, const string& why)
 {
-    CPPH_debug("* Client '{}' closing socket for: {}", conn.get_remote_ip(), why);
+    CPPH_INFO("* ({}) Closing websocket: {}", c.get_remote_ip(), why);
+
+    auto pp_sess = (detail::websocket_ptr*)c.userdata();
+    c.userdata(nullptr);
+    pp_sess->get()->on_close(why);
+
+    stopwatch waiting_timer;
+    weak_ptr<void> wait_expire = *pp_sess;
+    delete pp_sess;
+
+    for (poll_timer tim{3s}; not wait_expire.expired();) {
+        if (tim.check_sparse())
+            CPPH_WARN("! Waiting for websocket release for {:.1f} seconds ...", waiting_timer.elapsed().count());
+
+        std::this_thread::sleep_for(5ms);
+    }
+
+    CPPH_INFO("* WebSocket closed. ({:.3f} seconds)", waiting_timer.elapsed().count());
 }
 
-bool terminal::accept_ws_(crow::request const& req, void**)
+bool terminal::ws_tty_accept_(const crow::request& req, void** ppv)
 {
-    CPPH_debug("* Client '{}' requested for websocket connection", req.remote_ip_address);
+    CPPH_INFO("* Accepting terminal WebSocket from: {}", req.remote_ip_address);
+    *ppv = new detail::websocket_ptr{[&, p = make_shared<ws_tty_session>()] { return p->owner_ = this, p; }()};
     return true;
 }
+
+void terminal::ws_on_open_(crow::websocket::connection& c)
+{
+    CPPH_INFO("* Opening WebSocket: {}", c.get_remote_ip());
+    auto p = ((detail::websocket_ptr*)c.userdata())->get();
+    p->I_register_(&c);
+    p->on_open();
+}
+
+void terminal::ws_on_error_(crow::websocket::connection& c, const string& what)
+{
+    CPPH_ERROR("! ({}) WebSocket Error: {}", c.get_remote_ip(), what);
+    ((detail::websocket_ptr*)c.userdata())->get()->on_error(what);
+}
+
 }  // namespace perfkit::web::impl
 
 auto perfkit::web::open(perfkit::web::open_info info)

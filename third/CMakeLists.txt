@@ -33,6 +33,8 @@ if (NOT TARGET nlohmann_json::nlohmann_json)
 endif ()
 
 ### CONFIGURE ASIO
+option(perfkit_ASIO_HEADER_ONLY "" ON)
+
 if (perfkit_USE_BUNDLED_ASIO OR perfkit_BUILD_NET_CLIENT OR perfkit_BUILD_WEB)
     find_path(ASIO_INCLUDE_DIR asio/asio.hpp)
     if ("${ASIO_INCLUDE_DIR}" STREQUAL "ASIO_INCLUDE_DIR-NOTFOUND")
@@ -41,12 +43,38 @@ if (perfkit_USE_BUNDLED_ASIO OR perfkit_BUILD_NET_CLIENT OR perfkit_BUILD_WEB)
         FetchContent_Populate(asio)
 
         message("[${PROJECT_NAME}] asio fetched to directory '${asio_SOURCE_DIR}'")
-        add_library(asio INTERFACE)
-        target_include_directories(asio INTERFACE ${asio_SOURCE_DIR}/asio/include)
-        target_compile_features(asio INTERFACE cxx_std_17)
 
-        add_library(perfkit::asio ALIAS asio)
+        # Configure HEADER-ONLY version of ASIO
+        add_library(perfkit-asio-header-only INTERFACE)
+        add_library(perfkit::asio-header-only ALIAS perfkit-asio-header-only)
+        target_include_directories(perfkit-asio-header-only INTERFACE ${asio_SOURCE_DIR}/asio/include)
+        target_compile_features(perfkit-asio-header-only INTERFACE cxx_std_17)
+
+        # Configure STATIC version of ASIO
+        add_library(perfkit-asio-static STATIC)
+        add_library(perfkit::asio-static ALIAS perfkit-asio-static)
+        target_include_directories(perfkit-asio-static PUBLIC ${asio_SOURCE_DIR}/asio/include)
+        target_compile_features(perfkit-asio-static PUBLIC cxx_std_17)
+        target_compile_definitions(perfkit-asio-static PUBLIC ASIO_SEPARATE_COMPILATION=1)
+        target_sources(perfkit-asio-static PRIVATE ${asio_SOURCE_DIR}/asio/src/asio.cpp)
+
         set(ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include)
+
+        find_package(OpenSSL QUIET)
+        if (OpenSSL_Found)
+            message("[${PROJECT_NAME}] asio: OpenSSL found, configuring ssl sources ...")
+
+            target_sources(perfkit-asio-static PRIVATE ${asio_SOURCE_DIR}/asio/src/asio_ssl.cpp)
+            target_link_libraries(perfkit-asio-static PRIVATE OpenSSL::SSL)
+        endif ()
+
+        if (perfkit_ASIO_HEADER_ONLY)
+            message("[${PROJECT_NAME}] asio: using header-only asio as default ...")
+            add_library(perfkit::asio ALIAS perfkit-asio-header-only)
+        else ()
+            message("[${PROJECT_NAME}] asio: using static lib asio as default ...")
+            add_library(perfkit::asio ALIAS perfkit-asio-static)
+        endif ()
     endif ()
 endif ()
 
