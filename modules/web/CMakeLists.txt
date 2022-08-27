@@ -24,3 +24,8 @@ target_include_directories(
 
         PUBLIC include
 )
+
+install(
+        DIRECTORY public/
+        DESTINATION perfkit.web.public
+)

@@ -26,3 +26,10 @@ export function useForceUpdate() {
   // An function that increment 👆🏻 the previous state like here
   // is better than directly setting `value + 1`
 }
+
+// Generate unique ID
+let idGenVar = 0;
+export function GenerateUniqueID(prefix: string) {
+  return `${prefix}${++idGenVar}`;
+}
+

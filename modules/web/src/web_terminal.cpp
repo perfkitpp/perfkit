@@ -128,7 +128,7 @@ void terminal::I_launch()
 void terminal::tty_open_ws_(crow::websocket::connection& conn)
 {
     CPPH_debug("* Client '{}' opened TTY socket", conn.get_remote_ip());
-    conn.send_text("HELL WOLRD!");
+    conn.send_text("HELL WOLRD WEBSOCKET!\n");
 }
 
 void terminal::close_ws_(crow::websocket::connection& conn, const string& why)

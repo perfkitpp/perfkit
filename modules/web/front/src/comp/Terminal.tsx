@@ -1,12 +1,11 @@
 import {useContext, useEffect, useRef, useState} from "react";
-import {XTerm} from "xterm-for-react";
 import {authContext} from "../App";
-import {useForceUpdate, useInterval} from "../Utils"
+import 'react-bootstrap/Button';
+import './Terminal.css'
 
-function Terminal(props: { socketUrl: string }) {
-  const termRef = useRef(null as unknown as XTerm);
-  const forceUpdate = useForceUpdate();
-  const [ttySock, setTtySock] = useState(null as unknown as WebSocket);
+export default function Terminal(props: { socketUrl: string }) {
+  const [ttySock, setTtySock] = useState(null as any as WebSocket);
+  const divRef = useRef(null as any as HTMLDivElement);
   const auth = useContext(authContext);
 
   useEffect(() => {
@@ -15,14 +14,15 @@ function Terminal(props: { socketUrl: string }) {
 
     sock.onopen = () => {
       console.log(`-- Socket successfully connected`);
-
-      forceUpdate();
+      divRef.current.innerText += `-- Socket successfully connected\n`;
     };
     sock.onerror = ev => {
       console.log(`! Socket error: ${JSON.stringify(ev)}`);
+      divRef.current.innerText += `-- Socket error: ${JSON.stringify(ev)}\n`;
     };
     sock.onmessage = ev => {
       console.log(`-- Socket data: ${JSON.stringify(ev.data)}`);
+      divRef.current.innerText += ev.data;
     }
 
     return () => {
@@ -31,19 +31,9 @@ function Terminal(props: { socketUrl: string }) {
     };
   }, [props.socketUrl]);
 
-  useInterval(() => {
-    forceUpdate();
-  }, 1000);
-
-  useEffect(()=>{
-    const term = termRef.current.terminal;
-    term.write("adsgfdas\n")
-    term.write("adsgfdaskkkg\n")
-    term.write("adsgfdaskkkg\n")
-    term.write("adsgfdaskkkggfasdg\n")
-  });
-
-  return <XTerm ref={termRef}></XTerm>;
+  return <div>
+    <div className='terminal-output-box' ref={divRef}></div>
+    <div className='terminal-input-box'></div>
+  </div>;
 }
 
-export default Terminal;
