@@ -1,3 +1,5 @@
-export default function ConfigPanel(props: {}) {
+
+
+export default function ConfigPanel(props:{}){
 
 }

@@ -8,7 +8,7 @@ import {Button} from 'react-bootstrap'
 import {Container, Row, Col} from "react-bootstrap";
 
 export const authContext = createContext(null as string | null);
-export const socketUrlPrefix = process.env.NODE_ENV === "development" ? "ws://localhost:10021" : window.location.host
+export const socketUrlPrefix = process.env.NODE_ENV === "development" ? "ws://localhost:10021" : "ws://" + window.location.host
 
 interface ToggleRibbonProps {
   enableState: boolean
@@ -21,12 +21,13 @@ interface ToggleRibbonProps {
 function ToggleRibbon(prop: ToggleRibbonProps) {
   const [mouseHover, setMouseHover] = useState(false);
 
-  useEffect(() => {  }, [prop.enableState]);
+  useEffect(() => {
+  }, [prop.enableState]);
 
   return <div className='d-grid'>
     <Button
       title={prop.toolTip}
-      variant={prop.enableState ? 'success':'outline-secondary'}
+      variant={prop.enableState ? 'primary' : 'outline-secondary'}
       onClick={() => prop.setEnableState(v => !v)}
       onMouseEnter={() => setMouseHover(true)}
       onMouseLeave={() => setMouseHover(false)}>
@@ -36,13 +37,37 @@ function ToggleRibbon(prop: ToggleRibbonProps) {
   </div>;
 }
 
+interface EnableStatus {
+  terminal: boolean;
+  system: boolean;
+  graphics: boolean;
+  configs: boolean;
+  traces: boolean;
+  plottings: boolean;
+}
+
+const initStateCfgStr = localStorage.getItem('PerfkitWeb/EnableStatus');
+const initStateCfg = JSON.parse(initStateCfgStr || "{}") as EnableStatus;
+
 function App() {
-  const [enableTerminal, setEnableTerminal] = useState(true);
-  const [enableSystemInfo, setEnableSystemInfo] = useState(false);
-  const [enableGraphics, setEnableGraphics] = useState(false);
-  const [enableConfigs, setEnableConfigs] = useState(true);
-  const [enableTraces, setEnableTraces] = useState(true);
-  const [enablePlottings, setEnablePlottings] = useState(true);
+  const [enableTerminal, setEnableTerminal] = useState((initStateCfg.terminal ??= true) as boolean);
+  const [enableSystemInfo, setEnableSystemInfo] = useState((initStateCfg.system ??= true) as boolean);
+  const [enableGraphics, setEnableGraphics] = useState((initStateCfg.graphics ??= false) as boolean);
+  const [enableConfigs, setEnableConfigs] = useState((initStateCfg.configs ??= true) as boolean);
+  const [enableTraces, setEnableTraces] = useState((initStateCfg.traces ??= true) as boolean);
+  const [enablePlottings, setEnablePlottings] = useState((initStateCfg.plottings ??= false) as boolean);
+
+  useEffect(() => {
+    let obj = {} as EnableStatus;
+    obj.terminal = enableTerminal;
+    obj.system = enableSystemInfo;
+    obj.graphics = enableGraphics;
+    obj.configs = enableConfigs;
+    obj.traces = enableTraces;
+    obj.plottings = enablePlottings;
+    localStorage.setItem('PerfkitWeb/EnableStatus', JSON.stringify(obj));
+  }, [enableTerminal, enableSystemInfo, enableGraphics, enableConfigs, enableTraces, enablePlottings]);
+
 
   return (
     <div className='App'>
@@ -90,27 +115,40 @@ function App() {
                         toolTip={'Show/Hide plots panel'}/>
         </Col>
       </Row>
-      <Container fluid>
-        <Row>
-          <br/>
+      <Container fluid className='mt-3 overflow-scroll' style={{maxHeight: 'calc(100vh - 180px)'}}>
+        <Row className='my-1'>
+          <Col xxl
+               style={{
+                 display: enableTerminal ? 'block' : 'none'
+               }}>
+            <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>
+          </Col>
+          <Col xxl className='border border-primary'
+               style={{display: enableGraphics ? 'block' : 'none'}}>
+            Graphics window will be placed here.
+          </Col>
         </Row>
-        <Row>
-          <Col className={enableTerminal ? '' : 'd-none'} xl={8}>
-            <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>
+        <Row className='my-1'>
+          <Col lg
+               className='border border-primary'
+               style={{display: enableConfigs ? 'block' : 'none'}}>
+            Configs window will be placed here.
           </Col>
-          <Col className={enableSystemInfo ? '' : 'd-none'}>
-            <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>
+          <Col md
+               className='border border-primary'
+               style={{display: enableTraces ? 'block' : 'none'}}>
+            Traces window will be placed here.
+          </Col>
+          <Col className='border border-2 border-primary'
+               md
+               style={{display: enableSystemInfo ? 'block' : 'none'}}>
+            System Information will be placed here.
           </Col>
         </Row>
-        <Row>
-          <Col>
-            <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>
-          </Col>
-          <Col>
-            <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}></Terminal>
-          </Col>
-          <Col>
-            <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}></Terminal>
+        <Row className='my-1'>
+          <Col xxl className='border border-primary'
+               style={{display: enablePlottings ? 'block' : 'none'}}>
+            Plots window will be placed here.
           </Col>
         </Row>
       </Container>
