@@ -92,25 +92,6 @@ if (UNIX)
     )
 endif ()
 
-find_library(LIBDW dw)
-if (LIBDW)
-    message("[${PROJECT_NAME}]: LIBDW FOUND, enabling rich backtrace support ...")
-
-    target_link_libraries(
-            ${PROJECT_NAME}
-
-            PRIVATE
-            dw
-    )
-
-    target_compile_definitions(
-            ${PROJECT_NAME}
-
-            PUBLIC
-            -DBACKWARD_HAS_DW=1
-    )
-endif ()
-
 if (MSVC)
     target_compile_options(
             ${PROJECT_NAME}

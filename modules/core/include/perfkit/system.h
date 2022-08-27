@@ -49,7 +49,8 @@ struct command_autocomplete_request {
 };
 
 struct command_autocomplete_result {
-    size_t num_erase_from_cursor = 0;
+    size_t erase_offset = 0;
+    size_t erase_count = 0;
     string replace_content;
 };
 

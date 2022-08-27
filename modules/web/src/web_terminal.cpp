@@ -110,33 +110,19 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
     CROW_ROUTE(app_, "/api/tty/commit").methods(HTTP::Post)(bind_front(&terminal::api_tty_commit_, this));
 
     // Route websockets
-    CROW_WEBSOCKET_ROUTE(app_, "/ws/tty")
-            .onaccept(bind_front(&terminal::ws_tty_accept_, this))
-            .onopen(bind_front(&terminal::ws_on_open_, this))
-            .onmessage(bind_front(&terminal::ws_on_msg_, this))
-            .onerror(bind_front(&terminal::ws_on_error_, this))
-            .onclose(bind_front(&terminal::ws_on_close_, this));
+    auto ws_bind = [this](auto&& rule_instance, auto&& accept_fn) {
+        rule_instance
+                .onaccept(bind_front(accept_fn, this))
+                .onopen(bind_front(&terminal::ws_on_open_, this))
+                .onmessage(bind_front(&terminal::ws_on_msg_, this))
+                .onerror(bind_front(&terminal::ws_on_error_, this))
+                .onclose(bind_front(&terminal::ws_on_close_, this));
+    };
 
-    CROW_WEBSOCKET_ROUTE(app_, "/ws/config")
-            .onaccept(bind_front(&terminal::ws_config_accept_, this))
-            .onopen(bind_front(&terminal::ws_on_open_, this))
-            .onmessage(bind_front(&terminal::ws_on_msg_, this))
-            .onerror(bind_front(&terminal::ws_on_error_, this))
-            .onclose(bind_front(&terminal::ws_on_close_, this));
-
-    CROW_WEBSOCKET_ROUTE(app_, "/ws/trace")
-            .onaccept(bind_front(&terminal::ws_trace_accept_, this))
-            .onopen(bind_front(&terminal::ws_on_open_, this))
-            .onmessage(bind_front(&terminal::ws_on_msg_, this))
-            .onerror(bind_front(&terminal::ws_on_error_, this))
-            .onclose(bind_front(&terminal::ws_on_close_, this));
-
-    CROW_WEBSOCKET_ROUTE(app_, "/ws/window")
-            .onaccept(bind_front(&terminal::ws_window_accept_, this))
-            .onopen(bind_front(&terminal::ws_on_open_, this))
-            .onmessage(bind_front(&terminal::ws_on_msg_, this))
-            .onerror(bind_front(&terminal::ws_on_error_, this))
-            .onclose(bind_front(&terminal::ws_on_close_, this));
+    ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/tty"), &terminal::ws_tty_accept_);
+    ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/config"), &terminal::ws_config_accept_);
+    ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/trace"), &terminal::ws_trace_accept_);
+    ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/window/<path>"), &terminal::ws_window_accept_);
 
     app_.port(info_.bind_port);
     app_.concurrency(1);
@@ -155,6 +141,8 @@ void terminal::write(std::string_view str)
 {
     auto payload = ioc_.queue().allocate_temporary_payload(str.size());
     copy(str, payload.get());
+
+    // TODO: Payload send operation
 }
 
 void terminal::I_launch()
