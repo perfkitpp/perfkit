@@ -87,9 +87,11 @@ PERFKIT_CFG_CLASS(log_config_entity)
 
 class log_level_control : public enable_shared_from_this<log_level_control>
 {
+    using S = log_level_control;
+
     log_config_base cfg_;
     map<string, log_config_entity, less<>> entities_;
-    event_queue_worker work_;
+    event_queue_worker worker_;
 
    public:
     explicit log_level_control(string name) : cfg_{log_config_base::create(move(name))}
@@ -110,16 +112,24 @@ class log_level_control : public enable_shared_from_this<log_level_control>
                     cfg_.active_loggers.commit(move(v));
                 });
 
-        reload_all();
+        reload_all_();
+
+        // Register event listener
+        cfg_->on_update() << weak_from_this() << bind(&S::tick_, this);
     }
 
-    void tick()
+   public:
+    void tick() { worker_.dispatch(bind_weak(weak_from_this(), &S::tick_, this)); }
+    void reload_all() { worker_.dispatch(bind_weak(weak_from_this(), &S::reload_all_, this)); }
+
+   private:
+    void tick_()
     {
         if (not cfg_->update()) { return; }
 
         if (*cfg_.reload_all) {
             cfg_.reload_all.set(false);
-            this->reload_all();
+            this->reload_all_();
             cfg_->update();
         }
 
@@ -170,7 +180,7 @@ class log_level_control : public enable_shared_from_this<log_level_control>
         }
     }
 
-    void reload_all()
+    void reload_all_()
     {
         set<string> all_loggers = *cfg_.active_loggers;
 
