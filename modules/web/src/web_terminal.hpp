@@ -59,7 +59,7 @@ class terminal : public if_terminal, public detail::if_web_terminal
     notify_queue<string> commands_;
     string loader_path_buf_;
 
-    event_queue_worker ioc_{64 << 10};
+    event_queue_worker ioc_{thread::lazy, 64 << 10};
 
     vector<detail::websocket_weak_ptr> tty_sockets_;
     circular_queue<char> tty_content_{256 << 10};

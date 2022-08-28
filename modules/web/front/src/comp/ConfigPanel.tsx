@@ -2,19 +2,32 @@ import {createContext, useEffect, useRef, useState} from "react";
 import {useForceUpdate, useWebSocket} from "../Utils";
 import {Spinner} from "react-bootstrap";
 
-interface ElemContext {
-  updateFence: number;
+interface ElemDesc {
+  elemID: string;
   description: string;
   name: string;
-  minValue?: any;
-  maxValue?: any;
-  children: string[];
-
-  value: any;
+  path: string[]; // Prefix, which is full-key.
+  rootName: string;
+  initValue: any;
+  minValue: any | null;
+  maxValue: any | null;
+  oneOf: any[] | null;
+  editMode: string;
 }
 
 interface ElemContextTable {
-  [key: string]: ElemContext
+  [key: number]: { desc: ElemDesc, value: any, updateFence: number }
+}
+
+interface ElemUpdateList {
+  [key: number]: { value: any, updateFence: number };
+}
+
+interface RootTable {
+  [key: string]: {
+    all: ElemContextTable,
+    children: (ElemDesc | string)[];
+  }
 }
 
 function ElemNode(props: {
@@ -25,14 +38,14 @@ function ElemNode(props: {
 
 function EditorPopup(props: {
   configID: string;
-  targetContext: ElemContext;
+  targetContext: ElemDesc;
 }) {
 
 }
 
 interface ReceivedMessage {
-  method: "update" | "new-cfg" | "delete-cfg",
-  params: [any]
+  method: "update" | "new-root" | "delete-root" | "new-cfg";
+  params: ElemUpdateList | string[] | string | ElemDesc[];
 }
 
 export default function ConfigPanel(props: { socketUrl: string }) {
@@ -40,11 +53,18 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   // TODO: Commit
   // TODO: Browser / Editor
   const tableRef = useRef({} as ElemContextTable);
-  const cfgSock = useWebSocket(props.socketUrl, {onmessage: onMessage, onclose: () => (tableRef.current = {})});
+  const forceUpdate = useForceUpdate();
+  const cfgSock = useWebSocket(props.socketUrl, {
+    onopen: ev => forceUpdate(),
+    onmessage: onMessage,
+    onclose: () => {
+      tableRef.current = {};
+      forceUpdate();
+    }
+  });
 
   async function onMessage(ev: MessageEvent) {
     // TODO: Parse message
-
     // TODO:
   }
 

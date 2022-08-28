@@ -176,6 +176,7 @@ void terminal::write(std::string_view str)
 
 void terminal::I_launch()
 {
+    ioc_.launch();
     app_worker_ = std::thread{[this] { app_.run(); }};
 }
 
@@ -243,9 +244,13 @@ void terminal::ws_on_open_(crow::websocket::connection& c)
 
 void terminal::ws_on_error_(crow::websocket::connection& c, const string& what)
 {
-    auto p = ((detail::websocket_ptr*)c.userdata())->get();
-    CPPH_ERROR("! ({}) WebSocket Error: {}", p->remote_ip(), what);
-    p->on_error(what);
+    if (c.userdata()) {
+        auto p = ((detail::websocket_ptr*)c.userdata())->get();
+        CPPH_ERROR("! ({}) WebSocket Error: {}", p->remote_ip(), what);
+        p->on_error(what);
+    } else {
+        CPPH_ERROR("! WebSocket Error without userdata: {}", what);
+    }
 }
 
 }  // namespace perfkit::web::impl

@@ -40,6 +40,5 @@ class config_server
 
    public:
     virtual auto new_session_context() -> websocket_ptr = 0;
-    virtual void commit(string const& path, string const& payload) = 0;
 };
 }  // namespace perfkit::web::detail

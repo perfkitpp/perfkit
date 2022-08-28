@@ -28,6 +28,7 @@
 #include "perfkit/web.h"
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
+#include "test_class.hpp"
 
 class ExampleWebApp : public perfkit::AppBase
 {
@@ -41,6 +42,14 @@ class ExampleWebApp : public perfkit::AppBase
     void S04_ConfigureTerminalCommands(perfkit::if_terminal* terminal) override
     {
         AppBase::S04_ConfigureTerminalCommands(terminal);
+
+        static test_class test1{"test1"};
+        static test_class test2{"test2"};
+        static test_class test3{"test3"};
+
+        test1.start();
+        test2.start();
+        test3.start();
     }
 
    public:
