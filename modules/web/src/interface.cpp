@@ -39,8 +39,13 @@ void perfkit::web::detail::if_websocket_session::send_text(string const& content
     conn_->send_text(content);
 }
 
-std::string perfkit::web::detail::if_websocket_session::remote_ip() const noexcept
+std::string const& perfkit::web::detail::if_websocket_session::remote_ip() const noexcept
 {
-    return conn_->get_remote_ip();
+    return remote_ip_;
 }
 
+void perfkit::web::detail::if_websocket_session::I_register_(decltype(conn_) conn) noexcept
+{
+    conn_ = conn;
+    remote_ip_ = conn_->get_remote_ip();
+}

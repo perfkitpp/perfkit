@@ -35,6 +35,7 @@
 #include <sstream>
 #include <utility>
 
+#include <cpph/helper/strutil.hxx>
 #include <cpph/utility/timer.hxx>
 #include <crow/http_response.h>
 #include <crow/mustache.h>
@@ -66,6 +67,7 @@ class terminal::ws_tty_session : public detail::if_websocket_session
         owner_->ioc_.post([this, self = owner_, wp = weak_from_this()] {
             if (auto p_sess = wp.lock()) {
                 self->tty_sockets_.emplace_back(wp);
+
                 string content{self->tty_content_.begin(), self->tty_content_.end()};
                 p_sess->send_text(content);
             }
@@ -153,9 +155,9 @@ terminal::~terminal()
 void terminal::write(std::string_view str)
 {
     auto data = ioc_.queue().allocate_temporary_payload(str.size());
-    copy(str, data.get());
+    auto nwrite = strutil::validate_utf8(str.begin(), str.end(), data.get());
 
-    ioc_.post([this, payload = move(data), len = str.size()] {
+    ioc_.post([this, payload = move(data), len = nwrite] {
         auto str = string_view{payload.get(), len};
         tty_content_.enqueue_n(payload.get(), len);
         tty_tmp_shelf_.append(str);
@@ -187,11 +189,15 @@ void terminal::api_tty_commit_(const crow::request& req, crow::response& rep)
 
 void terminal::ws_on_close_(crow::websocket::connection& c, const string& why)
 {
-    CPPH_INFO("* ({}) Closing websocket: {}", c.get_remote_ip(), why);
+    string why_clone;
+    if (why.size() > 2)
+        why_clone.assign(why.begin() + 2, why.end());
 
     auto pp_sess = (detail::websocket_ptr*)c.userdata();
+    CPPH_INFO("* ({}) Closing websocket: {}", (*pp_sess)->remote_ip(), why_clone);
+
     c.userdata(nullptr);
-    pp_sess->get()->on_close(why);
+    pp_sess->get()->on_close(why_clone);
 
     stopwatch waiting_timer;
     weak_ptr<void> wait_expire = *pp_sess;
@@ -218,16 +224,17 @@ bool terminal::ws_tty_accept_(const crow::request& req, void** ppv)
 
 void terminal::ws_on_open_(crow::websocket::connection& c)
 {
-    CPPH_INFO("* Opening WebSocket: {}", c.get_remote_ip());
     auto p = ((detail::websocket_ptr*)c.userdata())->get();
+    CPPH_INFO("* Opening WebSocket: {}", p->remote_ip());
     p->I_register_(&c);
     p->on_open();
 }
 
 void terminal::ws_on_error_(crow::websocket::connection& c, const string& what)
 {
-    CPPH_ERROR("! ({}) WebSocket Error: {}", c.get_remote_ip(), what);
-    ((detail::websocket_ptr*)c.userdata())->get()->on_error(what);
+    auto p = ((detail::websocket_ptr*)c.userdata())->get();
+    CPPH_ERROR("! ({}) WebSocket Error: {}", p->remote_ip(), what);
+    p->on_error(what);
 }
 
 }  // namespace perfkit::web::impl

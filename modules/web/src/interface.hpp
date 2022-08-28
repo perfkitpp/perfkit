@@ -40,16 +40,17 @@ using namespace cpph;
 class if_websocket_session : public std::enable_shared_from_this<if_websocket_session>
 {
     crow::websocket::connection* conn_ = nullptr;
+    string remote_ip_;
 
    public:
     ~if_websocket_session() noexcept = default;
 
    public:
-    void I_register_(decltype(conn_) conn) noexcept { conn_ = conn; }
+    void I_register_(decltype(conn_) conn) noexcept;
 
    public:
     auto& connection() const noexcept { return *conn_; }
-    string remote_ip() const noexcept;
+    auto remote_ip() const noexcept -> string const&;
 
    public:
     virtual void on_open() noexcept {}
