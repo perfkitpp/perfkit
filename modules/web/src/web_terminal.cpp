@@ -89,6 +89,7 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
 
                 crow::response e;
                 fs::path path = info_.static_dir;
+                path /= PERFKIT_WEB_INTERFACE_VERSION;
                 path /= uri;
 
                 e.set_static_file_info_unsafe(path.string());

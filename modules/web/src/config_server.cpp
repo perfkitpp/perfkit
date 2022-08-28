@@ -198,7 +198,8 @@ class config_server_impl : public config_server
 
                            auto backend = rg->backend();
                            auto wr = ioc_writer_prepare_("update");
-                           *wr << push_object(updates.size());
+                           *wr << push_object(updates.size() + 1);
+                           *wr << key << "rootName" << rg->name();
                            for (auto& cfg : updates) {
                                *wr << key << cfg->id().value
                                    << push_object(2);

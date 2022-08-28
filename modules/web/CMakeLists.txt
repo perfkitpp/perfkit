@@ -1,4 +1,4 @@
-project(perfkit-web)
+project(perfkit-web VERSION 0.1)
 add_library(${PROJECT_NAME} STATIC)
 add_library(perfkit::web ALIAS ${PROJECT_NAME})
 
@@ -21,6 +21,12 @@ target_link_libraries(
         PRIVATE perfkit::internal::backend-utils
 )
 
+target_compile_definitions(
+        ${PROJECT_NAME}
+
+        PRIVATE PERFKIT_WEB_INTERFACE_VERSION="v${PROJECT_VERSION}"
+)
+
 target_include_directories(
         ${PROJECT_NAME}
 
@@ -29,5 +35,5 @@ target_include_directories(
 
 install(
         DIRECTORY public/
-        DESTINATION perfkit.web.public
+        DESTINATION perfkit.web.public/v${PROJECT_VERSION}
 )
