@@ -112,7 +112,7 @@ target_link_libraries(${PROJECT_NAME} INTERFACE cppheaders cppheaders.refl-exten
 ### CONFIGURE crow
 if (perfkit_BUILD_WEB AND NOT TARGET Crow::Crow)
     message("[${PROJECT_NAME}] Crow::Crow not found, fetching ...")
-    FetchContent_Declare(crow URL https://github.com/CrowCpp/Crow/archive/fde74c4d2e66c76dbe288dfdf080ea1a09d28abd.zip)
+    FetchContent_Declare(crow URL https://github.com/kang-sw/Crow/archive/refs/heads/fix/ws-crash.zip)
     FetchContent_Populate(crow)
     add_subdirectory(${crow_SOURCE_DIR} ${crow_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
