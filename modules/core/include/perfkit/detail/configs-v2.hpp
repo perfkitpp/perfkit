@@ -33,6 +33,7 @@
 #include "cpph/refl/core.hxx"
 #include "cpph/thread/spinlock.hxx"
 #include "cpph/thread/threading.hxx"
+#include "cpph/utility/event.hxx"
 #include "cpph/utility/hasher.hxx"
 #include "fwd.hpp"
 #include "nlohmann/json_fwd.hpp"
@@ -294,6 +295,9 @@ class config_registry : public std::enable_shared_from_this<config_registry>
 
     //! Id
     config_registry_id_t id() const noexcept;
+
+    //! Event listener
+    event<config_registry*>::frontend const on_update;
 
    public:
     bool _internal_commit_value_user(config_base* ref, refl::shared_object_ptr);

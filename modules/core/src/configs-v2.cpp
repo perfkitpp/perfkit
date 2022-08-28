@@ -71,7 +71,8 @@ void verify_flag_string(string_view str)
 }  // namespace _configs
 
 config_registry::config_registry(ctor_constraint_t, std::string name, bool is_global)
-        : _self(make_unique<backend_t>(this, move(name), is_global))
+        : _self(make_unique<backend_t>(this, move(name), is_global)),
+          on_update(&_self->evt_update_listener)
 {
 }
 
@@ -680,6 +681,7 @@ void configs_import(global_config_storage_t json_content)
             if (iter == repos.end() || (**iter).name() != key) { continue; }  // could not found.
 
             (**iter).import_from(content, &buffer_);
+            (**iter).backend()->bk_notify();  // Notify update
         }
     }
 

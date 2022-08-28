@@ -107,10 +107,6 @@ int main(int argc, char** argv)
                 app->DesiredTickInterval(),
                 [] { return g_server_is_alive.load(); },
                 [](auto cmd) { spdlog::info("CMD: {}", cmd); });
-
-        if (sw_logsvc.tick() > app->LogServiceTickInterval()) {
-            sw_logsvc.reset(), tick_log_monitor(*logmon);
-        }
     }
 
     spdlog::info("Disposing application");

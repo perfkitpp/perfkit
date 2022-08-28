@@ -29,6 +29,8 @@
 
 #include "cpph/refl/types/set.hxx"
 #include "cpph/thread/spinlock.hxx"
+#include "cpph/thread/thread_pool.hxx"
+#include "cpph/utility/singleton.hxx"
 #include "perfkit/configs.h"
 #include "perfkit/detail/base.hpp"
 #include "perfkit/detail/configs-v2-backend.hpp"
@@ -40,7 +42,9 @@ namespace vw = ranges::view;
 namespace perfkit {
 static auto CPPH_LOGGER() { return perfkit::glog(); }
 
-static event<string> logger_registered;
+namespace {
+using on_new_logger = basic_singleton<event<string>, class S>;
+}  // namespace
 
 logger_ptr share_logger(string const& name)
 {
@@ -64,7 +68,7 @@ logger_ptr share_logger(string const& name)
     }
 
     if (newly_added) {
-        logger_registered.invoke(name);
+        on_new_logger::get().invoke(name);
     }
 
     return ptr;
@@ -83,11 +87,12 @@ PERFKIT_CFG_CLASS(log_config_entity)
 
 class log_level_control : public enable_shared_from_this<log_level_control>
 {
-    log_config_base _cfg;
-    map<string, log_config_entity, less<>> _entities;
+    log_config_base cfg_;
+    map<string, log_config_entity, less<>> entities_;
+    event_queue_worker work_;
 
    public:
-    explicit log_level_control(string name) : _cfg{log_config_base::create(move(name))}
+    explicit log_level_control(string name) : cfg_{log_config_base::create(move(name))}
     {
     }
 
@@ -95,14 +100,14 @@ class log_level_control : public enable_shared_from_this<log_level_control>
     void start()
     {
         // Perform initial update to load values
-        _cfg->update();
+        cfg_->update();
 
-        logger_registered.add_weak(
+        on_new_logger::get().add_weak(
                 weak_from_this(),
                 [this](string const& s) {
-                    auto v = _cfg.active_loggers.value();
+                    auto v = cfg_.active_loggers.value();
                     v.insert(s);
-                    _cfg.active_loggers.commit(move(v));
+                    cfg_.active_loggers.commit(move(v));
                 });
 
         reload_all();
@@ -110,42 +115,42 @@ class log_level_control : public enable_shared_from_this<log_level_control>
 
     void tick()
     {
-        if (not _cfg->update()) { return; }
+        if (not cfg_->update()) { return; }
 
-        if (*_cfg.reload_all) {
-            _cfg.reload_all.set(false);
+        if (*cfg_.reload_all) {
+            cfg_.reload_all.set(false);
             this->reload_all();
-            _cfg->update();
+            cfg_->update();
         }
 
-        if (_cfg.active_loggers.check_update()) {
+        if (cfg_.active_loggers.check_update()) {
             list<string> added;
-            set_difference2(*_cfg.active_loggers, vw::keys(_entities), back_inserter(added));
+            set_difference2(*cfg_.active_loggers, vw::keys(entities_), back_inserter(added));
 
             for (auto& key : added) {
-                auto& entity = _entities[key];
+                auto& entity = entities_[key];
                 assert(not entity.valid());
 
                 auto entity_str = key;
                 if (key.empty()) { entity_str += "__default"; }
 
-                entity = log_config_entity::create(_cfg, move(entity_str));
+                entity = log_config_entity::create(cfg_, move(entity_str));
                 entity->touch();
             }
 
             if (not added.empty()) {
-                _cfg->update();  // Let added nodes to load configs ..
+                cfg_->update();  // Let added nodes to load configs ..
             }
 
             for (auto& key : added) {
-                auto& e = _entities[key];
+                auto& e = entities_[key];
                 e.level.commit(*e.level);
             }
 
             CPPH_INFO("{} loggers loaded", added.size());
         }
 
-        for (auto& [key, entity] : _entities | vw::filter([](auto&& r) { return r.second.level.check_update(); })) {
+        for (auto& [key, entity] : entities_ | vw::filter([](auto&& r) { return r.second.level.check_update(); })) {
             logger_ptr logger;
             if (key.empty()) {
                 logger = spdlog::default_logger();
@@ -167,13 +172,13 @@ class log_level_control : public enable_shared_from_this<log_level_control>
 
     void reload_all()
     {
-        set<string> all_loggers = *_cfg.active_loggers;
+        set<string> all_loggers = *cfg_.active_loggers;
 
         spdlog::details::registry::instance().apply_all([&](logger_ptr const& ptr) {
             all_loggers.insert(ptr->name());
         });
 
-        _cfg.active_loggers.commit(move(all_loggers));
+        cfg_.active_loggers.commit(move(all_loggers));
     }
 };
 

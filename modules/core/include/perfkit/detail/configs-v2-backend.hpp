@@ -104,6 +104,7 @@ class config_registry::backend_t
 
     event<config_registry*, list<config_base_ptr> const&> evt_updated_entities;
     event<config_registry*> evt_structure_changed;
+    event<config_registry*> evt_update_listener;
 
    private:
     void _register_to_global_repo();
@@ -123,6 +124,7 @@ class config_registry::backend_t
    public:
     void bk_all_items(vector<config_base_ptr>*) const noexcept;
     bool bk_commit(config_base*, archive::if_reader* content);
+    void bk_notify() { evt_update_listener.invoke(_owner); }
 
     template <class AccessFn>
     void bk_access_value_shared(config_base* cfg, AccessFn&& fn)

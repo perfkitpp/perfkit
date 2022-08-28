@@ -142,6 +142,7 @@ void config_context::rpc_update_request(message::config_entity_update_t& content
         streambuf::view sbuf{{(char*)content.content_next.data(), content.content_next.size()}};
         archive::msgpack::reader reader{&sbuf};
         owner->backend()->bk_commit(cfg.get(), &reader);
+        owner->backend()->bk_notify();
     });
 }
 
