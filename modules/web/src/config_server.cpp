@@ -176,9 +176,14 @@ class config_server_impl : public config_server
                            if (clients_.empty())
                                return;
                            if (auto rg = wp.lock()) {
+                               // Send 'new-root' to invalidate current context of client.
+                               *ioc_writer_prepare_("new-root") << push_array(1) << rg->name() << pop_array;
+                               client_for_each_([&, s = ioc_writer_done_()](auto cli) { cli->send_text(*s); });
+
                                // Re-generate descriptor of given registry class.
-                               auto p_payload = ioc_generate_descriptor_all_(rg.get());
-                               client_for_each_([&](auto cli) { cli->send_text(*p_payload); });
+                               client_for_each_([&, p_payload = ioc_generate_descriptor_all_(rg.get())](auto cli) {
+                                   cli->send_text(*p_payload);
+                               });
                            }
                        });
                    };
@@ -243,9 +248,13 @@ class config_server_impl : public config_server
         vector<config_base_ptr> items;
         rg->backend()->bk_all_items(&items);
 
+        auto fn_is_hidden = [](config_base_ptr const& p) { return p->attribute()->hidden; };
+        erase_if(items, fn_is_hidden);
+
         auto wr = ioc_writer_prepare_("new-cfg");
 
-        (*wr) << push_array(items.size());
+        (*wr) << push_array(items.size() + 1);
+        (*wr) << rg->name();
         for (auto& item : items) {
             ioc_generate_descriptor_(rg, item.get(), wr);
         }
@@ -259,14 +268,14 @@ class config_server_impl : public config_server
         string full_key = cfg->full_key(), display_key;
         vector<string_view> hierarchy;
         _configs::parse_full_key(full_key, &display_key, &hierarchy);
+        hierarchy.pop_back();  // Exclude its name() element.
 
         // Generate 'ElemDesc'
-        *wr << push_object(10)
+        *wr << push_object(9)
             << key << "elemID" << cfg->id().value
             << key << "description" << cfg->description()
             << key << "name" << cfg->name()
             << key << "path" << hierarchy
-            << key << "rootName" << rg->name()
             << key << "initValue" << cfg->default_value().view()
             << key << "minValue" << write_or(cfg->attribute()->min.view(), nullptr)
             << key << "maxValue" << write_or(cfg->attribute()->max.view(), nullptr)
@@ -280,7 +289,7 @@ class config_server_impl : public config_server
         sbuf_.clear(), json_wr_.clear();
         json_wr_ << push_object(2);
         json_wr_ << archive::key_next << "method" << method;
-        json_wr_ << archive::key_next << "param";
+        json_wr_ << archive::key_next << "params";
 
         return &json_wr_;
     }
