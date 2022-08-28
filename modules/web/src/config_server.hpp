@@ -24,57 +24,22 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
+//
+// Created by ki608 on 2022-08-28.
+//
+
 #pragma once
-#include <cpph/std/string>
-#include <cpph/std/string_view>
-
-#include <cpph/utility/generic.hxx>
-
-namespace crow::websocket {
-struct connection;
-}
-
-namespace cpph {
-class event_queue;
-}
+#include "interface.hpp"
 
 namespace perfkit::web::detail {
-using namespace cpph;
-
-class if_web_terminal
+class config_server
 {
    public:
-    virtual ~if_web_terminal() = default;
-    virtual auto event_queue() noexcept -> cpph::event_queue& = 0;
+    virtual ~config_server() = default;
+    static auto create(if_web_terminal*) noexcept -> ptr<config_server>;
+
+   public:
+    virtual auto new_session_context() -> websocket_ptr = 0;
+    virtual void commit(string const& path, string const& payload) = 0;
 };
-
-class if_websocket_session : public std::enable_shared_from_this<if_websocket_session>
-{
-    crow::websocket::connection* conn_ = nullptr;
-    string remote_ip_;
-
-   public:
-    ~if_websocket_session() noexcept = default;
-
-   public:
-    void I_register_(decltype(conn_) conn) noexcept;
-
-   public:
-    auto& connection() const noexcept { return *conn_; }
-    auto remote_ip() const noexcept -> string const&;
-
-   public:
-    virtual void on_open() noexcept {}
-    virtual void on_message(string const& message, bool is_binary) noexcept {}
-    virtual void on_close(string const& why) noexcept {}
-    virtual void on_error(string const& what) noexcept {}
-
-   public:
-    void send_binary(string const& content) noexcept;
-    void send_text(string const& content) noexcept;
-};
-
-using websocket_ptr = shared_ptr<if_websocket_session>;
-using websocket_weak_ptr = weak_ptr<if_websocket_session>;
-
 }  // namespace perfkit::web::detail

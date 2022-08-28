@@ -8,6 +8,7 @@ target_sources(
         src/web.cpp
         src/web_terminal.cpp
         src/interface.cpp
+        src/config_server.cpp
 )
 
 target_link_libraries(

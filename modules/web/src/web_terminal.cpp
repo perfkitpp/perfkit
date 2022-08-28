@@ -69,7 +69,7 @@ class terminal::ws_tty_session : public detail::if_websocket_session
                 self->tty_sockets_.emplace_back(wp);
 
                 string content{self->tty_content_.begin(), self->tty_content_.end()};
-                p_sess->send_text(content);
+                p_sess->send_binary(content);
             }
         });
     }
@@ -166,7 +166,7 @@ void terminal::write(std::string_view str)
         if (string::npos != str.find_last_of('\n')) {
             for (auto wp : tty_sockets_)
                 if (auto p_sess = wp.lock())
-                    p_sess->send_text(tty_tmp_shelf_);
+                    p_sess->send_binary(tty_tmp_shelf_);
 
             erase_if(tty_sockets_, [](auto&& wp) { return wp.expired(); });
             tty_tmp_shelf_.clear();
@@ -189,34 +189,44 @@ void terminal::api_tty_commit_(const crow::request& req, crow::response& rep)
 
 void terminal::ws_on_close_(crow::websocket::connection& c, const string& why)
 {
-    string why_clone;
-    if (why.size() > 2)
-        why_clone.assign(why.begin() + 2, why.end());
+    if (c.userdata()) {
+        stopwatch waiting_timer;
+        auto pp_sess = (detail::websocket_ptr*)c.userdata();
+        CPPH_INFO("* ({}) Closing websocket: {}", (*pp_sess)->remote_ip(), why);
 
-    auto pp_sess = (detail::websocket_ptr*)c.userdata();
-    CPPH_INFO("* ({}) Closing websocket: {}", (*pp_sess)->remote_ip(), why_clone);
+        c.userdata(nullptr);
+        pp_sess->get()->on_close(why);
 
-    c.userdata(nullptr);
-    pp_sess->get()->on_close(why_clone);
+        weak_ptr<void> wait_expire = *pp_sess;
+        delete pp_sess;
 
-    stopwatch waiting_timer;
-    weak_ptr<void> wait_expire = *pp_sess;
-    delete pp_sess;
+        for (poll_timer tim{3s}; not wait_expire.expired();) {
+            if (tim.check_sparse())
+                CPPH_WARN("! Waiting for websocket release for {:.1f} seconds ...", waiting_timer.elapsed().count());
 
-    for (poll_timer tim{3s}; not wait_expire.expired();) {
-        if (tim.check_sparse())
-            CPPH_WARN("! Waiting for websocket release for {:.1f} seconds ...", waiting_timer.elapsed().count());
+            std::this_thread::sleep_for(5ms);
+        }
 
-        std::this_thread::sleep_for(5ms);
+        CPPH_INFO("* WebSocket closed. ({:.3f} seconds)", waiting_timer.elapsed().count());
+    } else {
+        CPPH_INFO("* WebSocket closed without userdata: {}", why);
     }
-
-    CPPH_INFO("* WebSocket closed. ({:.3f} seconds)", waiting_timer.elapsed().count());
 }
 
 bool terminal::ws_tty_accept_(const crow::request& req, void** ppv)
 {
     CPPH_INFO("* Accepting terminal WebSocket from: {}", req.remote_ip_address);
-    auto p_sess = ws_create_shared_<ws_tty_session>();
+    auto p_sess = make_shared<ws_tty_session>();
+    p_sess->owner_ = this;
+    *ppv = new detail::websocket_ptr{p_sess};
+
+    return true;
+}
+
+bool terminal::ws_config_accept_(const crow::request& req, void** ppv)
+{
+    CPPH_INFO("* Accepting config WebSocket from: {}", req.remote_ip_address);
+    auto p_sess = srv_config_->new_session_context();
     *ppv = new detail::websocket_ptr{p_sess};
 
     return true;
@@ -225,8 +235,9 @@ bool terminal::ws_tty_accept_(const crow::request& req, void** ppv)
 void terminal::ws_on_open_(crow::websocket::connection& c)
 {
     auto p = ((detail::websocket_ptr*)c.userdata())->get();
-    CPPH_INFO("* Opening WebSocket: {}", p->remote_ip());
     p->I_register_(&c);
+
+    CPPH_INFO("* Opening WebSocket: {}", p->remote_ip());
     p->on_open();
 }
 

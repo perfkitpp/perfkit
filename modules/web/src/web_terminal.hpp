@@ -39,6 +39,7 @@
 #include <cpph/thread/thread_pool.hxx>
 #include <crow.h>
 
+#include "config_server.hpp"
 #include "interface.hpp"
 #include "perfkit/terminal.h"
 #include "perfkit/web.h"
@@ -48,7 +49,7 @@ struct basic_socket_context {
     virtual ~basic_socket_context() = default;
 };
 
-class terminal : public if_terminal
+class terminal : public if_terminal, public detail::if_web_terminal
 {
     open_info info_;
 
@@ -64,6 +65,9 @@ class terminal : public if_terminal
     circular_queue<char> tty_content_{256 << 10};
     string tty_tmp_shelf_;
 
+    // Sub-services
+    ptr<detail::config_server> srv_config_ = detail::config_server::create(this);
+
    private:
     class ws_tty_session;
 
@@ -75,6 +79,7 @@ class terminal : public if_terminal
    public:
     void push_command(std::string_view command) override { commands_.push(string{command}); }
     void write(std::string_view str) override;
+    auto event_queue() noexcept -> cpph::event_queue& override { return ioc_.queue(); }
 
    protected:
     std::optional<std::string> fetch_command(milliseconds timeout) override { return commands_.try_pop(timeout); }
@@ -89,18 +94,8 @@ class terminal : public if_terminal
     void ws_on_close_(crow::websocket::connection& c, string const& why);
 
     bool ws_tty_accept_(crow::request const&, void**);
-    bool ws_config_accept_(crow::request const&, void**) { return false; }
+    bool ws_config_accept_(crow::request const&, void**);
     bool ws_trace_accept_(crow::request const&, void**) { return false; }
     bool ws_window_accept_(crow::request const&, void**) { return false; }
-
-   private:
-    template <class T, class = enable_if_t<is_base_of_v<detail::if_websocket_session, T>>,
-              typename... Args>
-    auto ws_create_shared_(Args&&... args) -> shared_ptr<T>
-    {
-        auto p_sess = make_shared<T>(std::forward<Args>(args)...);
-        p_sess->owner_ = this;
-        return p_sess;
-    }
 };
 }  // namespace perfkit::web::impl
