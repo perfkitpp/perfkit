@@ -38,14 +38,15 @@ interface ModulePanelProps {
   title?: string;
   iconClass?: string;
   enabled?: boolean;
-  column?: ColProps;
+  colAttr?: any;
 
   children?: React.ReactNode;
 }
 
 export function ModulePanelCol(prop: ModulePanelProps) {
   return (
-    <Col {...prop.column}
+    <Col {...prop.colAttr}
+         className='mb-2 ps-3 pe-0 me-2'
          style={{
            display: prop.enabled == null || prop.enabled ? 'block' : 'none',
            overflowY: 'hidden',
@@ -150,21 +151,21 @@ function App() {
       </div>
       <Container fluid className='mt-3 overflow-scroll flex-grow-1'>
         <Row className='my-1'>
-          <ModulePanelCol column={{xxl: 0}} title='Terminal' iconClass='ri-terminal-line' enabled={enableTerminal}>
+          <ModulePanelCol colAttr={{xxl: true}} title='Terminal' iconClass='ri-terminal-line' enabled={enableTerminal}>
             <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>
           </ModulePanelCol>
-          <ModulePanelCol column={{xxl: 0}} title='Grahpics' iconClass='ri-artboard-line' enabled={enableGraphics}>
+          <ModulePanelCol title='Grahpics' iconClass='ri-artboard-line' enabled={enableGraphics}>
             Graphics window will be placed here.
           </ModulePanelCol>
         </Row>
         <Row className='my-1'>
-          <ModulePanelCol title='Configs' iconClass='ri-list-settings-fill' enabled={enableConfigs}>
+          <ModulePanelCol colAttr={{lg: true}} title='Configs' iconClass='ri-list-settings-fill' enabled={enableConfigs}>
             Configs window will be placed here.
           </ModulePanelCol>
-          <ModulePanelCol title='Traces' iconClass='ri-artboard-line' enabled={enableTraces}>
+          <ModulePanelCol colAttr={{md: true}} title='Traces' iconClass='ri-artboard-line' enabled={enableTraces}>
             Traces window will be placed here.
           </ModulePanelCol>
-          <ModulePanelCol title='System Status' iconClass='ri-checkbox-multiple-blank-fill' enabled={enableSystemInfo}>
+          <ModulePanelCol colAttr={{sm: true}} title='System Status' iconClass='ri-checkbox-multiple-blank-fill' enabled={enableSystemInfo}>
             System Info window will be placed here.
           </ModulePanelCol>
         </Row>
