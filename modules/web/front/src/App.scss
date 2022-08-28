@@ -2,7 +2,6 @@
   height: calc(100vh);
   overflow: hidden;
 
-  background: ghostwhite;
   color: black;
 }
 
@@ -32,3 +31,13 @@
 .PanelRow-monitor {
 }
 
+.ModulePanel {
+  padding: 0.5em;
+  border: 2px solid gray;
+  text-align: left;
+  font-size: 10pt;
+  margin-bottom: 0;
+  border-radius: 1em;
+  background: whitesmoke;
+  height: 100%;
+}

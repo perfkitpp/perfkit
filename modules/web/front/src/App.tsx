@@ -3,7 +3,7 @@ import './App.scss';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'remixicon/fonts/remixicon.css'
 import Terminal from "./comp/Terminal";
-import {Button, Container, Row, Col} from "react-bootstrap";
+import {Button, Container, Row, Col, ColProps} from "react-bootstrap";
 
 export const socketUrlPrefix = process.env.NODE_ENV === "development" ? "ws://localhost:10021" : "ws://" + window.location.host
 
@@ -32,6 +32,40 @@ function ToggleRibbon(prop: ToggleRibbonProps) {
         <span className='ToggleRibbon-text'>{prop.labelText}</span>}
     </Button>
   </div>;
+}
+
+interface ModulePanelProps {
+  title?: string;
+  iconClass?: string;
+  enabled?: boolean;
+  column?: ColProps;
+
+  children?: React.ReactNode;
+}
+
+export function ModulePanelCol(prop: ModulePanelProps) {
+  return (
+    <Col {...prop.column}
+         style={{
+           display: prop.enabled == null || prop.enabled ? 'block' : 'none',
+           overflowY: 'hidden',
+           flexDirection: 'column'
+         }}>
+      <div className='ModulePanel d-flex flex-column'>
+        <div className='text-center flex-grow-0'>
+          <span className={`${prop.iconClass} fw-bold w-100`}
+                style={{fontSize: '1.2em'}}>
+          </span>
+          <span className='ms-1 fw-bold' style={{fontSize: '1.2em'}}>
+          {prop.title}
+          </span>
+        </div>
+        <div style={{flex: '1', height: "100%", overflowY: 'auto'}}>
+          {prop.children}
+        </div>
+      </div>
+    </Col>
+  );
 }
 
 interface EnableStatus {
@@ -67,8 +101,8 @@ function App() {
 
 
   return (
-    <div className='App'>
-      <div className='border-bottom border-2 border-primary bg-primary bg-opacity-10 py-2 px-3'>
+    <div className='App d-flex flex-column'>
+      <div className='border-bottom border-2 border-primary bg-primary bg-opacity-10 py-2 px-3 flex-grow-0'>
         <Row className=''>
           <Col>
             <ToggleRibbon enableState={enableTerminal}
@@ -76,13 +110,6 @@ function App() {
                           iconClass={'ri-terminal-window-fill'}
                           labelText={'Terminal'}
                           toolTip={'Show/Hide terminal'}/>
-          </Col>
-          <Col>
-            <ToggleRibbon enableState={enableSystemInfo}
-                          setEnableState={setEnableSystemInfo}
-                          iconClass={'ri-checkbox-multiple-blank-fill'}
-                          labelText={'System'}
-                          toolTip={'Show/Hide system stat panel'}/>
           </Col>
           <Col>
             <ToggleRibbon enableState={enableGraphics}
@@ -106,6 +133,13 @@ function App() {
                           toolTip={'Show/Hide trace panel'}/>
           </Col>
           <Col>
+            <ToggleRibbon enableState={enableSystemInfo}
+                          setEnableState={setEnableSystemInfo}
+                          iconClass={'ri-checkbox-multiple-blank-fill'}
+                          labelText={'System'}
+                          toolTip={'Show/Hide system stat panel'}/>
+          </Col>
+          <Col>
             <ToggleRibbon enableState={enablePlottings}
                           setEnableState={setEnablePlottings}
                           iconClass={'ri-line-chart-line'}
@@ -114,56 +148,30 @@ function App() {
           </Col>
         </Row>
       </div>
-      <Container fluid className='mt-3 overflow-scroll' style={{maxHeight: 'calc(100vh - 100px)'}}>
+      <Container fluid className='mt-3 overflow-scroll flex-grow-1'>
         <Row className='my-1'>
-          <Col xxl
-               style={{
-                 display: enableTerminal ? 'block' : 'none'
-               }}>
+          <ModulePanelCol column={{xxl: 0}} title='Terminal' iconClass='ri-terminal-line' enabled={enableTerminal}>
             <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>
-          </Col>
-          <Col xxl className='border border-primary'
-               style={{
-                 display: enableGraphics ? 'block' : 'none',
-                 minHeight: '30vh'
-               }}>
+          </ModulePanelCol>
+          <ModulePanelCol column={{xxl: 0}} title='Grahpics' iconClass='ri-artboard-line' enabled={enableGraphics}>
             Graphics window will be placed here.
-          </Col>
+          </ModulePanelCol>
         </Row>
         <Row className='my-1'>
-          <Col lg
-               className='border border-primary'
-               style={{
-                 display: enableConfigs ? 'block' : 'none',
-                 minHeight: '20vh'
-               }}>
+          <ModulePanelCol title='Configs' iconClass='ri-list-settings-fill' enabled={enableConfigs}>
             Configs window will be placed here.
-          </Col>
-          <Col md
-               className='border border-primary'
-               style={{
-                 display: enableTraces ? 'block' : 'none',
-                 minHeight: '20vh'
-               }}>
+          </ModulePanelCol>
+          <ModulePanelCol title='Traces' iconClass='ri-artboard-line' enabled={enableTraces}>
             Traces window will be placed here.
-          </Col>
-          <Col className='border border-2 border-primary'
-               md
-               style={{
-                 display: enableSystemInfo ? 'block' : 'none',
-                 minHeight: '20vh'
-               }}>
-            System Information will be placed here.
-          </Col>
+          </ModulePanelCol>
+          <ModulePanelCol title='System Status' iconClass='ri-checkbox-multiple-blank-fill' enabled={enableSystemInfo}>
+            System Info window will be placed here.
+          </ModulePanelCol>
         </Row>
         <Row className='my-1'>
-          <Col xxl className='border border-primary'
-               style={{
-                 display: enablePlottings ? 'block' : 'none',
-                 minHeight: '20vh'
-               }}>
-            Plots window will be placed here.
-          </Col>
+          <ModulePanelCol title='Plotting' iconClass='ri-line-chart-line' enabled={enablePlottings}>
+            Plotting window will be placed here.
+          </ModulePanelCol>
         </Row>
       </Container>
     </div>
