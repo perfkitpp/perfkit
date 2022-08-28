@@ -5,7 +5,7 @@ import 'remixicon/fonts/remixicon.css'
 import Terminal from "./comp/Terminal";
 import {Button, Container, Row, Col, ColProps} from "react-bootstrap";
 
-export const socketUrlPrefix = process.env.NODE_ENV === "development" ? "ws://localhost:10021" : "ws://" + window.location.host
+export const socketUrlPrefix = process.env.NODE_ENV === "development" ? "ws://localhost:15572" : "ws://" + window.location.host
 
 interface ToggleRibbonProps {
   enableState: boolean

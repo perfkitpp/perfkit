@@ -22,9 +22,8 @@ export default function Terminal(props: { socketUrl: string }) {
 
       (elem.lastElementChild as HTMLSpanElement).innerText += payload;
     } else {
-      if (elem.lastElementChild != null && (elem.lastElementChild instanceof HTMLSpanElement)) {
-        elem.innerHTML += `<br/>`
-      }
+      // if (elem.lastElementChild != null && (elem.lastElementChild instanceof HTMLSpanElement)) {
+      // }
       payload = payload.replace('\n', '<br/>');
       let docstr = `<div class="">`;
       docstr +=

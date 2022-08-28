@@ -60,6 +60,17 @@ class terminal::ws_tty_session : public detail::if_websocket_session
     {
         owner_->push_command(message);
     }
+
+    void on_open() noexcept override
+    {
+        owner_->ioc_.post([this, self = owner_, wp = weak_from_this()] {
+            if (auto p_sess = wp.lock()) {
+                self->tty_sockets_.emplace_back(wp);
+                string content{self->tty_content_.begin(), self->tty_content_.end()};
+                p_sess->send_text(content);
+            }
+        });
+    }
 };
 
 terminal::terminal(open_info info) noexcept : info_(std::move(info))
@@ -129,20 +140,36 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
 
     // Redirect input
     CPPH_INFO("* Redirecting terminal output ...");
+    backend::input_redirect([this](char const* s, size_t n) { this->write({s, n}); });
 }
 
 terminal::~terminal()
 {
+    backend::input_rollback();
     app_.stop();
     app_worker_.join();
 }
 
 void terminal::write(std::string_view str)
 {
-    auto payload = ioc_.queue().allocate_temporary_payload(str.size());
-    copy(str, payload.get());
+    auto data = ioc_.queue().allocate_temporary_payload(str.size());
+    copy(str, data.get());
 
-    // TODO: Payload send operation
+    ioc_.post([this, payload = move(data), len = str.size()] {
+        auto str = string_view{payload.get(), len};
+        tty_content_.enqueue_n(payload.get(), len);
+        tty_tmp_shelf_.append(str);
+
+        // Check if newline character is included
+        if (string::npos != str.find_last_of('\n')) {
+            for (auto wp : tty_sockets_)
+                if (auto p_sess = wp.lock())
+                    p_sess->send_text(tty_tmp_shelf_);
+
+            erase_if(tty_sockets_, [](auto&& wp) { return wp.expired(); });
+            tty_tmp_shelf_.clear();
+        }
+    });
 }
 
 void terminal::I_launch()
@@ -183,7 +210,9 @@ void terminal::ws_on_close_(crow::websocket::connection& c, const string& why)
 bool terminal::ws_tty_accept_(const crow::request& req, void** ppv)
 {
     CPPH_INFO("* Accepting terminal WebSocket from: {}", req.remote_ip_address);
-    *ppv = new detail::websocket_ptr{[&, p = make_shared<ws_tty_session>()] { return p->owner_ = this, p; }()};
+    auto p_sess = ws_create_shared_<ws_tty_session>();
+    *ppv = new detail::websocket_ptr{p_sess};
+
     return true;
 }
 

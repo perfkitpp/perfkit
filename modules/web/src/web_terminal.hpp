@@ -59,8 +59,10 @@ class terminal : public if_terminal
     string loader_path_buf_;
 
     event_queue_worker ioc_{64 << 10};
+
     vector<detail::websocket_weak_ptr> tty_sockets_;
     circular_queue<char> tty_content_{256 << 10};
+    string tty_tmp_shelf_;
 
    private:
     class ws_tty_session;
@@ -91,5 +93,14 @@ class terminal : public if_terminal
     bool ws_trace_accept_(crow::request const&, void**) { return false; }
     bool ws_window_accept_(crow::request const&, void**) { return false; }
 
+   private:
+    template <class T, class = enable_if_t<is_base_of_v<detail::if_websocket_session, T>>,
+              typename... Args>
+    auto ws_create_shared_(Args&&... args) -> shared_ptr<T>
+    {
+        auto p_sess = make_shared<T>(std::forward<Args>(args)...);
+        p_sess->owner_ = this;
+        return p_sess;
+    }
 };
 }  // namespace perfkit::web::impl

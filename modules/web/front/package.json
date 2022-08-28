@@ -20,7 +20,7 @@
     "typescript": "^4.7.4",
     "web-vitals": "^2.1.4"
   },
-  "proxy": "http://localhost:10021",
+  "proxy": "http://localhost:15572",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",

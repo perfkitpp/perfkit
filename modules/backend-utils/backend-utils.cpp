@@ -165,11 +165,11 @@ static struct redirection_context_t {
 
                         int src_fd[] = {_fd_org_stdout, _fd_org_stderr};
                         for (auto [pfd, fd] : perfkit::zip(pollfds, src_fd)) {
-                            if (not(pfd->revents & POLLIN))
+                            if (not(pfd.revents & POLLIN))
                                 continue;
 
-                            auto n_read = ::read(pfd->fd, buffer, std::size(buffer));
-                            auto n_write = ::write(*fd, buffer, n_read);
+                            auto n_read = ::read(pfd.fd, buffer, std::size(buffer));
+                            auto n_write = ::write(fd, buffer, n_read);
 
                             fn(buffer, n_read);
                         }
