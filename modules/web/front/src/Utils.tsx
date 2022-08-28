@@ -49,7 +49,10 @@ export function useWebSocket(url: string, handler: {
     }
 
     const newSock = new WebSocket(url);
-    setSock(newSock);
+    setSock(prevSock => {
+      prevSock?.close();
+      return newSock
+    });
 
     newSock.onclose = ev => {
       AppendTextToTerminal(
