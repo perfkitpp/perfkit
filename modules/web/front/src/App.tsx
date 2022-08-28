@@ -4,8 +4,11 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'remixicon/fonts/remixicon.css'
 import Terminal from "./comp/Terminal";
 import {Button, Container, Row, Col, ColProps} from "react-bootstrap";
+import ConfigPanel from "./comp/ConfigPanel";
 
-export const socketUrlPrefix = process.env.NODE_ENV === "development" ? "ws://localhost:15572" : "ws://" + window.location.host
+export const socketUrlPrefix = process.env.NODE_ENV === "development"
+  ? `ws://${window.location.hostname}:15572`
+  : "ws://" + window.location.host
 
 interface ToggleRibbonProps {
   enableState: boolean
@@ -159,13 +162,15 @@ function App() {
           </ModulePanelCol>
         </Row>
         <Row className='my-1'>
-          <ModulePanelCol colAttr={{lg: true}} title='Configs' iconClass='ri-list-settings-fill' enabled={enableConfigs}>
-            Configs window will be placed here.
+          <ModulePanelCol colAttr={{lg: true}} title='Configs' iconClass='ri-list-settings-fill'
+                          enabled={enableConfigs}>
+            <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'}/>
           </ModulePanelCol>
           <ModulePanelCol colAttr={{md: true}} title='Traces' iconClass='ri-artboard-line' enabled={enableTraces}>
             Traces window will be placed here.
           </ModulePanelCol>
-          <ModulePanelCol colAttr={{sm: true}} title='System Status' iconClass='ri-checkbox-multiple-blank-fill' enabled={enableSystemInfo}>
+          <ModulePanelCol colAttr={{sm: true}} title='System Status' iconClass='ri-checkbox-multiple-blank-fill'
+                          enabled={enableSystemInfo}>
             System Info window will be placed here.
           </ModulePanelCol>
         </Row>

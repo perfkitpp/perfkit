@@ -1,4 +1,5 @@
 import {useState, useEffect, useRef} from 'react';
+import {AppendTextToTerminal} from "./comp/Terminal";
 
 export function useInterval(callback: any, delay: number) {
   const savedCallback = useRef(null as any); // 최근에 들어온 callback을 저장할 ref를 하나 만든다.
@@ -29,7 +30,52 @@ export function useForceUpdate() {
 
 // Generate unique ID
 let idGenVar = 0;
+
 export function GenerateUniqueID(prefix: string) {
   return `${prefix}${++idGenVar}`;
+}
+
+export function useWebSocket(url: string, handler: {
+  onerror?: (ev: Event) => void,
+  onmessage?: (ev: MessageEvent) => void,
+  onclose?: (ev: CloseEvent) => void,
+  onopen?: (ev: Event) => void,
+}) {
+  const [sock, setSock] = useState(null as WebSocket | null);
+
+  useEffect(() => {
+    if (sock != null) {
+      return;
+    }
+
+    const newSock = new WebSocket(url);
+    setSock(newSock);
+
+    newSock.onclose = ev => {
+      AppendTextToTerminal(
+        '* ' + newSock.url + ') Disconnected from server: ' + ev.reason,
+        'bg-warning bg-opacity-25');
+      handler.onclose && handler.onclose(ev);
+      setSock(null);
+    };
+
+    newSock.onopen = ev => {
+      AppendTextToTerminal(
+        '* ' + newSock.url + ') Connection established.',
+        'bg-success bg-opacity-25');
+      handler.onopen && handler.onopen(ev);
+    }
+
+    newSock.onerror = ev => {
+      AppendTextToTerminal(
+        '* ' + newSock.url + ') Error!',
+        'bg-danger bg-opacity-25');
+      handler.onerror && handler.onerror(ev);
+    };
+
+    newSock.onmessage = handler.onmessage ?? null;
+  }, [url, sock]);
+
+  return sock;
 }
 
