@@ -48,10 +48,11 @@ interface ModulePanelProps {
 
 export function ModulePanelCol(prop: ModulePanelProps) {
   return (
+    !prop.enabled ? <div/> :
     <Col {...prop.colAttr}
          className='mb-2 ps-3 pe-0 me-2'
          style={{
-           display: prop.enabled == null || prop.enabled ? 'block' : 'none',
+           // display: prop.enabled ? 'block' : 'none',
            overflowY: 'hidden',
            flexDirection: 'column'
          }}>
@@ -102,7 +103,6 @@ function App() {
     obj.plottings = enablePlottings;
     localStorage.setItem('PerfkitWeb/EnableStatus', JSON.stringify(obj));
   }, [enableTerminal, enableSystemInfo, enableGraphics, enableConfigs, enableTraces, enablePlottings]);
-
 
   return (
     <div className='App d-flex flex-column'>
@@ -166,7 +166,7 @@ function App() {
                           enabled={enableConfigs}>
             <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'}/>
           </ModulePanelCol>
-          <ModulePanelCol colAttr={{md: true}} title='Traces' iconClass='ri-artboard-line' enabled={enableTraces}>
+          <ModulePanelCol colAttr={{md: true}} title='Traces' iconClass='ri-dashboard-2-line' enabled={enableTraces}>
             Traces window will be placed here.
           </ModulePanelCol>
           <ModulePanelCol colAttr={{sm: true}} title='System Status' iconClass='ri-checkbox-multiple-blank-fill'

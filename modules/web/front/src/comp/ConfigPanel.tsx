@@ -3,6 +3,7 @@ import {useForceUpdate, useWebSocket} from "../Utils";
 import {Spinner} from "react-bootstrap";
 import {AppendTextToTerminal} from "./Terminal";
 import * as View from "./ConfigPanel.UI";
+import {CategoryVisualProps, DefaultVisProp} from "./ConfigPanel.UI";
 
 export interface ElemDesc {
   elemID: number;
@@ -20,12 +21,13 @@ export interface ElemContext {
   elemDesc: ElemDesc;
   value: any;
   updateFence: number;
-  cachedRendering: ReactNode;
   triggerUpdate: () => void;
 }
 
 export interface CategoryDesc {
+  name: string;
   children: (number | CategoryDesc)[];
+  visProps: CategoryVisualProps
 }
 
 export interface ElemUpdateList {
@@ -75,26 +77,49 @@ interface MethodDeleteRoot {
 function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
   for (const i in elems) {
     const elem = elems[i];
+
+    // Insert to 'all' array
     const ctx = root.all[elem.elemID] = {
       value: elem.initValue,
-      cachedRendering: View.CreateNodeLabel(elem),
       elemDesc: elem,
       triggerUpdate: {} as () => void,
       updateFence: 0
     };
 
+    //
     const setTriggerUpdate = (fn: () => void) => (ctx.triggerUpdate = fn);
     let currentCategory = root.root;
-    // TODO: iterate path, find its suitable category.
+
+    // iterate path elements, find suitable category.
+    for (const str of elem.path) {
+      let found = false;
+
+      for (const child of currentCategory.children) {
+        if (typeof child === "number")
+          continue;
+
+        if (str === child.name) {
+          found = true;
+          currentCategory = child;
+          break;
+        }
+      }
+
+      if (!found) {
+        const children = currentCategory.children;
+        currentCategory = {
+          name: str,
+          children: [],
+          visProps: DefaultVisProp
+        };
+        children.push(currentCategory);
+      }
+    }
+
+    // Now this handle points terminal node, thus push id here.
+    currentCategory.children.push(elem.elemID);
   }
 }
-
-function buildRootTree(root: RootContext) {
-  // TODO: Iterate categories recursively, build root tree.
-
-  return <div></div>;
-}
-
 
 // Overall control flow ...
 // 1. 'new-root': Create new root from corresponding entity of RootContext
@@ -121,7 +146,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
         msg.params.forEach(value => {
           roots[value] = {
             all: {},
-            root: {children: []}
+            root: {name: value, children: [], visProps: DefaultVisProp}
           };
         })
         forceUpdate();
@@ -148,19 +173,18 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   if (cfgSock?.readyState != WebSocket.OPEN)
     return (<div className='text-center p-3 text-primary'><Spinner animation='border'></Spinner></div>);
 
-  console.log("Rendering ROOT FRAMES ...");
+  const allRootFrames = Object.keys(rootTablesRef.current).sort().map(
+    key => <View.RootNode key={key} name={key} ctx={rootTablesRef.current[key]}/>
+  );
 
-  const allRootFrames = Object.keys(rootTablesRef.current).map(
-    key => {
-      const rootCtx = rootTablesRef.current[key];
-      const content = buildRootTree(rootCtx);
-      return <View.RootFrame key={key}>
-        {content}
-      </View.RootFrame>
-    });
-
+  // TODO: Implement search using 'https://github.com/farzher/fuzzysort'
   return (
-    <div>
+    <div style={{
+      maxHeight: '70vh',
+      overflowY: 'auto',
+      overflowX: 'hidden'
+    }}>
+      <hr/>
       {allRootFrames}
     </div>
   )
