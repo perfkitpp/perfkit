@@ -115,7 +115,7 @@ class log_level_control : public enable_shared_from_this<log_level_control>
         reload_all_();
 
         // Register event listener
-        cfg_->on_update() << weak_from_this() << bind(&S::tick_, this);
+        cfg_->on_update_notify() << weak_from_this() << bind(&S::tick_, this);
     }
 
    public:

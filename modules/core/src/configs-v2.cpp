@@ -72,7 +72,7 @@ void verify_flag_string(string_view str)
 
 config_registry::config_registry(ctor_constraint_t, std::string name, bool is_global)
         : _self(make_unique<backend_t>(this, move(name), is_global)),
-          on_update(&_self->evt_update_listener)
+          on_update_notify(&_self->evt_update_listener)
 {
 }
 

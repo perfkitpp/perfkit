@@ -297,7 +297,7 @@ class config_registry : public std::enable_shared_from_this<config_registry>
     config_registry_id_t id() const noexcept;
 
     //! Event listener
-    event<config_registry*>::frontend const on_update;
+    event<config_registry*>::frontend const on_update_notify;
 
    public:
     bool _internal_commit_value_user(config_base* ref, refl::shared_object_ptr);
