@@ -24,6 +24,7 @@ function FullValueEdit() {
 function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string }) {
   const {elem, prefix} = prop;
   const [inlineEditMode, setInlineEditMode] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const forceUpdate = useForceUpdate();
 
   useEffect(() => {
@@ -109,26 +110,29 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
   }
 
 
-  return <div className={'h6 px-2' + (elem.editted ? ' bg-warning bg-opacity-25 rounded-3' : '')}>
+  return <div className={'h6 px-2 py-0 my-1' + (elem.editted ? ' bg-warning bg-opacity-25 rounded-3' : '')}
+              onMouseEnter={() => setIsHovering(true)}
+              onMouseLeave={() => setIsHovering(false)}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
-      <span className={'text-start btn ' }
-            style={{flexGrow: 10}}>
+      <span className={'text-start btn '}
+            style={{flexGrow: 0}}>
         {(elem.editted ? '*' : '')}
-        {prefix && <span className='fw-bold'>{prefix} /</span>}
+        {prefix && <span className='fw-bold'>{prefix} / </span>}
         {prop.elem.props.name}
       </span>
+      <hr style={{flexGrow: 2, height: isHovering ? 4 : 1, background: titleColor}}/>
       {inlineEditMode
         ? <span className='flex-grow-1'>
           <InlineEdit/>
         </span>
         : typeof elem.value === "boolean"
-          ? <span className='btn ps-5 text-primary' onClick={onClick}>
+          ? <span className='btn px-3 text-primary' onClick={onClick}>
               {elem.valueLocal ? <i className='ri-eye-fill'/> : <i className='ri-eye-close-fill'/>}
             </span>
-          : <span className='text-end overflow-hidden btn flex-grow-1'
+          : <span className='text-end overflow-hidden btn flex-grow-0'
                   title={rawText}
-                  style={{color: titleColor, minWidth: '8em'}}
+                  style={{color: titleColor}}
                   onClick={onClick}>
               {rawText}
             </span>
@@ -158,13 +162,13 @@ function CategoryNode(prop: {
   }
 
   return <div>
-    <h6 className='d-flex flex-row align-items-center text-dark fw-bold btn btn-outline-secondary'
+    <h6 className='d-flex flex-row align-items-center text-dark fw-bold py-0'
         onClick={toggleCollapse}>
-      <i className={folderIconClass + ' pe-2'} style={cssIconStyle}/>
+      <i className={folderIconClass + ' px-2 '} style={cssIconStyle}/>
       {prefix && <span>sss?</span>}
-      <span>{self.name}</span>
+      <span className='btn flex-grow-1 text-start my-0' style={{color: "gray"}}>{self.name}</span>
     </h6>
-    <div className={'ms-2 my-3 ps-3'} style={{borderLeft: 'solid 1px lightgray'}}>
+    <div className={'ms-2 mt-1 ps-3'} style={{borderLeft: 'solid 1px lightgray'}}>
       {!collapsed && self.children.map(
         child => typeof child === "number"
           ? <ValueLabel key={child} elem={root.all[child]} rootName={root.root.name}/>
