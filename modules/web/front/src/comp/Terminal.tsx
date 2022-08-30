@@ -9,6 +9,7 @@ export let AppendTextToTerminal: (payload: string, className?: string) => void
 
 export default function Terminal(props: { socketUrl: string }) {
   const scrollLock = useRef(false);
+  const [textWrap, setTextWrap] = useState(false);
   const divRef = useRef(null as any as HTMLDivElement);
   const forceUpdate = useForceUpdate();
 
@@ -77,34 +78,46 @@ export default function Terminal(props: { socketUrl: string }) {
     <div
       className='mx-2 mt-0 pb-2 px-1'
       style={{display: "flex", height: '100%', flexDirection: 'column', fontFamily: 'Lucida Console, monospace'}}>
-      <p className='border border-secondary border-2 rounded-3 my-2 p-2 overflow-auto bg-white h-100'
-         ref={divRef}
-         style={{}}></p>
-      <div className='px-0 mb-1 flex-grow-0 rounded-3 px-2 py-2 bg-opacity-10 bg-warning'>
+      <p
+        className={'border border-secondary flex-grow-1 border-2 rounded-3 my-2 p-2 overflow-auto bg-white ' + (textWrap ? '' : 'text-nowrap')}
+        ref={divRef}
+        style={{}}/>
+      <div className='px-0 mb-1 flex-grow-0 rounded-3 px-2 py-2 bg-opacity-10 bg-secondary border border-secondary'>
         <div className='d-flex flex-row m-0'>
-          <button className={'btn p-0 px-2 m-0 ' + (scrollLock.current ? 'btn-warning border-dark' : '')}
-                  onClick={ev => {
-                    scrollLock.current = !scrollLock.current;
-                    forceUpdate()
-                  }}>
-            Scroll Lock
-          </button>
+          <i
+            className={'btn p-0 px-3 mx-1 '
+              + (scrollLock.current
+                ? 'ri-lock-fill btn-danger'
+                : 'ri-lock-unlock-line')}
+            title="Scroll Lock"
+            onClick={ev => {
+              scrollLock.current = !scrollLock.current;
+              forceUpdate()
+            }}/>
+          <i className={'btn p-0 px-3 mx-1 '
+            + (textWrap
+              ? 'ri-text-wrap btn-success'
+              : 'ri-text-wrap')}
+             title="Text Wrap"
+             onClick={() => setTextWrap(v => !v)}/>
           <span className='flex-grow-1'/>
-          <div className='btn btn-danger px-2 py-0 ms-2'
-               onClick={() => divRef.current.innerHTML = ""}>
-            clear contents
-          </div>
+          <div className='btn btn-danger px-5 py-0 ms-2 ri-delete-bin-5-line'
+               onClick={() => divRef.current.innerHTML = ""}
+               title='Clear output'
+          />
         </div>
-      </div>
-      <div className=''>
-        <form className='d-flex pt-1 mb-1 flex-row' action='javascript:'
-              onSubmit={ev => onSubmitCommand(ev)}>
-          <span className='input-group-text me-1'>@</span>
-          <input type='text' className='form-text w-100 mt-0 ps-2' name='command_content'
-                 placeholder={'(enter command here)'}
-                 style={{background: ttySock != null ? 'white' : '#c90000'}}/>
-          <Button type='submit' className='ms-2 px-4' variant={'outline-primary'}>Send</Button>
-        </form>
+        <hr className='m-1'/>
+        <div className='flex-grow-0'>
+          <form className='d-flex pt-1 mb-1 flex-row' action='javascript:'
+                onSubmit={ev => onSubmitCommand(ev)}>
+            <input type='text' className='form-text w-100 mt-0 ms-2 me-1 ps-2 rounded-3' name='command_content'
+                   placeholder={'(enter command here)'}
+                   style={{background: ttySock != null ? 'white' : '#c90000'}}/>
+            <Button type='submit' className='ri-send-plane-fill ms-2 px-4'
+                    title='Send command'
+                    variant={'outline-primary'}/>
+          </form>
+        </div>
       </div>
     </div>);
 }

@@ -137,9 +137,9 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
           ? <span className='btn px-3 text-primary' onClick={onClick}>
               {elem.valueLocal ? <i className='ri-eye-fill'/> : <i className='ri-eye-close-fill'/>}
             </span>
-          : <span className='text-end overflow-hidden btn flex-grow-0'
+          : <span className='text-end overflow-hidden btn flex-grow-0 text-nowrap'
                   title={rawText}
-                  style={{color: titleColor}}
+                  style={{color: titleColor, textOverflow: 'ellipsis'}}
                   onClick={onClick}>
               {rawText}
             </span>

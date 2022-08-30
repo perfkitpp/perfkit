@@ -54,7 +54,7 @@ export function ModulePanelCol(prop: ModulePanelProps) {
            // display: prop.enabled ? 'block' : 'none',
            overflowY: 'hidden',
            flexDirection: 'column',
-           maxHeight: '50vh',
+           maxHeight: '100%',
            ...prop.styleVars
          }}>
       <div className='ModulePanel d-flex flex-column'>
@@ -154,7 +154,7 @@ function App() {
         </Row>
       </div>
       <Container fluid className='mt-0 overflow-auto flex-grow-1'>
-        <Row className='my-1'>
+        <Row className='my-1 h-100'>
           {enableTerminal &&
               <ModulePanelCol colAttr={{xxl: true}} styleVars={{minWidth: 900}}
                               title='Terminal' iconClass='ri-terminal-line'>
