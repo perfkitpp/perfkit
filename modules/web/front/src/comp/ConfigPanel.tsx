@@ -237,25 +237,26 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   // TODO: Implement search using 'https://github.com/farzher/fuzzysort'
   return (
     <ConfigPanelControlContext.Provider value={panelManipContext}>
-      <div style={{display: 'flex', flexDirection: 'column'}}>
-      <span className='d-flex mt-2 flex-row-reverse align-items-center'>
-        <span className='w-25 d-flex flex-row-reverse'>
-          <button
-            className={'btn ri-mail-send-fill p-1 m-0 me-1 flex-grow-1 '
-              + (isAnyItemDirty ? 'btn-primary' : 'btn-outline-primary')}
-            title='Commit Changes'
-            disabled={!isAnyItemDirty}
-            onClick={commitAllChanges}/>
-          <i className='btn ri-arrow-go-back-fill p-1 px-2 m-0 me-1 text-danger'
-             title='Discard Changes' onClick={discardAllChanges} hidden={!isAnyItemDirty}/>
-          <i className={'btn ri-refresh-line p-1 px-2 m-0 me-1 ' + (!updateImmediate ? 'text-primary' : 'btn-primary')}
-             title='Apply changes immediately' onClick={() => setUpdateImmediate(v => !v)}/>
+      <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
+        <span className='d-flex mt-2 flex-row-reverse align-items-center'>
+          <span className='w-25 d-flex flex-row-reverse'>
+            <button
+              className={'btn ri-mail-send-fill p-1 m-0 me-1 flex-grow-1 '
+                + (isAnyItemDirty ? 'btn-primary' : 'btn-outline-primary')}
+              title='Commit Changes'
+              disabled={!isAnyItemDirty}
+              onClick={commitAllChanges}/>
+            <i className='btn ri-arrow-go-back-fill p-1 px-2 m-0 me-1 text-danger'
+               title='Discard Changes' onClick={discardAllChanges} hidden={!isAnyItemDirty}/>
+            <i
+              className={'btn ri-refresh-line p-1 px-2 m-0 me-1 ' + (!updateImmediate ? 'text-primary' : 'btn-primary')}
+              title='Apply changes immediately' onClick={() => setUpdateImmediate(v => !v)}/>
+          </span>
+          <i className='btn ri-line-height p-1 px-2 m-0 me-1' title='Expand All' onClick={() => setCollapseAll(false)}/>
+          <i className='btn ri-align-vertically p-1 px-2 m-0 me-1' title='Collapse All'
+             onClick={() => setCollapseAll(true)}/>
+          <span className='flex-grow-1 ms-2 p-1 '>Search Text Here</span>
         </span>
-        <i className='btn ri-line-height p-1 px-2 m-0 me-1' title='Expand All' onClick={() => setCollapseAll(false)}/>
-        <i className='btn ri-align-vertically p-1 px-2 m-0 me-1' title='Collapse All'
-           onClick={() => setCollapseAll(true)}/>
-        <span className='flex-grow-1 ms-2 p-1 border-danger border'>Search Text Here</span>
-      </span>
         <hr className='my-1 mx-1'/>
         <div style={{
           overflowY: 'scroll',
