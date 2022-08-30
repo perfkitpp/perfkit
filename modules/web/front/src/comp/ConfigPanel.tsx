@@ -163,7 +163,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
       rootTablesRef.current = {};
       forceUpdate();
     }
-  });
+  }, []);
 
   async function onMessage(ev: MessageEvent) {
     const roots = rootTablesRef.current;
@@ -237,7 +237,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   // TODO: Implement search using 'https://github.com/farzher/fuzzysort'
   return (
     <ConfigPanelControlContext.Provider value={panelManipContext}>
-      <div style={{height: '800px', display: 'flex', flexDirection: 'column'}}>
+      <div style={{display: 'flex', flexDirection: 'column'}}>
       <span className='d-flex mt-2 flex-row-reverse align-items-center'>
         <span className='w-25 d-flex flex-row-reverse'>
           <button

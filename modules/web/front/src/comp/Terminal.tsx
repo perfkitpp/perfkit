@@ -8,7 +8,7 @@ export let AppendTextToTerminal: (payload: string, className?: string) => void
 };
 
 export default function Terminal(props: { socketUrl: string }) {
-  const [scrollLock, setScrollLock] = useState(false);
+  const scrollLock = useRef(false);
   const divRef = useRef(null as any as HTMLDivElement);
   const forceUpdate = useForceUpdate();
 
@@ -19,14 +19,15 @@ export default function Terminal(props: { socketUrl: string }) {
     onopen: ev => {
       forceUpdate();
     }
-  });
+  }, []);
 
   function appendText(payload: string, className: null | string = null) {
-    let elem = divRef.current;
+    const elem = divRef.current;
     if (elem == null) {
       return;
     }
 
+    const srcScrollVal = elem.scrollTop;
     if (className == null) {
       if (elem.lastElementChild == null || !(elem.lastElementChild instanceof HTMLSpanElement)) {
         elem.innerHTML += `<span></span>`
@@ -47,7 +48,8 @@ export default function Terminal(props: { socketUrl: string }) {
       elem.innerHTML += docstr;
     }
 
-    if (!scrollLock) {
+    if (!scrollLock.current) {
+      console.log('value chgange!!')
       elem.scrollTop = elem.scrollHeight;
     }
   }
@@ -58,7 +60,7 @@ export default function Terminal(props: { socketUrl: string }) {
       AppendTextToTerminal = () => {
       };
     }
-  }, []);
+  }, [scrollLock.current]);
 
   async function onSubmitCommand(event: React.FormEvent<HTMLFormElement>) {
     ttySock?.send((event.target as any).command_content.value);
@@ -69,19 +71,26 @@ export default function Terminal(props: { socketUrl: string }) {
   if (ttySock?.readyState != WebSocket.OPEN)
     return (<div className='text-center p-3 text-primary'><Spinner animation='border'></Spinner></div>);
 
+  console.log('Redraw?')
+
   return (
-    <div style={{display: "flex", height: '100%', flexDirection: 'column', fontFamily: 'Lucida Console, monospace'}}>
-      <div className='p-2' style={{flex: '1', flexBasis: '200px', maxHeight: '50vh'}}>
-        <p className='border border-secondary border-2 rounded-3 p-2 overflow-auto mb-0 bg-white h-100'
-           ref={divRef}
-           style={{}}></p>
-      </div>
-      <div className='px-0 mb-2 flex-grow-0'>
+    <div
+      className='mx-2 mt-0 pb-2 px-1'
+      style={{display: "flex", height: '100%', flexDirection: 'column', fontFamily: 'Lucida Console, monospace'}}>
+      <p className='border border-secondary border-2 rounded-3 my-2 p-2 overflow-auto bg-white h-100'
+         ref={divRef}
+         style={{}}></p>
+      <div className='px-0 mb-1 flex-grow-0 rounded-3 px-2 py-2 bg-opacity-10 bg-warning'>
         <div className='d-flex flex-row m-0'>
-          <input className='' type={"checkbox"} name={'scroll_lock'}
-                 onClick={ev => setScrollLock((ev.target as any).checked)}/>
-          <label className='pt-1 ms-2' htmlFor='scroll_lock'>Scroll Lock</label>
-          <div className='btn btn-outline-danger px-2 py-0 ms-2'
+          <button className={'btn p-0 px-2 m-0 ' + (scrollLock.current ? 'btn-warning border-dark' : '')}
+                  onClick={ev => {
+                    scrollLock.current = !scrollLock.current;
+                    forceUpdate()
+                  }}>
+            Scroll Lock
+          </button>
+          <span className='flex-grow-1'/>
+          <div className='btn btn-danger px-2 py-0 ms-2'
                onClick={() => divRef.current.innerHTML = ""}>
             clear contents
           </div>

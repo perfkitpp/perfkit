@@ -42,7 +42,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
         return ["ri-checkbox-line", '#0184cb'];
       case "number":
       case "bigint":
-        return ["ri-ruler-line", '#109675'];
+        return ["ri-hashtag", '#109675'];
       case "string":
         return ["ri-text", '#ea6a21'];
       default:

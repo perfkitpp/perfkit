@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef} from 'react';
+import {useState, useEffect, useRef, DependencyList} from 'react';
 import {AppendTextToTerminal} from "./comp/Terminal";
 
 export function useInterval(callback: any, delay: number) {
@@ -40,7 +40,7 @@ export function useWebSocket(url: string, handler: {
   onmessage?: (ev: MessageEvent) => void,
   onclose?: (ev: CloseEvent) => void,
   onopen?: (ev: Event) => void,
-}) {
+}, deps: DependencyList[]) {
   const [sock, setSock] = useState(null as WebSocket | null);
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export function useWebSocket(url: string, handler: {
     };
 
     newSock.onmessage = handler.onmessage ?? null;
-  }, [url, sock]);
+  }, [url, sock, ...deps]);
 
   return sock;
 }
