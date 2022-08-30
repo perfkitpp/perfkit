@@ -277,11 +277,14 @@ class config_server_impl : public config_server
             << key << "description" << cfg->description()
             << key << "name" << cfg->name()
             << key << "path" << hierarchy
-            << key << "initValue" << cfg->default_value().view()
             << key << "minValue" << write_or(cfg->attribute()->min.view(), nullptr)
             << key << "maxValue" << write_or(cfg->attribute()->max.view(), nullptr)
             << key << "oneOf" << write_or(cfg->attribute()->one_of.view(), nullptr)
             << key << "editMode" << write_or(cfg->attribute()->one_of.view(), nullptr);
+
+        rg->backend()->bk_access_value_shared(cfg, [&](auto& data) {
+            *wr << key << "initValue" << data.view();
+        });
         *wr << pop_object;
     }
 

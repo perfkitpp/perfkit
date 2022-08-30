@@ -57,6 +57,16 @@ struct test_config_structure {
     CPPH_REFL_DEFINE_OBJECT_inline_simple(x, y, z, flag, path, nested);
 };
 
+PERFKIT_CFG_CLASS(test_subclass_mono)
+{
+    PERFKIT_CFG_CLASS(test_subclass_mono_2)
+    {
+        PERFKIT_CFG(some_variable, false);
+    };
+
+    PERFKIT_CFG_SUBSET(test_subclass_mono_2, some_mono_subclass);
+};
+
 PERFKIT_CFG_CLASS(test_subclass)
 {
     PERFKIT_CFG(my_var_1, 0);
@@ -73,6 +83,7 @@ PERFKIT_CFG_CLASS(test_subclass)
     };
 
     PERFKIT_CFG_SUBSET(test_subclass_2, my_subclass_1);
+    PERFKIT_CFG_SUBSET(test_subclass_mono, my_subclass_2);
 };
 
 PERFKIT_T_CATEGORY(
@@ -141,7 +152,11 @@ PERFKIT_T_CATEGORY(
         PERFKIT_T_CONFIGURE(custom_struct, test_config_structure{})
                 .min({0, 0, 0., false, "ola olala!"})
                 .max({251, 311, 0., false, "vl vl!!"})
-                .confirm(););
+                .confirm();
+
+        PERFKIT_CFG_SUBSET(test_subclass_mono, my_mono);
+
+);
 
 class test_class
 {
