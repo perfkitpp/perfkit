@@ -154,14 +154,14 @@ function App() {
         </Row>
       </div>
       <Container fluid className='mt-0 overflow-auto flex-grow-1'>
-        <Row className='my-1 h-100'>
+        <Row className='py-1 h-100'>
           {enableTerminal &&
               <ModulePanelCol colAttr={{xxl: true}} styleVars={{minWidth: 900}}
                               title='Terminal' iconClass='ri-terminal-line'>
                   <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>
               </ModulePanelCol>}
           {enableGraphics &&
-              <ModulePanelCol styleVars={{minWidth: 1200}}
+              <ModulePanelCol styleVars={{minWidth: '900pt'}}
                               title='Grahpics' iconClass='ri-artboard-line'>
                   Graphics window will be placed here.
               </ModulePanelCol>}
