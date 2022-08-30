@@ -24,7 +24,6 @@ function FullValueEdit() {
 function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string }) {
   const {elem, prefix} = prop;
   const [inlineEditMode, setInlineEditMode] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
   const forceUpdate = useForceUpdate();
 
   useEffect(() => {
@@ -87,6 +86,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
         console.log("OUT!");
         setInlineEditMode(false);
       });
+      console.log("SETUP!!");
       inputRef.current?.focus({preventScroll: false});
     }, []);
 
@@ -109,21 +109,28 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     }
   }
 
+  function HighlightHr(prop: { color: string }) {
+    const [isHovering, setIsHovering] = useState(false);
 
-  return <div className={'h6 px-2 py-0 my-1' + (elem.editted ? ' bg-warning bg-opacity-25 rounded-3' : '')}
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}>
+    return <div className='h-100 flex-grow-1'
+                onMouseEnter={() => setIsHovering(true)}
+                onMouseLeave={() => setIsHovering(false)}>
+      <hr style={{flexGrow: 2, height: isHovering ? 4 : 1, background: titleColor}}/>
+    </div>
+  }
+
+  return <div className={'h6 px-2 py-0 my-1' + (elem.editted ? ' bg-warning bg-opacity-25 rounded-3' : '')}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
       <span className={'text-start btn '}
             style={{flexGrow: 0}}>
         {(elem.editted ? '*' : '')}
-        {prefix && <span className='fw-bold'>{prefix} / </span>}
+        {prefix && <span className='text-opacity-75 text-secondary'>{prefix} / </span>}
         {prop.elem.props.name}
       </span>
-      <hr style={{flexGrow: 2, height: isHovering ? 4 : 1, background: titleColor}}/>
+      <HighlightHr color={titleColor}/>
       {inlineEditMode
-        ? <span className='flex-grow-1'>
+        ? <span className='flex-grow-0 w-auto'>
           <InlineEdit/>
         </span>
         : typeof elem.value === "boolean"
