@@ -1,4 +1,4 @@
-import {createContext, useEffect, useState} from 'react';
+import {createContext, CSSProperties, useEffect, useState} from 'react';
 import './App.scss';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'remixicon/fonts/remixicon.css'
@@ -42,6 +42,7 @@ interface ModulePanelProps {
   iconClass?: string;
   enabled?: boolean;
   colAttr?: any;
+  styleVars?: CSSProperties;
 
   children?: React.ReactNode;
 }
@@ -49,27 +50,28 @@ interface ModulePanelProps {
 export function ModulePanelCol(prop: ModulePanelProps) {
   return (
     !prop.enabled ? <div/> :
-    <Col {...prop.colAttr}
-         className='mb-2 ps-3 pe-0 me-2'
-         style={{
-           // display: prop.enabled ? 'block' : 'none',
-           overflowY: 'hidden',
-           flexDirection: 'column'
-         }}>
-      <div className='ModulePanel d-flex flex-column'>
-        <div className='text-center flex-grow-0'>
+      <Col {...prop.colAttr}
+           className='mb-2 ps-3 pe-0 me-2'
+           style={{
+             // display: prop.enabled ? 'block' : 'none',
+             overflowY: 'hidden',
+             flexDirection: 'column',
+             ...prop.styleVars
+           }}>
+        <div className='ModulePanel d-flex flex-column'>
+          <div className='text-center flex-grow-0'>
           <span className={`${prop.iconClass} fw-bold w-100`}
                 style={{fontSize: '1.2em'}}>
           </span>
-          <span className='ms-1 fw-bold' style={{fontSize: '1.2em'}}>
+            <span className='ms-1 fw-bold' style={{fontSize: '1.2em'}}>
           {prop.title}
           </span>
+          </div>
+          <div style={{flex: '1', height: "100%", overflowY: 'auto'}}>
+            {prop.children}
+          </div>
         </div>
-        <div style={{flex: '1', height: "100%", overflowY: 'auto'}}>
-          {prop.children}
-        </div>
-      </div>
-    </Col>
+      </Col>
   );
 }
 
@@ -162,14 +164,17 @@ function App() {
           </ModulePanelCol>
         </Row>
         <Row className='my-1'>
-          <ModulePanelCol colAttr={{lg: true}} title='Configs' iconClass='ri-list-settings-fill'
+          <ModulePanelCol colAttr={{lg: true}} styleVars={{minWidth: 600}}
+                          title='Configs' iconClass='ri-list-settings-fill'
                           enabled={enableConfigs}>
             <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'}/>
           </ModulePanelCol>
-          <ModulePanelCol colAttr={{md: true}} title='Traces' iconClass='ri-dashboard-2-line' enabled={enableTraces}>
+          <ModulePanelCol colAttr={{md: true}} styleVars={{minWidth: 600}}
+                          title='Traces' iconClass='ri-dashboard-2-line' enabled={enableTraces}>
             Traces window will be placed here.
           </ModulePanelCol>
-          <ModulePanelCol colAttr={{sm: true}} title='System Status' iconClass='ri-checkbox-multiple-blank-fill'
+          <ModulePanelCol colAttr={{sm: true}}
+                          title='System Status' iconClass='ri-checkbox-multiple-blank-fill'
                           enabled={enableSystemInfo}>
             System Info window will be placed here.
           </ModulePanelCol>

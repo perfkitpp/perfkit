@@ -1,4 +1,4 @@
-import {createContext, ReactNode, useEffect, useRef, useState} from "react";
+import {createContext, ReactNode, useEffect, useMemo, useRef, useState} from "react";
 import {useForceUpdate, useWebSocket} from "../Utils";
 import {Spinner} from "react-bootstrap";
 import {AppendTextToTerminal} from "./Terminal";
@@ -18,8 +18,10 @@ export interface ElemDesc {
 }
 
 export interface ElemContext {
-  elemDesc: ElemDesc;
+  props: ElemDesc;
   value: any;
+  valueLocal: any; // A value which is ready to commit.
+  editted?: true;
   updateFence: number;
   triggerUpdate: () => void;
 }
@@ -36,8 +38,12 @@ export interface ElemUpdateList {
   [key: number]: { value: any, updateFence: number };
 }
 
+export interface ElemTable {
+  [key: number]: ElemContext
+}
+
 export interface RootContext {
-  all: { [key: number]: ElemContext },
+  all: ElemTable,
   root: CategoryDesc;
 }
 
@@ -81,7 +87,8 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
     // Insert to 'all' array
     const ctx = root.all[elem.elemID] = {
       value: elem.initValue,
-      elemDesc: elem,
+      valueLocal: structuredClone(elem.initValue),
+      props: elem,
       triggerUpdate: {} as () => void,
       updateFence: 0
     };
@@ -110,7 +117,7 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
         currentCategory = {
           name: str,
           children: [],
-          visProps: DefaultVisProp
+          visProps: structuredClone(DefaultVisProp)
         };
         children.push(currentCategory);
       }
@@ -121,13 +128,28 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
   }
 }
 
+// Propagation Context
+export interface ConfigPanelControlInfo {
+  markAnyItemDirty: (rootName: string, elemId: number) => {}
+}
+
+export const ConfigPanelControlContext = createContext({} as ConfigPanelControlInfo);
+
 // Overall control flow ...
 // 1. 'new-root': Create new root from corresponding entity of RootContext
 // 2. 'new-cfg': Add instance to RootContext.all
 //   a. Iterate 'path' of it, find its category.
 export default function ConfigPanel(props: { socketUrl: string }) {
   const rootTablesRef = useRef({} as { [key: string]: RootContext });
+  const changedItems = useRef({} as { [key: number]: string });
   const forceUpdate = useForceUpdate();
+  const [isAnyItemDirty, setIsAnyItemDirty] = useState(false);
+  const panelManipContext = useMemo(() => ({
+    markAnyItemDirty: (root, elemId) => {
+      changedItems.current[elemId] = root;
+      isAnyItemDirty || setIsAnyItemDirty(true)
+    }
+  } as ConfigPanelControlInfo), []);
   const cfgSock = useWebSocket(props.socketUrl, {
     onopen: ev => forceUpdate(),
     onmessage: onMessage,
@@ -146,7 +168,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
         msg.params.forEach(value => {
           roots[value] = {
             all: {},
-            root: {name: value, children: [], visProps: DefaultVisProp}
+            root: {name: value, children: [], visProps: structuredClone(DefaultVisProp)}
           };
         })
         forceUpdate();
@@ -160,7 +182,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
         break;
 
       case "update":
-        // TODO: From root, iterate each element, update content.
+        // TODO: From root, iterate each element, update content. Touch updated elements
         break;
 
       case "delete-root":
@@ -177,15 +199,54 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     key => <View.RootNode key={key} name={key} ctx={rootTablesRef.current[key]}/>
   );
 
+  function setCollapseAll(isCollapsed: boolean) {
+    for (const key in rootTablesRef.current) {
+      const root = rootTablesRef.current[key];
+      recurseCategory(root.all, root.root, e => {
+        e.visProps.collapsed = isCollapsed
+      });
+    }
+
+    forceUpdate();
+
+    function recurseCategory(all: ElemTable, node: CategoryDesc, fn: (e: CategoryDesc) => void) {
+      fn(node);
+      for (const elem of node.children) {
+        if (typeof elem === "number")
+          continue;
+
+        recurseCategory(all, elem, fn);
+      }
+    }
+  }
+
+  function commitAllChanges() {
+    // TODO: Flush changed items
+  }
+
   // TODO: Implement search using 'https://github.com/farzher/fuzzysort'
   return (
-    <div style={{
-      maxHeight: '70vh',
-      overflowY: 'auto',
-      overflowX: 'hidden'
-    }}>
-      <hr/>
-      {allRootFrames}
-    </div>
+    <ConfigPanelControlContext.Provider value={panelManipContext}>
+      <div style={{height: '800px', display: 'flex', flexDirection: 'column'}}>
+      <span className='d-flex mt-2 flex-row-reverse align-items-center'>
+        <button
+          className={'btn w-25 ri-mail-send-fill p-1 m-0 me-1 '
+            + (isAnyItemDirty ? 'btn-primary' : 'btn-outline-primary')}
+          title='Commit Changes'
+          disabled={!isAnyItemDirty}/>
+        <i className='btn ri-line-height p-1 px-2 m-0 me-1' title='Expand All' onClick={() => setCollapseAll(false)}/>
+        <i className='btn ri-align-vertically p-1 px-2 m-0 me-1' title='Collapse All'
+           onClick={() => setCollapseAll(true)}/>
+        <span className='flex-grow-1 ms-2 p-1 border-danger border'>Search Text Here</span>
+      </span>
+        <hr className='my-1 mx-1'/>
+        <div style={{
+          overflowY: 'scroll',
+          width: '100%'
+        }}>
+          {allRootFrames}
+        </div>
+      </div>
+    </ConfigPanelControlContext.Provider>
   )
 };
