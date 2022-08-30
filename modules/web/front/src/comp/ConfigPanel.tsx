@@ -142,12 +142,18 @@ export const ConfigPanelControlContext = createContext({} as ConfigPanelControlI
 export default function ConfigPanel(props: { socketUrl: string }) {
   const rootTablesRef = useRef({} as { [key: string]: RootContext });
   const changedItems = useRef({} as { [key: number]: string });
-  const forceUpdate = useForceUpdate();
+  const [updateImmediate, setUpdateImmediate] = useState(false);
+  const [rootDirtyFlag, setForceRootDirtyFlag] = useState(0);
   const [isAnyItemDirty, setIsAnyItemDirty] = useState(false);
+  const forceUpdate = () => setForceRootDirtyFlag(v => v + 1);
   const panelManipContext = useMemo(() => ({
     markAnyItemDirty: (root, elemId) => {
-      changedItems.current[elemId] = root;
-      isAnyItemDirty || setIsAnyItemDirty(true)
+      if (updateImmediate) {
+        // TODO: Apply changes immediately ...
+      } else {
+        changedItems.current[elemId] = root;
+        isAnyItemDirty || setIsAnyItemDirty(true)
+      }
     }
   } as ConfigPanelControlInfo), []);
   const cfgSock = useWebSocket(props.socketUrl, {
@@ -192,12 +198,12 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     }
   }
 
+  const allRootFrames = useMemo(() => Object.keys(rootTablesRef.current).sort().map(
+    key => <View.RootNode key={key} name={key} ctx={rootTablesRef.current[key]}/>
+  ), [cfgSock?.readyState, rootDirtyFlag]);
+
   if (cfgSock?.readyState != WebSocket.OPEN)
     return (<div className='text-center p-3 text-primary'><Spinner animation='border'></Spinner></div>);
-
-  const allRootFrames = Object.keys(rootTablesRef.current).sort().map(
-    key => <View.RootNode key={key} name={key} ctx={rootTablesRef.current[key]}/>
-  );
 
   function setCollapseAll(isCollapsed: boolean) {
     for (const key in rootTablesRef.current) {
@@ -224,16 +230,27 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     // TODO: Flush changed items
   }
 
+  function discardAllChanges() {
+    // TODO: Iterate all changes, roll back their locals, force update.
+  }
+
   // TODO: Implement search using 'https://github.com/farzher/fuzzysort'
   return (
     <ConfigPanelControlContext.Provider value={panelManipContext}>
       <div style={{height: '800px', display: 'flex', flexDirection: 'column'}}>
       <span className='d-flex mt-2 flex-row-reverse align-items-center'>
-        <button
-          className={'btn w-25 ri-mail-send-fill p-1 m-0 me-1 '
-            + (isAnyItemDirty ? 'btn-primary' : 'btn-outline-primary')}
-          title='Commit Changes'
-          disabled={!isAnyItemDirty}/>
+        <span className='w-25 d-flex flex-row-reverse'>
+          <button
+            className={'btn ri-mail-send-fill p-1 m-0 me-1 flex-grow-1 '
+              + (isAnyItemDirty ? 'btn-primary' : 'btn-outline-primary')}
+            title='Commit Changes'
+            disabled={!isAnyItemDirty}
+            onClick={commitAllChanges}/>
+          <i className='btn ri-arrow-go-back-fill p-1 px-2 m-0 me-1 text-danger'
+             title='Discard Changes' onClick={discardAllChanges} hidden={!isAnyItemDirty}/>
+          <i className={'btn ri-refresh-line p-1 px-2 m-0 me-1 ' + (!updateImmediate ? 'text-primary' : 'btn-primary')}
+             title='Apply changes immediately' onClick={() => setUpdateImmediate(v => !v)}/>
+        </span>
         <i className='btn ri-line-height p-1 px-2 m-0 me-1' title='Expand All' onClick={() => setCollapseAll(false)}/>
         <i className='btn ri-align-vertically p-1 px-2 m-0 me-1' title='Collapse All'
            onClick={() => setCollapseAll(true)}/>
