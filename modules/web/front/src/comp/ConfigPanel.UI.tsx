@@ -2,7 +2,7 @@ import {CSSProperties, ReactNode, useContext, useEffect, useMemo, useReducer, us
 import {CategoryDesc, ConfigPanelControlContext, ElemContext, ElemDesc, RootContext} from "./ConfigPanel";
 import {InputGroup, Spinner} from "react-bootstrap";
 import {Style} from "util";
-import {useForceUpdate} from "../Utils";
+import {EmptyFunc, useForceUpdate, useTimeout} from "../Utils";
 
 export interface CategoryVisualProps {
   collapsed: boolean
@@ -20,14 +20,38 @@ function FullValueEdit() {
 
 }
 
+const curStyle = getComputedStyle(document.body);
+const theme = {
+  primary: curStyle.getPropertyValue('--bs-primary'),
+  secondary: curStyle.getPropertyValue('--bs-secondary'),
+  success: curStyle.getPropertyValue('--bs-success'),
+  info: curStyle.getPropertyValue('--bs-info'),
+  warning: curStyle.getPropertyValue('--bs-warning'),
+  danger: curStyle.getPropertyValue('--bs-danger'),
+  light: curStyle.getPropertyValue('--bs-light'),
+  dark: curStyle.getPropertyValue('--bs-dark'),
+}
 
 function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string }) {
   const {elem, prefix} = prop;
+  const labelRef = useRef(null as any as HTMLDivElement);
   const [inlineEditMode, setInlineEditMode] = useState(false);
   const forceUpdate = useForceUpdate();
 
   useEffect(() => {
-    elem.triggerUpdate = forceUpdate;
+    elem.triggerUpdate = () => {
+      labelRef.current.style.transition = "";
+      labelRef.current.style.background = theme.success + "22";
+      forceUpdate();
+      setTimeout(() => {
+        labelRef.current.style.transition = 'background 0.3s'
+        labelRef.current.style.background = '#00000000';
+      }, 20);
+    };
+
+    return () => {
+      elem.triggerUpdate = EmptyFunc;
+    }
   }, []);
 
   function determineValueClass(): [string, `rgb(${number}, ${number}, ${number})` | `#${string}`] {
@@ -52,6 +76,16 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
   function markDirty() {
     elem.editted = true;
     panelContext.markAnyItemDirty(prop.rootName, elem.props.elemID);
+    labelRef.current.style.transition = 'background 1s'
+    labelRef.current.style.background = theme.warning + '33';
+    forceUpdate();
+  }
+
+  function performRollback() {
+    elem.editted = undefined;
+    elem.valueLocal = structuredClone(elem.value);
+    panelContext.rollbackDirtyItem(prop.rootName, elem.props.elemID);
+    labelRef.current.style.background = '#00000000';
     forceUpdate();
   }
 
@@ -119,14 +153,19 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     </div>
   }
 
-  return <div className={'h6 px-2 py-0 my-1' + (elem.editted ? ' bg-warning bg-opacity-25 rounded-3' : '')}>
+
+  return <div className={'h6 px-2 py-0 my-1'}
+              ref={labelRef}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
-      <span className={'text-start btn '}
+      <span className={'btn text-start'}
             style={{flexGrow: 0}}>
-        {(elem.editted ? '*' : '')}
         {prefix && <span className='text-opacity-75 text-secondary'>{prefix} / </span>}
         {prop.elem.props.name}
+        {elem.editted &&
+            <i className='btn text-danger ri-arrow-go-back-line m-0 ms-2 p-0 px-1'
+               style={{fontSize: '0.9em'}}
+               onClick={performRollback}/>}
       </span>
       <HighlightHr color={titleColor}/>
       {inlineEditMode

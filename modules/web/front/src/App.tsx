@@ -24,15 +24,17 @@ function ToggleRibbon(prop: ToggleRibbonProps) {
   useEffect(() => {
   }, [prop.enableState]);
 
-  return <div className='d-grid'>
+  return <div className='w-100'>
     <Button
       title={prop.toolTip}
+      className='d-flex flex-row w-100 align-items-center'
       variant={prop.enableState ? 'primary' : 'outline-secondary'}
       onClick={() => prop.setEnableState(v => !v)}
       onMouseEnter={() => setMouseHover(true)}
       onMouseLeave={() => setMouseHover(false)}>
-      <i className={prop.iconClass + ' ToggleRibbon-icon'}/>{mouseHover &&
-        <span className='ToggleRibbon-text'>{prop.labelText}</span>}
+      <i className={prop.iconClass + ' ToggleRibbon-icon flex-grow-1'}>{mouseHover &&
+        <span className='ps-2'>{prop.labelText}</span>}
+      </i>
     </Button>
   </div>;
 }
@@ -58,11 +60,10 @@ export function ModulePanelCol(prop: ModulePanelProps) {
            ...prop.styleVars
          }}>
       <div className='ModulePanel d-flex flex-column'>
-        <div className='text-center flex-grow-0'>
-          <span className={`${prop.iconClass} fw-bold w-100`}
-                style={{fontSize: '1.2em'}}>
-          </span>
-          <span className='ms-1 fw-bold' style={{fontSize: '1.2em'}}>
+        <div className='text-center flex-grow-0 align-items-center'>
+          <i className={`${prop.iconClass} fw-bold w-100`}
+                style={{fontSize: '1.2em'}}/>
+          <span className='ms-1 fw-bold' style={{fontSize: '1.1em'}}>
           {prop.title}
           </span>
         </div>
@@ -110,6 +111,13 @@ function App() {
       <div className='border-bottom border-2 border-primary bg-primary bg-opacity-10 py-2 px-3 flex-grow-0'>
         <Row className=''>
           <Col>
+            <ToggleRibbon enableState={enableSystemInfo}
+                          setEnableState={setEnableSystemInfo}
+                          iconClass={'ri-checkbox-multiple-blank-fill'}
+                          labelText={'System'}
+                          toolTip={'Show/Hide system stat panel'}/>
+          </Col>
+          <Col>
             <ToggleRibbon enableState={enableTerminal}
                           setEnableState={setEnableTerminal}
                           iconClass={'ri-terminal-window-fill'}
@@ -138,13 +146,6 @@ function App() {
                           toolTip={'Show/Hide trace panel'}/>
           </Col>
           <Col>
-            <ToggleRibbon enableState={enableSystemInfo}
-                          setEnableState={setEnableSystemInfo}
-                          iconClass={'ri-checkbox-multiple-blank-fill'}
-                          labelText={'System'}
-                          toolTip={'Show/Hide system stat panel'}/>
-          </Col>
-          <Col>
             <ToggleRibbon enableState={enablePlottings}
                           setEnableState={setEnablePlottings}
                           iconClass={'ri-line-chart-line'}
@@ -155,6 +156,11 @@ function App() {
       </div>
       <Container fluid className='mt-0 overflow-auto flex-grow-1'>
         <Row className='py-1 h-100'>
+          {enableSystemInfo &&
+              <ModulePanelCol colAttr={{sm: true}} styleVars={{minWidth: 600}}
+                              title='System Status' iconClass='ri-checkbox-multiple-blank-fill'>
+                  System Info window will be placed here.
+              </ModulePanelCol>}
           {enableTerminal &&
               <ModulePanelCol colAttr={{xxl: true}} styleVars={{minWidth: 900}}
                               title='Terminal' iconClass='ri-terminal-line'>
@@ -174,11 +180,6 @@ function App() {
               <ModulePanelCol colAttr={{md: true}} styleVars={{minWidth: 600}}
                               title='Traces' iconClass='ri-dashboard-2-line'>
                   Traces window will be placed here.
-              </ModulePanelCol>}
-          {enableSystemInfo &&
-              <ModulePanelCol colAttr={{sm: true}} styleVars={{minWidth: 600}}
-                              title='System Status' iconClass='ri-checkbox-multiple-blank-fill'>
-                  System Info window will be placed here.
               </ModulePanelCol>}
           {enablePlottings &&
               <ModulePanelCol styleVars={{minWidth: 900}}

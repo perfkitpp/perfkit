@@ -1,5 +1,5 @@
 import {createContext, ReactNode, useEffect, useMemo, useRef, useState} from "react";
-import {useForceUpdate, useWebSocket} from "../Utils";
+import {EmptyFunc, useForceUpdate, useWebSocket} from "../Utils";
 import {Spinner} from "react-bootstrap";
 import {AppendTextToTerminal} from "./Terminal";
 import * as View from "./ConfigPanel.UI";
@@ -89,7 +89,7 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
       value: elem.initValue,
       valueLocal: structuredClone(elem.initValue),
       props: elem,
-      triggerUpdate: {} as () => void,
+      triggerUpdate: EmptyFunc,
       updateFence: 0
     };
 
@@ -131,6 +131,7 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
 // Propagation Context
 export interface ConfigPanelControlInfo {
   markAnyItemDirty: (rootName: string, elemId: number) => {}
+  rollbackDirtyItem: (rootName: string, elemId: number) => {}
 }
 
 export const ConfigPanelControlContext = createContext({} as ConfigPanelControlInfo);
@@ -154,6 +155,12 @@ export default function ConfigPanel(props: { socketUrl: string }) {
         changedItems.current[elemId] = root;
         isAnyItemDirty || setIsAnyItemDirty(true)
       }
+    },
+    rollbackDirtyItem: (root, elemId) => {
+      delete changedItems.current[elemId];
+      const anyItemDirty = (Object.keys(changedItems.current).length > 0);
+      if (isAnyItemDirty != anyItemDirty)
+        setIsAnyItemDirty(anyItemDirty)
     }
   } as ConfigPanelControlInfo), []);
   const cfgSock = useWebSocket(props.socketUrl, {
@@ -189,6 +196,20 @@ export default function ConfigPanel(props: { socketUrl: string }) {
 
       case "update":
         // TODO: From root, iterate each element, update content. Touch updated elements
+        const root = rootTablesRef.current[msg.params.rootName];
+        for (const strKey in msg.params) {
+          const key = Number(strKey);
+          if (isNaN(key))
+            continue;
+
+          const elem = msg.params[key];
+          const elemCtx = root.all[key];
+          elemCtx.value = elem.value;
+          elemCtx.updateFence = elem.updateFence;
+          elemCtx.valueLocal = structuredClone(elemCtx.value);
+          elemCtx.editted = undefined;
+          elemCtx.triggerUpdate();
+        }
         break;
 
       case "delete-root":

@@ -82,3 +82,25 @@ export function useWebSocket(url: string, handler: {
   return sock;
 }
 
+export function useTimeout(callback: () => void, ms: number, deps: DependencyList[]) {
+  const savedCallback = useRef(null as any);
+
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    function onTimeout() {
+      savedCallback.current();
+    }
+
+    if (ms !== null) {
+      const id = setTimeout(onTimeout, ms);
+      return () => clearTimeout(id);
+    }
+  }, [ms, ...deps]);
+}
+
+export function EmptyFunc() {
+}
+
