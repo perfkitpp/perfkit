@@ -525,7 +525,9 @@ bool config_registry::backend_t::_handle_structure_update()
         if (not conf) { continue; }
 
         if (not storage) {
-            if (auto p_storage = find_ptr(*_g_config().second, _name))
+            auto [_, g_config] = _g_config();
+
+            if (auto p_storage = find_ptr(*g_config, _name))
                 storage = p_storage->second;
             else
                 storage.emplace();  // There's no storage for this config registry ...
