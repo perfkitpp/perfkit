@@ -41,6 +41,7 @@
 #include <cpph/thread/event_queue.hxx>
 #include <cpph/utility/functional.hxx>
 #include <cpph/utility/timer.hxx>
+#include <spdlog/spdlog.h>
 
 #include "perfkit/detail/configs-v2-backend.hpp"
 #include "perfkit/logging.h"
@@ -68,6 +69,7 @@ class config_server_impl : public config_server
 
     streambuf::stringbuf sbuf_;
     archive::json::writer json_wr_{&sbuf_};
+    archive::json::reader json_rd_{nullptr};
 
    private:
     class config_session_impl : public if_websocket_session
@@ -114,7 +116,7 @@ class config_server_impl : public config_server
 
         void on_message(const string& message, bool is_binary) noexcept override
         {
-            // TODO: Handle commit.
+            s_.ioc_.post(bind(&self_t::ioc_on_message_, &s_, message));
         }
     };
 
@@ -318,6 +320,25 @@ class config_server_impl : public config_server
             case edit_mode::script: return "script"sv;
             case edit_mode::color_b: return "color_b"sv;
             case edit_mode::color_f: return "color_f"sv;
+        }
+    }
+
+    void ioc_on_message_(string const& s)
+    {
+        streambuf::const_view sbuf{{s.data(), s.size()}};
+        json_rd_.clear(), json_rd_.rdbuf(&sbuf);
+
+        // TODO : RPC handling (method/params)
+        try {
+            auto key = json_rd_.begin_object();
+
+            if(json_rd_.goto_key("method")) {
+                // TODO [wip]
+            }
+
+            json_rd_.end_object(key);
+        } catch (std::exception& e) {
+            CPPH_ERROR("! MESSAGE HANDLING ERROR: {}", e.what());
         }
     }
 };
