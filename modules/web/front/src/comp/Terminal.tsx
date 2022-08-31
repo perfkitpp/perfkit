@@ -50,7 +50,6 @@ export default function Terminal(props: { socketUrl: string }) {
     }
 
     if (!scrollLock.current) {
-      console.log('value chgange!!')
       elem.scrollTop = elem.scrollHeight;
     }
   }
@@ -71,8 +70,6 @@ export default function Terminal(props: { socketUrl: string }) {
 
   if (ttySock?.readyState != WebSocket.OPEN)
     return (<div className='text-center p-3 text-primary'><Spinner animation='border'></Spinner></div>);
-
-  console.log('Redraw?')
 
   return (
     <div
