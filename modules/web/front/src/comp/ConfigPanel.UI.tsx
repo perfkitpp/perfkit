@@ -184,7 +184,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     switch (typeof elem.value) {
       case "number":
       case "string":
-        return <input className="form-control form-control-sm text-end bg-transparent flex-grow-1 w-auto"
+        return <input className="form-control form-control-sm text-end bg-transparent flex-grow-1"
                       ref={inputRef}
                       type={typeof elem.value === "number" ? "number" : "text"}
                       defaultValue={elem.valueLocal}

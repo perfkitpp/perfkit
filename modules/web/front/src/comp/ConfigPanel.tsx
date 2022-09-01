@@ -323,15 +323,16 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   // TODO: Implement search using 'https://github.com/farzher/fuzzysort'
   return (
     <ConfigPanelControlContext.Provider value={panelManipContext}>
-      <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}
-           onKeyDown={ev => ev.key == "Enter" && commitAllChanges()}>
+      <div style={{display: 'flex', flexDirection: 'column', height: '100%', outline: 'none'}}
+           tabIndex={0}
+           onKeyDown={ev => ev.nativeEvent.ctrlKey && ev.key == "Enter" && commitAllChanges()}>
         <span className='d-flex mt-2 flex-row-reverse align-items-center'>
           <span className='w-auto d-flex flex-row-reverse flex-grow-1'>
             <button
               className={'btn ri-upload-2-line p-1 px-5 m-0 me-1 flex-grow-1 '
                 + (isAnyItemDirty ? 'btn-primary' : 'btn-outline-primary')}
               style={{fontSize: iconFontSize}}
-              title='Commit Changes'
+              title='Commit Changes (Control + Enter)'
               disabled={!isAnyItemDirty}
               onClick={commitAllChanges}/>
             <i
