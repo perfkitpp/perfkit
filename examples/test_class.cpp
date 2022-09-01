@@ -71,6 +71,7 @@ void test_class::start()
                 CPPH_INFO("worker thread created.");
                 bool reload_tracer_next_frame = false;
                 cpph::poll_timer sleep;
+                cpph::poll_timer incr_timer{1s};
 
                 while (_loop_active.load()) {
                     if (_cfg.t_boolean) {
@@ -99,6 +100,9 @@ void test_class::start()
                     _cfg->update();
                     _cfg.t_increment.commit(*_cfg.t_increment + 1);
                     _cfg.t_increment_inplace.set(*_cfg.t_increment_inplace + 2);
+
+                    if (incr_timer.check())
+                        _cfg.t_increment_less_frequent.commit(*_cfg.t_increment_less_frequent + 1);
 
                     if (auto to = 1ms * tc::class_control::interval_ms; to != sleep.interval())
                         sleep.reset(to);

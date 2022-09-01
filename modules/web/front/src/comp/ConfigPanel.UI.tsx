@@ -115,7 +115,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     switch (typeof elem.value) {
       case "number":
       case "string":
-        return <input className="form-control form-control-sm text-end bg-transparent flex-grow-0"
+        return <input className="form-control form-control-sm text-end bg-transparent flex-grow-1 w-auto"
                       ref={inputRef}
                       type={typeof elem.value === "number" ? "number" : "text"}
                       defaultValue={elem.valueLocal}
@@ -167,6 +167,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
           : <i className='ri-eye-close-fill'/>}
         </span>)
       : <span className='text-end overflow-hidden btn flex-grow-0 text-nowrap'
+              tabIndex={0}
+              onFocus={onClick}
               title={rawText}
               style={{color: titleColor, textOverflow: 'ellipsis'}}
               onClick={onClick}>
