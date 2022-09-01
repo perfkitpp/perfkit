@@ -169,15 +169,19 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       const current = inputRef.current;
       current.addEventListener('focusout', (evRaw) => {
         const tg = evRaw.currentTarget as HTMLInputElement;
-        setInlineEditMode(false);
-
-        if (hasInput.current) {
-          elem.valueLocal = typeof elem.value === "number" ? JSON.parse(tg.value) : tg.value;
-          markDirty();
-        }
+        applyValue(tg);
       });
       inputRef.current?.focus({preventScroll: false});
     }, []);
+
+    function applyValue(input: HTMLInputElement) {
+      setInlineEditMode(false);
+
+      if (hasInput.current) {
+        elem.valueLocal = typeof elem.value === "number" ? JSON.parse(input.value) : input.value;
+        markDirty();
+      }
+    }
 
     if (elem.props.oneOf != null) {
       // TODO: Create dropdown ...
@@ -192,7 +196,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
                       type={typeof elem.value === "number" ? "number" : "text"}
                       defaultValue={elem.valueLocal}
                       onFocus={ev => ev.currentTarget.select()}
-                      onInput={ev => hasInput.current = true}/>;
+                      onInput={ev => hasInput.current = true}
+                      onKeyDown={ev => ev.key == "Enter" && applyValue(ev.currentTarget)}/>;
 
       default:
         // Value inline editor:
