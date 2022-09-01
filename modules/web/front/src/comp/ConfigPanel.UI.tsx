@@ -230,8 +230,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
               tabIndex={0}
               onFocus={onClick}
               title={rawText}
-              style={{color: titleColor, textOverflow: 'ellipsis'}}
-              onClick={onClick}>
+              style={{color: titleColor, textOverflow: 'ellipsis'}}>
         {rawText}
         {elem.editted && <span className='ms-2 small text-secondary'>
             ({valueStringify(elem.valueLocal)})
@@ -254,12 +253,11 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
   return <div className='h6 px-2 py-0 my-1 rounded-3'
               title={elem.props.description}
-              ref={labelRef}>
+              ref={labelRef}
+              onClick={onClick}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
-      <span className={'btn text-start d-flex flex-row'}
-            style={{flexGrow: 0}}
-            onClick={onClick}>
+      <span className={'btn text-start d-flex flex-row flex-grow-0'}>
         {prefix && <span className='text-opacity-75 text-secondary'>{prefix} / </span>}
         {prop.elem.props.name}
         {elem.editted &&
