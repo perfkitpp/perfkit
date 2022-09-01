@@ -22,8 +22,10 @@ export interface ElemContext {
   value: any;
   valueLocal: any; // A value which is ready to commit.
   editted?: true;
+  committed?: true;
   updateFence: number;
   triggerUpdate: () => void;
+  triggerCommit: () => void;
 }
 
 export interface CategoryDesc {
@@ -90,6 +92,7 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
       valueLocal: structuredClone(elem.initValue),
       props: elem,
       triggerUpdate: EmptyFunc,
+      triggerCommit: EmptyFunc,
       updateFence: 0
     };
 
@@ -206,8 +209,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
           const elemCtx = root.all[key];
           elemCtx.value = elem.value;
           elemCtx.updateFence = elem.updateFence;
-          elemCtx.valueLocal = structuredClone(elemCtx.value);
-          elemCtx.editted = undefined;
+          elemCtx.committed = undefined;
           elemCtx.triggerUpdate();
         }
         break;
@@ -264,7 +266,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
         <span className='d-flex mt-2 flex-row-reverse align-items-center'>
           <span className='w-25 d-flex flex-row-reverse'>
             <button
-              className={'btn ri-mail-send-fill p-1 m-0 me-1 flex-grow-1 '
+              className={'btn ri-upload-2-line p-1 px-5 m-0 me-1 flex-grow-1 '
                 + (isAnyItemDirty ? 'btn-primary' : 'btn-outline-primary')}
               style={{fontSize: iconFontSize}}
               title='Commit Changes'

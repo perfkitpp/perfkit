@@ -38,22 +38,6 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
   const [inlineEditMode, setInlineEditMode] = useState(false);
   const forceUpdate = useForceUpdate();
 
-  useEffect(() => {
-    elem.triggerUpdate = () => {
-      labelRef.current.style.transition = "";
-      labelRef.current.style.background = theme.success + "22";
-      forceUpdate();
-      setTimeout(() => {
-        labelRef.current.style.transition = 'background 0.3s'
-        labelRef.current.style.background = '#00000000';
-      }, 20);
-    };
-
-    return () => {
-      elem.triggerUpdate = EmptyFunc;
-    }
-  }, []);
-
   function determineValueClass(): [string, `rgb(${number}, ${number}, ${number})` | `#${string}`] {
     switch (typeof elem.value) {
       case "object":
@@ -77,8 +61,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     elem.editted = true;
     panelContext.markAnyItemDirty(prop.rootName, elem.props.elemID);
     labelRef.current.style.transition = 'background 1s'
-    labelRef.current.style.background = theme.warning + '33';
-    forceUpdate();
+    labelRef.current.style.background = theme.info + '33';
   }
 
   function performRollback() {
@@ -90,7 +73,6 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
   }
 
   const [iconClass, titleColor] = determineValueClass();
-  const rawText = typeof elem.value === "string" ? elem.value : JSON.stringify(elem.valueLocal);
   const panelContext = useContext(ConfigPanelControlContext);
 
   function onClick() {
@@ -102,6 +84,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       case "boolean":
         elem.valueLocal = !elem.valueLocal;
         markDirty();
+        forceUpdate();
         break;
       default:
         break;
@@ -132,15 +115,66 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     switch (typeof elem.value) {
       case "number":
       case "string":
-        return <input className="form-control form-control-sm text-end bg-transparent"
+        return <input className="form-control form-control-sm text-end bg-transparent flex-grow-0"
                       ref={inputRef}
-                      type={elem.value === "number" ? "number" : "text"}
-                      defaultValue={rawText}/>;
+                      type={typeof elem.value === "number" ? "number" : "text"}
+                      defaultValue={elem.valueLocal}
+                      onInput={ev => {
+                        try {
+                          elem.valueLocal = typeof elem.value === "number"
+                            ? JSON.parse(ev.currentTarget.value)
+                            : ev.currentTarget.value;
+                          markDirty()
+                        } catch {
+                        }
+                      }}/>;
 
       default:
         setInlineEditMode(false);
         return <span/>;
     }
+  }
+
+  function valueStringify(value: any) {
+    return typeof value === "string" ? value : JSON.stringify(value);
+  }
+
+  function ValueDisplay(props: {}) {
+    const forceUpdateValue = useForceUpdate();
+
+    useEffect(() => {
+      elem.triggerUpdate = () => {
+        const srcBg = labelRef.current.style.background;
+        labelRef.current.style.transition = "";
+        labelRef.current.style.background = theme.success + "22";
+        forceUpdateValue();
+        setTimeout(() => {
+          labelRef.current.style.transition = 'background 0.3s'
+          labelRef.current.style.background = srcBg;
+        }, 20);
+      };
+
+      return () => {
+        elem.triggerUpdate = EmptyFunc;
+      }
+    }, []);
+
+    const rawText = valueStringify(elem.value);
+    return typeof elem.value === "boolean"
+      ? (<span className='btn px-3 text-primary' onClick={onClick}>
+        {(elem.editted ? elem.valueLocal : elem.value)
+          ? <i className='ri-eye-fill'/>
+          : <i className='ri-eye-close-fill'/>}
+        </span>)
+      : <span className='text-end overflow-hidden btn flex-grow-0 text-nowrap'
+              title={rawText}
+              style={{color: titleColor, textOverflow: 'ellipsis'}}
+              onClick={onClick}>
+        {rawText}
+        {elem.editted && <span className='ms-2 small'>
+            ({valueStringify(elem.valueLocal)})
+        </span>}
+        </span>;
   }
 
   function HighlightHr(prop: { color: string }) {
@@ -153,8 +187,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     </div>
   }
 
-
-  return <div className={'h6 px-2 py-0 my-1'}
+  return <div className='h6 px-2 py-0 my-1 rounded-3'
               ref={labelRef}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
@@ -168,20 +201,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
                onClick={performRollback}/>}
       </span>
       <HighlightHr color={titleColor}/>
-      {inlineEditMode
-        ? <span className='flex-grow-0 w-auto'>
-          <InlineEdit/>
-        </span>
-        : typeof elem.value === "boolean"
-          ? <span className='btn px-3 text-primary' onClick={onClick}>
-              {elem.valueLocal ? <i className='ri-eye-fill'/> : <i className='ri-eye-close-fill'/>}
-            </span>
-          : <span className='text-end overflow-hidden btn flex-grow-0 text-nowrap'
-                  title={rawText}
-                  style={{color: titleColor, textOverflow: 'ellipsis'}}
-                  onClick={onClick}>
-              {rawText}
-            </span>
+      {inlineEditMode ? <InlineEdit/> : <ValueDisplay/>
       }
     </div>
   </div>;
@@ -207,6 +227,7 @@ function CategoryNode(prop: {
     forceUpdate();
   }
 
+  // TODO: Tree Collapse button
   return <div>
     <h6 className='d-flex flex-row align-items-center text-dark fw-bold py-0'
         onClick={toggleCollapse}>
@@ -251,8 +272,6 @@ export function RootNode(prop: {
   name: string,
   ctx: RootContext
 }) {
-  // TODO: Root Collapse support
-  // TODO: Render node header
   return <div
     className='my-2 px-2'
     style={{
