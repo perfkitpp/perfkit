@@ -156,18 +156,13 @@ export const ConfigPanelControlContext = createContext({} as ConfigPanelControlI
 export default function ConfigPanel(props: { socketUrl: string }) {
   const rootTablesRef = useRef({} as { [key: string]: RootContext });
   const changedItems = useRef({} as { [key: number]: string });
-  const [updateImmediate, setUpdateImmediate] = useState(false);
   const [rootDirtyFlag, setForceRootDirtyFlag] = useState(0);
   const [isAnyItemDirty, setIsAnyItemDirty] = useState(false);
   const forceUpdate = () => setForceRootDirtyFlag(v => v + 1);
   const panelManipContext = useMemo(() => ({
     markAnyItemDirty: (root, elemId) => {
-      if (updateImmediate) {
-        // TODO: Apply changes immediately ...
-      } else {
-        changedItems.current[elemId] = root;
-        isAnyItemDirty || setIsAnyItemDirty(true)
-      }
+      changedItems.current[elemId] = root;
+      isAnyItemDirty || setIsAnyItemDirty(true);
     },
     rollbackDirtyItem: (root, elemId) => {
       delete changedItems.current[elemId];
@@ -339,11 +334,6 @@ export default function ConfigPanel(props: { socketUrl: string }) {
               className='btn ri-arrow-go-back-fill p-1 px-2 m-0 me-1 text-danger'
               style={{fontSize: iconFontSize}}
               title='Discard Changes' onClick={discardAllChanges} hidden={!isAnyItemDirty}/>
-            <i
-              className={'btn ri-refresh-line p-1 px-2 m-0 me-1 ' + (!updateImmediate ? 'text-primary' : 'btn-primary')}
-              style={{fontSize: iconFontSize}}
-              title='Apply changes immediately' onClick={() => setUpdateImmediate(v => !v)}
-            />
           </span>
           <i
             className='btn ri-line-height p-1 px-2 m-0 me-1'

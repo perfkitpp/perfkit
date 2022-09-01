@@ -62,7 +62,6 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
   useEffect(() => {
     elem.onCommit = () => {
-      panelContext.markAnyItemDirty(prop.rootName, elem.props.elemID);
       setBgColor(valueLabelBg.comitted, 200);
       forceUpdate();
     };
@@ -159,6 +158,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
   function InlineEditMode() {
     const inputRef = useRef(null as null | HTMLInputElement);
+    const hasInput = useRef(false);
 
     useEffect(() => {
       if (inputRef.current == null)
@@ -168,11 +168,15 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
         elem.valueLocal = structuredClone(elem.value);
 
       const current = inputRef.current;
-      current.addEventListener('focusout', () => {
-        console.log("OUT!");
+      current.addEventListener('focusout', (evRaw) => {
+        const tg = evRaw.currentTarget as HTMLInputElement;
         setInlineEditMode(false);
+
+        if (hasInput.current) {
+          elem.valueLocal = typeof elem.value === "number" ? JSON.parse(tg.value) : tg.value;
+          markDirty();
+        }
       });
-      console.log("SETUP!!");
       inputRef.current?.focus({preventScroll: false});
     }, []);
 
@@ -189,15 +193,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
                       type={typeof elem.value === "number" ? "number" : "text"}
                       defaultValue={elem.valueLocal}
                       onFocus={ev => ev.currentTarget.select()}
-                      onInput={ev => {
-                        try {
-                          elem.valueLocal = typeof elem.value === "number"
-                            ? JSON.parse(ev.currentTarget.value)
-                            : ev.currentTarget.value;
-                          markDirty()
-                        } catch {
-                        }
-                      }}/>;
+                      onInput={ev => hasInput.current = true}/>;
 
       default:
         // Value inline editor:
@@ -220,7 +216,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
     const rawText = valueStringify(elem.value);
     return typeof elem.value === "boolean"
-      ? (<span className='btn px-3 text-primary' onClick={onClick}>
+      ? (<span className='btn px-3 text-primary' onClick={onClick} tabIndex={0}
+               onKeyDown={ev => (ev.key == " " || ev.key == "Enter") && onClick()}>
         {(elem.editted ? elem.valueLocal : elem.value)
           ? <i className='ri-eye-fill'/>
           : <i className='ri-eye-close-fill'/>}
