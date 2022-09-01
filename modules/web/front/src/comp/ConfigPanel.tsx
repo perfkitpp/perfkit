@@ -24,8 +24,8 @@ export interface ElemContext {
   editted?: true;
   committed?: true;
   updateFence: number;
-  triggerUpdate: () => void;
-  triggerCommit: () => void;
+  onUpdateReceived: () => void;
+  onChangeDiscarded: () => void;
 }
 
 export interface CategoryDesc {
@@ -91,13 +91,12 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
       value: elem.initValue,
       valueLocal: structuredClone(elem.initValue),
       props: elem,
-      triggerUpdate: EmptyFunc,
-      triggerCommit: EmptyFunc,
+      onUpdateReceived: EmptyFunc,
+      onChangeDiscarded: EmptyFunc,
       updateFence: 0
     };
 
     //
-    const setTriggerUpdate = (fn: () => void) => (ctx.triggerUpdate = fn);
     let currentCategory = root.root;
 
     // iterate path elements, find suitable category.
@@ -210,7 +209,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
           elemCtx.value = elem.value;
           elemCtx.updateFence = elem.updateFence;
           elemCtx.committed = undefined;
-          elemCtx.triggerUpdate();
+          elemCtx.onUpdateReceived();
         }
         break;
 
@@ -264,7 +263,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     <ConfigPanelControlContext.Provider value={panelManipContext}>
       <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
         <span className='d-flex mt-2 flex-row-reverse align-items-center'>
-          <span className='w-25 d-flex flex-row-reverse'>
+          <span className='w-auto d-flex flex-row-reverse flex-grow-1'>
             <button
               className={'btn ri-upload-2-line p-1 px-5 m-0 me-1 flex-grow-1 '
                 + (isAnyItemDirty ? 'btn-primary' : 'btn-outline-primary')}
@@ -292,7 +291,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
             title='Collapse All'
             style={{fontSize: iconFontSize}}
             onClick={() => setCollapseAll(true)}/>
-          <span className='flex-grow-1 ms-2 p-1 '>Search Text Here</span>
+          <span className='flex-grow-0 ms-2 p-1 w-50'>Search Text Here</span>
         </span>
         <hr className='my-1 mx-1'/>
         <div style={{

@@ -130,6 +130,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
                       }}/>;
 
       default:
+        // Value inline editor:
+        // https://github.com/josdejong/jsoneditor
         setInlineEditMode(false);
         return <span/>;
     }
@@ -143,7 +145,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     const forceUpdateValue = useForceUpdate();
 
     useEffect(() => {
-      elem.triggerUpdate = () => {
+      elem.onUpdateReceived = () => {
         const srcBg = labelRef.current.style.background;
         labelRef.current.style.transition = "";
         labelRef.current.style.background = theme.success + "22";
@@ -155,7 +157,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       };
 
       return () => {
-        elem.triggerUpdate = EmptyFunc;
+        elem.onUpdateReceived = EmptyFunc;
       }
     }, []);
 
@@ -190,6 +192,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
   }
 
   return <div className='h6 px-2 py-0 my-1 rounded-3'
+              title={elem.props.description}
               ref={labelRef}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
