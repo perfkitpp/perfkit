@@ -37,6 +37,8 @@
 #include <cpph/refl/archive/json-reader.hxx>
 #include <cpph/refl/archive/json-writer.hxx>
 #include <cpph/refl/object.hxx>
+#include <cpph/refl/types/list.hxx>
+#include <cpph/refl/types/tuple.hxx>
 #include <cpph/streambuf/string.hxx>
 #include <cpph/thread/event_queue.hxx>
 #include <cpph/utility/functional.hxx>
@@ -117,7 +119,7 @@ class config_server_impl : public config_server
 
         void on_message(const string& message, bool is_binary) noexcept override
         {
-            s_.ioc_.post(bind(&self_t::ioc_on_message_, &s_, message));
+            s_.ioc_.post(bind(&self_t::ioc_on_message_, &s_, weak_from_this(), message));
         }
     };
 
@@ -329,7 +331,7 @@ class config_server_impl : public config_server
         }
     }
 
-    void ioc_on_message_(string const& s)
+    void ioc_on_message_(weak_ptr<if_websocket_session> ws, string const& s)
     {
         streambuf::const_view sbuf{{s.data(), s.size()}};
         json_rd_.clear(), json_rd_.rdbuf(&sbuf);
@@ -344,7 +346,7 @@ class config_server_impl : public config_server
 
                 if (json_rd_.goto_key("params")) {
                     if (method_name == "commit")
-                        ioc_handle_upload_params_(json_rd_);
+                        ioc_handle_upload_params_(move(ws), json_rd_);
                 } else {
                     throw std::runtime_error{"Missing 'params'"};
                 }
@@ -356,10 +358,11 @@ class config_server_impl : public config_server
         }
     }
 
-    void ioc_handle_upload_params_(archive::json::reader& rd)
+    void ioc_handle_upload_params_(weak_ptr<if_websocket_session> ws, archive::json::reader& rd)
     {
         auto exit_key = rd.begin_array();
         set<shared_ptr<config_registry>> notify_targets_;
+        list<pair<string, uint64_t>> discarded;
 
         string root_name;
         for (auto _ : counter(rd.elem_left())) {
@@ -371,7 +374,9 @@ class config_server_impl : public config_server
             if (auto p_pair = find_ptr(regs_strmap_, root_name)) {
                 if (auto rg = p_pair->second.lock()) {
                     notify_targets_.emplace(rg);
-                    rg->backend()->bk_commit({id}, &rd);
+                    if (not rg->backend()->bk_commit({id}, &rd)) {
+                        discarded.emplace_back(root_name, id);
+                    }
                 }
             }
 
@@ -381,6 +386,12 @@ class config_server_impl : public config_server
 
         for (auto& rg : notify_targets_) {
             rg->backend()->bk_notify();
+        }
+
+        if (auto conn = ws.lock(); conn && not discarded.empty()) {
+            auto wr = ioc_writer_prepare_("discarded");
+            *wr << discarded;
+            conn->send_text(*ioc_writer_done_());
         }
     }
 };

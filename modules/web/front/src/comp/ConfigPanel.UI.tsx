@@ -16,10 +16,6 @@ const cssIconStyle: CSSProperties = {
   fontSize: '1.1em'
 };
 
-function FullValueEdit() {
-
-}
-
 const curStyle = getComputedStyle(document.body);
 const theme = {
   primary: curStyle.getPropertyValue('--bs-primary'),
@@ -56,34 +52,55 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     }
   }
 
+  function setBgColor(color: string, timing_ms: number) {
+    if (!labelRef.current)
+      return;
+
+    labelRef.current.style.transition = 'background ' + timing_ms + 'ms';
+    labelRef.current.style.background = color;
+  }
+
   useEffect(() => {
     elem.onCommit = () => {
       panelContext.markAnyItemDirty(prop.rootName, elem.props.elemID);
-      labelRef.current.style.transition = 'background 0.2s'
-      labelRef.current.style.background = valueLabelBg.comitted;
+      setBgColor(valueLabelBg.comitted, 200);
       forceUpdate();
     };
     elem.onChangeDiscarded = () => {
-      labelRef.current.style.transition = 'background 1s'
-      labelRef.current.style.background = stateColor();
+      setBgColor(stateColor(), 1000);
       forceUpdate();
     }
-    elem.onUpdateReceived = () => {
-      labelRef.current.style.transition = "";
-      labelRef.current.style.background = theme.success + "22";
-      refrshChild.current();
-      setTimeout(() => {
-        if(!labelRef.current)
-          return;
 
-        labelRef.current.style.transition = 'background 0.3s'
-        labelRef.current.style.background = stateColor();
-      }, 200);
+    let timerId: any;
+    elem.onUpdateReceived = () => {
+      setBgColor(theme.success + '22', 0);
+      refrshChild.current();
+
+      try {
+        clearTimeout(timerId);
+      } catch {
+      }
+
+      timerId = setTimeout(() => {
+        setBgColor(stateColor(), 300);
+      }, 50);
     };
+
+    elem.onUpdateDiscarded = () => {
+      elem.committed = undefined;
+      setBgColor(theme.danger + "88", 0);
+      refrshChild.current();
+
+
+      setTimeout(() => {
+        setBgColor(stateColor(), 500);
+      }, 200);
+    }
     return () => {
       elem.onCommit = EmptyFunc;
       elem.onChangeDiscarded = EmptyFunc;
       elem.onUpdateReceived = EmptyFunc;
+      elem.onUpdateDiscarded = EmptyFunc;
     };
   }, []);
 
@@ -146,6 +163,9 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     useEffect(() => {
       if (inputRef.current == null)
         return;
+
+      if (!elem.editted)
+        elem.valueLocal = structuredClone(elem.value);
 
       const current = inputRef.current;
       current.addEventListener('focusout', () => {

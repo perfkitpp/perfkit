@@ -26,9 +26,10 @@ export interface ElemContext {
   committed?: true;
   updateFence: number;
 
-  onCommit: () => void;
-  onChangeDiscarded: () => void;
-  onUpdateReceived: () => void;
+  onCommit?: () => void;
+  onChangeDiscarded?: () => void;
+  onUpdateReceived?: () => void;
+  onUpdateDiscarded?: () => void;
 
   requestCommitChanges: () => void;
 }
@@ -82,6 +83,12 @@ interface MethodUpdate {
   params: ElemUpdateList
 }
 
+interface MethodUpdateDiscarded {
+  method: "discarded"
+  params: [string, number][]
+}
+
+
 interface MethodDeleteRoot {
   method: "delete-root"
   params: string
@@ -96,9 +103,6 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[], commitFn: 
       value: elem.initValue,
       valueLocal: structuredClone(elem.initValue),
       props: elem,
-      onUpdateReceived: EmptyFunc,
-      onCommit: EmptyFunc,
-      onChangeDiscarded: EmptyFunc,
       requestCommitChanges: commitFn,
       updateFence: 0,
     };
@@ -183,7 +187,8 @@ export default function ConfigPanel(props: { socketUrl: string }) {
 
   async function onMessage(ev: MessageEvent) {
     const roots = rootTablesRef.current;
-    let msg = JSON.parse(ev.data) as MethodNewCfg | MethodNewRoot | MethodUpdate | MethodDeleteRoot;
+    let msg = JSON.parse(ev.data) as
+      MethodNewCfg | MethodNewRoot | MethodUpdate | MethodDeleteRoot | MethodUpdateDiscarded;
     switch (msg.method) {
       case "new-root":
         AppendTextToTerminal(`configs: New root terminal '${msg.params}'`, '')
@@ -215,11 +220,21 @@ export default function ConfigPanel(props: { socketUrl: string }) {
           const elemCtx = root.all[key];
           elemCtx.value = elem.value;
           elemCtx.updateFence = elem.updateFence;
-          if (elemCtx.committed) elemCtx.editted = undefined;
+          if (elemCtx.committed) elemCtx.editted = undefined
           elemCtx.committed = undefined;
-          elemCtx.onUpdateReceived();
+          elemCtx.onUpdateReceived && elemCtx.onUpdateReceived();
         }
         break;
+
+      case "discarded":
+        msg.params.map(([rootName, id]) => {
+          const root = rootTablesRef.current[rootName];
+          const elem = root.all[id];
+
+          elem.onUpdateDiscarded && elem.onUpdateDiscarded();
+        });
+        break;
+
 
       case "delete-root":
         AppendTextToTerminal(`configs: Expiring root '${msg.params}'`);
@@ -283,7 +298,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
       elem.committed = true;
       elem.editted = undefined;
       elem.valueCommitted = structuredClone(elem.valueLocal);
-      elem.onCommit();
+      elem.onCommit && elem.onCommit();
     })
 
     console.log(JSON.stringify(commit))
@@ -296,7 +311,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   function discardAllChanges() {
     iterateChanges((elem,) => {
       elem.editted = undefined;
-      elem.onChangeDiscarded();
+      elem.onChangeDiscarded && elem.onChangeDiscarded();
     })
 
     changedItems.current = {};

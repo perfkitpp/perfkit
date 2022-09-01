@@ -236,8 +236,7 @@ bool config_registry::backend_t::bk_commit(config_id_t id, archive::if_reader* c
     }
 
     if (config) {
-        bk_commit(config.get(), content);
-        return true;
+        return bk_commit(config.get(), content);
     } else {
         return false;
     }
