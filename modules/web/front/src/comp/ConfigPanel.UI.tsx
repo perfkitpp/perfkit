@@ -257,8 +257,9 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
               ref={labelRef}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
-      <span className={'btn text-start'}
-            style={{flexGrow: 0}}>
+      <span className={'btn text-start d-flex flex-row'}
+            style={{flexGrow: 0}}
+            onClick={onClick}>
         {prefix && <span className='text-opacity-75 text-secondary'>{prefix} / </span>}
         {prop.elem.props.name}
         {elem.editted &&
