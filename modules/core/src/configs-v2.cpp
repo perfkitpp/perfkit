@@ -225,6 +225,24 @@ bool config_registry::backend_t::bk_commit(config_base* ref, archive::if_reader*
     return _commit(ref, move(object));
 }
 
+bool config_registry::backend_t::bk_commit(config_id_t id, archive::if_reader* content)
+{
+    config_base_ptr config;
+    {
+        CPPH_TMPVAR{std::shared_lock{_mtx_access}};
+        if (auto p_pair = find_ptr(_configs, id)) {
+            config = p_pair->second.reference.lock();
+        }
+    }
+
+    if (config) {
+        bk_commit(config.get(), content);
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void config_registry::backend_t::_do_update()
 {
     // Event entities ...

@@ -73,6 +73,9 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       labelRef.current.style.background = theme.success + "22";
       refrshChild.current();
       setTimeout(() => {
+        if(!labelRef.current)
+          return;
+
         labelRef.current.style.transition = 'background 0.3s'
         labelRef.current.style.background = stateColor();
       }, 200);

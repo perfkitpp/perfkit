@@ -124,6 +124,7 @@ class config_registry::backend_t
    public:
     void bk_all_items(vector<config_base_ptr>*) const noexcept;
     bool bk_commit(config_base*, archive::if_reader* content);
+    bool bk_commit(config_id_t, archive::if_reader* content);
     void bk_notify() { evt_update_listener.invoke(_owner); }
 
     template <class AccessFn>

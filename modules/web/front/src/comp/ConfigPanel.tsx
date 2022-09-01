@@ -308,7 +308,8 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   // TODO: Implement search using 'https://github.com/farzher/fuzzysort'
   return (
     <ConfigPanelControlContext.Provider value={panelManipContext}>
-      <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
+      <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}
+           onKeyDown={ev => ev.key == "Enter" && commitAllChanges()}>
         <span className='d-flex mt-2 flex-row-reverse align-items-center'>
           <span className='w-auto d-flex flex-row-reverse flex-grow-1'>
             <button
