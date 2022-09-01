@@ -21,11 +21,16 @@ export interface ElemContext {
   props: ElemDesc;
   value: any;
   valueLocal: any; // A value which is ready to commit.
+  valueCommitted?: any; // A value which is ready to commit.
   editted?: true;
   committed?: true;
   updateFence: number;
-  onUpdateReceived: () => void;
+
+  onCommit: () => void;
   onChangeDiscarded: () => void;
+  onUpdateReceived: () => void;
+
+  requestCommitChanges: () => void;
 }
 
 export interface CategoryDesc {
@@ -82,7 +87,7 @@ interface MethodDeleteRoot {
   params: string
 }
 
-function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
+function registerConfigEntities(root: RootContext, elems: ElemDesc[], commitFn: () => void) {
   for (const i in elems) {
     const elem = elems[i];
 
@@ -92,8 +97,10 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[]) {
       valueLocal: structuredClone(elem.initValue),
       props: elem,
       onUpdateReceived: EmptyFunc,
+      onCommit: EmptyFunc,
       onChangeDiscarded: EmptyFunc,
-      updateFence: 0
+      requestCommitChanges: commitFn,
+      updateFence: 0,
     };
 
     //
@@ -192,12 +199,12 @@ export default function ConfigPanel(props: { socketUrl: string }) {
       case "new-cfg":
         AppendTextToTerminal(`configs: Registering ${msg.params.length} config entities`, '')
         const [rootName, ...elemDescs] = msg.params;
-        registerConfigEntities(roots[rootName], elemDescs);
+        registerConfigEntities(roots[rootName], elemDescs, commitAllChanges);
         forceUpdate();
         break;
 
       case "update":
-        // TODO: From root, iterate each element, update content. Touch updated elements
+        // From root, iterate each element, update content. Touch updated elements
         const root = rootTablesRef.current[msg.params.rootName];
         for (const strKey in msg.params) {
           const key = Number(strKey);
@@ -208,6 +215,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
           const elemCtx = root.all[key];
           elemCtx.value = elem.value;
           elemCtx.updateFence = elem.updateFence;
+          if (elemCtx.committed) elemCtx.editted = undefined;
           elemCtx.committed = undefined;
           elemCtx.onUpdateReceived();
         }
@@ -248,12 +256,51 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     }
   }
 
+  function iterateChanges(func: (elem: ElemContext, root: RootContext) => void) {
+    for (const id in changedItems.current) {
+      const rootName = changedItems.current[id];
+      const root = rootTablesRef.current[rootName];
+      const elem = root.all[id];
+
+      func(elem, root);
+    }
+  }
+
   function commitAllChanges() {
-    // TODO: Flush changed items
+    const commit = {
+      method: 'commit',
+      params: [] as any[]
+    };
+
+    iterateChanges((elem, root) => {
+      const commitArg = [
+        root.root.name,
+        elem.props.elemID,
+        elem.valueLocal
+      ];
+
+      commit.params.push(commitArg);
+      elem.committed = true;
+      elem.editted = undefined;
+      elem.valueCommitted = structuredClone(elem.valueLocal);
+      elem.onCommit();
+    })
+
+    console.log(JSON.stringify(commit))
+    cfgSock?.send(JSON.stringify(commit));
+
+    changedItems.current = {};
+    setIsAnyItemDirty(false);
   }
 
   function discardAllChanges() {
-    // TODO: Iterate all changes, roll back their locals, force update.
+    iterateChanges((elem,) => {
+      elem.editted = undefined;
+      elem.onChangeDiscarded();
+    })
+
+    changedItems.current = {};
+    setIsAnyItemDirty(false);
   }
 
   const iconFontSize = '1.4em';

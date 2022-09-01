@@ -32,11 +32,57 @@ const theme = {
   dark: curStyle.getPropertyValue('--bs-dark'),
 }
 
+const valueLabelBg = {
+  none: '#00000000',
+  dirty: theme.warning + '22',
+  comitted: theme.warning + '75',
+  updated: theme.success + '33',
+}
+
 function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string }) {
   const {elem, prefix} = prop;
   const labelRef = useRef(null as any as HTMLDivElement);
+  const refrshChild = useRef(EmptyFunc);
   const [inlineEditMode, setInlineEditMode] = useState(false);
   const forceUpdate = useForceUpdate();
+
+  function stateColor() {
+    if (elem.committed) {
+      return valueLabelBg.comitted;
+    } else if (elem.editted) {
+      return valueLabelBg.dirty;
+    } else {
+      return valueLabelBg.none;
+    }
+  }
+
+  useEffect(() => {
+    elem.onCommit = () => {
+      panelContext.markAnyItemDirty(prop.rootName, elem.props.elemID);
+      labelRef.current.style.transition = 'background 0.2s'
+      labelRef.current.style.background = valueLabelBg.comitted;
+      forceUpdate();
+    };
+    elem.onChangeDiscarded = () => {
+      labelRef.current.style.transition = 'background 1s'
+      labelRef.current.style.background = stateColor();
+      forceUpdate();
+    }
+    elem.onUpdateReceived = () => {
+      labelRef.current.style.transition = "";
+      labelRef.current.style.background = theme.success + "22";
+      refrshChild.current();
+      setTimeout(() => {
+        labelRef.current.style.transition = 'background 0.3s'
+        labelRef.current.style.background = stateColor();
+      }, 200);
+    };
+    return () => {
+      elem.onCommit = EmptyFunc;
+      elem.onChangeDiscarded = EmptyFunc;
+      elem.onUpdateReceived = EmptyFunc;
+    };
+  }, []);
 
   function determineValueClass(): [string, `rgb(${number}, ${number}, ${number})` | `#${string}`] {
     switch (typeof elem.value) {
@@ -61,14 +107,14 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     elem.editted = true;
     panelContext.markAnyItemDirty(prop.rootName, elem.props.elemID);
     labelRef.current.style.transition = 'background 1s'
-    labelRef.current.style.background = theme.info + '33';
+    labelRef.current.style.background = stateColor();
   }
 
   function performRollback() {
     elem.editted = undefined;
     elem.valueLocal = structuredClone(elem.value);
     panelContext.rollbackDirtyItem(prop.rootName, elem.props.elemID);
-    labelRef.current.style.background = '#00000000';
+    labelRef.current.style.background = stateColor();
     forceUpdate();
   }
 
@@ -91,7 +137,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     }
   }
 
-  function InlineEdit() {
+  function InlineEditMode() {
     const inputRef = useRef(null as null | HTMLInputElement);
 
     useEffect(() => {
@@ -119,6 +165,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
                       ref={inputRef}
                       type={typeof elem.value === "number" ? "number" : "text"}
                       defaultValue={elem.valueLocal}
+                      onFocus={ev => ev.currentTarget.select()}
                       onInput={ev => {
                         try {
                           elem.valueLocal = typeof elem.value === "number"
@@ -141,24 +188,11 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     return typeof value === "string" ? value : JSON.stringify(value);
   }
 
-  function ValueDisplay(props: {}) {
+  function ValueDisplay(props: { refreshValueDisplay: (elem: () => void) => void }) {
     const forceUpdateValue = useForceUpdate();
 
     useEffect(() => {
-      elem.onUpdateReceived = () => {
-        const srcBg = labelRef.current.style.background;
-        labelRef.current.style.transition = "";
-        labelRef.current.style.background = theme.success + "22";
-        forceUpdateValue();
-        setTimeout(() => {
-          labelRef.current.style.transition = 'background 0.3s'
-          labelRef.current.style.background = srcBg;
-        }, 20);
-      };
-
-      return () => {
-        elem.onUpdateReceived = EmptyFunc;
-      }
+      props.refreshValueDisplay(forceUpdateValue);
     }, []);
 
     const rawText = valueStringify(elem.value);
@@ -175,8 +209,11 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
               style={{color: titleColor, textOverflow: 'ellipsis'}}
               onClick={onClick}>
         {rawText}
-        {elem.editted && <span className='ms-2 small'>
+        {elem.editted && <span className='ms-2 small text-secondary'>
             ({valueStringify(elem.valueLocal)})
+        </span>}
+        {elem.committed && <span className='ms-2 small text-dark fst-italic'>
+            ({valueStringify(elem.valueCommitted)})
         </span>}
         </span>;
   }
@@ -206,7 +243,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
                onClick={performRollback}/>}
       </span>
       <HighlightHr color={titleColor}/>
-      {inlineEditMode ? <InlineEdit/> : <ValueDisplay/>
+      {inlineEditMode ? <InlineEditMode/> : <ValueDisplay refreshValueDisplay={fn => refrshChild.current = fn}/>
       }
     </div>
   </div>;

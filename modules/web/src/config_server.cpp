@@ -66,6 +66,7 @@ class config_server_impl : public config_server
     shared_ptr<void> anchor_ = make_shared<nullptr_t>();
     vector<websocket_weak_ptr> clients_;
     map<weak_ptr<config_registry>, string, std::owner_less<>> regs_;
+    map<string, weak_ptr<config_registry>, std::less<>> regs_strmap_;
 
     streambuf::stringbuf sbuf_;
     archive::json::writer json_wr_{&sbuf_};
@@ -169,6 +170,9 @@ class config_server_impl : public config_server
             return;  // Already registered!
         }
 
+        // Register name-ref mapping
+        regs_strmap_.try_emplace(rg->name(), rg);
+
         // Register events
         rg->backend()->evt_structure_changed()
                 << anchor_
@@ -239,6 +243,8 @@ class config_server_impl : public config_server
         if (auto iter = regs_.find(observ); iter == regs_.end()) {
             return;
         } else {
+            regs_strmap_.erase(iter->second);
+
             *ioc_writer_prepare_("delete-root") << iter->second;
             client_for_each_([&, s = ioc_writer_done_()](auto cli) { cli->send_text(*s); });
 
@@ -332,13 +338,49 @@ class config_server_impl : public config_server
         try {
             auto key = json_rd_.begin_object();
 
-            if(json_rd_.goto_key("method")) {
-                // TODO [wip]
+            if (json_rd_.goto_key("method")) {
+                using hasher::fnv1a_64;
+                auto method_name = json_rd_.read_as<string>();
+
+                if (json_rd_.goto_key("params")) {
+                    if (method_name == "commit")
+                        ioc_handle_upload_params_(json_rd_);
+                } else {
+                    throw std::runtime_error{"Missing 'params'"};
+                }
             }
 
             json_rd_.end_object(key);
         } catch (std::exception& e) {
             CPPH_ERROR("! MESSAGE HANDLING ERROR: {}", e.what());
+        }
+    }
+
+    void ioc_handle_upload_params_(archive::json::reader& rd)
+    {
+        auto exit_key = rd.begin_array();
+        set<shared_ptr<config_registry>> notify_targets_;
+
+        string root_name;
+        for (auto _ : counter(rd.elem_left())) {
+            auto exit_key_2 = rd.begin_array();
+
+            rd >> root_name;
+            auto id = rd.read_as<uint64_t>();
+
+            if (auto p_pair = find_ptr(regs_strmap_, root_name)) {
+                if (auto rg = p_pair->second.lock()) {
+                    notify_targets_.emplace(rg);
+                    rg->backend()->bk_commit({id}, &rd);
+                }
+            }
+
+            rd.end_array(exit_key_2);
+        }
+        rd.end_array(exit_key);
+
+        for (auto& rg : notify_targets_) {
+            rg->backend()->bk_notify();
         }
     }
 };
