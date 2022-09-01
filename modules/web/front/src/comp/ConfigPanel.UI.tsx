@@ -90,7 +90,6 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       setBgColor(theme.danger + "88", 0);
       refrshChild.current();
 
-
       setTimeout(() => {
         setBgColor(stateColor(), 500);
       }, 200);

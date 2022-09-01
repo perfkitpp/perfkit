@@ -217,7 +217,10 @@ export default function ConfigPanel(props: { socketUrl: string }) {
           const elemCtx = root.all[key];
           elemCtx.value = elem.value;
           elemCtx.updateFence = elem.updateFence;
-          if (elemCtx.committed) elemCtx.editted = undefined
+          if (elemCtx.committed) {
+            elemCtx.editted = undefined
+            elemCtx.valueLocal = structuredClone(elemCtx.value)
+          }
           elemCtx.committed = undefined;
           elemCtx.onUpdateReceived && elemCtx.onUpdateReceived();
         }
