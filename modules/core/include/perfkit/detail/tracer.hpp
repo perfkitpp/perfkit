@@ -300,6 +300,9 @@ class tracer : public std::enable_shared_from_this<tracer>
         //! Fetch traces by diffs.
         void fetch_diff(fetched_traces* out, size_t begin) const;
 
+        //! Fetch traces by diffs, and calculate folds
+        void fetch_tree_diff(fetched_traces* out, size_t begin) const;
+
         //! Simply get cached latest fence value
         size_t fence() const noexcept { return _owner->_fence_active; }
 

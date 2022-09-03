@@ -234,6 +234,15 @@ bool terminal::ws_config_accept_(const crow::request& req, void** ppv)
     return true;
 }
 
+bool terminal::ws_trace_accept_(const crow::request& req, void** ppv)
+{
+    CPPH_INFO("* Accepting trace WebSocket from: {}", req.remote_ip_address);
+    auto p_sess = srv_trace_->new_session_context();
+    *ppv = new detail::websocket_ptr{p_sess};
+
+    return true;
+}
+
 void terminal::ws_on_open_(crow::websocket::connection& c)
 {
     auto p = ((detail::websocket_ptr*)c.userdata())->get();

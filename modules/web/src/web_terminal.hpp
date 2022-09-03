@@ -43,6 +43,7 @@
 #include "interface.hpp"
 #include "perfkit/terminal.h"
 #include "perfkit/web.h"
+#include "trace_server.hpp"
 
 namespace perfkit::web::impl {
 struct basic_socket_context {
@@ -67,6 +68,7 @@ class terminal : public if_terminal, public detail::if_web_terminal
 
     // Sub-services
     ptr<detail::config_server> srv_config_ = detail::config_server::create(this);
+    ptr<detail::trace_server> srv_trace_ = detail::trace_server::create(this);
 
    private:
     class ws_tty_session;
@@ -95,7 +97,7 @@ class terminal : public if_terminal, public detail::if_web_terminal
 
     bool ws_tty_accept_(crow::request const&, void**);
     bool ws_config_accept_(crow::request const&, void**);
-    bool ws_trace_accept_(crow::request const&, void**) { return false; }
+    bool ws_trace_accept_(crow::request const&, void**);
     bool ws_window_accept_(crow::request const&, void**) { return false; }
 };
 }  // namespace perfkit::web::impl

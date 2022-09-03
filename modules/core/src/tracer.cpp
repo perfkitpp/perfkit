@@ -191,6 +191,7 @@ bool tracer::_deliver_previous_result()
 void tracer::trace_fetch_proxy::fetch_tree(tracer::fetched_traces* out) const
 {
     out->clear();
+
     for (auto& [hash, entity] : _owner->_table) {
         bool folded = false;
 
@@ -215,6 +216,30 @@ void tracer::trace_fetch_proxy::fetch_diff(tracer::fetched_traces* out, size_t b
     for (auto& [hash, entity] : _owner->_table) {
         // Any obsolete node will not be included.
         if (entity.body.fence < begin)
+            continue;
+
+        out->emplace_back(entity.body);
+    }
+}
+
+void tracer::trace_fetch_proxy::fetch_tree_diff(tracer::fetched_traces* out, size_t begin) const
+{
+    out->clear();
+    for (auto& [hash, entity] : _owner->_table) {
+        bool folded = false;
+
+        // Any obsolete node will not be included.
+        if (entity.body.fence < begin)
+            continue;
+
+        // Find if any ancestor node is folded
+        for (auto parent = entity.parent; parent; parent = parent->parent)
+            if (parent->is_folded.load(std::memory_order_relaxed)) {
+                folded = true;
+                break;
+            }
+
+        if (folded)
             continue;
 
         out->emplace_back(entity.body);
