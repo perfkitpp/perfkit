@@ -3,6 +3,7 @@ import './App.scss';
 import Terminal from "./comp/Terminal";
 import {Button, Container, Row, Col, ColProps} from "react-bootstrap";
 import ConfigPanel from "./comp/ConfigPanel";
+import TracePanel from './comp/TracePanel'
 
 export const socketUrlPrefix = process.env.NODE_ENV === "development"
   ? `ws://${window.location.hostname}:15572`
@@ -189,7 +190,7 @@ function App() {
           {enableTraces &&
               <ModulePanelCol colAttr={{md: true}} styleVars={{minWidth: 600}}
                               title='Traces' iconClass='ri-dashboard-2-line'>
-                  Traces window will be placed here.
+                  <TracePanel socketUrl={socketUrlPrefix + '/ws/traces'}/>
               </ModulePanelCol>}
           {enablePlottings &&
               <ModulePanelCol styleVars={{minWidth: 900}}

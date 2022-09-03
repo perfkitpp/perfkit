@@ -316,14 +316,21 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     }
 
     function ObjectEdit() {
-      const editor = useRef(null as any as HTMLDivElement);
+      const editorContainer = useRef(null as any as HTMLDivElement);
+      const editor = useRef(null as null | JSONEditor);
+
       useEffect(() => {
-        if (editor.current.innerHTML !== "") {
+        elem.onUpdateReceivedAfterCommit = (value: any) => {
+          console.log('updateReceivedAfterCommit', value);
+          editor.current?.set({json: value})
+        }
+
+        if (editor.current) {
           return;
         }
 
-        new JSONEditor({
-          target: editor.current,
+        editor.current = new JSONEditor({
+          target: editorContainer.current,
           props: {
             content: {
               text: undefined,
@@ -331,7 +338,6 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
             },
             onChange: (updatedContent, previousContent, {contentErrors, patchResult}) => {
               // content is an object { json: JSONData } | { text: string }
-              console.log('onChange', {updatedContent, previousContent, contentErrors, patchResult})
               if (patchResult && patchResult.json) {
                 elem.editted = true;
                 elem.valueLocal = patchResult.json;
@@ -341,8 +347,12 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
             }
           }
         });
+
+        return () => {
+          elem.onUpdateReceivedAfterCommit = EmptyFunc;
+        }
       }, []);
-      return <div ref={editor} className='w-100 jse-theme-dark'/>
+      return <div ref={editorContainer} className='w-100 jse-theme-dark'/>
     }
 
     return <div className='ms-1 ps-1 mb-2 d-flex flex-row align-items-start'>

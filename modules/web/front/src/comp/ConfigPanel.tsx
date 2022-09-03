@@ -28,6 +28,7 @@ export interface ElemContext {
 
   onCommit?: () => void;
   onChangeDiscarded?: () => void;
+  onUpdateReceivedAfterCommit?: (val: any) => void;
   onUpdateReceived?: () => void;
   onUpdateDiscarded?: () => void;
 }
@@ -220,6 +221,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
           if (elemCtx.committed) {
             elemCtx.editted = undefined
             elemCtx.valueLocal = structuredClone(elemCtx.value)
+            elemCtx.onUpdateReceivedAfterCommit && elemCtx.onUpdateReceivedAfterCommit(elemCtx.value);
           }
           elemCtx.committed = undefined;
           elemCtx.onUpdateReceived && elemCtx.onUpdateReceived();
