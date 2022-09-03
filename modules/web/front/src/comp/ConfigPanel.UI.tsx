@@ -1,7 +1,8 @@
 import {CSSProperties, ReactNode, useContext, useEffect, useMemo, useReducer, useRef, useState} from "react";
 import {CategoryDesc, ConfigPanelControlContext, ElemContext, ElemDesc, RootContext} from "./ConfigPanel";
 import {Col, InputGroup, Row, Spinner} from "react-bootstrap";
-import {Style} from "util";
+import 'vanilla-jsoneditor/themes/jse-theme-dark.css'
+import {JSONEditor} from "vanilla-jsoneditor";
 import {EmptyFunc, useForceUpdate, useTimeout} from "../Utils";
 
 export interface CategoryVisualProps {
@@ -310,10 +311,36 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     }
 
     function ObjectEdit() {
-      return <div>ObjectEdit</div>
+      const editor = useRef(null as any as HTMLDivElement);
+      useEffect(() => {
+        if (editor.current.innerHTML !== "") {
+          return;
+        }
+
+        new JSONEditor({
+          target: editor.current,
+          props: {
+            content: {
+              text: undefined,
+              json: elem.editted ? elem.valueLocal : elem.value
+            },
+            onChange: (updatedContent, previousContent, {contentErrors, patchResult}) => {
+              // content is an object { json: JSONData } | { text: string }
+              console.log('onChange', {updatedContent, previousContent, contentErrors, patchResult})
+              if (patchResult && patchResult.json) {
+                elem.editted = true;
+                elem.valueLocal = patchResult.json;
+                refreshValueDisplay.current();
+                markDirty();
+              }
+            }
+          }
+        });
+      }, []);
+      return <div ref={editor} className='w-100 jse-theme-dark'/>
     }
 
-    return <div className='ms-1 mt-2 ps-1 mb-2 d-flex flex-row align-items-start'>
+    return <div className='ms-1 ps-1 mb-2 d-flex flex-row align-items-start'>
       <i className='ri-edit-line me-1 text-primary'/>
       {elem.props.oneOf != null ? <OneOfEdit/> : <ObjectEdit/>}
     </div>
