@@ -1,6 +1,6 @@
 import {CSSProperties, ReactNode, useContext, useEffect, useMemo, useReducer, useRef, useState} from "react";
 import {CategoryDesc, ConfigPanelControlContext, ElemContext, ElemDesc, RootContext} from "./ConfigPanel";
-import {InputGroup, Spinner} from "react-bootstrap";
+import {Col, InputGroup, Row, Spinner} from "react-bootstrap";
 import {Style} from "util";
 import {EmptyFunc, useForceUpdate, useTimeout} from "../Utils";
 
@@ -9,7 +9,7 @@ export interface CategoryVisualProps {
 }
 
 export const DefaultVisProp: CategoryVisualProps = {
-  collapsed: true
+  collapsed: false
 }
 
 const cssIconStyle: CSSProperties = {
@@ -38,8 +38,10 @@ const valueLabelBg = {
 function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string }) {
   const {elem, prefix} = prop;
   const labelRef = useRef(null as any as HTMLDivElement);
-  const refrshChild = useRef(EmptyFunc);
+  const refreshValueDisplay = useRef(EmptyFunc);
+  const refreshFullEditWindow = useRef(EmptyFunc);
   const [inlineEditMode, setInlineEditMode] = useState(false);
+  const [fullEditMode, setFullEditMode] = useState(false);
   const forceUpdate = useForceUpdate();
 
   function stateColor() {
@@ -73,7 +75,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     let timerId: any;
     elem.onUpdateReceived = () => {
       setBgColor(theme.success + '22', 0);
-      refrshChild.current();
+      refreshValueDisplay.current();
+      refreshFullEditWindow.current();
 
       try {
         clearTimeout(timerId);
@@ -88,7 +91,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     elem.onUpdateDiscarded = () => {
       elem.committed = undefined;
       setBgColor(theme.danger + "88", 0);
-      refrshChild.current();
+      refreshValueDisplay.current();
+      refreshFullEditWindow.current();
 
       setTimeout(() => {
         setBgColor(stateColor(), 500);
@@ -140,17 +144,38 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
   const panelContext = useContext(ConfigPanelControlContext);
 
   function onClick() {
+    if (fullEditMode) {
+      setFullEditMode(false);
+      return;
+    }
+
+    if (elem.props.oneOf != null) {
+      setInlineEditMode(false);
+      setFullEditMode(true);
+      return;
+    }
+
     switch (typeof elem.value) {
-      case "number":
-      case "string":
-        setInlineEditMode(true);
-        break;
       case "boolean":
         elem.valueLocal = !elem.valueLocal;
+        console.log(elem.valueLocal);
         markDirty();
         forceUpdate();
         break;
+
+      case "number":
+      case "bigint":
+      case "string":
+        setInlineEditMode(true);
+        break;
+
+      case "object":
+        setInlineEditMode(false);
+        setFullEditMode(true);
+        break;
+
       default:
+        setInlineEditMode(false);
         break;
     }
   }
@@ -183,13 +208,9 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       }
     }
 
-    if (elem.props.oneOf != null) {
-      // TODO: Create dropdown ...
-      return <div>ONEOF!</div>;
-    }
-
     switch (typeof elem.value) {
       case "number":
+      case "bigint":
       case "string":
         return <input className="form-control form-control-sm text-end bg-transparent flex-grow-1"
                       ref={inputRef}
@@ -231,13 +252,11 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
               onFocus={onClick}
               title={rawText}
               style={{color: titleColor, textOverflow: 'ellipsis'}}>
-        {rawText}
         {elem.editted && <span className='ms-2 small text-secondary'>
-            ({valueStringify(elem.valueLocal)})
-        </span>}
+            ({valueStringify(elem.valueLocal)}) </span>}
         {elem.committed && <span className='ms-2 small text-dark fst-italic'>
-            ({valueStringify(elem.valueCommitted)})
-        </span>}
+            ({valueStringify(elem.valueCommitted)}) </span>}
+        {rawText}
         </span>;
   }
 
@@ -245,20 +264,69 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     const [isHovering, setIsHovering] = useState(false);
 
     return <div className='h-100 flex-grow-1'
+                onClick={onClick}
                 onMouseEnter={() => setIsHovering(true)}
                 onMouseLeave={() => setIsHovering(false)}>
       <hr style={{flexGrow: 2, height: isHovering ? 4 : 1, background: titleColor}}/>
     </div>
   }
 
+  function FullEdit() {
+    function OneOfEdit() {
+      useEffect(() => {
+        refreshFullEditWindow.current = forceUpdate;
+        return () => {
+          refreshFullEditWindow.current = EmptyFunc;
+        };
+      }, []);
+
+      if (elem.props.oneOf == null)
+        return <div/>;
+
+      const curSrcLabel = valueStringify(elem.value)
+      const curValueLabel = valueStringify(elem.valueLocal);
+      const allNodes = elem.props.oneOf.map(
+        entity => {
+          const entityText = valueStringify(entity);
+          return <Col sm className='p-1'>
+            <div
+              className={'btn w-100 ' + (curSrcLabel == entityText
+                ? 'btn-primary'
+                : curValueLabel == entityText ? 'btn-warning' : 'btn-outline-secondary')}
+              onClick={() => {
+                elem.valueLocal = entity;
+                markDirty();
+                forceUpdate();
+              }}>
+              {entityText}
+            </div>
+          </Col>
+        }
+      );
+
+      return <Row className='p-2 flex-grow-1'>
+        {allNodes}
+      </Row>
+    }
+
+    function ObjectEdit() {
+      return <div>ObjectEdit</div>
+    }
+
+    return <div className='ms-1 mt-2 ps-1 mb-2 d-flex flex-row align-items-start'>
+      <i className='ri-edit-line me-1 text-primary'/>
+      {elem.props.oneOf != null ? <OneOfEdit/> : <ObjectEdit/>}
+    </div>
+  }
+
   return <div className='h6 px-2 py-0 my-1 rounded-3'
               title={elem.props.description}
-              ref={labelRef}
-              onClick={onClick}>
+              style={{border: fullEditMode ? '1px solid gray' : '1px solid #00000000', transition: 'border 0.5s'}}
+              ref={labelRef}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
       <span className={'btn text-start d-flex flex-row flex-grow-0'}>
-        {prefix && <span className='text-opacity-75 text-secondary'>{prefix} / </span>}
+        {prefix && <span className='text-opacity-75 text-secondary pe-2 flex-grow-0'>{prefix} /</span>}
         {prop.elem.props.name}
         {elem.editted &&
             <i className='btn text-danger ri-arrow-go-back-line m-0 ms-2 p-0 px-1'
@@ -266,9 +334,11 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
                onClick={performRollback}/>}
       </span>
       <HighlightHr color={titleColor}/>
-      {inlineEditMode ? <InlineEditMode/> : <ValueDisplay refreshValueDisplay={fn => refrshChild.current = fn}/>
-      }
+      {inlineEditMode
+        ? <InlineEditMode/>
+        : <ValueDisplay refreshValueDisplay={fn => refreshValueDisplay.current = fn}/>}
     </div>
+    {fullEditMode && <FullEdit/>}
   </div>;
 }
 
