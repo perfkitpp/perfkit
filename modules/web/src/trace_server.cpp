@@ -156,7 +156,7 @@ class trace_server_impl : public trace_server
 
     void ioc_register_tracer_(tracer* ref)
     {
-        if (all_.end() == ioc_find_(ref->weak_from_this())) {
+        if (all_.end() != ioc_find_(ref->weak_from_this())) {
             return;  // Already registered.
         }
 

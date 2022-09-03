@@ -168,32 +168,32 @@ function App() {
       <Container fluid className='mt-0 overflow-auto flex-grow-1'>
         <Row className='py-1 h-100'>
           {enableSystemInfo &&
-              <ModulePanelCol colAttr={{sm: true}} styleVars={{minWidth: 600}}
+              <ModulePanelCol colAttr={{sm: true}} styleVars={{minWidth: '60ch'}}
                               title='System Status' iconClass='ri-checkbox-multiple-blank-fill'>
                   System Info window will be placed here.
               </ModulePanelCol>}
           {enableTerminal &&
-              <ModulePanelCol colAttr={{xxl: true}} styleVars={{minWidth: 900}}
+              <ModulePanelCol colAttr={{xxl: true}} styleVars={{minWidth: '140ch'}}
                               title='Terminal' iconClass='ri-terminal-line'>
                   <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>
               </ModulePanelCol>}
           {enableGraphics &&
-              <ModulePanelCol styleVars={{minWidth: '900pt'}}
+              <ModulePanelCol styleVars={{minWidth: '100ch'}}
                               title='Grahpics' iconClass='ri-artboard-line'>
                   Graphics window will be placed here.
               </ModulePanelCol>}
           {enableConfigs &&
-              <ModulePanelCol colAttr={{lg: true}} styleVars={{minWidth: 600}}
+              <ModulePanelCol colAttr={{lg: true}} styleVars={{minWidth: '80ch'}}
                               title='Configs' iconClass='ri-list-settings-fill'>
                   <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'}/>
               </ModulePanelCol>}
           {enableTraces &&
-              <ModulePanelCol colAttr={{md: true}} styleVars={{minWidth: 600}}
+              <ModulePanelCol colAttr={{md: true}} styleVars={{minWidth: '80ch'}}
                               title='Traces' iconClass='ri-dashboard-2-line'>
-                  <TracePanel socketUrl={socketUrlPrefix + '/ws/traces'}/>
+                  <TracePanel socketUrl={socketUrlPrefix + '/ws/trace'}/>
               </ModulePanelCol>}
           {enablePlottings &&
-              <ModulePanelCol styleVars={{minWidth: 900}}
+              <ModulePanelCol styleVars={{minWidth: '80ch'}}
                               title='Plotting' iconClass='ri-line-chart-line'>
                   Plotting window will be placed here.
               </ModulePanelCol>}

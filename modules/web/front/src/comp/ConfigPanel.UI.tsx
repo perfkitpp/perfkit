@@ -247,8 +247,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       : <span className='text-end overflow-hidden btn flex-grow-0 text-nowrap'
               tabIndex={0}
               onFocus={onClick}
-              title={rawText}
-              style={{color: titleColor, textOverflow: 'ellipsis'}}>
+              title={JSON.stringify(elem.value, null, ' ')}
+              style={{color: titleColor, textOverflow: 'ellipsis', maxWidth: '20em'}}>
         {elem.editted && <span className='ms-2 small text-light'>
             ({valueStringify(elem.valueLocal)}) </span>}
         {elem.committed && <span className='ms-2 small text-warning fst-italic'>
@@ -291,10 +291,11 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
       const curSrcLabel = valueStringify(elem.value)
       const curValueLabel = valueStringify(elem.valueLocal);
+      let index = 0;
       const allNodes = elem.props.oneOf.map(
         entity => {
           const entityText = valueStringify(entity);
-          return <Col sm className='p-1'>
+          return <Col sm className='p-1' key={++index}>
             <div
               className={'btn w-100 ' + (curSrcLabel == entityText
                 ? 'btn-primary'
@@ -321,7 +322,6 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
       useEffect(() => {
         elem.onUpdateReceivedAfterCommit = (value: any) => {
-          console.log('updateReceivedAfterCommit', value);
           editor.current?.set({json: value})
         }
 
@@ -341,13 +341,16 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
               if (patchResult && patchResult.json) {
                 elem.editted = true;
                 elem.valueLocal = patchResult.json;
-                refreshValueDisplay.current();
                 markDirty();
               }
-            }
+            },
+            onBlur: () => {
+              refreshValueDisplay.current();
+            },
           }
         });
 
+        editor.current?.focus();
         return () => {
           elem.onUpdateReceivedAfterCommit = EmptyFunc;
         }
@@ -452,13 +455,12 @@ export function RootNode(prop: {
   ctx: RootContext
 }) {
   return <div
-    className='my-2 px-2'
+    className='m-1 p-3 bg-secondary bg-opacity-10 rounded-3'
     style={{
       fontSize: '1.2em',
       overflowX: 'hidden',
       fontFamily: 'Lucida Console, monospace',
     }}>
     <ForwardedCategoryNode root={prop.ctx} self={prop.ctx.root}/>
-    <hr/>
   </div>;
 }

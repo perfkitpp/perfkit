@@ -1,6 +1,6 @@
 import {createContext, ReactNode, useEffect, useMemo, useRef, useState} from "react";
 import {EmptyFunc, useForceUpdate, useWebSocket} from "../Utils";
-import {Spinner} from "react-bootstrap";
+import {Col, Container, Row, Spinner} from "react-bootstrap";
 import {AppendTextToTerminal} from "./Terminal";
 import * as View from "./ConfigPanel.UI";
 import {CategoryVisualProps, DefaultVisProp} from "./ConfigPanel.UI";
@@ -245,9 +245,18 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     }
   }
 
-  const allRootFrames = useMemo(() => Object.keys(rootTablesRef.current).sort().map(
-    key => <View.RootNode key={key} name={key} ctx={rootTablesRef.current[key]}/>
-  ), [cfgSock?.readyState, rootDirtyFlag]);
+  const allRootFrames = useMemo(() =>
+      <Container fluid className='p-0'>
+        <Row className='m-0 p-0'>
+          {Object.keys(rootTablesRef.current).sort().map(
+            key =>
+              <Col key={key} style={{minWidth: '70ch', maxWidth: '105ch'}} className='m-0 p-0'>
+                <View.RootNode name={key} ctx={rootTablesRef.current[key]}/>
+              </Col>
+          )}
+        </Row>
+      </Container>
+    , [cfgSock?.readyState, rootDirtyFlag]);
 
   if (cfgSock?.readyState != WebSocket.OPEN)
     return (<div className='text-center p-3 text-primary'><Spinner animation='border'></Spinner></div>);
@@ -311,6 +320,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   function discardAllChanges() {
     iterateChanges((elem,) => {
       elem.editted = undefined;
+      elem.valueLocal = structuredClone(elem.value);
       elem.onChangeDiscarded && elem.onChangeDiscarded();
     })
 
