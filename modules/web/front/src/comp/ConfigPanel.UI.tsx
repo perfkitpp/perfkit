@@ -23,7 +23,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
   const valueLabelBg = {
     none: '#00000000',
     dirty: theme.warning + '22',
-    comitted: theme.warning + '75',
+    comitted: theme.info + '33',
     updated: theme.success + '33',
   }
 
@@ -31,6 +31,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
   const labelRef = useRef(null as any as HTMLDivElement);
   const refreshValueDisplay = useRef(EmptyFunc);
   const refreshFullEditWindow = useRef(EmptyFunc);
+  const setHoveringState = useRef(EmptyFunc as (newState: boolean) => void);
   const [inlineEditMode, setInlineEditMode] = useState(false);
   const [fullEditMode, setFullEditMode] = useState(false);
   const forceUpdate = useForceUpdate();
@@ -101,9 +102,11 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     switch (typeof elem.value) {
       case "object":
         if (elem.value instanceof Array)
-          return ["ri-brackets-line", '#8d740e'];
+          return ["ri-brackets-line", '#bba962'];
+          // return ["ri-brackets-line", '#8d740e'];
         else
           return ["ri-braces-line", '#0bab7e'];
+          // return ["ri-braces-line", '#0bab7e'];
       case "boolean":
         return ["ri-checkbox-line", '#0184cb'];
       case "number":
@@ -244,9 +247,9 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
               onFocus={onClick}
               title={rawText}
               style={{color: titleColor, textOverflow: 'ellipsis'}}>
-        {elem.editted && <span className='ms-2 small text-secondary'>
+        {elem.editted && <span className='ms-2 small text-light'>
             ({valueStringify(elem.valueLocal)}) </span>}
-        {elem.committed && <span className='ms-2 small text-dark fst-italic'>
+        {elem.committed && <span className='ms-2 small text-warning fst-italic'>
             ({valueStringify(elem.valueCommitted)}) </span>}
         {rawText}
         </span>;
@@ -254,12 +257,21 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
   function HighlightHr(prop: { color: string }) {
     const [isHovering, setIsHovering] = useState(false);
+    useEffect(() => {
+      setHoveringState.current = setIsHovering;
+    }, []);
 
     return <div className='h-100 flex-grow-1'
-                onClick={onClick}
-                onMouseEnter={() => setIsHovering(true)}
-                onMouseLeave={() => setIsHovering(false)}>
-      <hr style={{flexGrow: 2, height: isHovering ? 4 : 1, background: titleColor}}/>
+                onClick={onClick}>
+      <hr className='rounded-5'
+        style={{
+        flexGrow: 2,
+        height: isHovering ? 15 : 1,
+        background: prop.color,
+        transition: 'height .3s',
+        opacity: '.3',
+        margin: '0'
+      }}/>
     </div>
   }
 
@@ -339,7 +351,9 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
   return <div className='h6 px-2 py-0 my-1 rounded-3'
               title={elem.props.description}
-              ref={labelRef}>
+              ref={labelRef}
+              onMouseEnter={() => setHoveringState.current(true)}
+              onMouseLeave={() => setHoveringState.current(false)}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
       <span className={'btn text-start d-flex flex-row flex-grow-0'}>
