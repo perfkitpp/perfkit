@@ -1,7 +1,5 @@
 import {createContext, CSSProperties, useEffect, useState} from 'react';
 import './App.scss';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'remixicon/fonts/remixicon.css'
 import Terminal from "./comp/Terminal";
 import {Button, Container, Row, Col, ColProps} from "react-bootstrap";
 import ConfigPanel from "./comp/ConfigPanel";
@@ -16,6 +14,18 @@ interface ToggleRibbonProps {
   iconClass: string;
   labelText: string;
   toolTip: string;
+}
+
+const curStyle = getComputedStyle(document.body);
+export const theme = {
+  primary: curStyle.getPropertyValue('--bs-primary'),
+  secondary: curStyle.getPropertyValue('--bs-secondary'),
+  success: curStyle.getPropertyValue('--bs-success'),
+  info: curStyle.getPropertyValue('--bs-info'),
+  warning: curStyle.getPropertyValue('--bs-warning'),
+  danger: curStyle.getPropertyValue('--bs-danger'),
+  light: curStyle.getPropertyValue('--bs-light'),
+  dark: curStyle.getPropertyValue('--bs-dark'),
 }
 
 function ToggleRibbon(prop: ToggleRibbonProps) {
@@ -33,7 +43,7 @@ function ToggleRibbon(prop: ToggleRibbonProps) {
       onMouseEnter={() => setMouseHover(true)}
       onMouseLeave={() => setMouseHover(false)}>
       <i className={prop.iconClass + ' ToggleRibbon-icon flex-grow-1'}>{mouseHover &&
-        <span className='ps-2'>{prop.labelText}</span>}
+          <span className='ps-2'>{prop.labelText}</span>}
       </i>
     </Button>
   </div>;
@@ -62,7 +72,7 @@ export function ModulePanelCol(prop: ModulePanelProps) {
       <div className='ModulePanel d-flex flex-column'>
         <div className='text-center flex-grow-0 align-items-center'>
           <i className={`${prop.iconClass} fw-bold w-100`}
-                style={{fontSize: '1.2em'}}/>
+             style={{fontSize: '1.2em'}}/>
           <span className='ms-1 fw-bold' style={{fontSize: '1.1em'}}>
           {prop.title}
           </span>

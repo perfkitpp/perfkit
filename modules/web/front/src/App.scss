@@ -1,3 +1,5 @@
+@import 'bootstrap/scss/bootstrap';
+
 /* width */
 ::-webkit-scrollbar {
   width: 10px;
@@ -5,12 +7,12 @@
 
 /* Track */
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #484848;
 }
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #707070;
 }
 
 /* Handle on hover */
@@ -18,19 +20,10 @@
   background: #555;
 }
 
-.terminal-input-box {
-  background: black;
-  width: 100%;
-  color: greenyellow;
-  font-weight: bolder;
-}
-
-
 .App {
   height: calc(100vh);
   overflow: hidden;
 
-  color: black;
 }
 
 .ToggleRibbon-disabled {
@@ -61,11 +54,11 @@
 
 .ModulePanel {
   padding: 0.5em;
-  border: 2px solid gray;
+  border: 2px solid $secondary;
   text-align: left;
   font-size: 10pt;
   margin-bottom: 0;
   border-radius: 1em;
-  background: whitesmoke;
   height: 100%;
+  color: $light
 }

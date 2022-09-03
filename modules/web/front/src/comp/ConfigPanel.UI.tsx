@@ -4,6 +4,7 @@ import {Col, InputGroup, Row, Spinner} from "react-bootstrap";
 import 'vanilla-jsoneditor/themes/jse-theme-dark.css'
 import {JSONEditor} from "vanilla-jsoneditor";
 import {EmptyFunc, useForceUpdate, useTimeout} from "../Utils";
+import {theme} from "../App";
 
 export interface CategoryVisualProps {
   collapsed: boolean
@@ -17,26 +18,15 @@ const cssIconStyle: CSSProperties = {
   fontSize: '1.1em'
 };
 
-const curStyle = getComputedStyle(document.body);
-const theme = {
-  primary: curStyle.getPropertyValue('--bs-primary'),
-  secondary: curStyle.getPropertyValue('--bs-secondary'),
-  success: curStyle.getPropertyValue('--bs-success'),
-  info: curStyle.getPropertyValue('--bs-info'),
-  warning: curStyle.getPropertyValue('--bs-warning'),
-  danger: curStyle.getPropertyValue('--bs-danger'),
-  light: curStyle.getPropertyValue('--bs-light'),
-  dark: curStyle.getPropertyValue('--bs-dark'),
-}
-
-const valueLabelBg = {
-  none: '#00000000',
-  dirty: theme.warning + '22',
-  comitted: theme.warning + '75',
-  updated: theme.success + '33',
-}
 
 function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string }) {
+  const valueLabelBg = {
+    none: '#00000000',
+    dirty: theme.warning + '22',
+    comitted: theme.warning + '75',
+    updated: theme.success + '33',
+  }
+
   const {elem, prefix} = prop;
   const labelRef = useRef(null as any as HTMLDivElement);
   const refreshValueDisplay = useRef(EmptyFunc);
@@ -107,7 +97,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     };
   }, []);
 
-  function determineValueClass(): [string, `rgb(${number}, ${number}, ${number})` | `#${string}`] {
+  function determineValueClass(): [string, string | `rgb(${number}, ${number}, ${number})` | `#${string}`] {
     switch (typeof elem.value) {
       case "object":
         if (elem.value instanceof Array)
@@ -242,7 +232,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
     const rawText = valueStringify(elem.value);
     return typeof elem.value === "boolean"
-      ? (<span className='btn px-3 text-primary' onClick={onClick} tabIndex={0}
+      ? (<span className='btn px-3' onClick={onClick} tabIndex={0}
+               style={{color: titleColor}}
                onKeyDown={ev => (ev.key == " " || ev.key == "Enter") && onClick()}>
         {(elem.editted ? elem.valueLocal : elem.value)
           ? <i className='ri-eye-fill'/>
@@ -348,12 +339,11 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
   return <div className='h6 px-2 py-0 my-1 rounded-3'
               title={elem.props.description}
-              style={{border: fullEditMode ? '1px solid gray' : '1px solid #00000000', transition: 'border 0.5s'}}
               ref={labelRef}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
       <i className={iconClass} style={cssIconStyle}/>
       <span className={'btn text-start d-flex flex-row flex-grow-0'}>
-        {prefix && <span className='text-opacity-75 text-secondary pe-2 flex-grow-0'>{prefix} /</span>}
+        {prefix && <span className='text-opacity-75 text-light pe-2 flex-grow-0'>{prefix} /</span>}
         {prop.elem.props.name}
         {elem.editted &&
             <i className='btn text-danger ri-arrow-go-back-line m-0 ms-2 p-0 px-1'
@@ -389,15 +379,14 @@ function CategoryNode(prop: {
     forceUpdate();
   }
 
-  // TODO: Tree Collapse button
   return <div>
-    <h6 className='d-flex flex-row align-items-center text-dark fw-bold py-0'
+    <h6 className='d-flex flex-row align-items-center text-white py-0'
         onClick={toggleCollapse}>
       <i className={folderIconClass + ' px-2 '} style={cssIconStyle}/>
-      {prefix && <span>sss?</span>}
-      <span className='btn flex-grow-1 text-start my-0' style={{color: "gray"}}>{self.name}</span>
+      {prefix && <span className='text-opacity-75 text-light pe-2 flex-grow-0'>{prefix} /</span>}
+      <span className='btn flex-grow-1 text-start text-light fw-bold my-0'>{self.name}</span>
     </h6>
-    <div className={'ms-2 mt-1 ps-3'} style={{borderLeft: 'solid 1px lightgray'}}>
+    <div className={'ms-2 mt-1 ps-3'} style={{borderLeft: ''}}>
       {!collapsed && self.children.map(
         child => typeof child === "number"
           ? <ValueLabel key={child} elem={root.all[child]} rootName={root.root.name}/>

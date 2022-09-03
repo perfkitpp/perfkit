@@ -1,11 +1,11 @@
 import {useContext, useEffect, useRef, useState} from "react";
 import 'react-bootstrap/Button';
 import {Button, Container, Row, Spinner} from "react-bootstrap";
-import {useForceUpdate, useWebSocket} from "../Utils";
+import {EmptyFunc, useForceUpdate, useWebSocket} from "../Utils";
+import {theme} from "../App";
 
 export let AppendTextToTerminal: (payload: string, className?: string) => void
-  = (payload, className) => {
-};
+  = EmptyFunc;
 
 export default function Terminal(props: { socketUrl: string }) {
   const scrollLock = useRef(false);
@@ -42,7 +42,7 @@ export default function Terminal(props: { socketUrl: string }) {
       let docstr = `<div class="">`;
       docstr +=
         `<div class="${className} p-1" title="${new Date().toLocaleString()}">` +
-        `<span class="me-2 bg-secondary bg-opacity-100 px-2 text-white rounded-1">${new Date().toLocaleString()}</span>` +
+        `<span class="me-2 bg-secondary bg-opacity-50 px-2 text-light rounded-1">${new Date().toLocaleString()}</span>` +
         `${payload}` +
         `</div>`;
       docstr += `</div>`;
@@ -64,7 +64,7 @@ export default function Terminal(props: { socketUrl: string }) {
 
   async function onSubmitCommand(event: React.FormEvent<HTMLFormElement>) {
     ttySock?.send((event.target as any).command_content.value);
-    appendText(`(cmd) ${(event.target as any).command_content.value}`, 'text-secondary');
+    appendText(`(cmd) ${(event.target as any).command_content.value}`);
     (event.target as any).command_content.value = "";
   }
 
@@ -76,9 +76,9 @@ export default function Terminal(props: { socketUrl: string }) {
       className='mx-2 mt-0 pb-2 px-1'
       style={{display: "flex", height: '100%', flexDirection: 'column', fontFamily: 'Lucida Console, monospace'}}>
       <p
-        className={'border border-secondary flex-grow-1 border-2 rounded-3 my-2 p-2 overflow-auto bg-white ' + (textWrap ? '' : 'text-nowrap')}
+        className={'border border-secondary text-white text-opacity-75 flex-grow-1 border-2 rounded-3 my-2 p-2 overflow-auto bg-black ' + (textWrap ? '' : 'text-nowrap')}
         ref={divRef}
-        style={{}}/>
+        style={{color:theme.light}}/>
       <div className='px-0 mb-1 flex-grow-0 rounded-3 px-2 py-2 bg-opacity-10 bg-secondary border border-secondary'>
         <div className='d-flex flex-row m-0'>
           <i
@@ -109,7 +109,7 @@ export default function Terminal(props: { socketUrl: string }) {
                 onSubmit={ev => onSubmitCommand(ev)}>
             <input type='text' className='form-text w-100 mt-0 ms-2 me-1 ps-2 rounded-3' name='command_content'
                    placeholder={'(enter command here)'}
-                   style={{background: ttySock != null ? 'white' : '#c90000'}}/>
+                   style={{background: ttySock != null ? theme.dark : theme.danger}}/>
             <Button type='submit' className='ri-send-plane-fill ms-2 px-4'
                     title='Send command'
                     variant={'outline-primary'}/>
