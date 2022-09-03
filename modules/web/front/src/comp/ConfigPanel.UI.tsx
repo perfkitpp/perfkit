@@ -103,10 +103,10 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       case "object":
         if (elem.value instanceof Array)
           return ["ri-brackets-line", '#bba962'];
-          // return ["ri-brackets-line", '#8d740e'];
+        // return ["ri-brackets-line", '#8d740e'];
         else
           return ["ri-braces-line", '#0bab7e'];
-          // return ["ri-braces-line", '#0bab7e'];
+      // return ["ri-braces-line", '#0bab7e'];
       case "boolean":
         return ["ri-checkbox-line", '#0184cb'];
       case "number":
@@ -126,7 +126,9 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     labelRef.current.style.background = stateColor();
   }
 
-  function performRollback() {
+  function performRollback(ev: { stopPropagation: () => void }) {
+    ev.stopPropagation();
+
     elem.editted = undefined;
     elem.valueLocal = structuredClone(elem.value);
     panelContext.rollbackDirtyItem(prop.rootName, elem.props.elemID);
@@ -235,7 +237,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
     const rawText = valueStringify(elem.value);
     return typeof elem.value === "boolean"
-      ? (<span className='btn px-3' onClick={onClick} tabIndex={0}
+      ? (<span className='btn px-3' tabIndex={0}
                style={{color: titleColor}}
                onKeyDown={ev => (ev.key == " " || ev.key == "Enter") && onClick()}>
         {(elem.editted ? elem.valueLocal : elem.value)
@@ -261,17 +263,17 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       setHoveringState.current = setIsHovering;
     }, []);
 
-    return <div className='h-100 flex-grow-1'
-                onClick={onClick}>
-      <hr className='rounded-5'
+    return <div className='h-100 flex-grow-1'>
+      <hr
+        className='rounded-5'
         style={{
-        flexGrow: 2,
-        height: isHovering ? 15 : 1,
-        background: prop.color,
-        transition: 'height .3s',
-        opacity: '.3',
-        margin: '0'
-      }}/>
+          flexGrow: 2,
+          height: isHovering ? 15 : 1,
+          background: prop.color,
+          transition: 'height .3s',
+          opacity: '.3',
+          margin: '0'
+        }}/>
     </div>
   }
 
@@ -354,7 +356,9 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
               ref={labelRef}
               onMouseEnter={() => setHoveringState.current(true)}
               onMouseLeave={() => setHoveringState.current(false)}>
-    <div className={'d-flex align-items-center gap-2 m-0 p-0'} style={{color: titleColor}}>
+    <div className={'d-flex align-items-center gap-2 m-0 p-0'}
+         style={{color: titleColor}}
+         onClick={onClick}>
       <i className={iconClass} style={cssIconStyle}/>
       <span className={'btn text-start d-flex flex-row flex-grow-0'}>
         {prefix && <span className='text-opacity-75 text-light pe-2 flex-grow-0'>{prefix} /</span>}
@@ -362,7 +366,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
         {elem.editted &&
             <i className='btn text-danger ri-arrow-go-back-line m-0 ms-2 p-0 px-1'
                style={{fontSize: '0.9em'}}
-               onClick={performRollback}/>}
+               onClick={ev => performRollback(ev)}/>}
       </span>
       <HighlightHr color={titleColor}/>
       {inlineEditMode
