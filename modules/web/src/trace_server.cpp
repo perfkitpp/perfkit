@@ -286,7 +286,7 @@ class trace_server_impl : public trace_server
                 }
             }
 
-            // TODO: Publish updates
+            // Publish updates
             if (not idx_updated_node.empty()) {
                 auto wr = ioc_writer_prepare_("node_update");
                 *wr << push_object(3);
@@ -300,8 +300,8 @@ class trace_server_impl : public trace_server
                     *wr << push_array(2) << idx;
                     *wr << push_object(4);
                     {
-                        *wr << key << "f-F" << trace.folded();
-                        *wr << key << "f-S" << trace.subscribing();
+                        *wr << key << "f_F" << trace.folded();
+                        *wr << key << "f_S" << trace.subscribing();
                         *wr << key << "T";
 
                         switch (trace.data.index()) {
@@ -378,36 +378,41 @@ class trace_server_impl : public trace_server
             goto_key(rd, "fence_node_id");
             auto fence_node_id = rd->read_as<int64_t>();
 
-            if (auto p_pair = find_ptr(name_table_, tracer_name)) {
-                assert(not p_pair->second.expired());
-                auto ctx = p_pair->second.lock();
+            auto ctx = name_table_.at(tracer_name).lock();
 
-                if (auto ref = ctx->tracer_.lock()) {
-                    // Register receive on next update
-                    // Registration must be unique, thus find if there's any other registration already.
-                    auto iter = find_if(ctx->waiting_sessions_, [wp = sess->weak_from_this()](auto&& p) { return ptr_equals(get<0>(p), wp); });
-                    if (iter == ctx->waiting_sessions_.end()) {
-                        auto wp = weak_ptr{static_pointer_cast<session>(sess->shared_from_this())};
-                        iter = ctx->waiting_sessions_.insert(ctx->waiting_sessions_.end(), make_tuple(wp, fence_update, fence_node_id));
-                    } else {
-                        get<1>(*iter) = fence_update;
-                        get<2>(*iter) = fence_node_id;
-                    }
-
-                    // Request next fetch. This function may be invoked multiple times.
-                    ref->request_fetch_data();
+            if (auto ref = ctx->tracer_.lock()) {
+                // Register receive on next update
+                // Registration must be unique, thus find if there's any other registration already.
+                auto iter = find_if(ctx->waiting_sessions_, [wp = sess->weak_from_this()](auto&& p) { return ptr_equals(get<0>(p), wp); });
+                if (iter == ctx->waiting_sessions_.end()) {
+                    auto wp = weak_ptr{static_pointer_cast<session>(sess->shared_from_this())};
+                    iter = ctx->waiting_sessions_.insert(ctx->waiting_sessions_.end(), make_tuple(wp, fence_update, fence_node_id));
+                } else {
+                    get<1>(*iter) = fence_update;
+                    get<2>(*iter) = fence_node_id;
                 }
+
+                // Request next fetch. This function may be invoked multiple times.
+                ref->request_fetch_data();
             }
         } else if (method == "node_control") {
-            // TODO: Find tracer and deliver control message
+            // Find tracer and deliver control message
+            rd->begin_object();
+
+            goto_key(rd, "tracer");
+            auto tracer_name = rd->read_as<string>();
+            goto_key(rd, "node_index");
+            auto node_index = rd->read_as<int64_t>();
+
+            auto ctx = name_table_.at(tracer_name).lock();
+            auto node = &ctx->traces_.at(node_index);
+
+            if (rd->goto_key("fold"))
+                node->fold(rd->read_as<bool>());
+
+            if (rd->goto_key("subscribe"))
+                node->subscribe(rd->read_as<bool>());
         }
-    }
-
-    void ioc_handle_tracer_reply_(session* sess, tracer::fetched_traces const& traces, size_t fence_node_id)
-    {
-        // TODO: Calculate new nodes and publish to session
-
-        // TODO: Publish updated nodes to session
     }
 
     void ioc_sess_recv_msg_(session* sess, string_view s)
