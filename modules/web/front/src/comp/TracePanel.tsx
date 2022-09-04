@@ -202,7 +202,9 @@ function TraceRootNode(prop: {
       };
 
       if (node.parent_index >= 0) {
-        context.all[node.parent_index].children.push(node.unique_index);
+        const parent = context.all[node.parent_index];
+        parent.children.push(node.unique_index);
+        parent.notifyChildAdded && parent.notifyChildAdded();
       } else if (context.roots.indexOf(node.unique_index) == -1) {
         context.roots.push(node.unique_index);
       }
@@ -364,10 +366,11 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
   const {root, context} = props;
   const [collapsed, setCollapsed] = useState(context.body.f_F);
   const sockTrace = useContext(TraceSocketContext);
+  const [childrenListChanged, notifyChildrenListChanged] = useReducer(v => v + 1, 0);
 
-  const children = useMemo(() => context.children.map(
-    childIdx => <TraceNode key={childIdx} root={root} context={root.all[childIdx]}/>
-  ), context.children);
+  useEffect(() => {
+    context.notifyChildAdded = notifyChildrenListChanged;
+  }, []);
 
   useEffect(() => {
     // If collapse state changes, send control command
@@ -380,6 +383,10 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
       }
     } as ReqTraceControl));
   }, [collapsed]);
+
+  const children = useMemo(() => context.children.map(
+    childIdx => <TraceNode key={childIdx} root={root} context={root.all[childIdx]}/>
+  ), [childrenListChanged]);
 
   return <span>
     <NameAndValue/>
@@ -424,4 +431,5 @@ interface TracerNodeContext {
   children: number[];
 
   notifyUpdate?: () => void;
+  notifyChildAdded?: () => void;
 }
