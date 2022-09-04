@@ -34,7 +34,10 @@ target_include_directories(
         PUBLIC include
 )
 
+set(PERFKIT_WEB_PUBLIC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/public" CACHE INTERNAL "")
+set(PERFKIT_WEB_DEFAULT_DIRNAME "perfkit.web.public" CACHE INTERNAL "")
+
 install(
-        DIRECTORY public/
-        DESTINATION perfkit.web.public/v${PROJECT_VERSION}
+        DIRECTORY ${PERFKIT_WEB_PUBLIC_FILES}/
+        DESTINATION ${PERFKIT_WEB_DEFAULT_DIRNAME}
 )
