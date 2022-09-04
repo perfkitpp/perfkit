@@ -288,6 +288,15 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
     function toggleSubsState(ev: { stopPropagation: () => void }) {
       ev.stopPropagation();
 
+      sockTrace.send(JSON.stringify({
+        method: "node_control",
+        params: {
+          tracer: root.name,
+          node_index: context.props.unique_index,
+          subscribe: !context.body.f_S,
+          fold: collapsed
+        }
+      } as ReqTraceControl));
     }
 
     function toggleFoldState(ev: { stopPropagation: () => void }) {
@@ -295,23 +304,37 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
       ev.stopPropagation();
     }
 
+    function onUpdateValue() {
+      frameRef.current.style.transition = '0s';
+      frameRef.current.style.background = typeColor + '22';
+      setTimeout(() => {
+        if (frameRef.current) {
+          frameRef.current.style.transition = '0.2s';
+          frameRef.current.style.background = '0';
+        }
+      }, 100);
+
+      forceUpdate();
+    }
+
     const forceUpdate = useForceUpdate();
     const [icon, typeColor] = valueStyle();
     const [hovering, setHovering] = useState(false);
+    const frameRef = useRef(null as any as HTMLDivElement);
 
     useEffect(() => {
       // Register update event receiver
-      context.notifyUpdate = forceUpdate;
+      context.notifyUpdate = onUpdateValue;
     }, []);
 
-    return <div className='p-1 mx-2 d-flex align-items-center'
+    return <div className='p-1 mx-2 d-flex align-items-center rounded-3'
                 onMouseEnter={() => setHovering(true)} onMouseLeave={() => setHovering(false)}
                 onClick={ev => toggleFoldState(ev)}>
       <i className={icon + ' me-2'} style={{color: typeColor}}/>
       <span className='me-2'
-            style={{color: collapsed ? theme.secondary : theme.light + '99'}}>{props.context.props.name}</span>
+            style={{color: context.children.length > 0 && collapsed ? theme.secondary : theme.light + '99'}}>{props.context.props.name}</span>
       <div className='btn py-0 px-2'
-           style={{transition: '0.2s', opacity: hovering ? '100%' : (context.body.f_S ? '50%' : '0%')}}
+           style={{transition: '0.2s', opacity: hovering ? '100%' : (context.body.f_S ? '80%' : '0%')}}
            onClick={ev => toggleSubsState(ev)}>
         {context.body.f_S
           ? <i className='ri-pulse-line text-success'/>
@@ -327,12 +350,12 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
               height: hovering ? '0.5em' : '1px'
             }}/>
       </div>
-      <span style={{color: typeColor}}>{
+      <span style={{color: typeColor}} ref={frameRef} className={'px-2'}>{
         context.body.T === "T"
           ? <span>{(context.body.V * 1e3).toFixed(3)} <span className='text-secondary small'> ms</span></span>
           : stringify(context.body.V)
       }</span>
-    </div>
+    </div>;
   }
 
   const {root, context} = props;
@@ -344,7 +367,15 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
   ), context.children);
 
   useEffect(() => {
-    // TODO: If collapse state changes, send control command
+    // If collapse state changes, send control command
+    sockTrace.send(JSON.stringify({
+      method: "node_control",
+      params: {
+        tracer: root.name,
+        node_index: context.props.unique_index,
+        fold: collapsed
+      }
+    } as ReqTraceControl));
   }, [collapsed]);
 
   return <span>

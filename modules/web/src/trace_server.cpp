@@ -94,6 +94,7 @@ class trace_server_impl : public trace_server
         weak_ptr<tracer> tracer_;
 
         tracer::fetched_traces traces_;
+        vector<bool> dirty_;
         atomic<uint64_t> fence_update_ = 0;
 
         // Tuples are in order: weak ptr to session, fence_update, fence_node_id
@@ -161,36 +162,24 @@ class trace_server_impl : public trace_server
 
     void ioc_register_tracer_(tracer* ref)
     {
+        CPPH_INFO("Registering Tracer: {}", ref->name());
         if (all_.end() != ioc_find_(ref->weak_from_this())) {
+            CPPH_INFO("Registering Tracer Declined: {}", ref->name());
             return;  // Already registered.
         }
+        CPPH_INFO("Registering Tracer Accepted: {}", ref->name());
 
         auto self = make_shared<tracer_context>();
         self->tracer_ = ref->weak_from_this();
 
         // Register given tracer instance.
         all_.push_back(self);
-        name_table_.try_emplace(ref->name(), self);
+        name_table_[ref->name()] = self;
         self->cached_name_ = ref->name();
 
         ref->on_destroy() << anchor_ << [this](tracer* tr) {
-            ioc_.post([this, wp = tr->weak_from_this()] {
-                auto iter = ioc_find_(wp);
-                if (iter == all_.end()) { return; }
-
-                auto name = move((**iter).cached_name_);
-                name_table_.erase(name);
-                all_.erase(iter);
-
-                auto wr = ioc_writer_prepare_("tracer_instance_destroy");
-                *wr << name;
-                auto msg = ioc_writer_done_();
-
-                // Send instance destroy message
-                client_for_each_([&](auto&& sess) {
-                    sess->send_text(*msg);
-                });
-            });
+            CPPH_INFO("Unregistering Tracer: {}", tr->name());
+            ioc_.post(bind(&S::ioc_handle_unregister_, this, tr->weak_from_this()));
         };
 
         ref->on_fetch() << self <<
@@ -215,6 +204,25 @@ class trace_server_impl : public trace_server
         auto msg = ioc_writer_done_();
 
         client_for_each_([&](auto s) { s->send_text(*msg); });
+    }
+
+    void ioc_handle_unregister_(weak_ptr<tracer> const& wp)
+    {
+        auto iter = ioc_find_(wp);
+        if (iter == all_.end()) { return; }
+
+        auto name = move((**iter).cached_name_);
+        name_table_.erase(name);
+        all_.erase(iter);
+
+        auto wr = ioc_writer_prepare_("tracer_instance_destroy");
+        *wr << name;
+        auto msg = ioc_writer_done_();
+
+        // Send instance destroy message
+        client_for_each_([&](auto&& sess) {
+            sess->send_text(*msg);
+        });
     }
 
     void ioc_on_fetch_(tracer_context* tc, tracer::fetched_traces& diff)
@@ -242,6 +250,7 @@ class trace_server_impl : public trace_server
 
         // Update update fence value.
         release(tc->fence_update_, new_fence_update + 1);
+        tc->dirty_.resize(tc->traces_.size());  // Always fit to trace count
 
         // Iterate clients, publish fetched contents
         vector<size_t> idx_updated_node;  // Index of new nodes that were added.
@@ -281,10 +290,13 @@ class trace_server_impl : public trace_server
             idx_updated_node.clear();
 
             for (auto& trace : *traces) {
-                if (fence_update < trace.fence) {
+                if (fence_update < trace.fence || tc->dirty_[trace.unique_order]) {
                     idx_updated_node.push_back(trace.unique_order);
                 }
             }
+
+            // Clear dirty flag array
+            fill(tc->dirty_, false);
 
             // Publish updates
             if (not idx_updated_node.empty()) {
@@ -394,6 +406,10 @@ class trace_server_impl : public trace_server
 
                 // Request next fetch. This function may be invoked multiple times.
                 ref->request_fetch_data();
+            } else {
+                CPPH_WARN("! Bad dropped tracer detected ... re-validating all!");
+                ioc_.post(bind(&S::ioc_handle_unregister_, this, ctx->tracer_));
+                ioc_.post([this] { for(auto& p : tracer::all()) { ioc_register_tracer_(p.get());} });
             }
         } else if (method == "node_control") {
             // Find tracer and deliver control message
@@ -412,6 +428,9 @@ class trace_server_impl : public trace_server
 
             if (rd->goto_key("subscribe"))
                 node->subscribe(rd->read_as<bool>());
+
+            // Mark element dirty, which will forcibly uploaded on next fetch.
+            ctx->dirty_.at(node_index) = true;
         }
     }
 
