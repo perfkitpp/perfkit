@@ -457,7 +457,7 @@ export function RootNode(prop: {
   return <div
     className='m-1 p-3 bg-secondary bg-opacity-10 rounded-3'
     style={{
-      fontSize: '1.2em',
+      fontSize: '1.2rem',
       overflowX: 'hidden',
       fontFamily: 'Lucida Console, monospace',
     }}>

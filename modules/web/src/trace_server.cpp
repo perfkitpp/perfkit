@@ -53,12 +53,6 @@ class trace_server_impl : public trace_server
 {
     using S = trace_server_impl;
 
-    struct tracer_context {
-        string cached_name_;  // Name can't be retrieved after tracer_ destroy.
-        weak_ptr<tracer> tracer_;
-        basic_event_queue<tracer::trace_fetch_proxy> receiver_{1 << 10};
-    };
-
    private:
     class session : public if_websocket_session
     {
@@ -95,6 +89,17 @@ class trace_server_impl : public trace_server
         }
     };
 
+    struct tracer_context {
+        string cached_name_;  // Name can't be retrieved after tracer_ destroy.
+        weak_ptr<tracer> tracer_;
+
+        tracer::fetched_traces traces_;
+        atomic<uint64_t> fence_update_ = 0;
+
+        // Tuples are in order: weak ptr to session, fence_update, fence_node_id
+        vector<tuple<weak_ptr<session>, uint64_t, uint64_t>> waiting_sessions_;
+    };
+
    private:
     event_queue& ioc_;
     vector<websocket_weak_ptr> clients_;
@@ -113,7 +118,7 @@ class trace_server_impl : public trace_server
     {
         for (auto iter = clients_.begin(); iter != clients_.end();) {
             if (auto p_cli = iter->lock()) {
-                fn(p_cli.get()), ++iter;
+                fn(p_cli), ++iter;
             } else {
                 iter = clients_.erase(iter);
             }
@@ -182,16 +187,26 @@ class trace_server_impl : public trace_server
                 auto msg = ioc_writer_done_();
 
                 // Send instance destroy message
-                client_for_each_([&](auto* sess) {
+                client_for_each_([&](auto&& sess) {
                     sess->send_text(*msg);
                 });
             });
         };
 
         ref->on_fetch() << self <<
-                [this, self = self.get()]  //
+                [this, w_self = weak_ptr{self}]  //
                 (tracer::trace_fetch_proxy proxy) {
-                    self->receiver_.flush(proxy);
+                    auto self = w_self.lock();
+                    auto fence_update = relaxed(self->fence_update_);
+                    auto buffer = pool_nodes_.checkout();
+
+                    proxy.fetch_tree_diff(buffer.get(), fence_update);
+                    ioc_.post([this, w_self, buffer = move(buffer)] {
+                        auto self = w_self.lock();
+                        if (not self) { return; }
+
+                        ioc_on_fetch_(self.get(), *buffer);
+                    });
                 };
 
         // Send new tracer registration message
@@ -200,6 +215,131 @@ class trace_server_impl : public trace_server
         auto msg = ioc_writer_done_();
 
         client_for_each_([&](auto s) { s->send_text(*msg); });
+    }
+
+    void ioc_on_fetch_(tracer_context* tc, tracer::fetched_traces& diff)
+    {
+        auto* traces = &tc->traces_;
+
+        // At least, traces array should be larger than received array.
+        traces->reserve(diff.size());
+
+        //
+        uint64_t new_fence_update = 0;
+        uint64_t new_fence_id = 0;
+
+        // Update existing cache.
+        for (auto& trace : diff) {
+            new_fence_update = std::max(new_fence_update, trace.fence);
+            new_fence_id = std::max(new_fence_id, trace.unique_order);
+
+            if (trace.unique_order >= traces->size()) {
+                traces->resize(trace.unique_order + 1);
+            }
+
+            (*traces)[trace.unique_order] = move(trace);
+        }
+
+        // Update update fence value.
+        release(tc->fence_update_, new_fence_update + 1);
+
+        // Iterate clients, publish fetched contents
+        vector<size_t> idx_updated_node;  // Index of new nodes that were added.
+        idx_updated_node.reserve(traces->size());
+
+        for (auto& [wp, fence_update, fence_node_id] : tc->waiting_sessions_) {
+            auto client = wp.lock();
+            if (not client) { continue; }
+
+            // Publish all newly added nodes
+            if (fence_node_id < traces->size()) {
+                auto wr = ioc_writer_prepare_("node_new");
+                *wr << push_object(3);
+                *wr << key << "tracer" << tc->cached_name_;
+                *wr << key << "fence_node_id" << traces->size();
+                *wr << key << "nodes" << push_array(traces->size() - fence_node_id);
+
+                for (auto idx : count(fence_node_id, traces->size())) {
+                    auto& trace = (*traces)[idx];
+
+                    *wr << push_object(4);
+                    {
+                        assert(trace.unique_order == idx);
+                        *wr << key << "unique_index" << trace.unique_order;
+                        *wr << key << "parent_index" << (trace.owner_node ? trace.owner_node->unique_order : -1);
+                        *wr << key << "name" << trace.key;
+                        *wr << key << "path" << trace.hierarchy;
+                    }
+                    *wr << pop_object;
+                }
+
+                *wr << pop_array << pop_object;
+                client->send_text(*ioc_writer_done_());
+            }
+
+            // Iterate all nodes, check if there's any available update.
+            idx_updated_node.clear();
+
+            for (auto& trace : *traces) {
+                if (fence_update < trace.fence) {
+                    idx_updated_node.push_back(trace.unique_order);
+                }
+            }
+
+            // TODO: Publish updates
+            if (not idx_updated_node.empty()) {
+                auto wr = ioc_writer_prepare_("node_update");
+                *wr << push_object(3);
+                *wr << key << "tracer" << tc->cached_name_;
+                *wr << key << "fence_update" << new_fence_update;
+                *wr << key << "nodes" << push_array(idx_updated_node.size());
+
+                for (auto idx : idx_updated_node) {
+                    auto& trace = (*traces)[idx];
+
+                    *wr << push_array(2) << idx;
+                    *wr << push_object(4);
+                    {
+                        *wr << key << "f-F" << trace.folded();
+                        *wr << key << "f-S" << trace.subscribing();
+                        *wr << key << "T";
+
+                        switch (trace.data.index()) {
+                            case 0:  // nullptr_t
+                                *wr << "P" << key << "V" << nullptr;
+                                break;
+                            case 1:  // duration
+                                *wr << "T" << key << "V" << to_seconds(get<steady_clock::duration>(trace.data));
+                                break;
+                            case 2:  // integer
+                                *wr << "P" << key << "V" << get<int64_t>(trace.data);
+                                break;
+                            case 3:  // double
+                                *wr << "P" << key << "V" << get<double>(trace.data);
+                                break;
+                            case 4:  // string
+                                *wr << "P" << key << "V" << get<string>(trace.data);
+                                break;
+                            case 5:  // boolean
+                                *wr << "P" << key << "V" << get<bool>(trace.data);
+                                break;
+                            default:
+                                CPPH_WARN("INVALID VARIANT INDEX!!!");
+                                *wr << "P" << key << "V" << nullptr;
+                                break;
+                        }
+                    }
+                    *wr << pop_object;
+                    *wr << pop_array;
+                }
+
+                *wr << pop_array << pop_object;
+                client->send_text(*ioc_writer_done_());
+            }
+        }
+
+        // Clear queue
+        tc->waiting_sessions_.clear();
     }
 
     archive::if_writer* ioc_writer_prepare_(string_view method)
@@ -229,6 +369,8 @@ class trace_server_impl : public trace_server
     void ioc_handle_message_(session* sess, string_view method, archive::json::reader* rd)
     {
         if (method == "node_fetch") {
+            rd->begin_object();
+
             goto_key(rd, "tracer");
             auto tracer_name = rd->read_as<string>();
             goto_key(rd, "fence_update");
@@ -242,20 +384,17 @@ class trace_server_impl : public trace_server
 
                 if (auto ref = ctx->tracer_.lock()) {
                     // Register receive on next update
-                    ctx->receiver_.post(bind_front_weak(
-                            sess->weak_from_this(),
-                            [this, sess, fence_update, fence_node_id](tracer::trace_fetch_proxy fetcher) {
-                                auto node_array = pool_nodes_.checkout();
-                                fetcher.fetch_tree_diff(node_array.get(), fence_update);
+                    // Registration must be unique, thus find if there's any other registration already.
+                    auto iter = find_if(ctx->waiting_sessions_, [wp = sess->weak_from_this()](auto&& p) { return ptr_equals(get<0>(p), wp); });
+                    if (iter == ctx->waiting_sessions_.end()) {
+                        auto wp = weak_ptr{static_pointer_cast<session>(sess->shared_from_this())};
+                        iter = ctx->waiting_sessions_.insert(ctx->waiting_sessions_.end(), make_tuple(wp, fence_update, fence_node_id));
+                    } else {
+                        get<1>(*iter) = fence_update;
+                        get<2>(*iter) = fence_node_id;
+                    }
 
-                                ioc_.post(bind_front_weak(
-                                        sess->weak_from_this(),
-                                        [this, node_array = move(node_array), fence_node_id, sess] {
-                                            ioc_handle_tracer_reply_(sess, *node_array, fence_node_id);
-                                        }));
-                            }));
-
-                    // Trigger next fetch
+                    // Request next fetch. This function may be invoked multiple times.
                     ref->request_fetch_data();
                 }
             }
