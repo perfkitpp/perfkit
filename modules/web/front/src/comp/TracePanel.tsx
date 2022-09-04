@@ -2,6 +2,7 @@ import {theme} from "../App";
 import {EmptyFunc, useForceUpdate, useInterval, useWebSocket} from "../Utils";
 import {createContext, useContext, useEffect, useMemo, useReducer, useRef, useState} from "react";
 import {Col, Container, Row, Spinner} from "react-bootstrap";
+import findValueStyle from "./Style";
 
 interface MsgTracerInstanceNew {
   method: 'tracer_instance_new'
@@ -22,7 +23,7 @@ interface MsgTraceNodeUpdate {
   params: {
     tracer: string,
     fence_update: number,
-    nodes: [number/*Index*/, TracerNodeValueBase][],
+    nodes: [number/*Index*/, TracerNodeValue][],
   }
 }
 
@@ -59,8 +60,8 @@ interface TracerNodeDesc {
 }
 
 interface TracerNodeValueBase {
-  "f-F": boolean, // flag-FOLD
-  "f-S": boolean, // flag-SUBS
+  f_F: boolean, // flag-FOLD
+  f_S: boolean, // flag-SUBS
 }
 
 interface TracerNodeValue_P extends TracerNodeValueBase {
@@ -79,19 +80,35 @@ const TraceSocketContext = createContext(null as any as WebSocket);
 export default function TracePanel(prop: { socketUrl: string }) {
   function onRecvTraceMsg(ev: MessageEvent) {
     const content = JSON.parse(ev.data) as MsgTraceNodeNew | MsgTraceNodeUpdate | MsgTracerInstanceNew | MsgTracerInstanceDestroy;
-    console.log(content);
 
     switch (content.method) {
-      case "node_new":
+      case "node_new": {
+        const {params} = content;
+        const root = allTracers.current[params.tracer];
+        root.waitTimeout = undefined;
+        root.fenceNodeID = params.fence_node_id;
+
+        // Append nodes to given root
+        root.notifyNewNodeAdded(params.nodes);
         break;
-      case "node_update":
+      }
+      case "node_update": {
+        const {params} = content;
+        const root = allTracers.current[params.tracer];
+        root.waitTimeout = undefined;
+        root.fenceUpdate = params.fence_update;
+        root.notifyNodeDataUpdate(params.nodes);
         break;
+      }
       case "tracer_instance_new":
         content.params.map(name => allTracers.current[name] = createTracerContext(name));
         forceUpdateAll();
         forceUpdateComponentList();
         break;
       case "tracer_instance_destroy":
+        delete allTracers.current[content.params];
+        forceUpdateAll();
+        forceUpdateComponentList();
         break;
     }
   }
@@ -107,7 +124,7 @@ export default function TracePanel(prop: { socketUrl: string }) {
 
   const components = useMemo(() => Object.keys(allTracers.current)
       .map(rootName =>
-        <Col className='p-1 m-0' style={{minWidth: '60ch', maxWidth: '120ch'}}>
+        <Col key={rootName} className='p-1 m-0' style={{minWidth: '60ch', maxWidth: '120ch'}}>
           <TraceRootNode context={allTracers.current[rootName]} key={rootName}/>
         </Col>
       )
@@ -148,8 +165,8 @@ function TraceRootNode(prop: {
     }, [intervalValue]);
 
     useInterval(() => {
-      // TODO: Send 'sync' message
       if (context.waitTimeout && Date.now() < context.waitTimeout) {
+        // If still waiting for previous request ...
         return;
       }
 
@@ -168,31 +185,69 @@ function TraceRootNode(prop: {
 
     return <span className='w-50 d-flex align-items-center' title='Set update interval'
                  onClick={ev => ev.stopPropagation()}>
-      <span className='text-nowrap me-2 text-secondary w-25'>{intervalValue}ms</span>
       <label htmlFor="customRange"/>
       <input type='range' className='form-range h-100' min='10' max='2000' id='customRange'
              value={intervalValue}
              onInput={ev => setIntervalValue(parseInt(ev.currentTarget.value))}/>
+      <span className='text-nowrap ms-2 text-secondary w-25'>{intervalValue}ms</span>
     </span>;
   }
 
-  function OnNotifyDataArrive() {
-    // TODO: Re-render all subnodes
+  function onNew(nodes: TracerNodeDesc[]) {
+    for (const node of nodes) {
+      // Build new node
+      context.all[node.unique_index] = {
+        props: node, body: {
+          T: "P", f_F: false, f_S: false, V: null
+        }, children: []
+      };
+
+      if (node.parent_index >= 0) {
+        context.all[node.parent_index].children.push(node.unique_index);
+      } else if (context.roots.indexOf(node.unique_index) == -1) {
+        context.roots.push(node.unique_index);
+      }
+    }
+
+    updateNodeList();
+  }
+
+  function onUpdate(nodes: [number, TracerNodeValue][]) {
+    // Re-render all updated subnodes
+    for (const [index, value] of nodes) {
+      try {
+        const node = context.all[index];
+        node.body = value;
+        node.notifyUpdate && node.notifyUpdate();
+      } catch {
+        // NOP
+      }
+    }
   }
 
   // TODO: Control fetching load-balance here.
   const {context} = prop;
   const [enabled, setEnabled] = useState(false);
+  const [nodeListUpdate, updateNodeList] = useReducer(v => v + 1, 0);
 
   // Perform registration
   useEffect(() => {
-    context.notifyTraceDataArrival = OnNotifyDataArrive;
+    context.notifyNodeDataUpdate = onUpdate;
+    context.notifyNewNodeAdded = onNew;
     return () => {
-      context.notifyTraceDataArrival = EmptyFunc;
+      context.notifyNodeDataUpdate = EmptyFunc;
+      context.notifyNewNodeAdded = EmptyFunc;
     }
   }, [])
 
-  return <div className='w-100 rounded-3 bg-opacity-10 bg-secondary'>
+  // Render root nodes
+  const rootNodes = useMemo(() => context.roots.map(
+    rootIdx => <div key={rootIdx} className='ms-2'>
+      <TraceNode root={context} context={context.all[rootIdx]}/>
+    </div>
+  ), [nodeListUpdate]);
+
+  return <div className='w-100 rounded-3 bg-opacity-10 bg-secondary float'>
     <div className='btn w-100 text-start d-flex flex-row align-items-center'
          onClick={() => setEnabled(v => !v)}>
       {enabled
@@ -201,13 +256,107 @@ function TraceRootNode(prop: {
       <div className={enabled ? 'text-success' : 'text-light'}>
         {context.name}
       </div>
-      <hr className='flex-grow-1 my-0 mx-3'/>
+      <div className='flex-grow-1 my-0 mx-3 d-flex justify-content-end'>
+        <hr className='text-center my-0 flex-grow-0 rounded-5'
+            style={{
+              transition: 'width 1s, height 0.3s, background 1s',
+              width: !enabled ? '0' : '100%',
+              height: !enabled ? '0' : '0.5em',
+              background: !enabled ? theme.secondary : theme.success,
+              opacity: '50%'
+            }}/>
+      </div>
       {enabled && <DataFetchControl/>}
     </div>
     {enabled && <div>
-        TODO: Render subnodes
+      {rootNodes}
     </div>}
   </div>;
+}
+
+function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
+  function NameAndValue() {
+    function valueStyle() {
+      if (context.body.T === 'T')
+        return ["ri-timer-line", '#387acc'];
+      else if (context.body.V === null)
+        return ["ri-loader-line", theme.secondary];
+      else
+        return findValueStyle(context.body.V);
+    }
+
+    function toggleSubsState(ev: { stopPropagation: () => void }) {
+      ev.stopPropagation();
+
+    }
+
+    function toggleFoldState(ev: { stopPropagation: () => void }) {
+      setCollapsed(v => !v);
+      ev.stopPropagation();
+    }
+
+    const forceUpdate = useForceUpdate();
+    const [icon, typeColor] = valueStyle();
+    const [hovering, setHovering] = useState(false);
+
+    useEffect(() => {
+      // Register update event receiver
+      context.notifyUpdate = forceUpdate;
+    }, []);
+
+    return <div className='p-1 mx-2 d-flex align-items-center'
+                onMouseEnter={() => setHovering(true)} onMouseLeave={() => setHovering(false)}
+                onClick={ev => toggleFoldState(ev)}>
+      <i className={icon + ' me-2'} style={{color: typeColor}}/>
+      <span className='me-2'
+            style={{color: collapsed ? theme.secondary : theme.light + '99'}}>{props.context.props.name}</span>
+      <div className='btn py-0 px-2'
+           style={{transition: '0.2s', opacity: hovering ? '100%' : (context.body.f_S ? '50%' : '0%')}}
+           onClick={ev => toggleSubsState(ev)}>
+        {context.body.f_S
+          ? <i className='ri-pulse-line text-success'/>
+          : <i className='ri-rest-time-line text-danger'/>}
+      </div>
+      <div className='flex-grow-1 my-0 py-0 px-0 mx-4 d-flex justify-content-end'>
+        <hr className='rounded-5 flex-grow-0'
+            style={{
+              transition: 'width 0.5s, height 0.3s',
+              margin: '0',
+              color: typeColor, opacity: '30%',
+              width: hovering ? '100%' : '0%',
+              height: hovering ? '0.5em' : '1px'
+            }}/>
+      </div>
+      <span style={{color: typeColor}}>{
+        context.body.T === "T"
+          ? <span>{(context.body.V * 1e3).toFixed(3)} <span className='text-secondary small'> ms</span></span>
+          : stringify(context.body.V)
+      }</span>
+    </div>
+  }
+
+  const {root, context} = props;
+  const [collapsed, setCollapsed] = useState(context.body.f_F);
+  const sockTrace = useContext(TraceSocketContext);
+
+  const children = useMemo(() => context.children.map(
+    childIdx => <TraceNode key={childIdx} root={root} context={root.all[childIdx]}/>
+  ), context.children);
+
+  useEffect(() => {
+    // TODO: If collapse state changes, send control command
+  }, [collapsed]);
+
+  return <span>
+    <NameAndValue/>
+    <div className='ms-4'>
+    {!collapsed && children}
+    </div>
+  </span>
+}
+
+function stringify(value: any) {
+  return typeof value === "string" ? value : JSON.stringify(value);
 }
 
 interface TracerContext {
@@ -216,8 +365,10 @@ interface TracerContext {
   roots: number[];
   updateIntervalMs: number;
 
+  notifyNewNodeAdded: (nodes: TracerNodeDesc[]) => void;
+  notifyNodeDataUpdate: (nodes: [number, TracerNodeValue][]) => void;
+
   waitTimeout?: number; // Is waiting for fetched data already ?
-  notifyTraceDataArrival: () => void;
 
   fenceUpdate: number;
   fenceNodeID: number;
@@ -228,11 +379,15 @@ function createTracerContext(name: string): TracerContext {
     name, all: [], roots: [],
     updateIntervalMs: 100,
     fenceUpdate: 0, fenceNodeID: 0,
-    notifyTraceDataArrival: EmptyFunc
+    notifyNodeDataUpdate: EmptyFunc,
+    notifyNewNodeAdded: EmptyFunc
   }
 }
 
 interface TracerNodeContext {
   props: TracerNodeDesc,
   body: TracerNodeValue
+  children: number[];
+
+  notifyUpdate?: () => void;
 }

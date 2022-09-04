@@ -5,6 +5,7 @@ import 'vanilla-jsoneditor/themes/jse-theme-dark.css'
 import {JSONEditor} from "vanilla-jsoneditor";
 import {EmptyFunc, useForceUpdate, useTimeout} from "../Utils";
 import {theme} from "../App";
+import findValueStyle from "./Style";
 
 export interface CategoryVisualProps {
   collapsed: boolean
@@ -17,7 +18,6 @@ export const DefaultVisProp: CategoryVisualProps = {
 const cssIconStyle: CSSProperties = {
   fontSize: '1.1em'
 };
-
 
 function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string }) {
   const valueLabelBg = {
@@ -98,25 +98,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     };
   }, []);
 
-  function determineValueClass(): [string, string | `rgb(${number}, ${number}, ${number})` | `#${string}`] {
-    switch (typeof elem.value) {
-      case "object":
-        if (elem.value instanceof Array)
-          return ["ri-brackets-line", '#bba962'];
-        // return ["ri-brackets-line", '#8d740e'];
-        else
-          return ["ri-braces-line", '#0bab7e'];
-      // return ["ri-braces-line", '#0bab7e'];
-      case "boolean":
-        return ["ri-checkbox-line", '#0184cb'];
-      case "number":
-      case "bigint":
-        return ["ri-hashtag", '#109675'];
-      case "string":
-        return ["ri-text", '#ea6a21'];
-      default:
-        return ["", '#123212'];
-    }
+  function determineValueClass() {
+    return findValueStyle(elem.value);
   }
 
   function markDirty() {
@@ -154,7 +137,6 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     switch (typeof elem.value) {
       case "boolean":
         elem.valueLocal = !elem.valueLocal;
-        console.log(elem.valueLocal);
         markDirty();
         forceUpdate();
         break;
