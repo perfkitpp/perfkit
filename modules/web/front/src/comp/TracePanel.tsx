@@ -133,17 +133,16 @@ export default function TracePanel(prop: { socketUrl: string }) {
   if (sockTrace?.readyState != WebSocket.OPEN)
     return (<div className='text-center p-3 text-primary'><Spinner animation='border'></Spinner></div>);
 
-  return <div>
+  return <div className='h-100'>
     <TraceSocketContext.Provider value={sockTrace as WebSocket}>
-      <div className='d-flex flex-row my-2'>
-        <span>Search Panel</span>
-      </div>
+      {/*TODO: Search text overlay here!*/}
       <hr className='m-2'/>
       <Container fluid
-                 className='p-0 m-0'
+                 className='p-0 m-0 mh-100'
                  style={{
                    fontFamily: 'Lucida Console, monospace',
-                   fontSize: '1rem'
+                   fontSize: '1rem',
+                   overflowY: 'scroll'
                  }}>
         <Row className='p-0 m-0'>
           {components}
@@ -331,7 +330,7 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
       context.notifyUpdate = onUpdateValue;
     }, []);
 
-    return <div className='p-1 mx-2 d-flex align-items-center rounded-3'
+    return <div className='p-1 mx-2 d-flex align-items-center rounded-3 border-bottom border-dark'
                 onMouseEnter={() => setHovering(true)} onMouseLeave={() => setHovering(false)}
                 onClick={ev => toggleFoldState(ev)}>
       <i className={icon + ' me-2'} style={{color: typeColor}}/>
@@ -347,11 +346,11 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
       <div className='flex-grow-1 my-0 py-0 px-0 mx-4 d-flex justify-content-end'>
         <hr className='rounded-5 flex-grow-0'
             style={{
-              transition: 'width 0.5s, height 0.3s',
+              transition: '0.5s',
               margin: '0',
-              color: typeColor, opacity: '30%',
+              color: typeColor, opacity: hovering ? '50%' : '0%',
               width: hovering ? '100%' : '0%',
-              height: hovering ? '0.5em' : '1px'
+              height: hovering ? '0.2em' : '1em'
             }}/>
       </div>
       <span style={{color: typeColor}} ref={frameRef} className={'px-2'}>{

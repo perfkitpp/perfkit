@@ -64,7 +64,7 @@ export default function Terminal(props: { socketUrl: string }) {
 
   async function onSubmitCommand(event: React.FormEvent<HTMLFormElement>) {
     ttySock?.send((event.target as any).command_content.value);
-    appendText(`(cmd) ${(event.target as any).command_content.value}`);
+    appendText(`(cmd) ${(event.target as any).command_content.value}`, '');
     (event.target as any).command_content.value = "";
   }
 

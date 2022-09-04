@@ -162,12 +162,9 @@ class trace_server_impl : public trace_server
 
     void ioc_register_tracer_(tracer* ref)
     {
-        CPPH_INFO("Registering Tracer: {}", ref->name());
         if (all_.end() != ioc_find_(ref->weak_from_this())) {
-            CPPH_INFO("Registering Tracer Declined: {}", ref->name());
             return;  // Already registered.
         }
-        CPPH_INFO("Registering Tracer Accepted: {}", ref->name());
 
         auto self = make_shared<tracer_context>();
         self->tracer_ = ref->weak_from_this();
@@ -178,7 +175,6 @@ class trace_server_impl : public trace_server
         self->cached_name_ = ref->name();
 
         ref->on_destroy() << anchor_ << [this](tracer* tr) {
-            CPPH_INFO("Unregistering Tracer: {}", tr->name());
             ioc_.post(bind(&S::ioc_handle_unregister_, this, tr->weak_from_this()));
         };
 

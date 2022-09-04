@@ -12,7 +12,7 @@ export interface CategoryVisualProps {
 }
 
 export const DefaultVisProp: CategoryVisualProps = {
-  collapsed: false
+  collapsed: true
 }
 
 const cssIconStyle: CSSProperties = {
@@ -397,7 +397,7 @@ function CategoryNode(prop: {
         onClick={toggleCollapse}>
       <i className={folderIconClass + ' px-2 '} style={cssIconStyle}/>
       {prefix && <span className='text-opacity-75 text-light pe-2 flex-grow-0'>{prefix} /</span>}
-      <span className='btn flex-grow-1 text-start text-light fw-bold my-0'>{self.name}</span>
+      <span className='btn py-1 flex-grow-1 text-start text-light fw-bold my-0'>{self.name}</span>
     </h6>
     <div className={'ms-3 mt-1 ps-0'} style={{borderLeft: ''}}>
       {!collapsed && self.children.map(
@@ -437,7 +437,7 @@ export function RootNode(prop: {
   ctx: RootContext
 }) {
   return <div
-    className='m-1 p-3 bg-secondary bg-opacity-10 rounded-3'
+    className='m-1 p-0 bg-secondary bg-opacity-10 rounded-3'
     style={{
       fontSize: '1.2rem',
       overflowX: 'hidden',
