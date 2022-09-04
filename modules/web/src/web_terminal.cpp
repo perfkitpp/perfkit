@@ -82,6 +82,11 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
 
     loader_path_buf_ = info_.static_dir;
 
+    // TODO: App bundling ...
+    //  1. Zip web files, and compile it as part of the program / or loadable module.
+    //  2. In runtime, generate hash to temporary directory for unzipping web components....
+    //    - /tmp/perfkit.web.public.cfJKxl/LDjnI39u1  << Generated from 'PERFKIT_WEB_INTERFACE_VERSION'
+    //  3. If directory already exists, just use it. Otherwise, load .so, unzip to given directory.
     auto make_file_load_response =
             [this](auto base, auto&&... args) {
                 char uri[512];
@@ -89,7 +94,6 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
 
                 crow::response e;
                 fs::path path = info_.static_dir;
-                path /= PERFKIT_WEB_INTERFACE_VERSION;
                 path /= uri;
 
                 e.set_static_file_info_unsafe(path.string());

@@ -250,7 +250,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
         <Row className='m-0 p-0'>
           {Object.keys(rootTablesRef.current).sort().map(
             key =>
-              <Col key={key} style={{minWidth: '70ch', maxWidth: '105ch'}} className='m-0 p-0'>
+              <Col key={key} style={{minWidth: '70ch', maxWidth: '140ch'}} className='m-0 p-0'>
                 <View.RootNode name={key} ctx={rootTablesRef.current[key]}/>
               </Col>
           )}

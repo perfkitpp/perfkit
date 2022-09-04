@@ -417,7 +417,7 @@ function CategoryNode(prop: {
       {prefix && <span className='text-opacity-75 text-light pe-2 flex-grow-0'>{prefix} /</span>}
       <span className='btn flex-grow-1 text-start text-light fw-bold my-0'>{self.name}</span>
     </h6>
-    <div className={'ms-2 mt-1 ps-3'} style={{borderLeft: ''}}>
+    <div className={'ms-3 mt-1 ps-0'} style={{borderLeft: ''}}>
       {!collapsed && self.children.map(
         child => typeof child === "number"
           ? <ValueLabel key={child} elem={root.all[child]} rootName={root.root.name}/>
