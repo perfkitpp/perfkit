@@ -314,6 +314,10 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
         }
       }, 100);
 
+      if (collapsed != context.body.f_F) {
+        setCollapsed(context.body.f_F);
+      }
+
       forceUpdate();
     }
 
@@ -332,7 +336,7 @@ function TraceNode(props: { root: TracerContext, context: TracerNodeContext }) {
                 onClick={ev => toggleFoldState(ev)}>
       <i className={icon + ' me-2'} style={{color: typeColor}}/>
       <span className='me-2'
-            style={{color: context.children.length > 0 && collapsed ? theme.secondary : theme.light + '99'}}>{props.context.props.name}</span>
+            style={{color: context.children.length > 0 && collapsed ? theme.secondary : theme.light}}>{props.context.props.name}</span>
       <div className='btn py-0 px-2'
            style={{transition: '0.2s', opacity: hovering ? '100%' : (context.body.f_S ? '80%' : '0%')}}
            onClick={ev => toggleSubsState(ev)}>
