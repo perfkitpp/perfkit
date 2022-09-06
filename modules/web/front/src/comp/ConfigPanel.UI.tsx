@@ -389,12 +389,13 @@ function CategoryNode(prop: {
   const {root, self, prefix} = prop;
   const forceUpdate = useForceUpdate();
   const collapsed = self.visProps.collapsed;
-  const filterEnabled = self.cachedIsAnyChildHitSearch != undefined;
-  const collapseEval = filterEnabled ? self.cachedIsAnyChildHitSearch : !collapsed;
+  const filterMode = self.cachedIsAnyChildHitSearch !== undefined;
+  const selfFilterHit = self.cachedSearchHighlightText !== undefined;
+  const isOpen = filterMode ? self.cachedIsAnyChildHitSearch || selfFilterHit : !collapsed;
 
   const folderIconClass = prop.prefix
-    ? !collapsed ? 'ri-folders-line' : 'ri-folders-fill'
-    : !collapsed ? 'ri-folder-open-line' : 'ri-folder-fill';
+    ? isOpen ? 'ri-folders-line' : 'ri-folders-fill'
+    : isOpen ? 'ri-folder-open-line' : 'ri-folder-fill';
 
   useEffect(() => {
     self.onUpdateSearchState = forceUpdate;
@@ -410,12 +411,12 @@ function CategoryNode(prop: {
       </span>
     </h6>
     <div className={'ms-3 mt-1 ps-0'} style={{borderLeft: ''}}>
-      {collapseEval && self.children.map(
+      {isOpen && self.children.map(
         child => typeof child === "number"
-          ? (!filterEnabled || root.all[child].cachedSearchHighlightText !== undefined
+          ? (!filterMode || (root.all[child].cachedSearchHighlightText !== undefined || selfFilterHit)
             ? <ValueLabel key={child} elem={root.all[child]} rootName={root.root.name}/>
             : <span key={child}/>)
-          : (child.cachedIsAnyChildHitSearch === false
+          : (child.cachedIsAnyChildHitSearch === false && !selfFilterHit
             ? <span key={child.name}/>
             : <ForwardedCategoryNode key={child.name} root={prop.root} self={child}/>)
       )}
@@ -432,8 +433,10 @@ function ForwardedCategoryNode(prop: {
 
   if (self.children.length === 1) {
     const child = self.children[0];
+    const selfFilterHit = self.cachedSearchHighlightText !== undefined;
+
     return typeof child === "number"
-      ? (self.cachedIsAnyChildHitSearch === false
+      ? (self.cachedIsAnyChildHitSearch === false && !selfFilterHit
         ? <span/>
         : <ValueLabel
           elem={root.all[child]}

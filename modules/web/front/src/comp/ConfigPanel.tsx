@@ -432,16 +432,13 @@ export default function ConfigPanel(props: { socketUrl: string }) {
         return root.all[desc].cachedSearchHighlightText !== undefined;
       }
 
-      if (desc.cachedSearchHighlightText)
-        return true;
 
-      let hitAnyChild = false
+      let hitAnyChild = desc.cachedSearchHighlightText !== undefined;
       desc.children.forEach(child => {
         hitAnyChild = refreshChildSearchStateCache(root, child) || hitAnyChild;
       });
 
       desc.cachedIsAnyChildHitSearch = hitAnyChild;
-
       return hitAnyChild;
     }
 
