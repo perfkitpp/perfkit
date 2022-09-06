@@ -414,8 +414,10 @@ function CategoryNode(prop: {
         child => typeof child === "number"
           ? (!filterEnabled || root.all[child].cachedSearchHighlightText !== undefined
             ? <ValueLabel key={child} elem={root.all[child]} rootName={root.root.name}/>
-            : <span key={child}></span>)
-          : <ForwardedCategoryNode key={child.name} root={prop.root} self={child}/>
+            : <span key={child}/>)
+          : (child.cachedIsAnyChildHitSearch === false
+            ? <span key={child.name}/>
+            : <ForwardedCategoryNode key={child.name} root={prop.root} self={child}/>)
       )}
     </div>
   </div>;
