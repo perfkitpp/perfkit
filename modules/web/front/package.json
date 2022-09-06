@@ -11,6 +11,7 @@
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
     "bootstrap": "^5.2.0",
+    "fuzzysort": "^2.0.1",
     "node-sass": "^7.0.1",
     "rc-dock": "^3.2.11",
     "react": "^18.2.0",

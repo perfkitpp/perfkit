@@ -4,6 +4,7 @@ import {Col, Container, Row, Spinner} from "react-bootstrap";
 import {AppendTextToTerminal} from "./Terminal";
 import * as View from "./ConfigPanel.UI";
 import {CategoryVisualProps, DefaultVisProp} from "./ConfigPanel.UI";
+import * as Fuzzysort from "fuzzysort";
 
 export interface ElemDesc {
   elemID: number;
@@ -15,6 +16,11 @@ export interface ElemDesc {
   maxValue: any | null;
   oneOf: any[] | null;
   editMode: string;
+}
+
+interface FuzzySortPreparedContext {
+  target: string,
+  obj: object
 }
 
 export interface ElemContext {
@@ -31,12 +37,19 @@ export interface ElemContext {
   onUpdateReceivedAfterCommit?: (val: any) => void;
   onUpdateReceived?: () => void;
   onUpdateDiscarded?: () => void;
+
+  cachedSearchHighlightText?: string;
 }
 
 export interface CategoryDesc {
   name: string;
   children: (number | CategoryDesc)[];
   visProps: CategoryVisualProps
+
+  cachedSearchHighlightText?: string;
+  cachedIsAnyChildHitSearch?: boolean;
+
+  onUpdateSearchState?: () => void;
 }
 
 export interface ElemUpdateList {
@@ -50,8 +63,11 @@ export interface ElemTable {
 }
 
 export interface RootContext {
-  all: ElemTable,
+  all: ElemTable;
   root: CategoryDesc;
+
+  elemFuzzyContexts: FuzzySortPreparedContext[];
+  categoryFuzzyContexts: FuzzySortPreparedContext[];
 }
 
 function ElemNode(props: {
@@ -102,8 +118,14 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[], commitFn: 
       value: elem.initValue,
       valueLocal: structuredClone(elem.initValue),
       props: elem,
-      updateFence: 0,
+      updateFence: 0
     };
+
+    {
+      const sortCtx = Fuzzysort.prepare(elem.name) as FuzzySortPreparedContext;
+      sortCtx.obj = ctx;
+      root.elemFuzzyContexts.push(sortCtx);
+    }
 
     //
     let currentCategory = root.root;
@@ -131,6 +153,10 @@ function registerConfigEntities(root: RootContext, elems: ElemDesc[], commitFn: 
           visProps: structuredClone(DefaultVisProp)
         };
         children.push(currentCategory);
+
+        const sortCtx = Fuzzysort.prepare(str) as FuzzySortPreparedContext;
+        sortCtx.obj = currentCategory;
+        root.categoryFuzzyContexts.push(sortCtx);
       }
     }
 
@@ -195,7 +221,9 @@ export default function ConfigPanel(props: { socketUrl: string }) {
         msg.params.forEach(value => {
           roots[value] = {
             all: {},
-            root: {name: value, children: [], visProps: structuredClone(DefaultVisProp)}
+            root: {name: value, children: [], visProps: structuredClone(DefaultVisProp)},
+            elemFuzzyContexts: [],
+            categoryFuzzyContexts: [],
           };
         })
         forceUpdate();
@@ -259,9 +287,6 @@ export default function ConfigPanel(props: { socketUrl: string }) {
         </Row>
       </Container>
     , [cfgSock?.readyState, rootDirtyFlag]);
-
-  if (cfgSock?.readyState != WebSocket.OPEN)
-    return (<div className='text-center p-3 text-primary'><Spinner animation='border'></Spinner></div>);
 
   function setCollapseAll(isCollapsed: boolean) {
     for (const key in rootTablesRef.current) {
@@ -330,11 +355,93 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     setIsAnyItemDirty(false);
   }
 
+  const searchBarRef = useRef({} as HTMLInputElement);
+
   function onKeyDown(ev: KeyboardEvent) {
-    ev.ctrlKey && ev.key == "Enter" && commitAllChanges()
+    if (ev.ctrlKey && ev.key === "Enter") {
+      commitAllChanges()
+    } else if (ev.key === "Escape") {
+      setSearchText('');
+      searchBarRef.current.focus();
+    }
   }
 
+  useEffect(() => {
+    // TODO:
+    console.log("Search Text Changed");
+    const now = Date.now();
+    const roots = Object.keys(rootTablesRef.current).map(key => rootTablesRef.current[key]);
+
+
+    // Iterate every object, clear cache state
+    for (const root of roots) {
+      Object.values(root.all).forEach((elem: ElemContext) => elem.cachedSearchHighlightText = undefined);
+      resetCategoryRecursive(root.root);
+    }
+
+    if (searchText.length == 0) {
+      return;
+    }
+
+    for (const root of roots) {
+      const elemRes = Fuzzysort.go(searchText, root.elemFuzzyContexts, {threshold: -10000});
+      const categoryRes = Fuzzysort.go(searchText, root.categoryFuzzyContexts, {threshold: -10000});
+
+      elemRes.forEach(res => {
+        const highlightText = Fuzzysort.highlight(res, "<b>", "</b>");
+        const element = ((res as any).obj as ElemContext);
+        element.cachedSearchHighlightText = highlightText as string;
+      });
+
+      categoryRes.forEach(res => {
+        const highlightText = Fuzzysort.highlight(res, "<b>", "</b>");
+        const element = ((res as any).obj as CategoryDesc);
+        element.cachedSearchHighlightText = highlightText as string;
+      });
+
+      root.root.cachedIsAnyChildHitSearch = refreshChildSearchStateCache(root.root);
+
+      for (const {obj} of root.categoryFuzzyContexts) {
+        const fn = (obj as CategoryDesc).onUpdateSearchState;
+        fn && fn();
+      }
+
+      console.log(root.root);
+    }
+
+    console.log("seach done.", Date.now() - now, "ms");
+
+    function refreshChildSearchStateCache(desc: {
+      cachedSearchHighlightText?: string,
+      cachedIsAnyChildHitSearch?: boolean,
+      children?: (number | CategoryDesc)[]
+    }) {
+      if (desc.cachedSearchHighlightText)
+        return true;
+
+      let hitAnyChild = false
+      if (desc.children)
+        desc.children.forEach(child => {
+          hitAnyChild = refreshChildSearchStateCache(child as any) || hitAnyChild;
+        });
+
+      if (desc.children)
+        desc.cachedIsAnyChildHitSearch = hitAnyChild;
+
+      return hitAnyChild;
+    }
+
+    function resetCategoryRecursive(desc: CategoryDesc) {
+      desc.cachedIsAnyChildHitSearch = undefined;
+      desc.cachedSearchHighlightText = undefined;
+      desc.children.filter(v => typeof (v) !== "number").forEach((ev: any) => resetCategoryRecursive(ev));
+    }
+  }, [searchText]);
+
   const iconFontSize = '1.4em';
+
+  if (cfgSock?.readyState != WebSocket.OPEN)
+    return (<div className='text-center p-3 text-primary'><Spinner animation='border'></Spinner></div>);
 
   // TODO: Implement search using 'https://github.com/farzher/fuzzysort'
   return (
@@ -375,7 +482,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
           <span className='flex-grow-0 ms-2 p-1 w-50 d-flex flex-row align-items-center'>
             <i className='ri-search-line'/>
             <input type='text' className='form-control p-0 me-2 ms-3'
-                   value={searchText} style={{border: 0}}
+                   value={searchText} style={{border: 0}} ref={searchBarRef}
                    onInput={ev => setSearchText(ev.currentTarget.value)}/>
           </span>
         </span>

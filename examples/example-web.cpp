@@ -50,6 +50,10 @@ class ExampleWebApp : public perfkit::AppBase
         test1_ = new test_class{"test1"};
         test2_ = new test_class{"test2"};
         test3_ = new test_class{"test3"};
+
+        test1_->start();
+        test2_->start();
+        test3_->start();
     }
 
     void P01_DisposeApplication() override
