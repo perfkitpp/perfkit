@@ -38,7 +38,7 @@ export interface ElemContext {
   onUpdateReceived?: () => void;
   onUpdateDiscarded?: () => void;
 
-  cachedSearchHighlightText?: string;
+  cachedSearchHighlightText?: ReactNode;
 }
 
 export interface CategoryDesc {
@@ -46,7 +46,7 @@ export interface CategoryDesc {
   children: (number | CategoryDesc)[];
   visProps: CategoryVisualProps
 
-  cachedSearchHighlightText?: string;
+  cachedSearchHighlightText?: ReactNode;
   cachedIsAnyChildHitSearch?: boolean;
 
   onUpdateSearchState?: () => void;
@@ -173,6 +173,7 @@ export interface ConfigPanelControlInfo {
 
 export const ConfigPanelControlContext = createContext({} as ConfigPanelControlInfo);
 export const ConfigPanelSearchContext = createContext("");
+let globalIdGen = 0;
 
 // Overall control flow ...
 // 1. 'new-root': Create new root from corresponding entity of RootContext
@@ -219,12 +220,16 @@ export default function ConfigPanel(props: { socketUrl: string }) {
       case "new-root":
         AppendTextToTerminal(`configs: New root terminal '${msg.params}'`, '')
         msg.params.forEach(value => {
-          roots[value] = {
+          const newRoot = roots[value] = {
             all: {},
             root: {name: value, children: [], visProps: structuredClone(DefaultVisProp)},
             elemFuzzyContexts: [],
             categoryFuzzyContexts: [],
           };
+
+          const initialFuzzy = Fuzzysort.prepare(value) as FuzzySortPreparedContext;
+          initialFuzzy.obj = newRoot.root;
+          (newRoot.categoryFuzzyContexts as FuzzySortPreparedContext[]).push(initialFuzzy);
         })
         forceUpdate();
         break;
@@ -278,11 +283,13 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   const allRootFrames = useMemo(() =>
       <Container fluid className='p-0'>
         <Row className='m-0 p-0'>
-          {Object.keys(rootTablesRef.current).sort().map(
-            key =>
-              <Col key={key} style={{minWidth: '60ch', maxWidth: '120ch'}} className='m-0 p-0'>
-                <View.RootNode name={key} ctx={rootTablesRef.current[key]}/>
-              </Col>
+          {Object.keys(rootTablesRef.current).sort().map(key => rootTablesRef.current[key]).map(
+            table =>
+              table.root.cachedIsAnyChildHitSearch === false
+                ? <span key={table.root.name}/>
+                : <Col key={table.root.name} style={{minWidth: '60ch', maxWidth: '120ch'}} className='m-0 p-0'>
+                  <View.RootNode name={table.root.name} ctx={table}/>
+                </Col>
           )}
         </Row>
       </Container>
@@ -366,12 +373,11 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     }
   }
 
-  useEffect(() => {
+  useEffect(function onUpdateSearchText() {
     // TODO:
-    console.log("Search Text Changed");
+    // console.log("Search Text Changed");
     const now = Date.now();
     const roots = Object.keys(rootTablesRef.current).map(key => rootTablesRef.current[key]);
-
 
     // Iterate every object, clear cache state
     for (const root of roots) {
@@ -380,53 +386,61 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     }
 
     if (searchText.length == 0) {
+      roots.forEach(root => notifyRecursive(root.root));
+      forceUpdate();
       return;
     }
 
     for (const root of roots) {
-      const elemRes = Fuzzysort.go(searchText, root.elemFuzzyContexts, {threshold: -10000});
-      const categoryRes = Fuzzysort.go(searchText, root.categoryFuzzyContexts, {threshold: -10000});
+      const elemRes = Fuzzysort.go(searchText, root.elemFuzzyContexts, {});
+      const categoryRes = Fuzzysort.go(searchText, root.categoryFuzzyContexts, {});
+
 
       elemRes.forEach(res => {
-        const highlightText = Fuzzysort.highlight(res, "<b>", "</b>");
+        const highlightText = Fuzzysort.highlight(res, highlighter);
         const element = ((res as any).obj as ElemContext);
-        element.cachedSearchHighlightText = highlightText as string;
+        element.cachedSearchHighlightText = highlightText;
       });
 
       categoryRes.forEach(res => {
-        const highlightText = Fuzzysort.highlight(res, "<b>", "</b>");
+        const highlightText = Fuzzysort.highlight(res, highlighter);
         const element = ((res as any).obj as CategoryDesc);
-        element.cachedSearchHighlightText = highlightText as string;
+        element.cachedSearchHighlightText = highlightText;
       });
 
-      root.root.cachedIsAnyChildHitSearch = refreshChildSearchStateCache(root.root);
+      root.root.cachedIsAnyChildHitSearch = refreshChildSearchStateCache(root, root.root);
+      notifyRecursive(root.root);
 
-      for (const {obj} of root.categoryFuzzyContexts) {
-        const fn = (obj as CategoryDesc).onUpdateSearchState;
-        fn && fn();
-      }
-
-      console.log(root.root);
+      // console.log(root.root);
     }
 
-    console.log("seach done.", Date.now() - now, "ms");
+    // console.log("seach done.", Date.now() - now, "ms");
 
-    function refreshChildSearchStateCache(desc: {
-      cachedSearchHighlightText?: string,
-      cachedIsAnyChildHitSearch?: boolean,
-      children?: (number | CategoryDesc)[]
-    }) {
+    function highlighter(str: string) {
+      return <b className='text-danger' key={++globalIdGen}>{str}</b>;
+    }
+
+    function notifyRecursive(desc: CategoryDesc) {
+      desc.onUpdateSearchState && desc.onUpdateSearchState();
+      for (const child of desc.children)
+        if (typeof child != "number")
+          notifyRecursive(child);
+    }
+
+    function refreshChildSearchStateCache(root: RootContext, desc: number | CategoryDesc) {
+      if (typeof desc === "number") {
+        return root.all[desc].cachedSearchHighlightText !== undefined;
+      }
+
       if (desc.cachedSearchHighlightText)
         return true;
 
       let hitAnyChild = false
-      if (desc.children)
-        desc.children.forEach(child => {
-          hitAnyChild = refreshChildSearchStateCache(child as any) || hitAnyChild;
-        });
+      desc.children.forEach(child => {
+        hitAnyChild = refreshChildSearchStateCache(root, child) || hitAnyChild;
+      });
 
-      if (desc.children)
-        desc.cachedIsAnyChildHitSearch = hitAnyChild;
+      desc.cachedIsAnyChildHitSearch = hitAnyChild;
 
       return hitAnyChild;
     }
@@ -436,6 +450,8 @@ export default function ConfigPanel(props: { socketUrl: string }) {
       desc.cachedSearchHighlightText = undefined;
       desc.children.filter(v => typeof (v) !== "number").forEach((ev: any) => resetCategoryRecursive(ev));
     }
+
+    forceUpdate();
   }, [searchText]);
 
   const iconFontSize = '1.4em';

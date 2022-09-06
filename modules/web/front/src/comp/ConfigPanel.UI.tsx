@@ -359,7 +359,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       <i className={iconClass} style={cssIconStyle}/>
       <span className={'btn text-start d-flex flex-row flex-grow-0 py-1'}>
         {prefix && <span className='text-opacity-75 text-light pe-2 flex-grow-0'>{prefix} /</span>}
-        {prop.elem.props.name}
+        {elem.cachedSearchHighlightText ? elem.cachedSearchHighlightText : prop.elem.props.name}
         {elem.editted &&
             <i className='btn text-danger ri-arrow-go-back-line m-0 ms-2 p-0 px-1'
                style={{fontSize: '0.9em'}}
@@ -381,30 +381,40 @@ function CategoryNode(prop: {
   self: CategoryDesc,
   prefix?: string
 }) {
+  function toggleCollapse() {
+    self.visProps.collapsed = !self.visProps.collapsed;
+    forceUpdate();
+  }
+
   const {root, self, prefix} = prop;
   const forceUpdate = useForceUpdate();
   const collapsed = self.visProps.collapsed;
+  const filterEnabled = self.cachedIsAnyChildHitSearch != undefined;
+  const collapseEval = filterEnabled ? self.cachedIsAnyChildHitSearch : !collapsed;
 
   const folderIconClass = prop.prefix
     ? !collapsed ? 'ri-folders-line' : 'ri-folders-fill'
     : !collapsed ? 'ri-folder-open-line' : 'ri-folder-fill';
 
-  function toggleCollapse() {
-    self.visProps.collapsed = !self.visProps.collapsed;
-    forceUpdate();
-  }
+  useEffect(() => {
+    self.onUpdateSearchState = forceUpdate;
+  }, []);
 
   return <div>
     <h6 className='d-flex flex-row align-items-center text-white py-0'
         onClick={toggleCollapse}>
       <i className={folderIconClass + ' px-2 '} style={cssIconStyle}/>
       {prefix && <span className='text-opacity-75 text-light pe-2 flex-grow-0'>{prefix} /</span>}
-      <span className='btn py-1 flex-grow-1 text-start text-light fw-bold my-0'>{self.name}</span>
+      <span className='btn py-1 flex-grow-1 text-start text-light fw-bold my-0'>
+        {self.cachedSearchHighlightText ? self.cachedSearchHighlightText : self.name}
+      </span>
     </h6>
     <div className={'ms-3 mt-1 ps-0'} style={{borderLeft: ''}}>
-      {!collapsed && self.children.map(
+      {collapseEval && self.children.map(
         child => typeof child === "number"
-          ? <ValueLabel key={child} elem={root.all[child]} rootName={root.root.name}/>
+          ? (!filterEnabled || root.all[child].cachedSearchHighlightText !== undefined
+            ? <ValueLabel key={child} elem={root.all[child]} rootName={root.root.name}/>
+            : <span key={child}></span>)
           : <ForwardedCategoryNode key={child.name} root={prop.root} self={child}/>
       )}
     </div>
@@ -421,10 +431,12 @@ function ForwardedCategoryNode(prop: {
   if (self.children.length === 1) {
     const child = self.children[0];
     return typeof child === "number"
-      ? <ValueLabel
-        elem={root.all[child]}
-        prefix={(prefix ? prefix + ' / ' : '') + self.name}
-        rootName={root.root.name}/>
+      ? (self.cachedIsAnyChildHitSearch === false
+        ? <span/>
+        : <ValueLabel
+          elem={root.all[child]}
+          prefix={(prefix ? prefix + ' / ' : '') + self.name}
+          rootName={root.root.name}/>)
       : <ForwardedCategoryNode
         root={root}
         self={child}
@@ -445,6 +457,6 @@ export function RootNode(prop: {
       overflowX: 'hidden',
       fontFamily: 'Lucida Console, monospace',
     }}>
-    <ForwardedCategoryNode root={prop.ctx} self={prop.ctx.root}/>
+    <CategoryNode root={prop.ctx} self={prop.ctx.root}/>
   </div>;
 }
