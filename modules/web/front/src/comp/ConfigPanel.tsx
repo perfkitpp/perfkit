@@ -146,6 +146,7 @@ export interface ConfigPanelControlInfo {
 }
 
 export const ConfigPanelControlContext = createContext({} as ConfigPanelControlInfo);
+export const ConfigPanelSearchContext = createContext("");
 
 // Overall control flow ...
 // 1. 'new-root': Create new root from corresponding entity of RootContext
@@ -155,6 +156,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
   const rootTablesRef = useRef({} as { [key: string]: RootContext });
   const changedItems = useRef({} as { [key: number]: string });
   const updateImmediate = useRef(false);
+  const [searchText, setSearchText] = useState("");
   const [rootDirtyFlag, setForceRootDirtyFlag] = useState(0);
   const [isAnyItemDirty, setIsAnyItemDirty] = useState(false);
   const forceUpdate = () => setForceRootDirtyFlag(v => v + 1);
@@ -328,6 +330,10 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     setIsAnyItemDirty(false);
   }
 
+  function onKeyDown(ev: KeyboardEvent) {
+    ev.ctrlKey && ev.key == "Enter" && commitAllChanges()
+  }
+
   const iconFontSize = '1.4em';
 
   // TODO: Implement search using 'https://github.com/farzher/fuzzysort'
@@ -335,7 +341,7 @@ export default function ConfigPanel(props: { socketUrl: string }) {
     <ConfigPanelControlContext.Provider value={panelManipContext}>
       <div style={{display: 'flex', flexDirection: 'column', height: '100%', outline: 'none'}}
            tabIndex={0}
-           onKeyDown={ev => ev.nativeEvent.ctrlKey && ev.key == "Enter" && commitAllChanges()}>
+           onKeyDown={ev => onKeyDown(ev.nativeEvent)}>
         <span className='d-flex mt-2 flex-row-reverse align-items-center'>
           <span className='w-auto d-flex flex-row-reverse flex-grow-1'>
             <button
@@ -366,7 +372,12 @@ export default function ConfigPanel(props: { socketUrl: string }) {
             title='Collapse All'
             style={{fontSize: iconFontSize}}
             onClick={() => setCollapseAll(true)}/>
-          <span className='flex-grow-0 ms-2 p-1 w-50'>{/*TODO: Search text overlay here!*/}</span>
+          <span className='flex-grow-0 ms-2 p-1 w-50 d-flex flex-row align-items-center'>
+            <i className='ri-search-line'/>
+            <input type='text' className='form-control p-0 me-2 ms-3'
+                   value={searchText} style={{border: 0}}
+                   onInput={ev => setSearchText(ev.currentTarget.value)}/>
+          </span>
         </span>
         <hr className='my-1 mx-1'/>
         <div style={{

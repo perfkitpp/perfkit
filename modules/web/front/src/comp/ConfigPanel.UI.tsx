@@ -55,6 +55,8 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
   }
 
   useEffect(() => {
+    setBgColor(stateColor(), 300);
+
     elem.onCommit = () => {
       setBgColor(valueLabelBg.comitted, 200);
       forceUpdate();
@@ -190,7 +192,7 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
       case "number":
       case "bigint":
       case "string":
-        return <input className="form-control form-control-sm text-end bg-transparent flex-grow-1"
+        return <input className="form-control form-control-sm text-end bg-transparent flex-grow-1 py-0"
                       ref={inputRef}
                       type={typeof elem.value === "number" ? "number" : "text"}
                       defaultValue={elem.valueLocal}
@@ -219,14 +221,14 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
     const rawText = valueStringify(elem.value);
     return typeof elem.value === "boolean"
-      ? (<span className='btn px-3' tabIndex={0}
+      ? (<span className='btn px-3 py-1' tabIndex={0}
                style={{color: titleColor}}
                onKeyDown={ev => (ev.key == " " || ev.key == "Enter") && onClick()}>
         {(elem.editted ? elem.valueLocal : elem.value)
           ? <i className='ri-eye-fill'/>
           : <i className='ri-eye-close-fill'/>}
         </span>)
-      : <span className='text-end overflow-hidden btn flex-grow-0 text-nowrap'
+      : <span className='text-end overflow-hidden btn flex-grow-0 text-nowrap py-1'
               tabIndex={0}
               onFocus={onClick}
               title={JSON.stringify(elem.value, null, ' ')}
@@ -247,13 +249,13 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
 
     return <div className='h-100 flex-grow-1'>
       <hr
-        className='rounded-5'
+        className='rounded-3'
         style={{
-          flexGrow: 2,
-          height: isHovering ? 15 : 1,
+          width: isHovering ? '100%' : '0%',
+          height: isHovering ? '.2em' : '1em',
           background: prop.color,
-          transition: 'height .3s',
-          opacity: '.3',
+          transition: '.5s',
+          opacity: isHovering ? .4 : .0,
           margin: '0'
         }}/>
     </div>
@@ -346,16 +348,16 @@ function ValueLabel(prop: { rootName: string, elem: ElemContext, prefix?: string
     </div>
   }
 
-  return <div className='h6 px-2 py-0 my-1 rounded-3'
+  return <div className='h6 px-2 py-0 my-1 border-bottom border-dark border-opacity-10'
               title={elem.props.description}
               ref={labelRef}
-              onMouseEnter={() => setHoveringState.current(true)}
+              onMouseOver={() => setHoveringState.current(true)}
               onMouseLeave={() => setHoveringState.current(false)}>
     <div className={'d-flex align-items-center gap-2 m-0 p-0'}
          style={{color: titleColor}}
          onClick={onClick}>
       <i className={iconClass} style={cssIconStyle}/>
-      <span className={'btn text-start d-flex flex-row flex-grow-0'}>
+      <span className={'btn text-start d-flex flex-row flex-grow-0 py-1'}>
         {prefix && <span className='text-opacity-75 text-light pe-2 flex-grow-0'>{prefix} /</span>}
         {prop.elem.props.name}
         {elem.editted &&
