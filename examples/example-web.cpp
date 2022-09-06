@@ -24,6 +24,8 @@
  * project home: https://github.com/perfkitpp
  ******************************************************************************/
 
+#include <cpph/utility/singleton.hxx>
+
 #include "perfkit-appbase.hpp"
 #include "perfkit/web.h"
 #include "spdlog/common.h"
@@ -32,6 +34,8 @@
 
 class ExampleWebApp : public perfkit::AppBase
 {
+    test_class *test1_ = {}, *test2_ = {}, *test3_ = {};
+
    public:
     int S00_ParseCommandLineArgs(int argc, char** argv) override
     {
@@ -43,13 +47,18 @@ class ExampleWebApp : public perfkit::AppBase
     {
         AppBase::S04_ConfigureTerminalCommands(terminal);
 
-        static test_class test1{"test1"};
-        static test_class test2{"test2"};
-        static test_class test3{"test3"};
+        test1_ = new test_class{"test1"};
+        test2_ = new test_class{"test2"};
+        test3_ = new test_class{"test3"};
+    }
 
-        test1.start();
-        test2.start();
-        test3.start();
+    void P01_DisposeApplication() override
+    {
+        AppBase::P01_DisposeApplication();
+
+        delete test1_;
+        delete test2_;
+        delete test3_;
     }
 
    public:
