@@ -78,7 +78,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(
             ${PROJECT_NAME}
 
-            PUBLIC
+            PRIVATE
             -DSPDLOG_ACTIVE_LEVEL=0
     )
 endif ()
