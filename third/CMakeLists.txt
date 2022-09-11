@@ -109,10 +109,15 @@ add_library(perfkit::cpph ALIAS ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} INTERFACE cppheaders cppheaders.refl-extension)
 
+if (perfkit_CROW_DIR_OVERRIDE)
+    message("[${PROJECT_NAME}] Using overrided CrowCpp directory '${perfkit_CROW_DIR_OVERRIDE}'")
+    add_subdirectory(${perfkit_CROW_DIR_OVERRIDE} ${CMAKE_CURRENT_BINARY_DIR}/crowcpp EXCLUDE_FROM_ALL)
+endif ()
+
 ### CONFIGURE crow
 if (perfkit_BUILD_WEB AND NOT TARGET Crow::Crow)
     message("[${PROJECT_NAME}] Crow::Crow not found, fetching ...")
-    FetchContent_Declare(crow URL https://github.com/kang-sw/Crow/archive/refs/heads/fix/ws-crash.zip)
+    FetchContent_Declare(crow URL https://github.com/kang-sw/Crow/archive/refs/heads/develop.zip)
     FetchContent_Populate(crow)
     add_subdirectory(${crow_SOURCE_DIR} ${crow_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()

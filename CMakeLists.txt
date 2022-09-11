@@ -12,6 +12,8 @@ option(perfkit_USE_BUNDLED_ASIO "" ON)
 option(perfkit_BUILD_EXAMPLES "" OFF)
 option(perfkit_BUILD_CPPHEADERS_TEST "" ON)
 
+set(perfkit_CROW_DIR_OVERRIDE "" CACHE PATH "Override source directory of CrowCpp")
+
 # Imports --------------------------------------------------------------------------------------------------------------
 add_subdirectory(third)
 
