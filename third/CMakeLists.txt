@@ -75,6 +75,9 @@ if (perfkit_USE_BUNDLED_ASIO OR perfkit_BUILD_NET_CLIENT OR perfkit_BUILD_WEB)
             message("[${PROJECT_NAME}] asio: using static lib asio as default ...")
             add_library(perfkit::asio ALIAS perfkit-asio-static)
         endif ()
+    else ()
+        # TODO: When ASIO_INCLUDE_DIR exists, add perfkit::asio target ...
+        message(FATAL_ERROR "TODO: IMPLEMENT THIS!")
     endif ()
 endif ()
 
