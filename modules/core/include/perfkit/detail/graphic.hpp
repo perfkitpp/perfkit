@@ -37,9 +37,36 @@ namespace perfkit {
 using namespace cpph;
 
 namespace windows {
-enum class keycode {
 
+// clang-format off
+enum class keycode {
+    none,
+
+    space, enter, backspace, del, ins, pgup, pgdn, home, end, escape, tab, caps_lock,
+    shift_l, shift_r, alt_l, alt_r, ctrl_l, ctrl_r,
+
+    //      [          ]      /         \\             `      -      =    .      ,          ;     '
+    bracket_l, bracket_r, slash, backslash, counter_apos, minus, equal, dot, comma, semicolon, apos,
+
+    arrow_base,
+    arrow_up = arrow_base, arrow_right, arrow_down, arrow_left,
+
+    function_key_base,
+    f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12,
+
+    alphabet_base,
+    a = alphabet_base, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
+    A                , B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
+
+    n_base,
+    n0 = n_base, n1, n2, n3, n4, n5, n6, n7, n8, n9,
+
+    num_base,
+    num_0 = num_base, num_1, num_2, num_3, num_4, num_5, num_6, num_7, num_8, num_9,
 };
+// clang-format on
+
+keycode operator+(keycode code, int offset) { return keycode(int(code) + offset); }
 
 struct mouse_event_info {
     int x, y;
@@ -53,6 +80,7 @@ struct mouse_event_info {
 
 struct keyboard_event_info {
     keycode code;
+    int code_raw;
     bool key_ctrl  : 1;
     bool key_alt   : 1;
     bool key_shift : 1;
