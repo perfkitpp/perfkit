@@ -66,7 +66,7 @@ enum class keycode {
 };
 // clang-format on
 
-keycode operator+(keycode code, int offset) { return keycode(int(code) + offset); }
+inline keycode operator+(keycode code, int offset) noexcept { return keycode(int(code) + offset); }
 
 struct mouse_event_info {
     int x, y;
