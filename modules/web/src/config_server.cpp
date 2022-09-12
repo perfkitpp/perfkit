@@ -28,6 +28,9 @@
 // Created by ki608 on 2022-08-28.
 //
 
+#undef SPDLOG_ACTIVE_LEVEL
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
+
 #include "config_server.hpp"
 
 #include <cpph/std/set>
@@ -172,8 +175,10 @@ class config_server_impl : public config_server
             return;  // Already registered!
         }
 
-        // Register name-ref mapping
-        regs_strmap_.try_emplace(rg->name(), rg);
+        CPPH_DEBUG("* Registering config observer: {}", rg->name());
+
+        // Register name-ref mapping. Override
+        regs_strmap_[rg->name()] = rg;
 
         // Register events
         rg->backend()->evt_structure_changed()
@@ -234,9 +239,17 @@ class config_server_impl : public config_server
 
         // Publish new root event
         if (not clients_.empty()) {
-            auto wr = ioc_writer_prepare_("new-root");
-            *wr << push_array(1) << rg->name() << pop_array;
-            client_for_each_([&, s = ioc_writer_done_()](auto cli) { cli->send_text(*s); });
+            // 1. Send new root creation message
+            {
+                auto wr = ioc_writer_prepare_("new-root");
+                *wr << push_array(1) << rg->name() << pop_array;
+                client_for_each_([&, s = ioc_writer_done_()](auto cli) { cli->send_text(*s); });
+            }
+
+            // 2. Publish new root element list
+            client_for_each_([&, p_payload = ioc_generate_descriptor_all_(rg.get())](auto cli) {
+                cli->send_text(*p_payload);
+            });
         }
     }
 
@@ -245,7 +258,11 @@ class config_server_impl : public config_server
         if (auto iter = regs_.find(observ); iter == regs_.end()) {
             return;
         } else {
-            regs_strmap_.erase(iter->second);
+            // Only delete string mapping when pointer remains as same reference.
+            auto iter_str = regs_strmap_.find(iter->second);
+            if (iter_str != regs_strmap_.end() && ptr_equals(iter_str->second, observ)) {
+                regs_strmap_.erase(iter_str);
+            }
 
             *ioc_writer_prepare_("delete-root") << iter->second;
             client_for_each_([&, s = ioc_writer_done_()](auto cli) { cli->send_text(*s); });
@@ -271,6 +288,7 @@ class config_server_impl : public config_server
         }
         (*wr) << pop_array;
 
+        CPPH_DEBUG("* Generating config descriptor: {} entities for {}", items.size(), rg->name());
         return ioc_writer_done_();
     }
 

@@ -47,6 +47,20 @@ class ExampleWebApp : public perfkit::AppBase
     {
         AppBase::S04_ConfigureTerminalCommands(terminal);
 
+        terminal->add_command("refresh", [this] {
+            delete test1_;
+            delete test2_;
+            delete test3_;
+
+            test1_ = new test_class{"test1"};
+            test2_ = new test_class{"test2"};
+            test3_ = new test_class{"test3"};
+
+            test1_->start();
+            test2_->start();
+            test3_->start();
+        });
+
         test1_ = new test_class{"test1"};
         test2_ = new test_class{"test2"};
         test3_ = new test_class{"test3"};
