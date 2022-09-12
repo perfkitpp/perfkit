@@ -16,6 +16,7 @@ target_sources(
         src/logging.cpp
         src/configs-v2.cpp
         src/configs-v2-flags.cpp
+        src/graphic-impl.cpp
 )
 
 if (WIN32)

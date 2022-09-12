@@ -37,7 +37,6 @@ namespace perfkit {
 using namespace cpph;
 
 namespace windows {
-
 // clang-format off
 enum class keycode {
     none,
@@ -103,10 +102,12 @@ struct on_blur {};
 }  // namespace events
 
 struct user_info {
+    size_t id = 0;
     string name;
 };
 
-using user_info_ptr = shared_ptr<user_info>;
+using user_info_ptr = shared_ptr<user_info const>;
+using user_info_wptr = weak_ptr<user_info const>;
 
 using input_event_data = variant<
         monostate,
@@ -131,8 +132,8 @@ using input_event_data = variant<
 class window : public enable_shared_from_this<window>
 {
    public:
-    using watch_event_type = event<windows::user_info_ptr, bool>;
-    using interaction_event_type = event<windows::user_info_ptr, array_view<windows::input_event_data>>;
+    using watch_event_type = event<bool>;
+    using interaction_event_type = event<windows::user_info_ptr, array_view<windows::input_event_data const>>;
 
    public:
     virtual ~window() noexcept = default;
@@ -144,6 +145,18 @@ class window : public enable_shared_from_this<window>
     virtual bool is_being_watched() const = 0;
 
     /**
+     * Get path to this window instance.
+     *
+     * May not changed.
+     */
+    virtual string path() const noexcept = 0;
+
+    /**
+     * @return width, height, channels
+     */
+    virtual auto get_image_props() const noexcept -> tuple<int, int, int> = 0;
+
+    /**
      * Create image update buffer. Buffer will automatically committed when submitted.
      *
      * Size of allocated buffer is width*height*channels
@@ -153,7 +166,7 @@ class window : public enable_shared_from_this<window>
      * channels == 3: bgr
      * channels == 4: bgra
      */
-    virtual auto create_update_buffer(int width, int height, int channels) -> shared_ptr<void> = 0;
+    virtual auto create_update_buffer(int width, int height, int channels) -> shared_ptr<char> = 0;
 
     /**
      * Set image transfer quality
@@ -165,12 +178,12 @@ class window : public enable_shared_from_this<window>
     /**
      * Listen to watch state change event.
      *
-     * Useful when rendering signal is required.
+     * Can be invoked from any thread
      */
     virtual auto event_watch_state_change() -> watch_event_type::frontend = 0;
 
     /**
-     * Listen to user input event
+     * Listen to user input event.
      */
     virtual auto event_interaction() -> interaction_event_type::frontend = 0;
 };
