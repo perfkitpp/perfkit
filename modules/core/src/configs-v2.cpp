@@ -752,6 +752,21 @@ bool configs_import(string_view path)
     return true;
 }
 
+auto configs_export_dump(int indent, bool merge) -> string
+{
+    global_config_storage_t all;
+    configs_export(&all, merge);
+
+    streambuf::stringbuf out;
+    {
+        archive::json::writer writer{&out};
+        writer.indent = indent;
+        writer << all;
+    }
+
+    return move(out.str());
+}
+
 namespace _configs {
 void parse_full_key(
         const string& full_key, string* o_display_key, vector<string_view>* o_hierarchy)

@@ -65,6 +65,7 @@ void configs_import(global_config_storage_t json_content);
 bool configs_import(string_view path);
 void configs_export(global_config_storage_t* json_dst, bool merge = true);
 bool configs_export(string_view path, bool merge = true);
+auto configs_export_dump(int indent = -1, bool merge = true) -> string;
 
 /**
  * Key rules

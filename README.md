@@ -1,70 +1,60 @@
+![Logo Image](modules/web/public/logo.png)
+
 # C++17 PERFORMANCE BENCHMARK & CONFIGURATION KIT
 
-This library introduces comportable way to manage program config / real time performance analysis for any kind of c++
-applications.
+Add control point on your application.
 
-# Usage
+# Dependencies
 
-## Options
+Using this library will introduce tons of new dependencies to your application. 🤣
 
-```c++
-#include "perfkit/perfkit.h"
+> Hopefully some are private dependency, which may not add dependencies on your build directly.
 
-namespace {
+### Core
 
-PERFKIT_CONFIG_REGISTRY(optd);
-auto opt_coeff_a = perfkit::configure(optd, "Global|Amplification", 1.114);
-auto opt_coeff_b = perfkit::configure(optd, "Global|Iteration", 31);
-auto opt_category = perfkit::configure(optd, "Global|Misc|Category", "Hello");
+- [gabime/spdlog](https://github.com/gabime/spdlog.git)
+- [fmtlib/fmt](https://github.com/fmtlib/fmt)
+- [kang-sw/cppheaders](https://github.com/kang-sw/cppheaders)
+- [nlohmann/json](https://github.com/nlohmann/json)
+- [ericniebler/range-v3](https://github.com/ericniebler/range-v3)
 
+### Net
 
-auto opt_coeff_d = perfkit::configure(
-    optd, "Core|ImportantVar", 1.114,
-    perfkit::_config_factory<double>{}
-        .description("Some important")
-        .one_of({1.31, 5.54, 3.82}));
+- [asio](https://think-async.com/Asio/)
+- [okdshin/PicoSHA2](https://github.com/okdshin/PicoSHA2)
 
-}  // namespace
+### Web
 
-void some_function(double, int, std::string const&);
+- [CrowCpp/Crow](https://github.com/CrowCpp/Crow)
+- [asio](https://think-async.com/Asio/)
 
-int main(void) {
-  while (true) {
-    // some intensive multi-threaded loop ...
-    if (optd.update()) {
-      if (opt_coeff_a.check_dirty_and_consume()) {
-        // ... DO SOME REFRESH ...
-      }
+### Extra
 
-      if (opt_coeff_b.check_dirty_and_consume()) {
-        // ... DO SOME REFRESH ...
-      }
+- [taywee/args](https://github.com/Taywee/args)
 
-      if (opt_category.check_dirty_and_consume()) {
-        // ... DO SOME REFRESH ...
-      }
-    }
+# Quickstart
 
-    // use options as-is.
-    //
-    // there is no overhead on reading options, as any change of config value is guaranteed
-    // to be occurred only during invocation of config_registry::update
-    //
-    some_function(opt_coeff_a.get(), opt_coeff_b.get(), opt_category.get());
+This library does not provide any installation script. Simply clone this repository recursively, and add it as subdirectory of your CMakeLists.txt script.
 
-    // values can be reference with various method.
-    some_function(*opt_coeff_a, *opt_coeff_b, *opt_category);
-    printf(opt_category->c_str());
-    some_function(*opt_coeff_a, *opt_coeff_b, (std::string const&)opt_category);
-  }
+# Concepts
 
-  return 0;
-}
+![](doc/concepts.png)
 
-void some_function(double, int, std::string const&) {}
-```
+You can instanciate [config classes](#config-class), [tracers](#debug-tracers), [loggers](#loggers) on your application, and register them to global registry instance on demand. You can also create [terminals](#terminals) in application scope. Terminals has access to all the contexts that you have instantiated, and provides user a way to control over your application contexts remotely/locally.
 
-# TODOs
+[Web Terminal Example](doc/web-term-example.jpeg)
 
-- [ ] Parse options from command line arguments
-    - `perfkit::config_registry::parse_args(std::list<std::string_view>*, bool consume_parsed, bool strict)`
+Above link is an example of terminal implementations. Web terminal is bundled with tiny single-page-application to access local contexts over web protocols.
+
+## Config Class
+
+## Debug Tracers
+
+## Loggers
+
+# Terminals
+
+## Security
+
+Currently, there is no concept of security or authentications on this library. This is basically I use this library to create internal applications that don't expose any access point to public. As this library may expose some critical part of applications through 'terminal', you'd be very careful when applying this library for any exposed software.
+

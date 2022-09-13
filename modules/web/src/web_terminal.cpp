@@ -143,6 +143,7 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
     ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/window/<path>"), &terminal::ws_window_accept_);
 
     app_.port(info_.bind_port);
+    app_.signal_clear();
     app_.concurrency(1);
 
     // Redirect input

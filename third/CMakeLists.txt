@@ -75,6 +75,9 @@ if (perfkit_USE_BUNDLED_ASIO OR perfkit_BUILD_NET_CLIENT OR perfkit_BUILD_WEB)
             message("[${PROJECT_NAME}] asio: using static lib asio as default ...")
             add_library(perfkit::asio ALIAS perfkit-asio-static)
         endif ()
+    else ()
+        # TODO: When ASIO_INCLUDE_DIR exists, add perfkit::asio target ...
+        message(FATAL_ERROR "TODO: IMPLEMENT THIS!")
     endif ()
 endif ()
 
@@ -109,10 +112,15 @@ add_library(perfkit::cpph ALIAS ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} INTERFACE cppheaders cppheaders.refl-extension)
 
+if (perfkit_CROW_DIR_OVERRIDE)
+    message("[${PROJECT_NAME}] Using overrided CrowCpp directory '${perfkit_CROW_DIR_OVERRIDE}'")
+    add_subdirectory(${perfkit_CROW_DIR_OVERRIDE} ${CMAKE_CURRENT_BINARY_DIR}/crowcpp EXCLUDE_FROM_ALL)
+endif ()
+
 ### CONFIGURE crow
 if (perfkit_BUILD_WEB AND NOT TARGET Crow::Crow)
     message("[${PROJECT_NAME}] Crow::Crow not found, fetching ...")
-    FetchContent_Declare(crow URL https://github.com/kang-sw/Crow/archive/refs/heads/fix/ws-crash.zip)
+    FetchContent_Declare(crow URL https://github.com/kang-sw/Crow/archive/refs/heads/develop.zip)
     FetchContent_Populate(crow)
     add_subdirectory(${crow_SOURCE_DIR} ${crow_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
