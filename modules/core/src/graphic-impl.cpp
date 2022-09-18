@@ -45,11 +45,13 @@ auto perfkit::detail::window_impl::create_update_buffer(int width, int height, i
     auto func_notify_buffer_update =
             [this, width, height, channels, p_buffer](auto) mutable {
                 // Register as latest image buffer
-                *latest_image_.lock() = const_image_buffer{
-                        {width, height, channels}, {p_buffer, (char const*)p_buffer->data()}};
+                const_image_buffer buffer{
+                        {width, height, channels},
+                        {p_buffer, (char const*)p_buffer->data()}};
+                *latest_image_.lock() = buffer;
 
                 // Notify backend for p_buffer content update
-                event_buffer_update_.invoke(this, width, height, channels, p_buffer);
+                event_buffer_update_.invoke(this, buffer);
             };
 
     return shared_ptr<char>{view.data(), move(func_notify_buffer_update)};

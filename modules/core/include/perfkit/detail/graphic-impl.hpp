@@ -44,7 +44,11 @@ class window_impl : public window
     friend auto perfkit::create_window(string path) -> shared_ptr<window>;
 
    private:
+    static inline atomic_size_t idgen_ = 0;
+
+    size_t const id_;
     string const path_;
+
     watch_event_type event_watch_state_;
 
     pool<flex_buffer> buffer_pool_;
@@ -58,7 +62,7 @@ class window_impl : public window
     interaction_event_type event_interact_;
 
    private:
-    static inline event<window_impl*, int, int, int, shared_ptr<flex_buffer>&> event_buffer_update_;
+    static inline event<window_impl*, const_image_buffer> event_buffer_update_;
     static inline event<window_impl*, int> event_quality_change_;
     static inline event<window_impl*> event_register_;
     static inline event<window_impl*> event_unregister_;
@@ -72,8 +76,10 @@ class window_impl : public window
     static void B_all_wnds(vector<shared_ptr<window_impl>>*);
 
    public:
-    explicit window_impl(string path) : path_(std::move(path)) {}
+    explicit window_impl(string path) : id_(++idgen_), path_(std::move(path)) {}
     ~window_impl() noexcept;
+
+    size_t id() const noexcept override { return id_; }
 
     bool is_being_watched() const override;
 

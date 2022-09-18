@@ -157,6 +157,11 @@ class window : public enable_shared_from_this<window>
     virtual ~window() noexcept = default;
 
     /**
+     * Get window ID. Must be unique over program instance!
+     */
+    virtual size_t id() const noexcept = 0;
+
+    /**
      * Check if this window is being watched
      * @return
      */
