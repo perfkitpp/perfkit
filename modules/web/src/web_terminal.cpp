@@ -267,7 +267,6 @@ void terminal::ws_on_error_(crow::websocket::connection& c, const string& what)
         CPPH_ERROR("! WebSocket Error without userdata: {}", what);
     }
 }
-
 }  // namespace perfkit::web::impl
 
 auto perfkit::web::open(perfkit::web::open_info info)

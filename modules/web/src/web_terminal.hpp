@@ -82,6 +82,7 @@ class terminal : public if_terminal, public detail::if_web_terminal
     void push_command(std::string_view command) override { commands_.push(string{command}); }
     void write(std::string_view str) override;
     auto event_queue() noexcept -> cpph::event_queue& override { return ioc_.queue(); }
+    auto anchor() noexcept -> weak_ptr<void> override { return weak_from_this(); }
 
    protected:
     std::optional<std::string> fetch_command(milliseconds timeout) override { return commands_.try_pop(timeout); }
