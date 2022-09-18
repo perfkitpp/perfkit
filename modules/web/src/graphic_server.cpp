@@ -89,16 +89,31 @@ class graphic_server_impl : public graphic_server
                 CPPH_ERROR("! MESSAGE HANDLING ERROR: {}", e.what());
             }
         }
+        void on_open() noexcept override
+        {
+            self_->ioc_.post(bind_weak(weak_from_this(), &S::on_new_session_, self_, this));
+        }
         void on_close(const string& why) noexcept override
         {
+            self_->ioc_.post(bind_weak(weak_from_this(), &S::on_close_session_, self_, weak_from_this()));
         }
 
        private:
         void handle_msg_(string_view method, archive::json::reader* rd)
         {
-            // TODO: handle event
-            if (method == "input") {
-            } else if (method == "watch") {
+            rd->begin_object();
+            auto id = (rd->jump("id"), rd->read_as<size_t>());
+
+            if (method == "wnd_input") {
+                // TODO: Retrieve input events from stream, notify to host node ...
+            } else if (method == "wnd_control") {
+                // Retrieve watch state, if exist
+                if (rd->goto_key("watching")) {
+                    self_->ioc_.post(bind_weak(
+                            weak_from_this(),
+                            &S::set_watch_state_,
+                            self_, weak_from_this(), id, rd->read_as<bool>()));
+                }
             }
         }
     };
@@ -107,10 +122,10 @@ class graphic_server_impl : public graphic_server
         string path_cached;
 
         weak_ptr<window_impl> w_wnd;
-        set<weak_ptr<session>, std::owner_less<>> watchers;
+        set<websocket_weak_ptr, std::owner_less<>> watchers;
 
         const_image_buffer raw;
-        binary<vector<uint8_t>> jpeg_cached;
+        binary<string> jpeg_cached;
 
         //
         bool is_jpeg_dirty = false;
@@ -188,7 +203,7 @@ class graphic_server_impl : public graphic_server
 
         if (not clients_.empty()) {
             auto wr = ioc_writer_prepare_("new_windows");
-            *wr << push_array(1) << make_pair(p_wnd->id(), p_wnd->path()) << pop_array;
+            *wr << push_array(1) << make_pair(p_wnd->id(), string_view{p_wnd->path()}) << pop_array;
             client_for_each_([str = ioc_writer_done_()](auto&& cli) { cli->send_text(*str); });
         }
     }
@@ -234,11 +249,7 @@ class graphic_server_impl : public graphic_server
         }
     }
 
-    void ioc_handle_message_(session* sess, string_view method, archive::json::reader* rd)
-    {
-    }
-
-    void try_publish_(window_impl* p_wnd, window_node* p_node, session* sess)
+    void try_publish_(window_impl* p_wnd, window_node* p_node, if_websocket_session* sess)
     {
         // Ensure single encode sequence is performed for multiple sessions
         if (exchange(p_node->is_jpeg_dirty, false)) {
@@ -257,13 +268,61 @@ class graphic_server_impl : public graphic_server
         }
 
         // Send prepared payload to client
-        sess->send_text(sbuf_.str());
+        sess->send_binary(p_node->jpeg_cached.ref());
     }
 
     static void jpeg_write_func_(void* context, void* data, int size)
     {
-        auto p_node = (window_node*)context;
-        p_node->jpeg_cached.insert(p_node->jpeg_cached.end(), (uint8_t*)data, (uint8_t*)data + size);
+        auto p_buf = &((window_node*)context)->jpeg_cached;
+        p_buf->insert(p_buf->end(), (uint8_t*)data, (uint8_t*)data + size);
+    }
+
+    void on_new_session_(session* p_sess)
+    {
+        // Iterate existing nodes, publish initially available window list.
+        auto wr = ioc_writer_prepare_("new_windows");
+        *wr << push_array(wnds_.size());
+        for (auto& [id, node] : wnds_) {
+            *wr << make_pair(id, string_view{node.path_cached});
+        }
+        *wr << pop_array;
+        p_sess->send_text(*ioc_writer_done_());
+    }
+
+    void on_close_session_(websocket_weak_ptr const& wp)
+    {
+        // Iterate all nodes, unregister from all watches
+        for (auto& [id, node] : wnds_) {
+            set_watch_state_impl_(wp, &node, false);
+        }
+    }
+
+    void set_watch_state_(websocket_weak_ptr const& wp, size_t id, bool state)
+    {
+        if (auto p_pair = find_ptr(wnds_, id)) {
+            auto* p_node = &p_pair->second;
+            set_watch_state_impl_(wp, p_node, state);
+        }
+    }
+
+    void set_watch_state_impl_(websocket_weak_ptr const& wp, window_node* p_node, bool state)
+    {
+        auto p_wnd = p_node->w_wnd.lock();
+        if (not p_wnd) {
+            CPPH_WARN("! Destroying window '{}'", p_node->path_cached);
+            return;
+        }
+
+        if (state) {
+            auto was_empty = p_node->watchers.empty();
+            if (p_node->watchers.emplace(wp).second && was_empty) {
+                p_wnd->B_set_watching(true);
+            }
+        } else {
+            if (p_node->watchers.erase(wp) && p_node->watchers.empty()) {
+                p_wnd->B_set_watching(false);
+            }
+        }
     }
 
    private:
@@ -283,28 +342,6 @@ class graphic_server_impl : public graphic_server
         json_wr_.flush();
 
         return &sbuf_.str();
-    }
-
-    void ioc_sess_recv_msg_(session* sess, string_view s)
-    {
-        // Parse incoming message
-        streambuf::const_view sbuf{{s.data(), s.size()}};
-        json_rd_.clear(), json_rd_.rdbuf(&sbuf);
-
-        // RPC handling (method/params)
-        try {
-            auto key = json_rd_.begin_object();
-
-            json_rd_.jump("method");
-            auto method_name = json_rd_.read_as<string>();
-
-            json_rd_.jump("params");
-            ioc_handle_message_(sess, method_name, &json_rd_);
-
-            json_rd_.end_object(key);
-        } catch (std::exception& e) {
-            CPPH_ERROR("! MESSAGE HANDLING ERROR: {}", e.what());
-        }
     }
 };
 
