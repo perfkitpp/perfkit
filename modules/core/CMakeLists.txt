@@ -98,8 +98,11 @@ if (MSVC)
             ${PROJECT_NAME}
 
             PUBLIC
-            /utf-8 /FIciso646
+            /utf-8
+            $<$<COMPILE_LANGUAGE:CXX>:/FIciso646>
     )
 
-    add_compile_options(/FIciso646)
+    add_compile_options(
+            $<$<COMPILE_LANGUAGE:CXX>:/FIciso646>
+    )
 endif ()
