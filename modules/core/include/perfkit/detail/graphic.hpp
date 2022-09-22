@@ -55,7 +55,6 @@ enum class keycode {
 
     alphabet_base,
     a = alphabet_base, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
-    A                , B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
 
     n_base,
     n0 = n_base, n1, n2, n3, n4, n5, n6, n7, n8, n9,
@@ -127,16 +126,40 @@ using input_event_data = variant<
 }  // namespace windows
 
 /**
+ * Holds image contents
+ */
+struct image_info {
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+
+    int buflen() const noexcept { return width * height * channels; }
+    int empty() const noexcept { return width == 0 || height == 0 || channels == 0; }
+};
+struct image_buffer : image_info {
+    shared_ptr<char> data;
+};
+struct const_image_buffer : image_info {
+    shared_ptr<char const> data;
+};
+
+/**
  * Control to window
  */
 class window : public enable_shared_from_this<window>
 {
    public:
     using watch_event_type = event<bool>;
-    using interaction_event_type = event<windows::user_info_ptr, array_view<windows::input_event_data const>>;
+    using input_events_view_type = array_view<windows::input_event_data const>;
+    using interaction_event_type = event<windows::user_info_ptr, input_events_view_type>;
 
    public:
     virtual ~window() noexcept = default;
+
+    /**
+     * Get window ID. Must be unique over program instance!
+     */
+    virtual size_t id() const noexcept = 0;
 
     /**
      * Check if this window is being watched
@@ -150,11 +173,6 @@ class window : public enable_shared_from_this<window>
      * May not changed.
      */
     virtual string path() const noexcept = 0;
-
-    /**
-     * @return width, height, channels
-     */
-    virtual auto get_image_props() const noexcept -> tuple<int, int, int> = 0;
 
     /**
      * Create image update buffer. Buffer will automatically committed when submitted.

@@ -28,6 +28,7 @@
 
 #include "test_class.hpp"
 
+#include <perfkit/detail/graphic.hpp>
 #include <spdlog/spdlog.h>
 
 #include "cpph/utility/timer.hxx"
@@ -63,6 +64,7 @@ PERFKIT_CATEGORY(test_global_category)
 }
 
 using namespace std::literals;
+using namespace cpph;
 namespace tc = test_global_category;
 
 void test_class::start()
@@ -75,6 +77,31 @@ void test_class::start()
                 bool reload_tracer_next_frame = false;
                 cpph::poll_timer sleep;
                 cpph::poll_timer incr_timer{1s};
+
+                auto wnd = perfkit::create_window("graphic/this");
+                cpph::event_handle evt;
+                auto buffer = make_unique<char[]>(640 * 480);
+
+                namespace events = perfkit::windows::events;
+                using perfkit::windows::keycode;
+
+                wnd->event_interaction()() << &evt << [&](auto&&, perfkit::window::input_events_view_type evt) {
+                    for (auto& ev : evt) {
+                        if (auto p_data = std::get_if<events::mouse_move>(&ev)) {
+                            if (p_data->clk_left) {
+                                auto x = p_data->x, y = p_data->y;
+                                if (x >= 0 && x < 640 && y >= 0 && y < 480) {
+                                    buffer[y * 640 + x] = -1;
+                                }
+                            }
+                        }
+                        if (auto p_data = std::get_if<events::key_down>(&ev)) {
+                            if (p_data->code == keycode::r) {
+                                memset(buffer.get(), 0, 640 * 480);
+                            }
+                        }
+                    }
+                };
 
                 while (_loop_active.load()) {
                     if (_cfg.t_boolean) {
@@ -112,6 +139,11 @@ void test_class::start()
 
                     if (auto to = 1ms * tc::class_control::interval_ms; to != sleep.interval())
                         sleep.reset(to);
+
+                    if (trc.branch("EnableGraphics") && wnd->is_being_watched()) {
+                        auto buf = wnd->create_update_buffer(640, 480, 1);
+                        memcpy(buf.get(), buffer.get(), 640 * 480);
+                    }
 
                     if (auto tr0 = trc.timer("tree-0")) {
                         auto tr1 = trc.timer("tree-1");

@@ -74,16 +74,6 @@ target_link_libraries(
         range-v3::range-v3
 )
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message("[${PROJECT_NAME}]: enabling trace log level ...")
-    target_compile_definitions(
-            ${PROJECT_NAME}
-
-            PRIVATE
-            -DSPDLOG_ACTIVE_LEVEL=0
-    )
-endif ()
-
 if (UNIX)
     target_link_libraries(
             ${PROJECT_NAME}

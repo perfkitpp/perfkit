@@ -26,19 +26,29 @@
 
 #pragma once
 #include <cpph/std/vector>
+#include <utility>
 
 #include <cpph/container/buffer.hxx>
 #include <cpph/memory/pool.hxx>
+#include <cpph/thread/locked.hxx>
 
 #include "graphic.hpp"
 
 namespace perfkit::detail {
+
 /**
  * May all backend classes can access to this class.
  */
 class window_impl : public window
 {
+    friend auto perfkit::create_window(string path) -> shared_ptr<window>;
+
    private:
+    static inline atomic_size_t idgen_ = 0;
+
+    size_t const id_;
+    string const path_;
+
     watch_event_type event_watch_state_;
 
     pool<flex_buffer> buffer_pool_;
@@ -46,55 +56,48 @@ class window_impl : public window
     atomic_int quality_ = 50;
     atomic_bool watching_ = false;
 
+    locked<const_image_buffer> latest_image_;
+
+    //! Backend should notify interaction event through this.
+    interaction_event_type event_interact_;
+
    private:
-    static inline event<window_impl*, int, int, int, pool_ptr<flex_buffer>&> event_buffer_update_;
+    static inline event<window_impl*, const_image_buffer> event_buffer_update_;
     static inline event<window_impl*, int> event_quality_change_;
+    static inline event<window_impl*> event_register_;
+    static inline event<window_impl*> event_unregister_;
 
    public:  // Backend interfaces
     static inline decltype(event_buffer_update_)::frontend const B_on_buffer_update = event_buffer_update_.make_frontend();
     static inline decltype(event_quality_change_)::frontend const B_on_quality_change = event_quality_change_.make_frontend();
+    static inline decltype(event_register_)::frontend const B_on_register = event_register_.make_frontend();
+    static inline decltype(event_unregister_)::frontend const B_on_unregister = event_unregister_.make_frontend();
 
-    //! Backend should notify interaction event through this.
-    interaction_event_type B_on_interact;
+    static void B_all_wnds(vector<shared_ptr<window_impl>>*);
 
    public:
-    bool is_being_watched() const override
-    {
-        return relaxed(watching_);
-    }
+    explicit window_impl(string path) : id_(++idgen_), path_(std::move(path)) {}
+    ~window_impl() noexcept;
 
-    auto create_update_buffer(int width, int height, int channels) -> shared_ptr<char> override
-    {
-        auto p_buffer = buffer_pool_.checkout();
-        auto view = p_buffer->mutable_buffer(width * height * channels);
-        auto func_notify_buffer_update =
-                [this, width, height, channels, p_buffer = move(p_buffer)](auto) mutable {
-                    // Notify backend for p_buffer content update
-                    event_buffer_update_.invoke(this, width, height, channels, p_buffer);
-                };
+    size_t id() const noexcept override { return id_; }
 
-        return shared_ptr<char>{view.data(), move(func_notify_buffer_update)};
-    }
+    bool is_being_watched() const override;
 
-    void set_quality(int percent) override
-    {
-        relaxed(quality_, clamp(percent, 0, 100));
-        event_quality_change_.invoke(this, relaxed(quality_));
-    }
+    auto create_update_buffer(int width, int height, int channels) -> shared_ptr<char> override;
 
-    auto event_watch_state_change() -> watch_event_type::frontend override
-    {
-        return event_watch_state_.make_frontend();
-    }
+    void set_quality(int percent) override;
 
-    auto event_interaction() -> interaction_event_type::frontend override
-    {
-        return B_on_interact.make_frontend();
-    }
+    auto event_watch_state_change() -> watch_event_type::frontend override;
+
+    auto event_interaction() -> interaction_event_type::frontend override;
+
+    string path() const noexcept override;
 
    public:
     int B_get_quality() const noexcept { return relaxed(quality_); }
     void B_set_watching(bool value) noexcept;
+    void B_notify_input(windows::user_info_wptr, pool_ptr<vector<windows::input_event_data>>);
+    auto latest_image() const noexcept -> const_image_buffer;
 };
 
 }  // namespace perfkit::detail

@@ -1,10 +1,10 @@
-import {createContext, CSSProperties, useEffect, useMemo, useRef, useState} from 'react';
+import { createContext, CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import './App.scss';
 import Terminal from "./comp/Terminal";
-import {Button, Container, Row, Col, ColProps} from "react-bootstrap";
+import { Button, Container, Row, Col, ColProps } from "react-bootstrap";
 import ConfigPanel from "./comp/ConfigPanel";
 import TracePanel from './comp/TracePanel'
-import {BoxData, DockLayout, LayoutBase, LayoutData, PanelData, TabData} from "rc-dock";
+import { BoxData, DockLayout, LayoutBase, LayoutData, PanelData, TabData } from "rc-dock";
 
 export const socketUrlPrefix = process.env.NODE_ENV === "development"
   ? `ws://${window.location.hostname}:15572`
@@ -67,19 +67,19 @@ function App() {
                 id: 'tab-term',
                 title: 'Terminal',
                 content:
-                  <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>,
+                  <Terminal socketUrl={socketUrlPrefix + '/ws/tty'} />,
                 cached: true
               },
               {
                 id: 'tab-cfg',
                 title: 'Configs',
-                content: <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'}/>,
+                content: <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'} />,
                 cached: true
               },
               {
                 id: 'tab-trace',
                 title: 'Traces',
-                content: <TracePanel socketUrl={socketUrlPrefix + '/ws/trace'}/>,
+                content: <TracePanel socketUrl={socketUrlPrefix + '/ws/trace'} />,
                 cached: true
               },
             ]
@@ -95,7 +95,8 @@ function App() {
       const layout = JSON.parse(layoutStatus ?? "") as LayoutBase;
       dockRef.current.loadLayout(layout);
     } catch {
-
+      JSON.parse(`"parse"`);
+      
     }
 
     window.onbeforeunload = ev => {

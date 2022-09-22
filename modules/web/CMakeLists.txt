@@ -10,6 +10,7 @@ target_sources(
         src/interface.cpp
         src/config_server.cpp
         src/trace_server.cpp
+        src/graphic_server.cpp
 )
 
 target_link_libraries(
