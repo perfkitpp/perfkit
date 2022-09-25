@@ -142,6 +142,8 @@ class graphic_server_impl : public graphic_server
     archive::json::writer json_wr_{&sbuf_};
     archive::json::reader json_rd_{nullptr};
 
+    shared_ptr<void> anchor_ = make_shared<nullptr_t>();
+
    private:
     template <class Pred>
     void client_for_each_(Pred&& fn)
@@ -167,20 +169,18 @@ class graphic_server_impl : public graphic_server
 
     void I_init_()
     {
-        auto anchor = term_->anchor();
-
         // Register global register event
         window_impl::B_on_unregister()
-                << anchor
-                << bind_event_queue_weak(ioc_, anchor, &S::on_wnd_unregister_, this);
+                << anchor_
+                << bind_event_queue_weak(ioc_, anchor_, &S::on_wnd_unregister_, this);
 
         window_impl::B_on_register()
-                << anchor
-                << bind_event_queue_weak(ioc_, anchor, &S::on_wnd_register_, this);
+                << anchor_
+                << bind_event_queue_weak(ioc_, anchor_, &S::on_wnd_register_, this);
 
         window_impl::B_on_buffer_update()
-                << anchor
-                << bind_event_queue_weak(ioc_, anchor, &S::on_wnd_update_, this);
+                << anchor_
+                << bind_event_queue_weak(ioc_, anchor_, &S::on_wnd_update_, this);
 
         // Iterate all existing windows, register event.
         vector<shared_ptr<window_impl>> all;

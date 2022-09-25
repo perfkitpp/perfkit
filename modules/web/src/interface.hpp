@@ -47,7 +47,6 @@ class if_web_terminal
    public:
     virtual ~if_web_terminal() = default;
     virtual auto event_queue() noexcept -> cpph::basic_event_queue<>& = 0;
-    virtual auto anchor() noexcept -> weak_ptr<void> = 0;
 };
 
 class if_websocket_session : public std::enable_shared_from_this<if_websocket_session>
