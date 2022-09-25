@@ -242,13 +242,13 @@ function App() {
           </a>
           <NavToggle itemTitle={'Terminal'} iconClass={'ri-terminal-fill'}
                      widgetFactory={() => <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>}/>
-          <NavToggle itemTitle={'Configs'} iconClass={'ri-settings-5-fill'}
+          <NavToggle itemTitle={'Configs'} iconClass={'ri-tools-fill'}
                      widgetFactory={() => <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'}/>}/>
-          <NavToggle itemTitle={'Traces'} iconClass={'ri-timer-line'}
+          <NavToggle itemTitle={'Traces'} iconClass={'ri-focus-3-line'}
                      widgetFactory={() => <TracePanel socketUrl={socketUrlPrefix + '/ws/trace'}/>}/>
-          <NavToggle itemTitle={'Graphics'} iconClass={'ri-paint-brush-line'}
+          <NavToggle itemTitle={'Graphics'} iconClass={'ri-palette-line'}
                      widgetFactory={() => <GraphicPanel socketUrl={socketUrlPrefix + '/ws/graphic'}/>}/>
-          <NavToggle itemTitle={'System'} iconClass={'ri-server-line'}
+          <NavToggle itemTitle={'System'} iconClass={'ri-cpu-line'}
                      widgetFactory={() => <div>FF</div>}/>
           <span className='ms-2 me-4' style={{borderRight: '1px dimgray solid', height: '100%'}}/>
           <span className='navbar-brand text-light ms-2'>

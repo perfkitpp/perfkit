@@ -36,11 +36,13 @@ interface GraphicContext {
 }
 
 interface MethodNewWindows {
-
+  method: 'new_windows',
+  params: [number, string][]
 }
 
 interface MethodDeletedWindow {
-
+  method: 'deleted_window',
+  params: number
 }
 
 function GraphicWindow(prop: {}) {
