@@ -169,7 +169,7 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
     app_.concurrency(1);
 
     // Redirect input
-    CPPH_INFO("* Redirecting terminal output ...");
+    CPPH_debug("* Redirecting terminal output ...");
     backend::input_redirect([this](char const* s, size_t n) { this->write({s, n}); });
 }
 
@@ -221,7 +221,7 @@ void terminal::ws_on_close_(crow::websocket::connection& c, const string& why)
     if (c.userdata()) {
         stopwatch waiting_timer;
         auto pp_sess = (detail::websocket_ptr*)c.userdata();
-        CPPH_INFO("* ({}) Closing websocket: {}", (*pp_sess)->remote_ip(), why);
+        CPPH_debug("* ({}) Closing websocket: {}", (*pp_sess)->remote_ip(), why);
 
         c.userdata(nullptr);
         pp_sess->get()->on_close(why);
@@ -236,15 +236,15 @@ void terminal::ws_on_close_(crow::websocket::connection& c, const string& why)
             std::this_thread::sleep_for(5ms);
         }
 
-        CPPH_INFO("* WebSocket closed. ({:.3f} seconds)", waiting_timer.elapsed().count());
+        CPPH_debug("* WebSocket closed. ({:.3f} seconds)", waiting_timer.elapsed().count());
     } else {
-        CPPH_INFO("* WebSocket closed without userdata: {}", why);
+        CPPH_debug("* WebSocket closed without userdata: {}", why);
     }
 }
 
 bool terminal::ws_tty_accept_(const crow::request& req, void** ppv)
 {
-    CPPH_INFO("* Accepting terminal WebSocket from: {}", req.remote_ip_address);
+    CPPH_debug("* Accepting terminal WebSocket from: {}", req.remote_ip_address);
     auto p_sess = make_shared<ws_tty_session>();
     p_sess->owner_ = this;
     *ppv = new detail::websocket_ptr{p_sess};
@@ -254,7 +254,7 @@ bool terminal::ws_tty_accept_(const crow::request& req, void** ppv)
 
 bool terminal::ws_config_accept_(const crow::request& req, void** ppv)
 {
-    CPPH_INFO("* Accepting config WebSocket from: {}", req.remote_ip_address);
+    CPPH_debug("* Accepting config WebSocket from: {}", req.remote_ip_address);
     auto p_sess = srv_config_->new_session_context();
     *ppv = new detail::websocket_ptr{p_sess};
 
@@ -263,7 +263,7 @@ bool terminal::ws_config_accept_(const crow::request& req, void** ppv)
 
 bool terminal::ws_trace_accept_(const crow::request& req, void** ppv)
 {
-    CPPH_INFO("* Accepting trace WebSocket from: {}", req.remote_ip_address);
+    CPPH_debug("* Accepting trace WebSocket from: {}", req.remote_ip_address);
     auto p_sess = srv_trace_->new_session_context();
     *ppv = new detail::websocket_ptr{p_sess};
 
@@ -275,7 +275,7 @@ void terminal::ws_on_open_(crow::websocket::connection& c)
     auto p = ((detail::websocket_ptr*)c.userdata())->get();
     p->I_register_(&c);
 
-    CPPH_INFO("* Opening WebSocket: {}", p->remote_ip());
+    CPPH_debug("* Opening WebSocket: {}", p->remote_ip());
     p->on_open();
 }
 

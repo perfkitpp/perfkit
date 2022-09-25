@@ -76,7 +76,7 @@ class terminal : public if_terminal, public detail::if_web_terminal
     event_queue_worker ioc_{thread::lazy, 128 << 10};
 
     vector<detail::websocket_weak_ptr> tty_sockets_;
-    circular_queue<char> tty_content_{64 << 10};
+    circular_queue<char> tty_content_{1 << 18};
     string tty_tmp_shelf_;
 
     // Sub-services
