@@ -141,6 +141,7 @@ void test_class::start()
                         sleep.reset(to);
 
                     if (wnd->is_being_watched()) {
+                        trc.timer("Rendering Image");
                         auto buf = wnd->create_update_buffer(640, 480, 1);
                         memcpy(buf.get(), buffer.get(), 640 * 480);
                     }

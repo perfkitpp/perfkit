@@ -66,6 +66,8 @@ class graphic_server_impl : public graphic_server
         graphic_server_impl* self_;
         archive::json::reader json_rd_{nullptr};
 
+        map<size_t, websocket_ptr> watch_anchors_;
+
        public:
         explicit session(graphic_server_impl* self) : self_(self)
         {
@@ -97,6 +99,7 @@ class graphic_server_impl : public graphic_server
         void on_close(const string& why) noexcept override
         {
             self_->ioc_.post(bind_weak(weak_from_this(), &S::on_close_session_, self_, weak_from_this()));
+            watch_anchors_.clear();
         }
 
        private:
@@ -110,10 +113,25 @@ class graphic_server_impl : public graphic_server
             } else if (method == "wnd_control") {
                 // Retrieve watch state, if exist
                 if (rd->goto_key("watching")) {
+                    const auto do_watch = rd->read_as<bool>();
+                    websocket_ptr sp_node;
+
+                    if (do_watch) {
+                        auto sp_none_base = make_shared<nullptr_t>();
+                        sp_node = shared_ptr<if_websocket_session>{sp_none_base, this};
+                        watch_anchors_[id] = sp_node;
+                    } else {
+                        auto iter = watch_anchors_.find(id);
+                        if (iter == watch_anchors_.end()) { throw std::runtime_error{"Invalid op"}; }
+
+                        sp_node = iter->second;
+                        watch_anchors_.erase(iter);
+                    }
+
                     self_->ioc_.post(bind_weak(
                             weak_from_this(),
                             &S::set_watch_state_,
-                            self_, weak_from_this(), id, rd->read_as<bool>()));
+                            self_, sp_node, id, do_watch));
                 }
             }
         }
@@ -249,11 +267,16 @@ class graphic_server_impl : public graphic_server
             return;
         }
 
+        if (node->watchers.empty()) {
+            return;
+        }
+
         // GC expired watchers first
         erase_if_each(node->watchers, [](auto&& v) { return v.expired(); });
 
         if (node->watchers.empty()) {
             // There's no client to receive image ...
+            p_wnd->B_set_watching(false);
             return;
         }
 
