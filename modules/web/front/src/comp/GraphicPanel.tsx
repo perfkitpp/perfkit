@@ -1,7 +1,8 @@
-import {createContext, useEffect, useMemo, useReducer, useRef, useState} from "react";
+import {startTransition, useEffect, useMemo, useReducer, useRef, useState} from "react";
 import {useForceUpdate, useWebSocket} from "../Utils";
 import {Spinner} from "react-bootstrap";
 import {CloseWindow, CreateWindow} from "../App";
+import {Simulate} from "react-dom/test-utils";
 
 /*
   About control flow ...
@@ -164,22 +165,142 @@ interface MethodDeletedWindow {
 
 function GraphicWindow(prop: { context: GraphicContext }) {
   const {context} = prop;
-  const imgRef = useRef({} as HTMLImageElement);
+  const canvasParentDivRef = useRef({} as HTMLDivElement);
+  const canvasRef = useRef({} as HTMLCanvasElement);
+  const forceUpdate = useForceUpdate();
+  const toggleFwdMode = () => (stateRef.current.fwdMode = !stateRef.current.fwdMode, forceUpdate());
+  const stateRef = useRef({
+    cachedImage: new Image(),
+    isFirstLoad: true,
+    backBuffer: {} as HTMLCanvasElement,
+    imgOffst: {x: 0, y: 0},
+    zoom: 1,
+    fwdMode: false,
+  });
 
   useEffect(() => {
-    context.onUpdateJpeg = () => {
-      if (!context.cachedJpeg) return;
+    stateRef.current.backBuffer = document.createElement('canvas');
+    context.onUpdateJpeg =
+      function onUpdateJpeg() {
+        if (!context.cachedJpeg) return;
 
-      const url = URL.createObjectURL(context.cachedJpeg);
-      imgRef.current.src = url;
+        const img = new Image();
+        const state = stateRef.current;
+        img.src = URL.createObjectURL(context.cachedJpeg);
+        img.onload = () => {
+          state.cachedImage = img;
+          if (state.isFirstLoad) {
+            state.isFirstLoad = false;
+            fitViewToImage();
+          }
+          invalidateSrc();
+        }
+      };
 
-      console.log(url, context.cachedJpeg);
-    };
+    canvasRef.current.width = canvasParentDivRef.current.clientWidth;
+    canvasRef.current.height = canvasParentDivRef.current.clientHeight;
+
+    new ResizeObserver((element, ev) => {
+      const box = element.at(0)?.contentRect;
+      if (!box) return;
+
+      startTransition(() => {
+        canvasRef.current.width = box.width;
+        canvasRef.current.height = box.height - 10;
+        stateRef.current.backBuffer.width = canvasRef.current.width;
+        stateRef.current.backBuffer.height = canvasRef.current.height;
+        invalidateDisp();
+      });
+    }).observe(canvasParentDivRef.current)
+
+    canvasRef.current.onmousemove =
+      function (ev) {
+        if (stateRef.current.fwdMode) {
+          // TODO: Forward event to server ..
+        } else {
+          if (ev.buttons & 1) {
+            const state = stateRef.current;
+            state.imgOffst.x += ev.movementX;
+            state.imgOffst.y += ev.movementY;
+
+            startTransition(invalidateDisp);
+          }
+        }
+      };
+
+    canvasRef.current.ondblclick =
+      function (ev) {
+        if (stateRef.current.fwdMode) {
+          // TODO: Forward event to server ..
+        } else {
+          // Fit content window
+          fitViewToImage();
+        }
+      }
+
+    canvasRef.current.onwheel =
+      function (ev) {
+        if (stateRef.current.fwdMode) {
+          // TODO: Forward event to server ..
+        } else {
+          stateRef.current.zoom = Math.pow(stateRef.current.zoom * 100, 1 - ev.deltaY * 1e-4) / 100;
+          invalidateSrc();
+        }
+      };
   }, []);
 
-  console.log("PewPEw");
-  return <div>
-    <img ref={imgRef} alt={context.title}/>
+  function invalidateSrc() {
+    // TODO: Change backBuffer to use source image transform, and canvas to use offset context.
+    invalidateDisp();
+  }
+
+  function fitViewToImage() {
+    // Find smaller scale
+    const {width, height} = canvasRef.current;
+    const {naturalWidth, naturalHeight} = stateRef.current.cachedImage;
+    const [scaleX, scaleY] = [width / naturalWidth, height / naturalHeight];
+    const zoom = stateRef.current.zoom = Math.min(scaleX, scaleY);
+    const ofst = stateRef.current.imgOffst;
+    ofst.x = naturalWidth / 2 * zoom + (width - naturalWidth * zoom) / 2;
+    ofst.y = naturalHeight / 2 * zoom + (height - naturalHeight * zoom) / 2;
+    invalidateDisp();
+  }
+
+  function invalidateDisp() {
+    const state = stateRef.current;
+    const img = state.cachedImage;
+    const canvas = state.backBuffer;
+    const ctx = canvas.getContext('2d');
+    const {x, y} = state.imgOffst;
+    const {zoom} = state;
+
+    if (!ctx) return;
+
+    ctx.fillStyle = "dimgray";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img,
+      (state.imgOffst.x - img.naturalWidth / 2 * zoom),
+      (state.imgOffst.y - img.naturalHeight / 2 * zoom),
+      img.naturalWidth * zoom,
+      img.naturalHeight * zoom
+    );
+
+    canvasRef.current.getContext('2d')?.drawImage(canvas, 0, 0);
+  }
+
+  return <div className='d-flex flex-column h-100'>
+    <div className='bg-dark px-2 d-flex flex-row gap-1'>
+      <i
+        className={'btn py-0 px-3 ' + (stateRef.current.fwdMode ? 'ri-edit-circle-fill btn-danger ' : 'ri-focus-line ')}
+        onClick={toggleFwdMode}
+      />
+      <i className='btn py-0 px-2 ri-drag-move-2-fill' onClick={fitViewToImage}/>
+    </div>
+    <div className='flex-grow-1' ref={canvasParentDivRef}>
+      <canvas
+        ref={canvasRef}
+      />
+    </div>
   </div>
 }
 
