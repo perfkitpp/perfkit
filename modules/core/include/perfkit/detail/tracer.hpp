@@ -122,7 +122,8 @@ constexpr bool is_duration_v = false;
 template <typename Ty_>
 constexpr bool is_duration_v<
         Ty_, std::void_t<decltype(std::chrono::duration_cast<steady_clock::duration>(
-                     std::declval<Ty_>()))>> = true;
+                     std::declval<Ty_>()))>>
+        = true;
 
 class tracer_proxy
 {
@@ -219,7 +220,7 @@ class tracer_proxy
         return is_valid() && _ref->is_subscribed.load(std::memory_order_consume);
     }
 
-    bool check_subs() noexcept
+    bool trigger() noexcept
     {
         return is_valid() && (acquire(_ref->is_subscribed) ? _ref->is_subscribed.exchange(false, std::memory_order_acquire) : false);
     }

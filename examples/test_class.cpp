@@ -127,6 +127,7 @@ void test_class::start()
                             trc.branch("duration-ms") = tc::class_control::interval_ms.value(),
                             (sleep.check(), std::this_thread::sleep_until(sleep.next_point()));
 
+
                     _cfg->update();
 
                     if (test_global_category::enable_autocounter) {
@@ -164,23 +165,23 @@ void test_class::start()
                     tr1["double"] = _cfg.t_double.value();
                     tr1["str"] = _cfg.t_string.value();
 
-                    if (trc.timer("create instant registry").check_subs()) {
+                    if (trc.timer("create instant registry").trigger()) {
                         static int counter = 0;
                         test_subclass::create(format("temporary+{}", ++counter));
                     }
 
-                    if (trc.timer("add new subclass and dispose instantly").check_subs()) {
+                    if (trc.timer("add new subclass and dispose instantly").trigger()) {
                         static int counter = 0;
                         test_subclass::create(_cfg, format("tempory instant disposed {}", ++counter));
                     }
 
-                    if (trc.timer("add consistent subclass").check_subs()) {
+                    if (trc.timer("add consistent subclass").trigger()) {
                         static int counter = 0;
                         auto subc = test_subclass::create(_cfg, format("instant subclass {}", ++counter));
                         _subclasses.push_back(std::move(subc));
                     }
 
-                    if (trc.timer("clear subclasses").check_subs()) {
+                    if (trc.timer("clear subclasses").trigger()) {
                         _subclasses.clear();
                     }
 
