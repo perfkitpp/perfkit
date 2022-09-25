@@ -5,6 +5,7 @@ import {DockLayout, LayoutBase, LayoutData, PanelData, TabData} from "rc-dock";
 import Terminal from "./comp/Terminal";
 import ConfigPanel from "./comp/ConfigPanel";
 import TracePanel from "./comp/TracePanel";
+import GraphicPanel from "./comp/GraphicPanel";
 
 export const socketUrlPrefix = process.env.NODE_ENV === "development"
   ? `ws://${window.location.hostname}:15572`
@@ -245,7 +246,7 @@ function App() {
           <NavToggle itemTitle={'Traces'} iconClass={'ri-timer-line'}
                      widgetFactory={() => <TracePanel socketUrl={socketUrlPrefix + '/ws/trace'}/>}/>
           <NavToggle itemTitle={'Graphics'} iconClass={'ri-artboard-line'}
-                     widgetFactory={() => <div>GG</div>}/>
+                     widgetFactory={() => <GraphicPanel socketUrl={socketUrlPrefix + '/ws/graphic'}/>}/>
           <NavToggle itemTitle={'System'} iconClass={'ri-server-fill'}
                      widgetFactory={() => <div>FF</div>}/>
         </Navbar>
