@@ -46,10 +46,7 @@ function WrappedContentNode(props: { info: WindowInfo }) {
   return <StrictMode>{info.content}</StrictMode>
 }
 
-export function CreateWindow(key: string, info: WindowInfo): boolean {
-  if (IsWindowOpen(key))
-    return false;
-
+export function CreateWindow(key: string, info: WindowInfo) {
   const data: TabData = {
     title: info.title ?? key,
     closable: info.closable != undefined ? info.closable : true,
@@ -58,8 +55,10 @@ export function CreateWindow(key: string, info: WindowInfo): boolean {
     content: <WrappedContentNode info={info}/>
   };
 
-  dockLayout.ref.dockMove(data, null, "float");
-  return true;
+  if (IsWindowOpen(key))
+    dockLayout.ref.updateTab(key, data, true);
+  else
+    dockLayout.ref.dockMove(data, null, "float");
 }
 
 export function CloseWindow(key: string): boolean {

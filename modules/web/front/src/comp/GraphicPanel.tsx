@@ -1,7 +1,7 @@
-import {useMemo, useReducer, useRef, useState} from "react";
+import {createContext, useEffect, useMemo, useReducer, useRef, useState} from "react";
 import {useForceUpdate, useWebSocket} from "../Utils";
 import {Spinner} from "react-bootstrap";
-import {CloseWindow} from "../App";
+import {CloseWindow, CreateWindow} from "../App";
 
 /*
   About control flow ...
@@ -9,9 +9,9 @@ import {CloseWindow} from "../App";
   2. Displays list of labels on graphics list
   3.
  */
+
 export default function GraphicPanel(prop: { socketUrl: string }) {
   function onRecvMsg(ev: MessageEvent) {
-    console.log(ev.data);
     if (typeof ev.data === "string") {
       // Parse as string command
       const msg = JSON.parse(ev.data) as MethodNewWindows | MethodDeletedWindow;
@@ -19,7 +19,7 @@ export default function GraphicPanel(prop: { socketUrl: string }) {
         case "new_windows": {
           for (const [key, title] of msg.params) {
             cleanupWnd(key);
-            allWnds.current.set(key, {id: key, title, watching: false});
+            allWnds.current.set(key, {id: key, title, watching: false, refSocket: socket as WebSocket});
           }
 
           notifyListDirty();
@@ -34,7 +34,20 @@ export default function GraphicPanel(prop: { socketUrl: string }) {
       }
     } else {
       // Parse as jpeg binary ... create URL,
-      console.log(ev.data);
+      const blob = ev.data as Blob;
+      const header = blob.slice(0, 64);
+      const content = blob.slice(64, blob.size, 'image/jpeg');
+
+      header.arrayBuffer().then(
+        value => {
+          const idBigI = new DataView(value).getBigUint64(0, true);
+          const context = allWnds.current.get(Number(idBigI));
+          if (context) {
+            context.cachedJpeg = content;
+            context.onUpdateJpeg && context.onUpdateJpeg();
+          }
+        }
+      )
     }
   }
 
@@ -50,27 +63,61 @@ export default function GraphicPanel(prop: { socketUrl: string }) {
 
     function onClick() {
       context.watching = !context.watching;
-      if (context.watching) {
-        // TODO: Send watch start message, spawn window
-      } else {
-        // TODO: Send watch stop message, close window
-
-      }
       forceUpdate();
     }
 
+    useEffect(() => {
+      context.onCloseWindow = () => {
+        context.watching = false;
+        forceUpdate();
+      }
+    }, []);
+
+    useEffect(() => {
+      socket?.send(JSON.stringify({
+        method: 'wnd_control',
+        params: {
+          id: context.id,
+          watching: context.watching
+        }
+      }));
+
+      if (context.watching) {
+        // Send watch start message, spawn window
+        CreateWindow(MakeWndKey(context.id), {
+          content: <GraphicWindow context={context}/>,
+          onClose: context.onCloseWindow,
+          title: `(gp ${context.id}) ${context.title}`,
+          closable: true
+        });
+      } else {
+        // Send watch stop message, close window
+        CloseWindow(MakeWndKey(context.id));
+      }
+    }, [context.watching]);
+
     return <div className='d-flex flex-row w-100'>
       <div
-        className={'btn text-start mb-1 mx-1 py-0 flex-grow-1 ' + (context.watching && 'btn-primary')}
+        className={'btn text-start mb-1 mx-1 py-0 flex-grow-1 ' + (context.watching && 'btn-success ')}
         onClick={onClick}>
+        <span className='text-secondary me-2'>({context.id})</span>
         {context.title}
       </div>
     </div>
   }
 
-  const sockGraphic = useWebSocket(prop.socketUrl, {onmessage: onRecvMsg}, []);
+  const socket = useWebSocket(prop.socketUrl, {onmessage: onRecvMsg}, []);
   const allWnds = useRef(new Map<number, GraphicContext>);
   const [fenceListRegen, notifyListDirty] = useReducer(s => s + 1, 0);
+
+  useEffect(() => {
+    return () => {
+      // Close all opened windows
+      for (const key of Array.from(allWnds.current.keys())) {
+        cleanupWnd(key);
+      }
+    };
+  }, []);
 
   const labels = useMemo(() =>
       Array.from(allWnds.current)
@@ -78,11 +125,11 @@ export default function GraphicPanel(prop: { socketUrl: string }) {
         .map(([key, context]) => <GraphicNodeLabel key={key} context={context}/>),
     [fenceListRegen]);
 
-  if (sockGraphic?.readyState != WebSocket.OPEN)
+  if (socket?.readyState != WebSocket.OPEN)
     return (<div className='text-center p-3 text-primary'><Spinner animation='border'></Spinner></div>);
 
   return <div className='pt-2'>
-    <div className='mx-1' style={{overflowY: 'auto'}}>
+    <div className='mx-1' style={{overflowY: 'auto', fontFamily: 'Lucida Console, monospace'}}>
       {labels}
     </div>
   </div>
@@ -95,11 +142,14 @@ function MakeWndKey(key: number) {
 interface GraphicContext {
   id: number,
   title: string,
+
   cachedJpeg?: Blob,
 
   watching: boolean,
   onCloseWindow?: () => void;
+  onUpdateJpeg?: () => void;
 
+  refSocket: WebSocket
 }
 
 interface MethodNewWindows {
@@ -112,8 +162,25 @@ interface MethodDeletedWindow {
   params: number
 }
 
-function GraphicWindow(prop: {}) {
-  return <div/>
+function GraphicWindow(prop: { context: GraphicContext }) {
+  const {context} = prop;
+  const imgRef = useRef({} as HTMLImageElement);
+
+  useEffect(() => {
+    context.onUpdateJpeg = () => {
+      if (!context.cachedJpeg) return;
+
+      const url = URL.createObjectURL(context.cachedJpeg);
+      imgRef.current.src = url;
+
+      console.log(url, context.cachedJpeg);
+    };
+  }, []);
+
+  console.log("PewPEw");
+  return <div>
+    <img ref={imgRef} alt={context.title}/>
+  </div>
 }
 
 
