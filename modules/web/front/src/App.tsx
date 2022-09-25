@@ -204,7 +204,12 @@ function App() {
         widgetOpenStatus.current[props.itemTitle] = true;
       } else {
         dockRef.current.updateTab(wndId, {
-          content: <div/>,
+          content: <div className='h-100 d-flex justify-content-center align-items-center'>
+            <div className='btn text-success ri-heart-pulse-line px-3 text-center'
+                 style={{fontSize: '2rem'}}
+                 onClick={() => setIsOpen(true)}>
+            </div>
+          </div>,
           title: props.itemTitle,
           cached: true,
           id: 'root/' + props.itemTitle
