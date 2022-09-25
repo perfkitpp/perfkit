@@ -28,6 +28,7 @@
 // Created by ki608 on 2022-08-21.
 //
 
+#define WIN32_LEAN_AND_MEAN
 #include "web_terminal.hpp"
 
 #include <cpph/std/filesystem>
@@ -36,6 +37,8 @@
 #include <utility>
 
 #include <cpph/helper/strutil.hxx>
+#include <cpph/refl/archive/json.hpp>
+#include <cpph/refl/object.hxx>
 #include <cpph/utility/timer.hxx>
 #include <crow/http_response.h>
 #include <crow/mustache.h>
@@ -75,10 +78,21 @@ class terminal::ws_tty_session : public detail::if_websocket_session
     }
 };
 
+CPPH_REFL_DEFINE_OBJECT_c(system_info, (), (alias), (description), (num_cores), (epoch), (hostname));
+
 terminal::terminal(open_info info) noexcept : info_(std::move(info))
 {
     using HTTP = crow::HTTPMethod;
-    CPPH_debug("");
+    sysinfo_.alias = info_.alias;
+    sysinfo_.description = info_.description;
+    sysinfo_.epoch = duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
+    sysinfo_.num_cores = std::thread::hardware_concurrency();
+    {
+        char hostname[65];
+        gethostname(hostname, std::size(hostname));
+
+        sysinfo_.hostname = hostname;
+    }
 
     loader_path_buf_ = info_.static_dir;
 
@@ -114,6 +128,14 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
 
     // Route configuration APIs / Websockets
     CROW_ROUTE(app_, "/api/test")
+    ([] { return "HELL, WORLD!"; });
+
+    // Get Session Information
+    CROW_ROUTE(app_, "/api/system_info")
+    ([this] { return archive::to_json(sysinfo_); });
+
+    // Try login with given authentication information
+    CROW_ROUTE(app_, "/api/login")
     ([] { return "HELL, WORLD!"; });
 
     // CROW_ROUTE(app_, "/api/config/commit");

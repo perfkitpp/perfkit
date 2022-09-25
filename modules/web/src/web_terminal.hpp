@@ -50,9 +50,22 @@ struct basic_socket_context {
     virtual ~basic_socket_context() = default;
 };
 
+struct system_info {
+    CPPH_REFL_DECLARE_c;
+
+    string_view alias;
+    string_view description;
+
+    int num_cores;
+    uint64_t epoch;
+
+    string hostname;
+};
+
 class terminal : public if_terminal, public detail::if_web_terminal
 {
     open_info info_;
+    system_info sysinfo_;
 
     crow::App<> app_;
     std::thread app_worker_;
