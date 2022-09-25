@@ -228,7 +228,7 @@ function App() {
   }
 
   return (
-    <div className='App'>
+    <div className='App d-flex flex-column'>
       <Nav className="px-3">
         <Navbar>
           <a className='navbar-brand' href='/'>
@@ -242,7 +242,7 @@ function App() {
                      widgetFactory={() => <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>}/>
           <NavToggle itemTitle={'Configs'} iconClass={'ri-list-settings-fill'}
                      widgetFactory={() => <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'}/>}/>
-          <NavToggle itemTitle={'Traces'} iconClass={'ri-dashboard-2-line'}
+          <NavToggle itemTitle={'Traces'} iconClass={'ri-timer-line'}
                      widgetFactory={() => <TracePanel socketUrl={socketUrlPrefix + '/ws/trace'}/>}/>
           <NavToggle itemTitle={'Graphics'} iconClass={'ri-artboard-line'}
                      widgetFactory={() => <div>GG</div>}/>
@@ -250,7 +250,7 @@ function App() {
                      widgetFactory={() => <div>FF</div>}/>
         </Navbar>
       </Nav>
-      <div style={{width: '100%', height: '100%'}}>
+      <div className="flex-fill">
         <DockLayout
           ref={dockRef}
           defaultLayout={defaultLayout}
