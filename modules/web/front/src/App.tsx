@@ -205,7 +205,7 @@ function App() {
       } else {
         dockRef.current.updateTab(wndId, {
           content: <div className='h-100 d-flex justify-content-center align-items-center'>
-            <div className='btn text-success ri-heart-pulse-line px-3 text-center'
+            <div className='btn text-success ri-links-line px-3 text-center'
                  style={{fontSize: '2rem'}}
                  onClick={() => setIsOpen(true)}>
             </div>
@@ -239,11 +239,7 @@ function App() {
         <Navbar>
           <a className='navbar-brand' href='/'>
             <img src={'logo.png'} alt='perfkit-logo' style={{maxWidth: '2em'}}/>
-            <span className='ms-2'>
-              {sysInfo ? `${sysInfo.alias}@${sysInfo.hostname}` : "Perfkit"}
-            </span>
           </a>
-          <span className='me-3' style={{borderRight: '1px dimgray solid', height: '100%'}}/>
           <NavToggle itemTitle={'Terminal'} iconClass={'ri-terminal-fill'}
                      widgetFactory={() => <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>}/>
           <NavToggle itemTitle={'Configs'} iconClass={'ri-list-settings-fill'}
@@ -254,6 +250,10 @@ function App() {
                      widgetFactory={() => <GraphicPanel socketUrl={socketUrlPrefix + '/ws/graphic'}/>}/>
           <NavToggle itemTitle={'System'} iconClass={'ri-server-fill'}
                      widgetFactory={() => <div>FF</div>}/>
+          <span className='me-3' style={{borderRight: '1px dimgray solid', height: '100%'}}/>
+          <span className='navbar-brand text-light ms-2'>
+              {sysInfo ? `${sysInfo.alias}@${sysInfo.hostname}` : "Perfkit"}
+            </span>
         </Navbar>
       </Nav>
       <div className="flex-fill">
