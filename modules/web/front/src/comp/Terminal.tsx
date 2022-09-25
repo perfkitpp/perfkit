@@ -78,7 +78,7 @@ export default function Terminal(props: { socketUrl: string }) {
       <p
         className={'border border-secondary text-white text-opacity-75 flex-grow-1 border-2 rounded-3 my-2 p-2 overflow-auto bg-black ' + (textWrap ? '' : 'text-nowrap')}
         ref={divRef}
-        style={{color:theme.light}}/>
+        style={{color: theme.light, fontSize: '10pt'}}/>
       <div className='px-0 mb-1 flex-grow-0 rounded-3 px-2 py-2 bg-opacity-10 bg-secondary border border-secondary'>
         <div className='d-flex flex-row m-0'>
           <i
