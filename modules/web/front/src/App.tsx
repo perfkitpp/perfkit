@@ -1,22 +1,14 @@
-import {createContext, CSSProperties, ReactNode, useEffect, useMemo, useRef, useState} from 'react';
+import {ReactElement, ReactNode, StrictMode, useEffect, useMemo, useRef, useState} from 'react';
 import './App.scss';
+import {Nav, Navbar} from "react-bootstrap";
+import {DockLayout, LayoutBase, LayoutData, PanelData, TabData} from "rc-dock";
 import Terminal from "./comp/Terminal";
-import {Button, Container, Row, Col, ColProps, Tab} from "react-bootstrap";
 import ConfigPanel from "./comp/ConfigPanel";
-import TracePanel from './comp/TracePanel'
-import {BoxData, DockLayout, LayoutBase, LayoutData, PanelData, TabData} from "rc-dock";
+import TracePanel from "./comp/TracePanel";
 
 export const socketUrlPrefix = process.env.NODE_ENV === "development"
   ? `ws://${window.location.hostname}:15572`
   : "ws://" + window.location.host
-
-interface ToggleRibbonProps {
-  enableState: boolean
-  setEnableState: (v: boolean | ((v: boolean) => boolean)) => void;
-  iconClass: string;
-  labelText: string;
-  toolTip: string;
-}
 
 const curStyle = getComputedStyle(document.body);
 export const theme = {
@@ -30,18 +22,6 @@ export const theme = {
   dark: curStyle.getPropertyValue('--bs-dark'),
 }
 
-interface EnableStatus {
-  terminal?: boolean;
-  system?: boolean;
-  graphics?: boolean;
-  configs?: boolean;
-  traces?: boolean;
-  plottings?: boolean;
-  layout?: DockLayout;
-}
-
-const initStateCfgStr = localStorage.getItem('PerfkitWeb/EnableStatus');
-const initStateCfg = JSON.parse(initStateCfgStr || "{}") as EnableStatus;
 const dockLayout = {ref: null as any as DockLayout};
 
 export interface WindowInfo {
@@ -49,6 +29,7 @@ export interface WindowInfo {
   onOpen?: () => void,
   content: ReactNode,
   title?: string,
+  closable?: boolean
 }
 
 function WrappedContentNode(props: { info: WindowInfo }) {
@@ -61,7 +42,7 @@ function WrappedContentNode(props: { info: WindowInfo }) {
     };
   }, []);
 
-  return <>{info.content}</>
+  return <StrictMode>{info.content}</StrictMode>
 }
 
 export function CreateWindow(key: string, info: WindowInfo): boolean {
@@ -70,13 +51,13 @@ export function CreateWindow(key: string, info: WindowInfo): boolean {
 
   const data: TabData = {
     title: info.title ?? key,
-    closable: true,
+    closable: info.closable != undefined ? info.closable : true,
     id: key,
     cached: true,
     content: <WrappedContentNode info={info}/>
   };
 
-  dockLayout.ref.dockMove(data, 'panel-main', "float");
+  dockLayout.ref.dockMove(data, null, "float");
   return true;
 }
 
@@ -101,9 +82,23 @@ function DockWrapper(prop: {
   </div>
 }
 
+interface SystemInfo {
+  alias: string,
+  description: string,
+  epoch: bigint,
+  hostname: string,
+  num_cores: number
+}
+
+const initialWidgetStatus = JSON.parse(
+  localStorage.getItem('PerfkitWeb/widgetStatus/2') ?? "{}") as { [key: string]: boolean };
+const savedLayout = {ref: {} as LayoutBase};
+
 function App() {
   const dockRef = useRef(null as any as DockLayout);
   const enableStatus = useRef({})
+  const [sysInfo, setSysInfo] = useState(null as SystemInfo | null);
+  const widgetOpenStatus = useRef(initialWidgetStatus);
   const defaultLayout = useMemo(() => {
     return {
       dockbox: {
@@ -113,23 +108,29 @@ function App() {
           {
             tabs: [
               {
-                id: 'tab-term',
+                id: 'root/Terminal',
                 title: 'Terminal',
-                content:
-                  <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>,
-                cached: true
+                content: <div>{widgetOpenStatus.current['Terminal'] ? "MON" : "TWO"}</div>,
               },
               {
-                id: 'tab-cfg',
+                id: 'root/Configs',
                 title: 'Configs',
-                content: <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'}/>,
-                cached: true
+                content: <div></div>,
               },
               {
-                id: 'tab-trace',
+                id: 'root/Traces',
                 title: 'Traces',
-                content: <TracePanel socketUrl={socketUrlPrefix + '/ws/trace'}/>,
-                cached: true
+                content: <div></div>,
+              },
+              {
+                id: 'root/System',
+                title: 'System',
+                content: <div></div>,
+              },
+              {
+                id: 'root/Graphics',
+                title: 'Graphics',
+                content: <div></div>,
               },
             ]
           }
@@ -139,40 +140,126 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Load layout and make hooks
     dockLayout.ref = dockRef.current;
-    const layoutStatus = localStorage.getItem('PerfkitWeb/LayoutStatus');
+
+    console.log("Loading layout");
+    const layoutStatus = localStorage.getItem('PerfkitWeb/LayoutStatus/2');
     try {
       const layout = JSON.parse(layoutStatus ?? "") as LayoutBase;
       dockRef.current.loadLayout(layout);
+      console.log(layout);
     } catch {
       JSON.parse(`"parse"`);
     }
 
-    CreateWindow('hello, my world!', {
-      content: <div>HELLO, WORLD!</div>,
-      onOpen: () => console.log("I'm Open!"),
-      onClose: () => console.log("I'm Closed!"),
-    })
-
     window.onbeforeunload = ev => {
-      const layout = dockRef.current.saveLayout();
-      localStorage.setItem('PerfkitWeb/LayoutStatus', JSON.stringify(layout));
+      console.log("Saving status");
+
+      localStorage.setItem('PerfkitWeb/LayoutStatus/2', JSON.stringify(dockRef.current.saveLayout()));
+      localStorage.setItem('PerfkitWeb/widgetStatus/2', JSON.stringify(widgetOpenStatus.current));
     };
+
+    // Load system information
+    (async () => {
+      const sysInfo = JSON.parse(await (await fetch('/api/system_info')).text()) as SystemInfo;
+      setSysInfo(sysInfo);
+
+      // TODO: Save widget open status
+    })();
   }, []);
 
+  useEffect(() => {
+    if (sysInfo == null)
+      return;
+
+    document.title = `${sysInfo.alias}@${sysInfo.hostname} - Perfkit Web Dashboard`;
+  }, [sysInfo]);
+
+  function NavToggle(props: { itemTitle: string, iconClass: string, widgetFactory: () => ReactNode }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const wndId = 'root/' + props.itemTitle;
+    const refNode = useRef(null as ReactNode);
+
+    useEffect(() => {
+      dockLayout.ref = dockRef.current;
+
+      // Initial load operation ... check if given element is open!
+      if (props.itemTitle in widgetOpenStatus.current && widgetOpenStatus.current[props.itemTitle]) {
+        console.log(`Widget ${props.itemTitle} is initailly open`);
+        setIsOpen(true);
+      }
+    }, []);
+
+    useEffect(() => {
+      if (isOpen) {
+        refNode.current = props.widgetFactory();
+        dockRef.current.updateTab(wndId, {
+          content: refNode.current as ReactElement,
+          title: props.itemTitle,
+          cached: true,
+          id: 'root/' + props.itemTitle
+        });
+        widgetOpenStatus.current[props.itemTitle] = true;
+      } else {
+        dockRef.current.updateTab(wndId, {
+          content: <div/>,
+          title: props.itemTitle,
+          cached: true,
+          id: 'root/' + props.itemTitle
+        });
+        widgetOpenStatus.current[props.itemTitle] = false;
+      }
+    }, [isOpen]);
+
+    function OnClick() {
+      setIsOpen(v => !v);
+    }
+
+    return <div className={(isOpen ? 'btn btn-outline-success' : 'btn') + ' mx-1 px-4'}
+                title={props.itemTitle}
+                onClick={OnClick}>
+      <div className='d-flex flex-row align-items-center gap-1'>
+        <i className={props.iconClass} style={{fontSize: '1.3rem'}}/>
+        <div className='fw-bold'
+             style={{maxWidth: isOpen ? '12ch' : '0', overflow: 'hidden', transition: '0.5s'}}>{props.itemTitle}</div>
+      </div>
+    </div>
+  }
+
   return (
-    <div className='App d-flex flex-column'>
-      <DockLayout
-        ref={dockRef}
-        defaultLayout={defaultLayout}
-        style={{
-          position: "absolute",
-          left: 10,
-          top: 10,
-          right: 10,
-          bottom: 10,
-        }}
-      />
+    <div className='App'>
+      <Nav className="px-3">
+        <Navbar>
+          <a className='navbar-brand' href='/'>
+            <img src={'logo.png'} alt='perfkit-logo' style={{maxWidth: '2em'}}/>
+            <span className='ms-2'>
+              {sysInfo ? `${sysInfo.alias}@${sysInfo.hostname}` : "Perfkit"}
+            </span>
+          </a>
+          <span className='me-3' style={{borderRight: '1px dimgray solid', height: '100%'}}/>
+          <NavToggle itemTitle={'Terminal'} iconClass={'ri-terminal-fill'}
+                     widgetFactory={() => <Terminal socketUrl={socketUrlPrefix + '/ws/tty'}/>}/>
+          <NavToggle itemTitle={'Configs'} iconClass={'ri-list-settings-fill'}
+                     widgetFactory={() => <ConfigPanel socketUrl={socketUrlPrefix + '/ws/config'}/>}/>
+          <NavToggle itemTitle={'Traces'} iconClass={'ri-dashboard-2-line'}
+                     widgetFactory={() => <TracePanel socketUrl={socketUrlPrefix + '/ws/trace'}/>}/>
+          <NavToggle itemTitle={'Graphics'} iconClass={'ri-artboard-line'}
+                     widgetFactory={() => <div>GG</div>}/>
+          <NavToggle itemTitle={'System'} iconClass={'ri-checkbox-multiple-blank-fill'}
+                     widgetFactory={() => <div>FF</div>}/>
+        </Navbar>
+      </Nav>
+      <div style={{width: '100%', height: '100%'}}>
+        <DockLayout
+          ref={dockRef}
+          defaultLayout={defaultLayout}
+          style={{
+            width: '100%',
+            height: '100%',
+          }}
+        />
+      </div>
     </div>
   );
 }
