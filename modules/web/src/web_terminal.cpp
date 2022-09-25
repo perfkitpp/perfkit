@@ -162,7 +162,7 @@ terminal::terminal(open_info info) noexcept : info_(std::move(info))
     ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/tty"), &terminal::ws_tty_accept_);
     ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/config"), &terminal::ws_config_accept_);
     ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/trace"), &terminal::ws_trace_accept_);
-    ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/window/<path>"), &terminal::ws_window_accept_);
+    ws_bind(CROW_WEBSOCKET_ROUTE(app_, "/ws/graphic"), &terminal::ws_graphic_accept_);
 
     app_.port(info_.bind_port);
     app_.signal_clear();
@@ -265,6 +265,15 @@ bool terminal::ws_trace_accept_(const crow::request& req, void** ppv)
 {
     CPPH_debug("* Accepting trace WebSocket from: {}", req.remote_ip_address);
     auto p_sess = srv_trace_->new_session_context();
+    *ppv = new detail::websocket_ptr{p_sess};
+
+    return true;
+}
+
+bool terminal::ws_graphic_accept_(const crow::request& req, void** ppv)
+{
+    CPPH_debug("* Accepting graphic WebSocket from: {}", req.remote_ip_address);
+    auto p_sess = srv_graphic_->new_session_context();
     *ppv = new detail::websocket_ptr{p_sess};
 
     return true;

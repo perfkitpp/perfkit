@@ -21,6 +21,7 @@ target_link_libraries(
         PRIVATE perfkit::asio
         PRIVATE Crow::Crow
         PRIVATE perfkit::internal::backend-utils
+        PRIVATE kang-sw::cpph::stb
 )
 
 target_compile_definitions(

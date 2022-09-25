@@ -40,6 +40,7 @@
 #include <crow.h>
 
 #include "config_server.hpp"
+#include "graphic_server.hpp"
 #include "interface.hpp"
 #include "perfkit/terminal.h"
 #include "perfkit/web.h"
@@ -82,6 +83,7 @@ class terminal : public if_terminal, public detail::if_web_terminal
     // Sub-services
     ptr<detail::config_server> srv_config_ = detail::config_server::create(this);
     ptr<detail::trace_server> srv_trace_ = detail::trace_server::create(this);
+    ptr<detail::graphic_server> srv_graphic_ = detail::graphic_server::create(this);
 
    private:
     class ws_tty_session;
@@ -112,6 +114,6 @@ class terminal : public if_terminal, public detail::if_web_terminal
     bool ws_tty_accept_(crow::request const&, void**);
     bool ws_config_accept_(crow::request const&, void**);
     bool ws_trace_accept_(crow::request const&, void**);
-    bool ws_window_accept_(crow::request const&, void**) { return false; }
+    bool ws_graphic_accept_(crow::request const&, void**);
 };
 }  // namespace perfkit::web::impl

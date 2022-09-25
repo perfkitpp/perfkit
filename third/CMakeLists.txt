@@ -101,7 +101,7 @@ endif ()
 add_subdirectory(taywee-args)
 
 ### CONFIGURE cppheaders
-if (NOT TARGET kang-sw::cppheaders)
+if (NOT TARGET kang-sw::cpph::core)
     message("-- [${PROJECT_NAME}]: Configuring cppheaders ...")
     add_subdirectory(cppheaders)
 endif ()
