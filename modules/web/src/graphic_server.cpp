@@ -43,6 +43,7 @@
 #include <cpph/streambuf/view.hxx>
 #include <cpph/third/stb.hpp>
 #include <cpph/thread/event_queue.hxx>
+#include <cpph/thread/thread_pool.hxx>
 #include <perfkit/detail/graphic-impl.hpp>
 #include <spdlog/spdlog.h>
 
@@ -127,6 +128,8 @@ class graphic_server_impl : public graphic_server
         const_image_buffer raw;
         binary<string> jpeg_cached;
 
+        shared_ptr<void> async_job_handle;
+
         //
         bool is_jpeg_dirty = false;
     };
@@ -143,6 +146,8 @@ class graphic_server_impl : public graphic_server
     archive::json::reader json_rd_{nullptr};
 
     shared_ptr<void> anchor_ = make_shared<nullptr_t>();
+    pool<string> spool_;
+    thread_pool tpool_{4};
 
    private:
     template <class Pred>
@@ -239,14 +244,51 @@ class graphic_server_impl : public graphic_server
             return;
         }
 
-        // Iterate watching clients
-        for (auto iter_watch = node->watchers.begin(); iter_watch != node->watchers.end();) {
-            if (auto watcher = iter_watch->lock()) {
-                try_publish_(p_wnd, node, watcher.get());
-            } else {
-                iter_watch = node->watchers.erase(iter_watch);
-            }
+        if (node->async_job_handle) {
+            // If asynchronous decoding job for this image is still running ...
+            return;
         }
+
+        // GC expired watchers first
+        erase_if_each(node->watchers, [](auto&& v) { return v.expired(); });
+
+        if (node->watchers.empty()) {
+            // There's no client to receive image ...
+            return;
+        }
+
+        // Asynchronously decode JPEG image
+        auto fn_async_encode_jpeg =
+                [this, id = iter->first, img = node->raw, quality = p_wnd->B_get_quality()] {
+                    auto cached = spool_.checkout();
+                    cached->clear();
+                    cached->reserve(100 << 10);  // 200KiB is pivot
+
+                    cached->resize(64);
+                    memcpy(cached->data(), &id, sizeof id);
+
+                    stbi::write_jpg_to_func(
+                            &S::jpeg_write_func_, cached.get(),
+                            img.width, img.height, img.channels,
+                            img.data.get(), quality);
+
+                    ioc_.post([this, id, cached = move(cached)] {
+                        auto p_pair = find_ptr(wnds_, id);
+                        if (not p_pair) { return; }
+
+                        auto node = &p_pair->second;
+                        node->async_job_handle = nullptr;
+                        swap(node->jpeg_cached.ref(), *cached);
+
+                        for (auto& wp : node->watchers)
+                            if (auto sess = wp.lock())
+                                sess->send_binary(node->jpeg_cached);
+                    });
+                };
+
+        tpool_.post(bind_weak(
+                (node->async_job_handle = make_shared<nullptr_t>()),
+                move(fn_async_encode_jpeg)));
     }
 
     void try_publish_(window_impl* p_wnd, window_node* p_node, if_websocket_session* sess)
@@ -273,7 +315,7 @@ class graphic_server_impl : public graphic_server
 
     static void jpeg_write_func_(void* context, void* data, int size)
     {
-        auto p_buf = &((window_node*)context)->jpeg_cached;
+        auto p_buf = (string*)context;
         p_buf->insert(p_buf->end(), (uint8_t*)data, (uint8_t*)data + size);
     }
 

@@ -127,7 +127,6 @@ void test_class::start()
                             trc.branch("duration-ms") = tc::class_control::interval_ms.value(),
                             (sleep.check(), std::this_thread::sleep_until(sleep.next_point()));
 
-
                     _cfg->update();
 
                     if (test_global_category::enable_autocounter) {
@@ -141,9 +140,13 @@ void test_class::start()
                     if (auto to = 1ms * tc::class_control::interval_ms; to != sleep.interval())
                         sleep.reset(to);
 
-                    if (trc.branch("EnableGraphics") && wnd->is_being_watched()) {
+                    if (wnd->is_being_watched()) {
                         auto buf = wnd->create_update_buffer(640, 480, 1);
                         memcpy(buf.get(), buffer.get(), 640 * 480);
+                    }
+
+                    if (trc.branch("Fill Buffer With Random Value")) {
+                        std::generate_n(buffer.get(), 640 * 480, std::rand);
                     }
 
                     if (auto tr0 = trc.timer("tree-0")) {
