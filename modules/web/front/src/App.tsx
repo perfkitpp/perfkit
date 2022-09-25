@@ -229,7 +229,7 @@ function App() {
 
   return (
     <div className='App d-flex flex-column'>
-      <Nav className="px-3">
+      <Nav className="px-3" style={{overflowX: 'auto'}}>
         <Navbar>
           <a className='navbar-brand' href='/'>
             <img src={'logo.png'} alt='perfkit-logo' style={{maxWidth: '2em'}}/>
