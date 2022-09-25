@@ -207,7 +207,7 @@ function App() {
           title: props.itemTitle,
           cached: true,
           id: 'root/' + props.itemTitle
-        });
+        }, false);
         widgetOpenStatus.current[props.itemTitle] = false;
       }
     }, [isOpen]);
@@ -246,7 +246,7 @@ function App() {
                      widgetFactory={() => <TracePanel socketUrl={socketUrlPrefix + '/ws/trace'}/>}/>
           <NavToggle itemTitle={'Graphics'} iconClass={'ri-artboard-line'}
                      widgetFactory={() => <div>GG</div>}/>
-          <NavToggle itemTitle={'System'} iconClass={'ri-checkbox-multiple-blank-fill'}
+          <NavToggle itemTitle={'System'} iconClass={'ri-server-fill'}
                      widgetFactory={() => <div>FF</div>}/>
         </Navbar>
       </Nav>
