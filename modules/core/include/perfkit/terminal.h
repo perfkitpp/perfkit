@@ -115,7 +115,6 @@ class if_terminal : public std::enable_shared_from_this<if_terminal>
         return n_proc;
     }
 
-   protected:
     /**
      * Invoke command
      */
