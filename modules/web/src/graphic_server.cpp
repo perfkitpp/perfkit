@@ -148,6 +148,9 @@ class graphic_server_impl : public graphic_server
 
         shared_ptr<void> async_job_handle;
 
+        size_t fence_gen = 0;
+        size_t fence = 0;
+
         //
         bool is_jpeg_dirty = false;
     };
@@ -262,11 +265,6 @@ class graphic_server_impl : public graphic_server
             return;
         }
 
-        if (node->async_job_handle) {
-            // If asynchronous decoding job for this image is still running ...
-            return;
-        }
-
         if (node->watchers.empty()) {
             return;
         }
@@ -282,7 +280,11 @@ class graphic_server_impl : public graphic_server
 
         // Asynchronously decode JPEG image
         auto fn_async_encode_jpeg =
-                [this, id = iter->first, img = node->raw, quality = p_wnd->B_get_quality()] {
+                [this,
+                 id = iter->first,
+                 img = node->raw,
+                 quality = p_wnd->B_get_quality(),
+                 fence = ++node->fence_gen] {
                     auto cached = spool_.checkout();
                     cached->clear();
                     cached->reserve(100 << 10);  // 200KiB is pivot
@@ -295,12 +297,19 @@ class graphic_server_impl : public graphic_server
                             img.width, img.height, img.channels,
                             img.data.get(), quality);
 
-                    ioc_.post([this, id, cached = move(cached)] {
+                    ioc_.post([this, id, cached = move(cached), fence] {
                         auto p_pair = find_ptr(wnds_, id);
                         if (not p_pair) { return; }
 
                         auto node = &p_pair->second;
-                        node->async_job_handle = nullptr;
+                        if (node->fence > fence) {
+                            // Due to race conditions, may the latter queued compression process
+                            //  can precede previous operation. To prevent the latest result being
+                            //  overwritten, this checks if the fence is still the latest.
+                            return;
+                        }
+
+                        node->fence = fence;
                         swap(node->jpeg_cached.ref(), *cached);
 
                         for (auto& wp : node->watchers)
@@ -312,28 +321,6 @@ class graphic_server_impl : public graphic_server
         tpool_.post(bind_weak(
                 (node->async_job_handle = make_shared<nullptr_t>()),
                 move(fn_async_encode_jpeg)));
-    }
-
-    void try_publish_(window_impl* p_wnd, window_node* p_node, if_websocket_session* sess)
-    {
-        // Ensure single encode sequence is performed for multiple sessions
-        if (exchange(p_node->is_jpeg_dirty, false)) {
-            // 8 byte: ID, 56 byte: Reserved, rest: Jpeg payload
-            p_node->jpeg_cached.clear();
-
-            uint64_t id = p_wnd->id();
-            p_node->jpeg_cached.resize(64);
-            memcpy(p_node->jpeg_cached.data(), &id, sizeof id);
-
-            auto& img = p_node->raw;
-            stbi::write_jpg_to_func(
-                    &S::jpeg_write_func_, p_node,
-                    img.width, img.height, img.channels,
-                    img.data.get(), p_wnd->B_get_quality());
-        }
-
-        // Send prepared payload to client
-        sess->send_binary(p_node->jpeg_cached.ref());
     }
 
     static void jpeg_write_func_(void* context, void* data, int size)
