@@ -39,13 +39,20 @@ function(PerfkitLinkImGuiGlfw TargetName)
     endif ()
 
     message(STATUS "[perfkit] Configuring opengl3 backend to [${TargetName}] ...")
+    find_package(OpenGL REQUIRED COMPONENTS OpenGL)
+
     target_sources(
             ${TargetName} PRIVATE
             ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
             ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
     )
 
+    target_include_directories(
+            ${TargetName} PUBLIC
+            ${OpenGL_INCLUDE_DIRS}
+    )
+
     target_link_libraries(
-            ${TargetName} PUBLIC glfw
+            ${TargetName} PUBLIC glfw ${OPENGL_LIBRARIES}
     )
 endfunction()
