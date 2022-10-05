@@ -99,7 +99,9 @@ int main(int argc, char** argv)
 
     // Command receive loop
     stopwatch sw;
-    stopwatch sw_logsvc;
+
+    // Reload logmon oncee
+    perfkit::reload_log_monitor(*logmon);
 
     while (g_server_is_alive) {
         app->Tick_Application(sw.elapsed().count()), sw.reset();
