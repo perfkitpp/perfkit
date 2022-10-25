@@ -324,8 +324,8 @@ class trace_server_impl : public trace_server
                                 break;
                             case 3: {  // double
                                 auto const val = get<double>(trace.data);
-                                if (isnan(val) || isinf(val)) {
-                                    *wr << "P" << key << "V" << (isnan(val) ? "NaN" : (val > 0 ? "+INF" : "-INF"));
+                                if (std::isnan(val) || std::isinf(val)) {
+                                    *wr << "P" << key << "V" << (std::isnan(val) ? "NaN" : (val > 0 ? "+INF" : "-INF"));
                                 } else {
                                     *wr << "P" << key << "V" << val;
                                 }
