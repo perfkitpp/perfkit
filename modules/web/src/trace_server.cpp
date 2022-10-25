@@ -322,9 +322,14 @@ class trace_server_impl : public trace_server
                             case 2:  // integer
                                 *wr << "P" << key << "V" << get<int64_t>(trace.data);
                                 break;
-                            case 3:  // double
-                                *wr << "P" << key << "V" << get<double>(trace.data);
-                                break;
+                            case 3: {  // double
+                                auto const val = get<double>(trace.data);
+                                if (isnan(val) || isinf(val)) {
+                                    *wr << "P" << key << "V" << (isnan(val) ? "NaN" : (val > 0 ? "+INF" : "-INF"));
+                                } else {
+                                    *wr << "P" << key << "V" << val;
+                                }
+                            } break;
                             case 4:  // string
                                 *wr << "P" << key << "V" << get<string>(trace.data);
                                 break;
