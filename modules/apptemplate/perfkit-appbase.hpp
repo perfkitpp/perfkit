@@ -17,12 +17,17 @@ class AppBase
     virtual std::string DefaultConfigPath() const noexcept { return ""; }
     virtual int S00_ParseCommandLineArgs(int argc, char** argv);
     virtual void S01_PreLoadConfigs() {}
+
     virtual void S02_PostLoadConfigs() {}
     virtual void S03_LaunchApplication() {}
     virtual void S04_ConfigureTerminalCommands(if_terminal*) {}
     virtual void S05_SetInitialCommands(if_terminal*) {}
     virtual void Tick_Application(float delta_time) {}
     virtual void P01_DisposeApplication() {}
+
+    virtual bool HasCustomConfig() const { return false; }
+    virtual void CustomLoadConfig() {}
+    virtual void CustomSaveConfig() {}
 
    public:
     //! Invokes right after S02_PostLoadConfigs

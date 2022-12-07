@@ -40,15 +40,19 @@ int main(int argc, char** argv)
 
     // Exclude reserved second argument from arguments list
     std::string confpath;
-    if (argc > 1) {
-        confpath = argv[1];
-        memmove(argv + 1, argv + 2, argc - 2);
-        argc -= 1;
+    if (not app->HasCustomConfig()) {
+        if (argc > 1) {
+            confpath = argv[1];
+            memmove(argv + 1, argv + 2, argc - 2);
+            argc -= 1;
 
-        spdlog::info("Configuration path specified: {}", confpath);
+            spdlog::info("Configuration path specified: {}", confpath);
+        } else {
+            confpath = app->DefaultConfigPath();
+            spdlog::info("Default configuration path will be used.");
+        }
     } else {
-        confpath = app->DefaultConfigPath();
-        spdlog::info("Default configuration path will be used.");
+        spdlog::info("Using custom config configuration ... ");
     }
 
     if (auto rflag = app->S00_ParseCommandLineArgs(argc, argv)) {
@@ -60,7 +64,7 @@ int main(int argc, char** argv)
     app->S01_PreLoadConfigs();
 
     spdlog::info("Loading configs ...");
-    {
+    if (not app->HasCustomConfig()) {
         if (perfkit::configs_import(confpath)) {
             spdlog::info("Successfully loaded intial config '{}'", confpath);
         } else if (confpath.empty()) {
@@ -69,6 +73,8 @@ int main(int argc, char** argv)
         } else {
             spdlog::warn("Failed to load config '{}'", confpath);
         }
+    } else {
+        app->CustomLoadConfig();
     }
 
     spdlog::info("Creating Logging Management Service ...");
@@ -79,7 +85,13 @@ int main(int argc, char** argv)
 
     auto term = app->CreatePerfkitTerminal();
     g_weak_term = term;
-    perfkit::terminal::register_conffile_io_commands(term.get());
+
+    if (not app->HasCustomConfig()) {
+        perfkit::terminal::register_conffile_io_commands(term.get());
+    } else {
+        term->add_command("save-config", [app = app.get()] { app->CustomSaveConfig(); });
+        term->add_command("load-config", [app = app.get()] { app->CustomLoadConfig(); });
+    }
 
     // Install signal handler
     signal(SIGINT, &sigint_handler);
@@ -94,7 +106,10 @@ int main(int argc, char** argv)
     app->S04_ConfigureTerminalCommands(term.get());
 
     // Queue save command
-    term->push_command("save-config " + std::string(confpath));
+    if (not app->HasCustomConfig()) {
+        term->push_command("save-config " + std::string(confpath));
+    }
+
     app->S05_SetInitialCommands(term.get());
 
     // Command receive loop
