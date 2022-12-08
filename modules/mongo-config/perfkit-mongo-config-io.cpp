@@ -55,7 +55,7 @@ auto perfkit::mongo_ext::try_load_configs(
         bson_free(query);
 
         if (bson_t const* step; mongoc_cursor_next(cursor, &step)) {
-            auto str = bson_as_canonical_extended_json(step, nullptr);
+            auto str = bson_as_json(step, nullptr);
             auto json = nlohmann::json::parse(str, nullptr, false);
 
             if (json.is_discarded()) {
@@ -130,17 +130,13 @@ bool perfkit::mongo_ext::try_save_configs(
         auto query = BCON_NEW("name", name, "version", version);
 
         if (auto bson = bson_new_from_json((uint8_t*)payload.data(), (ssize_t)payload.size(), &error)) {
-            if (!mongoc_collection_delete_one(collection, query, nullptr, nullptr, &error)) {
-                *olog << "creating new entry ..." << std::endl;
-            } else {
-                *olog << "replacing existing entry ..." << std::endl;
-            }
+            if (!(result = mongoc_collection_replace_one(collection, query, bson, nullptr, nullptr, &error))) {
+                *olog << "Replacement failed. Trying to insert new collection ... (" << error.message << ")" << std::endl;
 
-            if (!(result = mongoc_collection_insert_one(collection, bson, nullptr, nullptr, &error))) {
-                *olog << "Failed to insert collection: " << error.message;
+                if (!(result = mongoc_collection_insert_one(collection, bson, nullptr, nullptr, &error))) {
+                    *olog << "Failed to insert collection. All tries exhausted! " << error.message;
+                }
             }
-        } else {
-            *olog << "bson_new_from_json(..) failed" << std::endl;
         }
 
     EXIT_COLLECTION:  // Release all resource
